@@ -1,3 +1,0 @@
-# LogTrackUnity canonical plugin
-# Synced from D:\logtrack学习\LogTrackUnity\Assets\LogTrack
-2026-07-16 IL instrumentation: patch ScriptAssemblies DLLs via Unity.Cecil (no source edit)
