@@ -1,9 +1,0 @@
-FSPDebuger
-FSPDebuger
-AutoInstrumentOnCompile: false
-IncludeAssemblies:
-Assembly-CSharp
-ExcludeAssemblies:
-Assembly-CSharp-Editor
-LogTrack.Runtime
-LogTrack.Editor

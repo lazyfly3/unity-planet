@@ -1,6 +1,0 @@
-Upstream: https://github.com/a1studmuffin/SpaceshipGenerator
-Commit: 0fe0149c9d033ac53829c3ace8dddef97209f53c
-Vendored: 2026-07-24
-
-The upstream source is kept unmodified. Blender 5.1 compatibility and the
-Unity export contract live in Tools/Blender/SpaceshipPCG/generate_fleet.py.
