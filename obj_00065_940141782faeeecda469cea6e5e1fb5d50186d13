@@ -1,0 +1,224 @@
+fileFormatVersion: 2
+guid: fa35c1b920529e3498881bac845c8df6
+ModelImporter:
+  serializedVersion: 22200
+  internalIDToNameTable: []
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: AirCon_RsMtl_BLNNSG
+    second: {fileID: 2100000, guid: f08b128a61c727c4bbdbe92bb6686c94, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: AirHandlerD_GalvanizedSteel_BLNNSG
+    second: {fileID: 2100000, guid: 70a13691cef1f314ab3057410513a02e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: AtlasHoloB_mtl_BLNNSG
+    second: {fileID: 2100000, guid: 91a09c6bd1c22284a92efb2775642157, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: AtlasHoloC_mtl_BLNNSG
+    second: {fileID: 2100000, guid: c8a16425539392741afe666a5372270b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Chip006_mtl_BLNNSG
+    second: {fileID: 2100000, guid: 59c83e11285ff3d489399995ec517a9a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Cy_Light_BLNNSG
+    second: {fileID: 2100000, guid: f8990dd8d88de3d4992126fea6bd8fe5, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: GalvanizedSteel1_BLNNSG
+    second: {fileID: 2100000, guid: 58635e46a6fa2334898786290a62ac2c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MetalPaintWorn_RsMtl_BLNNSG
+    second: {fileID: 2100000, guid: 9c65f75ba26a87748946f0e868f2e99d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MetalPaintedDBrown_VRayMtl_BLNNSG
+    second: {fileID: 2100000, guid: 53574e7c18e01b8499415e933f4482a5, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MetalPaintedWhite_VRayMtl_BLNNSG
+    second: {fileID: 2100000, guid: cc015ccc9cdea044394d21a633040378, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MetalRustA_BLNNSG
+    second: {fileID: 2100000, guid: 2296cdd3ca37a024b86b46fce81dc95e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Metal_distressed_iron_BLNNSG
+    second: {fileID: 2100000, guid: c1d4229b17916df489fa46d07e933cde, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Painted_metal_03_Mat_BLNNSG
+    second: {fileID: 2100000, guid: 901d95c9bb42b8a46a3f3b92efb37b06, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ScifiBuildingWall_01_BLNNSG
+    second: {fileID: 2100000, guid: d6546802546cf8e4bab7733c84f87e12, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Scifi_Panels_L_BLNNSG
+    second: {fileID: 2100000, guid: 25ab5a3fbc53cb64a822c28098b55a9d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Scifi_Wall_Black_01_BLNNSG
+    second: {fileID: 2100000, guid: ca6aa8731e0960445b9277598b254c50, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Wall_PaintedRough_Blue_01_BLNNSG
+    second: {fileID: 2100000, guid: ff0872caaac137144aab8454c424d906, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Wall_PaintedRough_Metal_01b_BLNNSG
+    second: {fileID: 2100000, guid: 88ad63fe1865be6439f76bdda939099a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: WireTrim_mtl_BLNNSG
+    second: {fileID: 2100000, guid: 0494f9a83ec1eb642a3d73bcbaef3994, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Yellow_glass_window_43_64_4k_Mat_BLNNSG
+    second: {fileID: 2100000, guid: 5376abb1df9fd204da4acf03e90361fb, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Z_BannerA_Atlas_mtl_BLNNSG
+    second: {fileID: 2100000, guid: 9e07211e03c9eae48a5462225ca0a6d1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Z_BannerB_Atlas_mtl_BLNNSG
+    second: {fileID: 2100000, guid: 78cd2394e9706b645877248c2cc97874, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Z_Decal_mtl_BLNNSG
+    second: {fileID: 2100000, guid: 6c34380830d583b4595088be3007e79f, type: 2}
+  materials:
+    materialImportMode: 1
+    materialName: 0
+    materialSearch: 1
+    materialLocation: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 0
+    removeConstantScaleCurves: 0
+    motionNodeName: 
+    rigImportErrors: 
+    rigImportWarnings: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 0
+    importConstraints: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    extraUserProperties: []
+    clipAnimations: []
+    isReadable: 0
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    useSRGBMaterialColor: 1
+    sortHierarchyByName: 1
+    importPhysicalCameras: 1
+    importVisibility: 1
+    importBlendShapes: 0
+    importCameras: 1
+    importLights: 1
+    nodeNameCollisionStrategy: 1
+    fileIdsGeneration: 2
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    keepQuads: 0
+    weldVertices: 1
+    bakeAxisConversion: 0
+    preserveHierarchy: 0
+    skinWeightsMode: 0
+    maxBonesPerVertex: 4
+    minBoneWeight: 0.001
+    optimizeBones: 1
+    meshOptimizationFlags: -1
+    indexFormat: 0
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVMarginMethod: 1
+    secondaryUVMinLightmapResolution: 40
+    secondaryUVMinObjectScale: 1
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+    strictVertexDataChecks: 0
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+    normalCalculationMode: 4
+    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
+    blendShapeNormalImportMode: 1
+    normalSmoothingSource: 0
+  referencedClips: []
+  importAnimation: 0
+  humanDescription:
+    serializedVersion: 3
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    globalScale: 1
+    rootMotionBoneName: 
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  autoGenerateAvatarMappingIfUnspecified: 1
+  animationType: 2
+  humanoidOversampling: 1
+  avatarSetup: 0
+  addHumanoidExtraRootOnlyWhenUsingAvatar: 1
+  importBlendShapeDeformPercent: 1
+  remapMaterialsIfMaterialImportModeIsNone: 0
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -1,0 +1,138 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eecc710e49b7cda439e62dfc92366965, type: 3}
+  m_Name: PlanetLabTerrainPbrLibrary
+  m_EditorClassIdentifier: 
+  albedoArray: {fileID: 18700000, guid: 7a676003d93a575498dd45205d9b5367, type: 2}
+  normalArray: {fileID: 18700000, guid: c20ce9b83ac6ab2469627d9760d9c91e, type: 2}
+  maskArray: {fileID: 18700000, guid: 8417141723920044a9aa42efd430d38a, type: 2}
+  entries:
+  - id: breakstone
+    slice: 0
+    roles: 2
+  - id: broken_stones
+    slice: 1
+    roles: 2
+  - id: cliff_01
+    slice: 2
+    roles: 2
+  - id: cliff_02
+    slice: 3
+    roles: 2
+  - id: cliff_stone_01
+    slice: 4
+    roles: 2
+  - id: cliff_stone_02
+    slice: 5
+    roles: 2
+  - id: cracks
+    slice: 6
+    roles: 2
+  - id: dry_grass
+    slice: 7
+    roles: 1
+  - id: frozen_earth
+    slice: 8
+    roles: 13
+  - id: grass_01
+    slice: 9
+    roles: 1
+  - id: grass_02
+    slice: 10
+    roles: 1
+  - id: grass_snow
+    slice: 11
+    roles: 9
+  - id: grass_stones
+    slice: 12
+    roles: 3
+  - id: ground_01
+    slice: 13
+    roles: 5
+  - id: ground_02
+    slice: 14
+    roles: 5
+  - id: ground_crack_01
+    slice: 15
+    roles: 3
+  - id: ground_crack_02
+    slice: 16
+    roles: 3
+  - id: ground_foliage_01
+    slice: 17
+    roles: 1
+  - id: ground_foliage_02
+    slice: 18
+    roles: 1
+  - id: ground_grass_01
+    slice: 19
+    roles: 1
+  - id: ground_grass_02
+    slice: 20
+    roles: 1
+  - id: ground_rock
+    slice: 21
+    roles: 3
+  - id: ground_stone_01
+    slice: 22
+    roles: 3
+  - id: ground_stone_02
+    slice: 23
+    roles: 3
+  - id: ice
+    slice: 24
+    roles: 12
+  - id: ice_crack
+    slice: 25
+    roles: 14
+  - id: mud_01
+    slice: 26
+    roles: 5
+  - id: mud_02
+    slice: 27
+    roles: 5
+  - id: mud_03
+    slice: 28
+    roles: 5
+  - id: rock
+    slice: 29
+    roles: 2
+  - id: rock_sand
+    slice: 30
+    roles: 6
+  - id: rock_stone
+    slice: 31
+    roles: 2
+  - id: sand_01
+    slice: 32
+    roles: 4
+  - id: sand_02
+    slice: 33
+    roles: 4
+  - id: sand_03
+    slice: 34
+    roles: 4
+  - id: snow
+    slice: 35
+    roles: 8
+  - id: snow_drift
+    slice: 36
+    roles: 8
+  - id: stone_grass_snow
+    slice: 37
+    roles: 11
+  - id: stones_01
+    slice: 38
+    roles: 2
+  - id: stones_02
+    slice: 39
+    roles: 2

@@ -1,0 +1,106 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c21468aaf24f514db40e4c5056d10e8, type: 3}
+  m_Name: TemperateOcean
+  m_EditorClassIdentifier: 
+  version: 2
+  displayName: Temperate Ocean
+  template: 0
+  seed: 7319
+  radius: 100
+  maximumTerrainElevation: 16
+  previewResolution: 64
+  terrain:
+    shapeVersion: 2
+    continentScale: 0.018
+    continentHeight: 11
+    detailScale: 0.065
+    detailHeight: 3.6
+    ridgeHeight: 7
+    continentThreshold: 0.5
+    continentWarp: 0.6
+    continentSharpness: 1.25
+    mountainMask: 0.52
+    oceanFloorDepth: 0.58
+    terraceStrength: 0.08
+    surfaceLayerDepth: 1
+    stoneDepth: 4
+    generateCaves: 0
+    caveScale: 0.06
+    caveThreshold: 0.62
+    caveSurfaceClearance: 2
+  visual:
+    visualVersion: 3
+    lowlandColor: {r: 0.12, g: 0.42, b: 0.12, a: 1}
+    highlandColor: {r: 0.45, g: 0.68, b: 0.2, a: 1}
+    cliffColor: {r: 0.2, g: 0.16, b: 0.1, a: 1}
+    rockColor: {r: 0.28, g: 0.25, b: 0.18, a: 1}
+    accentColor: {r: 0.6, g: 0.82, b: 0.22, a: 1}
+    facetStrength: 0.72
+    lightingBands: 4
+    macroColorSize: 18
+    cliffSlope: 0.58
+    macroVariation: 0.16
+    oceanEnabled: 1
+    deepOceanColor: {r: 0.01, g: 0.09, b: 0.2, a: 1}
+    shallowOceanColor: {r: 0.02, g: 0.48, b: 0.62, a: 1}
+    shoreColor: {r: 0.78, g: 0.68, b: 0.38, a: 1}
+    snowColor: {r: 0.94, g: 0.95, b: 0.86, a: 1}
+    oceanLevel: 0.005
+    shoreWidth: 0.018
+    snowLine: 0.72
+    snowAmount: 0.65
+    oceanSmoothness: 0.86
+    oceanWaveStrength: 0.32
+    oceanWaveScale: 1
+    oceanWaveSpeed: 1
+    oceanNormalStrength: 0.85
+    oceanFoamStrength: 0.62
+    oceanRefractionStrength: 0.012
+    oceanOpacity: 0.82
+    forestWeight: 0
+    desertWeight: 0
+    tundraWeight: 0
+    volcanicWeight: 0
+    crystalWeight: 0
+    tropicalWeight: 0
+    decorationSeed: 0
+    decorationDensity: 1
+    decorationScale: 1
+    clusterStrength: 0.5
+    landmarkStyle: 0
+    horizonColor: {r: 0.42, g: 0.68, b: 0.9, a: 1}
+    zenithColor: {r: 0.08, g: 0.22, b: 0.42, a: 1}
+    sunsetColor: {r: 1, g: 0.35, b: 0.12, a: 1}
+    groundAmbientColor: {r: 0.08, g: 0.09, b: 0.08, a: 1}
+    atmosphereThickness: 0.65
+    cloudCoverage: 0.35
+    hazeStrength: 0.22
+    cloudSeed: 0
+  preview:
+    backgroundColor: {r: 0, g: 0, b: 0, a: 1}
+    ambientColor: {r: 0.16, g: 0.18, b: 0.22, a: 1}
+    sunColor: {r: 1, g: 0.94, b: 0.82, a: 1}
+    sunEuler: {x: 35, y: -35, z: 0}
+    sunIntensity: 1.25
+    fillColor: {r: 0.36, g: 0.52, b: 1, a: 1}
+    fillEuler: {x: 18, y: 145, z: 0}
+    fillIntensity: 0.32
+    cameraYaw: 35
+    cameraPitch: 20
+    cameraDistance: 8
+    autoRotate: 0
+    rotationSpeed: 8
+  planar:
+    autoAnchor: 1
+    anchorLatitude: 35.45604
+    anchorLongitude: -46.670074

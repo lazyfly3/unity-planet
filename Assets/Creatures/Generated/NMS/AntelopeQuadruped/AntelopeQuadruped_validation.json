@@ -1,8 +1,0 @@
-{
-  "pipelineVersion": 3,
-  "familyId": "AntelopeQuadruped",
-  "source": "FixedAntelopeV2",
-  "passed": true,
-  "failures": [],
-  "approval": "previous Blender and Unity manual validation"
-}

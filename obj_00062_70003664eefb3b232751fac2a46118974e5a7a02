@@ -1,0 +1,391 @@
+newmtl AirCon_RsMtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd AirCon_basecolor.png
+bump  -bm 0.5 AirCon_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks AirCon_metallic.png
+newmtl AirHandlerD_GalvanizedSteel_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd GalvanizedSteel_basecolor.jpg
+bump  -bm 0.5 GalvanizedSteel_normal.jpg
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks GalvanizedSteel_metallic.jpg
+newmtl AtlasHoloB_mtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd AtlasHoloB_Emissive.png
+Ni 1.00
+Ks 1.00 1.00 1.00
+newmtl AtlasHoloC_mtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd AtlasHoloC_Emissive.png
+Ni 1.00
+Ks 1.00 1.00 1.00
+newmtl Chip006_mtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Chip006_Base_color.png
+bump  -bm 0.5 Chip006_Normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Chip006_Metallic.png
+newmtl Cy_Light_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Cy_Light_basecolor.png
+bump  -bm 0.5 Cy_Light_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Cy_Light_metallic.png
+newmtl Cylinder_normal_C_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Cylinder_color.png
+bump  -bm 0.5 Cylinder_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Cylinder_metallic.png
+newmtl Floor_v3_mtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Floor_v3_Base_color.png
+bump  -bm 0.5 Floor_v3_Normal_OpenGL.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Floor_v3_Metallic.png
+newmtl Floor_v5_mtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Floor_v5_Base_colorB.png
+bump  -bm 0.5 Floor_v5_Normal_OpenGL.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Floor_v5_Metallic.png
+newmtl GalvanizedSteel1_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd GalvanizedSteel_basecolor2.png
+bump  -bm 0.5 GalvanizedSteel_normal.jpg
+Ni 1.00
+Ks 1.00 1.00 1.00
+newmtl GalvanizedSteelDirt_VRayMtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Soviet_GalvanizedSteelDirt_basecolor.png
+bump  -bm 0.5 Soviet_GalvanizedSteelDirt_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Soviet_GalvanizedSteelDirt_metallic.png
+newmtl Ground_mtl_BLNNSG
+illum 4
+Kd 1.00 1.00 1.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 1.00 1.00 1.00
+newmtl Material_031_001
+illum 4
+Kd 0.50 0.50 0.50
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl Material_032
+illum 4
+Kd 0.50 0.50 0.50
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl Material_038
+illum 4
+Kd 0.50 0.50 0.50
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl MetalPaintWorn_RsMtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd MetalPaintWorn_basecolor.png
+bump  -bm 0.5 MetalPaintWorn_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks MetalPaintWorn_metallic.png
+newmtl MetalPaintedBlue_VRayMtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Soviet_MetalPaintedBlue_basecolor.png
+bump  -bm 0.5 Soviet_MetalPaintedBlue_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Soviet_MetalPaintedBlue_metallic.png
+newmtl MetalPaintedDBrown_VRayMtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Soviet_MetalPaintedDBrown_basecolor.png
+bump  -bm 0.5 Soviet_MetalPaintedDBrown_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Soviet_MetalPaintedDBrown_metallic.png
+newmtl MetalPaintedWhite_VRayMtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Soviet_MetalPaintedWhite_basecolor.png
+bump  -bm 0.5 Soviet_MetalPaintedWhite_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Soviet_MetalPaintedWhite_metallic.png
+newmtl MetalRustA_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd MetalRustA_basecolor.png
+bump  -bm 0.5 MetalRustA_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks MetalRustA_metallic.png
+newmtl Metal_distressed_iron_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd metal_distressed_iron_Base_Color.png
+bump  -bm 0.5 metal_distressed_iron_Normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks metal_distressed_iron_Metallic.png
+newmtl Metal_painted_rust_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd metal_painted_rust_Base_Color.png
+bump  -bm 0.5 metal_painted_rust_Normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks metal_painted_rust_Metallic.png
+newmtl Metal_panels_01_Mat_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Metal_Panels_01_4K_albedo.png
+bump  -bm 0.5 Metal_Panels_01_4K_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Metal_Panels_01_4K_metalness.png
+newmtl Painted_metal_03_Mat_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Painted_metal_03_2K_albedo.png
+bump  -bm 0.5 Painted_metal_03_2K_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Painted_metal_03_2K_metalness.png
+newmtl ScifiBuildingWall_01_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd ScifiBuildingWall_01_Base_color.png
+bump  -bm 0.5 ScifiBuildingWall_01_Normal_OpenGL.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks ScifiBuildingWall_01_Metallic.png
+newmtl ScifiPanels_0530_Black_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd ScifiPanels_0530_Black_Base_color.png
+bump  -bm 0.5 ScifiPanels_0530_Yellow_Normal_OpenGL.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks ScifiPanels_0530_Yellow_Metallic.png
+newmtl Scifi_Panels_L_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Scifi_Panels_L_Base_color.png
+bump  -bm 0.5 Scifi_Panels_L_Normal_OpenGL.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Scifi_Panels_L_Metallic.png
+newmtl Scifi_Wall_Black_01_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Scifi_Wall_Black_01_Base_color.png
+bump  -bm 0.5 Scifi_Wall_Black_01_Normal_DirectX.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Scifi_Wall_Black_01_Metallic.png
+newmtl Solar_Panel_Mtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Solar_Panel_Base_Color.png
+bump  -bm 0.5 Solar_Panel_Normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Solar_Panel_Metallic.png
+newmtl TaiWan_board_01_board_VRay_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd board_baseColor.png
+Ni 1.00
+Ks 1.00 1.00 1.00
+newmtl Tech_Plate_mtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Tech_PlasticGrid_04_4K_albedo.jpg
+bump  -bm 0.5 Tech_PlasticGrid_04_4K_normal.jpg
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Tech_PlasticGrid_04_4K_metalness.jpg
+newmtl Wall_PaintedRough_Blue_01_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Wall_PaintedRough_Blue_01_4K_Albedo.png
+bump  -bm 0.5 Wall_PaintedRough_Blue_01_4K_Normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Wall_PaintedRough_Blue_01_4K_Metalness.png
+newmtl Wall_PaintedRough_Metal_01_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Wall_PaintedRough_Metal_01_4K_Albedo2.png
+bump  -bm 0.5 Wall_PaintedRough_Metal_01_4K_Normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Wall_PaintedRough_Metal_01_4K_Metalness.png
+newmtl Wall_PaintedRough_Metal_01b_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Wall_PaintedRough_Metal_01b_4K_Albedo.png
+bump  -bm 0.5 Wall_PaintedRough_Metal_01b_4K_Normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Wall_PaintedRough_Metal_01b_4K_Metalness.png
+newmtl WireTrim_mtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd WireTrim_basecolor.png
+bump  -bm 0.5 WireTrim_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks WireTrim_metallic.png
+newmtl Yellow_glass_window_43_64_4k_Mat_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd yellow_glass_window_43_64_4K_4K_diffuse.jpg
+bump  -bm 0.5 yellow_glass_window_43_64_4K_4K_normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks yellow_glass_window_43_64_4K_4K_metalness.png
+newmtl Z_BannerA_Atlas_mtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Z_Banner_Atlas_Basecolor.png
+Ni 1.00
+Ks 1.00 1.00 1.00
+newmtl Z_BannerB_Atlas_mtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Z_BannerB_Atlas_Basecolor.png
+Ni 1.00
+Ks 1.00 1.00 1.00
+newmtl Z_Decal_mtl_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Mergedbake_Bake1_pbr_emission.png
+Ni 1.00
+Ks 1.00 1.00 1.00
+newmtl Z_Scifi_Wall_002_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd Z_Scifi_Wall_002_Base_color.png
+bump  -bm 0.5 Z_Scifi_Wall_002_Normal_OpenGL.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks Z_Scifi_Wall_002_Metallic.png
+newmtl linoleum_ceramic_grain_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd linoleum_ceramic_grain_Base_Color.png
+bump  -bm 0.5 linoleum_ceramic_grain_Normal.png
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks linoleum_ceramic_grain_Metallic.png
+newmtl r_scratched_sml_BLNNSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd r_scratched_sml_DIFF.jpg
+Ni 1.00
+Ks 0.00 0.00 0.00
+map_Ks dirty_SPEC.jpg
