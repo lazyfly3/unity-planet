@@ -1,7 +1,0 @@
-These converted textures originate from the user-supplied local archive
-"TT0012-Metal【金属】".
-
-The archive notice states that the files are for learning/research use only,
-are not for commercial use, and remain copyrighted by their original authors.
-Do not redistribute or use these converted assets commercially without
-obtaining the original authors' permission.
