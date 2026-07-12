@@ -167,11 +167,12 @@ public class VoxelPlanetPlayerController : MonoBehaviour
         Vector3 down = g > 0.0001f ? gravityAccel / g : Vector3.down;
         Vector3 up = smoothUp;
 
-        if (controller.isGrounded && Input.GetKeyDown(KeyCode.Space))
+        if (Input.GetKeyDown(KeyCode.Space) && g > 0.0001f)
             radialVelocity = Mathf.Sqrt(jumpHeight * 2f * g);
-        else if (controller.isGrounded)
+
+        if (controller.isGrounded && radialVelocity <= 0f)
             radialVelocity = 0f;
-        else
+        else if (g > 0.0001f)
             radialVelocity -= g * Time.deltaTime;
 
         float horizontal = Input.GetAxisRaw("Horizontal");
