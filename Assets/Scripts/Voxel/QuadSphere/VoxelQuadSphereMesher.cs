@@ -4,6 +4,7 @@ using UnityEngine;
 
 public static class VoxelQuadSphereMesher
 {
+    // 本地轴：+X=U，+Y=径向向外，+Z=V（与 GetCellBasis / LookRotation 一致）
     static readonly Vector3[,] UnitFaceVertices =
     {
         { new Vector3(0.5f,0,0), new Vector3(0.5f,1,0), new Vector3(0.5f,1,1), new Vector3(0.5f,0,1) },
@@ -13,6 +14,9 @@ public static class VoxelQuadSphereMesher
         { new Vector3(1,0,1), new Vector3(1,1,1), new Vector3(0,1,1), new Vector3(0,0,1) },
         { new Vector3(0,0,0), new Vector3(0,1,0), new Vector3(1,1,0), new Vector3(1,0,0) }
     };
+
+    // 邻居方向（U/V/Depth）→ 本地立方体面索引
+    static readonly int[] NeighborToUnitFace = { 0, 1, 4, 5, 3, 2 };
 
     public static Mesh BuildChunkMesh(
         Func<QuadSphereVoxelAddress, byte> getVoxel,
@@ -53,14 +57,15 @@ public static class VoxelQuadSphereMesher
                     Quaternion orientation = VoxelQuadSphereMapping.GetCellOrientation(
                         chunkKey.Face, cellU, cellV, gridSize);
 
-                    for (int face = 0; face < 6; face++)
+                    for (int neighborFace = 0; neighborFace < 6; neighborFace++)
                     {
-                        var neighborAddress = GetNeighborAddress(address, face);
+                        var neighborAddress = GetNeighborAddress(address, neighborFace);
                         byte neighbor = getVoxel(neighborAddress);
                         if (VoxelTypes.IsSolid(neighbor))
                             continue;
 
-                        AddOrientedFace(vertices, triangles, center, orientation, face);
+                        int unitFace = NeighborToUnitFace[neighborFace];
+                        AddOrientedFace(vertices, triangles, center, orientation, unitFace);
                     }
                 }
             }
@@ -69,9 +74,9 @@ public static class VoxelQuadSphereMesher
         return BuildCombinedMesh(chunkKey, dirtVertices, dirtTriangles, stoneVertices, stoneTriangles);
     }
 
-    static QuadSphereVoxelAddress GetNeighborAddress(QuadSphereVoxelAddress address, int faceIndex)
+    static QuadSphereVoxelAddress GetNeighborAddress(QuadSphereVoxelAddress address, int neighborFace)
     {
-        Vector3Int offset = VoxelMesherFaceOffset(faceIndex);
+        Vector3Int offset = NeighborFaceOffset(neighborFace);
         return new QuadSphereVoxelAddress(
             address.Face,
             address.U + offset.x,
@@ -80,16 +85,16 @@ public static class VoxelQuadSphereMesher
         );
     }
 
-    static Vector3Int VoxelMesherFaceOffset(int faceIndex)
+    static Vector3Int NeighborFaceOffset(int neighborFace)
     {
-        switch (faceIndex)
+        switch (neighborFace)
         {
-            case 0: return new Vector3Int(1, 0, 0);
-            case 1: return new Vector3Int(-1, 0, 0);
-            case 2: return new Vector3Int(0, 1, 0);
-            case 3: return new Vector3Int(0, -1, 0);
-            case 4: return new Vector3Int(0, 0, 1);
-            default: return new Vector3Int(0, 0, -1);
+            case 0: return new Vector3Int(1, 0, 0);   // +U
+            case 1: return new Vector3Int(-1, 0, 0);  // -U
+            case 2: return new Vector3Int(0, 1, 0);   // +V
+            case 3: return new Vector3Int(0, -1, 0);  // -V
+            case 4: return new Vector3Int(0, 0, 1);  // +Depth（向球心）
+            default: return new Vector3Int(0, 0, -1); // -Depth（向太空）
         }
     }
 
@@ -98,12 +103,12 @@ public static class VoxelQuadSphereMesher
         List<int> triangles,
         Vector3 center,
         Quaternion orientation,
-        int faceIndex)
+        int unitFaceIndex)
     {
         int start = vertices.Count;
         for (int i = 0; i < 4; i++)
         {
-            Vector3 local = UnitFaceVertices[faceIndex, i] - new Vector3(0.5f, 0.5f, 0.5f);
+            Vector3 local = UnitFaceVertices[unitFaceIndex, i] - new Vector3(0.5f, 0.5f, 0.5f);
             vertices.Add(center + orientation * local);
         }
 

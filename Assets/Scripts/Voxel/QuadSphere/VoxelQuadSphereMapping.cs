@@ -51,21 +51,37 @@ public static class VoxelQuadSphereMapping
 
     public static Quaternion GetCellOrientation(QuadSphereFace face, int cellU, int cellV, int gridSize)
     {
-        Vector3 up = GetRadialDirection(face, cellU, cellV, gridSize);
-        Vector3 referenceForward = Vector3.Cross(up, Vector3.up);
-        if (referenceForward.sqrMagnitude < 0.0001f)
-            referenceForward = Vector3.Cross(up, Vector3.forward);
-        referenceForward.Normalize();
+        GetCellBasis(face, cellU, cellV, gridSize, out Vector3 up, out Vector3 right, out Vector3 forward);
+        return Quaternion.LookRotation(forward, up);
+    }
 
+    public static void GetCellBasis(
+        QuadSphereFace face,
+        int cellU,
+        int cellV,
+        int gridSize,
+        out Vector3 up,
+        out Vector3 right,
+        out Vector3 forward)
+    {
         float u = CellToNormalized(cellU, gridSize);
         float v = CellToNormalized(cellV, gridSize);
-        Vector3 cubePoint = GetFaceCubePoint(face, u, v);
-        Vector3 du = GetFaceCubePoint(face, u + 0.02f, v) - cubePoint;
-        Vector3 tangent = Vector3.ProjectOnPlane(CubeToSphere(cubePoint + du).normalized - up, up);
-        if (tangent.sqrMagnitude < 0.0001f)
-            tangent = Vector3.ProjectOnPlane(referenceForward, up);
-        tangent.Normalize();
-        return Quaternion.LookRotation(tangent, up);
+        float du = 2f / gridSize;
+        float dv = 2f / gridSize;
+
+        up = GetRadialDirection(face, cellU, cellV, gridSize);
+
+        Vector3 radialUPlus = CubeToSphere(GetFaceCubePoint(face, u + du, v)).normalized;
+        Vector3 radialUMinus = CubeToSphere(GetFaceCubePoint(face, u - du, v)).normalized;
+        right = (radialUPlus - radialUMinus).normalized;
+
+        Vector3 radialVPlus = CubeToSphere(GetFaceCubePoint(face, u, v + dv)).normalized;
+        Vector3 radialVMinus = CubeToSphere(GetFaceCubePoint(face, u, v - dv)).normalized;
+        Vector3 vTangent = (radialVPlus - radialVMinus).normalized;
+
+        forward = Vector3.Cross(up, right).normalized;
+        if (Vector3.Dot(forward, vTangent) < 0f)
+            forward = -forward;
     }
 
     public static QuadSphereFace GetDominantFace(Vector3 directionFromCenter)
