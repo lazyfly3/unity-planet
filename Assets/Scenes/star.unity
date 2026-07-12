@@ -139,6 +139,7 @@ GameObject:
   - component: {fileID: 218647384}
   - component: {fileID: 218647383}
   - component: {fileID: 218647390}
+  - component: {fileID: 218647391}
   m_Layer: 0
   m_Name: player
   m_TagString: Player
@@ -226,7 +227,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 218647381}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 52dde18028170a246aa7377e29b699ee, type: 3}
   m_Name: 
@@ -235,6 +236,27 @@ MonoBehaviour:
   digCamera: {fileID: 1511598335}
   reach: 6
   digCooldown: 0.1
+--- !u!114 &218647391
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 218647381}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b3c4d5e6f789012abcdef1234567890abcd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  quadSphereWorld: {fileID: 1900000003}
+  buildCamera: {fileID: 1511598335}
+  cellSize: 2
+  slabHeight: 0.3
+  reach: 10
+  joinRadius: 24
+  foundationMaterial: {fileID: 2100000, guid: df1147a124180f444a073e2be7bd85e9, type: 2}
+  previewValidColor: {r: 0.2, g: 0.85, b: 0.35, a: 0.45}
+  previewInvalidColor: {r: 0.9, g: 0.25, b: 0.2, a: 0.45}
 --- !u!143 &218647386
 CharacterController:
   m_ObjectHideFlags: 0
