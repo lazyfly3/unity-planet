@@ -138,6 +138,7 @@ GameObject:
   - component: {fileID: 218647385}
   - component: {fileID: 218647384}
   - component: {fileID: 218647383}
+  - component: {fileID: 218647390}
   m_Layer: 0
   m_Name: player
   m_TagString: Player
@@ -168,7 +169,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 218647381}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c79cccf4f1607e6498e065e9d0d88cc7, type: 3}
   m_Name: 
@@ -190,7 +191,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 218647381}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9b8bbc15b56c10c4cb9e2b24ef56040d, type: 3}
   m_Name: 
@@ -211,12 +212,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 27208ed5c28de784e9b0c398d72b5788, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  voxelWorld: {fileID: 1674188146}
+  voxelWorld: {fileID: 0}
+  quadSphereWorld: {fileID: 1900000003}
   cameraTransform: {fileID: 1511598336}
   moveSpeed: 5
   lookSpeed: 2
   jumpHeight: 1.2
-  alignSpeed: 12
+  upSmoothSpeed: 8
+--- !u!114 &218647390
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 218647381}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52dde18028170a246aa7377e29b699ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  quadSphereWorld: {fileID: 1900000003}
+  digCamera: {fileID: 1511598335}
+  reach: 6
+  digCooldown: 0.1
 --- !u!143 &218647386
 CharacterController:
   m_ObjectHideFlags: 0
@@ -425,7 +443,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1674188145
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -482,6 +500,62 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1900000001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1900000002}
+  - component: {fileID: 1900000003}
+  m_Layer: 0
+  m_Name: VoxelQuadSphereWorld
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1900000002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900000001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1900000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2803a5be67f30cb46831cfd71d28cd3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  seed: 12345
+  planetCenterLocal: {x: 0, y: 0, z: 0}
+  planetRadius: 100
+  surfaceGravity: 9.8
+  faceGridSize: 100
+  maxDepth: 64
+  dirtMaterial: {fileID: 2100000, guid: 35dc0aba38bc3774591759a49093b344, type: 2}
+  stoneMaterial: {fileID: 2100000, guid: df1147a124180f444a073e2be7bd85e9, type: 2}
+  playerSpawn: {fileID: 218647382}
+  autoPlacePlayerOnStart: 1
+  spawnDirectionLocal: {x: 0, y: 1, z: 0}
+  spawnHeightOffset: 2
 --- !u!1 &1810727647
 GameObject:
   m_ObjectHideFlags: 0
@@ -582,4 +656,5 @@ SceneRoots:
   m_Roots:
   - {fileID: 1810727649}
   - {fileID: 218647382}
+  - {fileID: 1900000002}
   - {fileID: 1674188147}
