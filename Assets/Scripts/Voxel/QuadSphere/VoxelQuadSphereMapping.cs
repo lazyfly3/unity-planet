@@ -49,6 +49,71 @@ public static class VoxelQuadSphereMapping
         return planetCenter + radial * distance;
     }
 
+    public struct CellHalfExtents
+    {
+        public float PosU;
+        public float NegU;
+        public float PosV;
+        public float NegV;
+        public float PosOut;
+        public float NegIn;
+    }
+
+    public static CellHalfExtents GetCellHalfExtents(
+        QuadSphereFace face,
+        int cellU,
+        int cellV,
+        int depth,
+        int gridSize,
+        int maxDepth,
+        float planetRadius,
+        Vector3 planetCenter)
+    {
+        const float seamOverlap = 1.004f;
+        Vector3 center = FaceCellCenterLocal(face, cellU, cellV, depth, gridSize, planetRadius, planetCenter);
+
+        bool TryGetNeighbor(int du, int dv, int dd, out Vector3 neighborCenter)
+        {
+            int nu = cellU + du;
+            int nv = cellV + dv;
+            int nd = depth + dd;
+            if (nu < 0 || nv < 0 || nd < 0 || nu >= gridSize || nv >= gridSize || nd >= maxDepth)
+            {
+                neighborCenter = default;
+                return false;
+            }
+
+            neighborCenter = FaceCellCenterLocal(face, nu, nv, nd, gridSize, planetRadius, planetCenter);
+            return true;
+        }
+
+        return new CellHalfExtents
+        {
+            PosU = GetOneSidedHalfExtent(center, TryGetNeighbor(1, 0, 0, out Vector3 uPlus), uPlus, TryGetNeighbor(-1, 0, 0, out Vector3 uMinus), uMinus) * seamOverlap,
+            NegU = GetOneSidedHalfExtent(center, TryGetNeighbor(-1, 0, 0, out Vector3 uNeg), uNeg, TryGetNeighbor(1, 0, 0, out Vector3 uPos), uPos) * seamOverlap,
+            PosV = GetOneSidedHalfExtent(center, TryGetNeighbor(0, 1, 0, out Vector3 vPlus), vPlus, TryGetNeighbor(0, -1, 0, out Vector3 vMinus), vMinus) * seamOverlap,
+            NegV = GetOneSidedHalfExtent(center, TryGetNeighbor(0, -1, 0, out Vector3 vNeg), vNeg, TryGetNeighbor(0, 1, 0, out Vector3 vPos), vPos) * seamOverlap,
+            PosOut = GetOneSidedHalfExtent(center, TryGetNeighbor(0, 0, -1, out Vector3 outPlus), outPlus, TryGetNeighbor(0, 0, 1, out Vector3 outMinus), outMinus) * seamOverlap,
+            NegIn = GetOneSidedHalfExtent(center, TryGetNeighbor(0, 0, 1, out Vector3 inPlus), inPlus, TryGetNeighbor(0, 0, -1, out Vector3 inMinus), inMinus) * seamOverlap
+        };
+    }
+
+    static float GetOneSidedHalfExtent(
+        Vector3 center,
+        bool hasNeighbor,
+        Vector3 neighborCenter,
+        bool hasOpposite,
+        Vector3 oppositeCenter)
+    {
+        if (hasNeighbor)
+            return Vector3.Distance(center, neighborCenter) * 0.5f;
+
+        if (hasOpposite)
+            return Vector3.Distance(center, oppositeCenter) * 0.5f;
+
+        return 0.5f;
+    }
+
     public static Quaternion GetCellOrientation(QuadSphereFace face, int cellU, int cellV, int gridSize)
     {
         GetCellBasis(face, cellU, cellV, gridSize, out Vector3 up, out Vector3 right, out Vector3 forward);

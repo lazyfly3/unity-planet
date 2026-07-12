@@ -12,6 +12,7 @@ public static class VoxelQuadSphereTerrain
         int depth,
         int gridSize,
         int maxDepth,
+        int innerSolidDepthLayers,
         int seed,
         Vector3 planetCenter,
         float planetRadius)
@@ -28,6 +29,13 @@ public static class VoxelQuadSphereTerrain
 
         if (density <= 0f)
             return VoxelTypes.Air;
+
+        int innerShellLayers = Mathf.Clamp(innerSolidDepthLayers, 1, maxDepth);
+        int innerSolidStartDepth = maxDepth - innerShellLayers;
+
+        // 最内层强制实心岩层，洞穴噪声不得穿透，避免洞底连通未生成虚空
+        if (depth >= innerSolidStartDepth)
+            return VoxelTypes.Stone;
 
         float depthFromSurface = planetRadius - radialDistance + surfaceNoise;
         byte voxel = GetLayerVoxelByDepth(depthFromSurface);

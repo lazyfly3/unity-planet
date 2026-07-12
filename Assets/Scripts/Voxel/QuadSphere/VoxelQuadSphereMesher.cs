@@ -4,17 +4,6 @@ using UnityEngine;
 
 public static class VoxelQuadSphereMesher
 {
-    // 本地轴：+X=U，+Y=径向向外，+Z=V（与 GetCellBasis / LookRotation 一致）
-    static readonly Vector3[,] UnitFaceVertices =
-    {
-        { new Vector3(0.5f,0,0), new Vector3(0.5f,1,0), new Vector3(0.5f,1,1), new Vector3(0.5f,0,1) },
-        { new Vector3(-0.5f,0,1), new Vector3(-0.5f,1,1), new Vector3(-0.5f,1,0), new Vector3(-0.5f,0,0) },
-        { new Vector3(0,1,1), new Vector3(1,1,1), new Vector3(1,1,0), new Vector3(0,1,0) },
-        { new Vector3(0,0,0), new Vector3(1,0,0), new Vector3(1,0,1), new Vector3(0,0,1) },
-        { new Vector3(1,0,1), new Vector3(1,1,1), new Vector3(0,1,1), new Vector3(0,0,1) },
-        { new Vector3(0,0,0), new Vector3(0,1,0), new Vector3(1,1,0), new Vector3(1,0,0) }
-    };
-
     // 邻居方向（U/V/Depth）→ 本地立方体面索引
     static readonly int[] NeighborToUnitFace = { 0, 1, 4, 5, 3, 2 };
 
@@ -22,6 +11,7 @@ public static class VoxelQuadSphereMesher
         Func<QuadSphereVoxelAddress, byte> getVoxel,
         QuadSphereChunkKey chunkKey,
         int gridSize,
+        int maxDepth,
         float planetRadius,
         Vector3 planetCenter)
     {
@@ -56,6 +46,8 @@ public static class VoxelQuadSphereMesher
                         chunkKey.Face, cellU, cellV, depth, gridSize, planetRadius, planetCenter);
                     Quaternion orientation = VoxelQuadSphereMapping.GetCellOrientation(
                         chunkKey.Face, cellU, cellV, gridSize);
+                    var halfExtents = VoxelQuadSphereMapping.GetCellHalfExtents(
+                        chunkKey.Face, cellU, cellV, depth, gridSize, maxDepth, planetRadius, planetCenter);
 
                     for (int neighborFace = 0; neighborFace < 6; neighborFace++)
                     {
@@ -65,7 +57,7 @@ public static class VoxelQuadSphereMesher
                             continue;
 
                         int unitFace = NeighborToUnitFace[neighborFace];
-                        AddOrientedFace(vertices, triangles, center, orientation, unitFace);
+                        AddOrientedFace(vertices, triangles, center, orientation, unitFace, halfExtents);
                     }
                 }
             }
@@ -103,12 +95,13 @@ public static class VoxelQuadSphereMesher
         List<int> triangles,
         Vector3 center,
         Quaternion orientation,
-        int unitFaceIndex)
+        int unitFaceIndex,
+        VoxelQuadSphereMapping.CellHalfExtents halfExtents)
     {
         int start = vertices.Count;
         for (int i = 0; i < 4; i++)
         {
-            Vector3 local = UnitFaceVertices[unitFaceIndex, i] - new Vector3(0.5f, 0.5f, 0.5f);
+            Vector3 local = GetFaceCornerLocal(unitFaceIndex, i, halfExtents);
             vertices.Add(center + orientation * local);
         }
 
@@ -118,6 +111,70 @@ public static class VoxelQuadSphereMesher
         triangles.Add(start + 0);
         triangles.Add(start + 2);
         triangles.Add(start + 3);
+    }
+
+    static Vector3 GetFaceCornerLocal(
+        int unitFaceIndex,
+        int cornerIndex,
+        VoxelQuadSphereMapping.CellHalfExtents halfExtents)
+    {
+        float posU = halfExtents.PosU;
+        float negU = halfExtents.NegU;
+        float posV = halfExtents.PosV;
+        float negV = halfExtents.NegV;
+        float posOut = halfExtents.PosOut;
+        float negIn = halfExtents.NegIn;
+
+        switch (unitFaceIndex)
+        {
+            case 0:
+                return Corner(cornerIndex,
+                    new Vector3(+posU, -negIn, -negV),
+                    new Vector3(+posU, +posOut, -negV),
+                    new Vector3(+posU, +posOut, +posV),
+                    new Vector3(+posU, -negIn, +posV));
+            case 1:
+                return Corner(cornerIndex,
+                    new Vector3(-negU, -negIn, +posV),
+                    new Vector3(-negU, +posOut, +posV),
+                    new Vector3(-negU, +posOut, -posV),
+                    new Vector3(-negU, -negIn, -posV));
+            case 2:
+                return Corner(cornerIndex,
+                    new Vector3(-negU, +posOut, +posV),
+                    new Vector3(+posU, +posOut, +posV),
+                    new Vector3(+posU, +posOut, -posV),
+                    new Vector3(-negU, +posOut, -posV));
+            case 3:
+                return Corner(cornerIndex,
+                    new Vector3(-negU, -negIn, -negV),
+                    new Vector3(+posU, -negIn, -negV),
+                    new Vector3(+posU, -negIn, +posV),
+                    new Vector3(-negU, -negIn, +posV));
+            case 4:
+                return Corner(cornerIndex,
+                    new Vector3(+posU, -negIn, +posV),
+                    new Vector3(+posU, +posOut, +posV),
+                    new Vector3(-negU, +posOut, +posV),
+                    new Vector3(-negU, -negIn, +posV));
+            default:
+                return Corner(cornerIndex,
+                    new Vector3(-negU, -negIn, -posV),
+                    new Vector3(-negU, +posOut, -posV),
+                    new Vector3(+posU, +posOut, -posV),
+                    new Vector3(+posU, -negIn, -posV));
+        }
+    }
+
+    static Vector3 Corner(int cornerIndex, Vector3 c0, Vector3 c1, Vector3 c2, Vector3 c3)
+    {
+        switch (cornerIndex)
+        {
+            case 0: return c0;
+            case 1: return c1;
+            case 2: return c2;
+            default: return c3;
+        }
     }
 
     static Mesh BuildCombinedMesh(

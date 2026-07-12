@@ -54,12 +54,12 @@ public class VoxelQuadSphereChunk
     public void MarkModified() => IsModified = true;
     public void ClearModifiedFlag() => IsModified = false;
 
-    public void RebuildMesh(System.Func<QuadSphereVoxelAddress, byte> getVoxel, int gridSize, float planetRadius, Vector3 planetCenter)
+    public void RebuildMesh(System.Func<QuadSphereVoxelAddress, byte> getVoxel, int gridSize, int maxDepth, float planetRadius, Vector3 planetCenter)
     {
         if (runtimeMesh != null)
             Object.Destroy(runtimeMesh);
 
-        runtimeMesh = VoxelQuadSphereMesher.BuildChunkMesh(getVoxel, Key, gridSize, planetRadius, planetCenter);
+        runtimeMesh = VoxelQuadSphereMesher.BuildChunkMesh(getVoxel, Key, gridSize, maxDepth, planetRadius, planetCenter);
         meshFilter.sharedMesh = runtimeMesh;
         meshCollider.sharedMesh = null;
         meshCollider.sharedMesh = runtimeMesh;

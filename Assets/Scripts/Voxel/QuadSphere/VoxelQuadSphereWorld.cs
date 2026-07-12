@@ -10,6 +10,8 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     [SerializeField] float surfaceGravity = 9.8f;
     [SerializeField] int faceGridSize = 100;
     [SerializeField] int maxDepth = 64;
+    [Tooltip("最内若干层强制实心石头，天然洞穴不得穿透，防止洞底漏到未生成区域")]
+    [SerializeField] int innerSolidDepthLayers = 8;
 
     [Header("材质")]
     [SerializeField] Material dirtMaterial;
@@ -30,6 +32,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     public float GravitationalParameter => PlanetGravity.ComputeGravitationalParameter(surfaceGravity, planetRadius);
     public int FaceGridSize => faceGridSize;
     public int MaxDepth => maxDepth;
+    public int InnerSolidDepthLayers => innerSolidDepthLayers;
 
     public Vector3 GetPlanetCenterWorld()
     {
@@ -52,7 +55,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         foreach (VoxelQuadSphereChunk chunk in chunks.Values)
         {
             if (chunk.IsDirty)
-                chunk.RebuildMesh(SampleVoxelAt, faceGridSize, planetRadius, planetCenterLocal);
+                chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, planetRadius, planetCenterLocal);
         }
     }
 
@@ -76,6 +79,13 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         }
 
         Debug.Log($"Quad Sphere 全量生成完成：6 扇区 × {chunkCountU}×{chunkCountV}×{chunkCountDepth} = {6 * chunkCountU * chunkCountV * chunkCountDepth} 个 Chunk");
+        RebuildAllChunkMeshes();
+    }
+
+    void RebuildAllChunkMeshes()
+    {
+        foreach (VoxelQuadSphereChunk chunk in chunks.Values)
+            chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, planetRadius, planetCenterLocal);
     }
 
     void LoadChunk(QuadSphereChunkKey key)
@@ -86,7 +96,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         VoxelQuadSphereChunk chunk = new VoxelQuadSphereChunk(key, transform, dirtMaterial, stoneMaterial);
         GenerateChunkData(chunk);
         chunks.Add(key, chunk);
-        chunk.RebuildMesh(SampleVoxelAt, faceGridSize, planetRadius, planetCenterLocal);
+        chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, planetRadius, planetCenterLocal);
         MarkLoadedNeighborsDirty(key);
     }
 
@@ -108,7 +118,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
                     int depth = originDepth + z;
                     byte voxel = VoxelQuadSphereTerrain.GenerateVoxel(
                         key.Face, cellU, cellV, depth,
-                        faceGridSize, maxDepth, seed, planetCenterLocal, planetRadius);
+                        faceGridSize, maxDepth, innerSolidDepthLayers, seed, planetCenterLocal, planetRadius);
                     chunk.Voxels[VoxelTypes.ToIndex(x, y, z)] = voxel;
                 }
             }
@@ -132,7 +142,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
 
         return VoxelQuadSphereTerrain.GenerateVoxel(
             address.Face, address.U, address.V, address.Depth,
-            faceGridSize, maxDepth, seed, planetCenterLocal, planetRadius);
+            faceGridSize, maxDepth, innerSolidDepthLayers, seed, planetCenterLocal, planetRadius);
     }
 
     public bool DigVoxel(QuadSphereVoxelAddress address)
