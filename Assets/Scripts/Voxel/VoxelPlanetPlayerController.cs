@@ -4,6 +4,7 @@ using UnityEngine;
 public class VoxelPlanetPlayerController : MonoBehaviour
 {
     [SerializeField] VoxelWorld voxelWorld;
+    [SerializeField] VoxelQuadSphereWorld quadSphereWorld;
     [SerializeField] Transform cameraTransform;
     [SerializeField] float moveSpeed = 5f;
     [SerializeField] float lookSpeed = 2f;
@@ -64,6 +65,9 @@ public class VoxelPlanetPlayerController : MonoBehaviour
 
     Vector3 GetTargetUp()
     {
+        if (quadSphereWorld != null)
+            return PlanetGravity.GetUp(transform.position, quadSphereWorld.GetPlanetCenterWorld());
+
         if (voxelWorld == null || !voxelWorld.UsePlanetGeneration)
             return Vector3.up;
 
@@ -103,6 +107,15 @@ public class VoxelPlanetPlayerController : MonoBehaviour
 
     Vector3 GetGravityAcceleration()
     {
+        if (quadSphereWorld != null)
+        {
+            return PlanetGravity.GetGravitationalAcceleration(
+                transform.position,
+                quadSphereWorld.GetPlanetCenterWorld(),
+                quadSphereWorld.GravitationalParameter
+            );
+        }
+
         if (voxelWorld == null || !voxelWorld.UsePlanetGeneration)
             return Vector3.down * 9.8f;
 

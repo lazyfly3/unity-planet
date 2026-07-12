@@ -53,7 +53,7 @@ public static class VoxelTypes
         return (value - divisor + 1) / divisor;
     }
 
-    static int Mod(int value, int divisor)
+    public static int Mod(int value, int divisor)
     {
         int result = value % divisor;
         return result < 0 ? result + divisor : result;
