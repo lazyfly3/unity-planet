@@ -215,6 +215,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   voxelWorld: {fileID: 0}
   quadSphereWorld: {fileID: 1900000003}
+  buildingPlacer: {fileID: 218647391}
   cameraTransform: {fileID: 1511598336}
   moveSpeed: 5
   lookSpeed: 2
@@ -252,8 +253,10 @@ MonoBehaviour:
   buildCamera: {fileID: 1511598335}
   cellSize: 2
   slabHeight: 0.3
+  pillarHeight: 1.5
+  pillarSize: 0.15
   reach: 10
-  joinRadius: 24
+  joinRadius: 32
   foundationMaterial: {fileID: 2100000, guid: df1147a124180f444a073e2be7bd85e9, type: 2}
   previewValidColor: {r: 0.2, g: 0.85, b: 0.35, a: 0.45}
   previewInvalidColor: {r: 0.9, g: 0.25, b: 0.2, a: 0.45}

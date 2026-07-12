@@ -30,6 +30,9 @@
 | Build Camera | `Main Camera` |
 | Cell Size | `2` |
 | Slab Height | `0.3` |
+| Pillar Height | `1.5` |
+| Pillar Size | `0.15` |
+| Join Radius | `32` |
 | Reach | `10` |
 | Foundation Material | `VoxelStone` 或 `VoxelDirt` |
 

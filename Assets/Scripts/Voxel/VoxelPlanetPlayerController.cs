@@ -5,6 +5,7 @@ public class VoxelPlanetPlayerController : MonoBehaviour
 {
     [SerializeField] VoxelWorld voxelWorld;
     [SerializeField] VoxelQuadSphereWorld quadSphereWorld;
+    [SerializeField] BuildingPlacer buildingPlacer;
     [SerializeField] Transform cameraTransform;
     [SerializeField] float moveSpeed = 5f;
     [SerializeField] float lookSpeed = 2f;
@@ -13,6 +14,7 @@ public class VoxelPlanetPlayerController : MonoBehaviour
 
     CharacterController controller;
     Vector3 smoothUp = Vector3.up;
+    Vector3 buildModeLockedUp;
     float yaw;
     float pitch;
     float radialVelocity;
@@ -40,10 +42,26 @@ public class VoxelPlanetPlayerController : MonoBehaviour
 
     void Update()
     {
+        UpdateBuildModeLock();
         UpdateSmoothUp();
         HandleLook();
         ApplyOrientation();
         HandleMove();
+    }
+
+    void UpdateBuildModeLock()
+    {
+        if (buildingPlacer == null)
+            buildingPlacer = GetComponent<BuildingPlacer>();
+
+        if (buildingPlacer != null && buildingPlacer.IsBuildMode)
+        {
+            if (buildModeLockedUp.sqrMagnitude < 0.0001f)
+                buildModeLockedUp = smoothUp.normalized;
+            return;
+        }
+
+        buildModeLockedUp = Vector3.zero;
     }
 
     void InitializeOrientation()
@@ -55,6 +73,13 @@ public class VoxelPlanetPlayerController : MonoBehaviour
 
     void UpdateSmoothUp()
     {
+        if (buildingPlacer != null && buildingPlacer.IsBuildMode)
+        {
+            if (buildModeLockedUp.sqrMagnitude > 0.0001f)
+                smoothUp = buildModeLockedUp;
+            return;
+        }
+
         Vector3 targetUp = GetTargetUp();
         if (smoothUp.sqrMagnitude < 0.0001f)
             smoothUp = targetUp;
