@@ -16,7 +16,7 @@ public sealed class HarvestableResourceSpawnSettings
     public bool randomizeYaw = true;
 
     public void ClampValues()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(117);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(121);
         count = Mathf.Max(0, count);
         surfaceOffset = Mathf.Max(0f, surfaceOffset);
         minimumSpacing = Mathf.Max(0f, minimumSpacing);
@@ -61,6 +61,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
 
     bool spawnHarvestableResources;
     List<HarvestableResourceSpawnSettings> resourceSpawnSettings = new List<HarvestableResourceSpawnSettings>();
+    PlanetTerrainSettings terrainSettings = new PlanetTerrainSettings();
 
     readonly Dictionary<QuadSphereChunkKey, VoxelQuadSphereChunk> chunks = new Dictionary<QuadSphereChunkKey, VoxelQuadSphereChunk>();
     readonly Dictionary<QuadSphereChunkKey, byte[]> modifiedChunkCache = new Dictionary<QuadSphereChunkKey, byte[]>();
@@ -75,6 +76,8 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     bool loadingCompleteSnapshot;
     bool loadingCompleteMeshSnapshot;
     bool bulkLoadingPlanet;
+    bool migrateSavedTerrainChanges;
+    PlanetTerrainSettings previousTerrainSettings;
     Material runtimeDirtMaterial;
     Material runtimeStoneMaterial;
 
@@ -88,6 +91,8 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     public int InnerSolidDepthLayers => innerSolidDepthLayers;
     public int ExpectedChunkCount => GetExpectedChunkCount();
     public int ResourceConfigurationHash => CalculateResourceConfigurationHash();
+    public int TerrainConfigurationHash => CalculateTerrainConfigurationHash(terrainSettings);
+    public PlanetTerrainSettings TerrainSettingsSnapshot => terrainSettings.Clone();
     public bool HasCompleteMeshSnapshot
     {
         get
@@ -106,6 +111,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         GalaxyPlanetSaveData save,
         Color surfaceColor,
         Color rockColor,
+        PlanetTerrainSettings planetTerrainSettings,
         bool shouldSpawnHarvestableResources,
         List<HarvestableResourceSpawnSettings> planetResourceSpawnSettings)
     {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(123, (int)planetSeed);
@@ -114,6 +120,8 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         savedMeshCache.Clear();
         harvestedResourceIds.Clear();
         ApplyPlanetMaterials(surfaceColor, rockColor);
+        terrainSettings = planetTerrainSettings != null ? planetTerrainSettings.Clone() : new PlanetTerrainSettings();
+        terrainSettings.ClampValues();
         spawnHarvestableResources = shouldSpawnHarvestableResources;
         resourceSpawnSettings = planetResourceSpawnSettings ?? new List<HarvestableResourceSpawnSettings>();
         savedResourceSnapshot = save != null ? save.resources : null;
@@ -166,21 +174,28 @@ public class VoxelQuadSphereWorld : MonoBehaviour
                 savedMeshCache[key] = entry;
         }
 
-        loadingCompleteSnapshot = save.hasFullVoxelSnapshot
+        bool snapshotDimensionsMatch = save.hasFullVoxelSnapshot
             && save.seed == planetSeed
             && save.faceGridSize == faceGridSize
             && save.maxDepth == maxDepth
             && save.chunkSize == VoxelTypes.ChunkSize
             && modifiedChunkCache.Count == GetExpectedChunkCount();
+        loadingCompleteSnapshot = snapshotDimensionsMatch
+            && save.terrainConfigurationHash == CalculateTerrainConfigurationHash(terrainSettings);
+        migrateSavedTerrainChanges = snapshotDimensionsMatch && !loadingCompleteSnapshot;
+        previousTerrainSettings = save.terrainSettings != null
+            ? save.terrainSettings.Clone()
+            : PlanetTerrainSettings.CreateLegacy();
         loadingCompleteMeshSnapshot = loadingCompleteSnapshot
             && save.hasFullMeshSnapshot
             && savedMeshCache.Count == GetExpectedChunkCount();
 
         if (save.hasFullVoxelSnapshot && !loadingCompleteSnapshot)
         {
-            Debug.LogWarning(
-                "VoxelQuadSphereWorld: saved full snapshot is incomplete or uses different generation dimensions; falling back to procedural generation.",
-                this);
+            string action = migrateSavedTerrainChanges
+                ? "regenerating the terrain while preserving player voxel changes"
+                : "falling back to procedural generation";
+            Debug.LogWarning($"VoxelQuadSphereWorld: terrain settings or generation dimensions changed; {action}.", this);
         }
     }
 
@@ -291,6 +306,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         unchecked
         {
             int hash = spawnHarvestableResources ? 486187739 : 17;
+            hash = hash * 31 + CalculateTerrainConfigurationHash(terrainSettings);
             hash = hash * 31 + resourceSpawnSettings.Count;
             foreach (HarvestableResourceSpawnSettings settings in resourceSpawnSettings)
             {
@@ -311,6 +327,27 @@ public class VoxelQuadSphereWorld : MonoBehaviour
                 hash = hash * 31 + (settings.randomizeYaw ? 1 : 0);
             }
 
+            return hash;
+        }
+    }
+
+    static int CalculateTerrainConfigurationHash(PlanetTerrainSettings settings)
+    {
+        settings = settings ?? new PlanetTerrainSettings();
+        unchecked
+        {
+            int hash = 486187739;
+            hash = hash * 31 + settings.continentScale.GetHashCode();
+            hash = hash * 31 + settings.continentHeight.GetHashCode();
+            hash = hash * 31 + settings.detailScale.GetHashCode();
+            hash = hash * 31 + settings.detailHeight.GetHashCode();
+            hash = hash * 31 + settings.ridgeHeight.GetHashCode();
+            hash = hash * 31 + settings.surfaceLayerDepth.GetHashCode();
+            hash = hash * 31 + settings.stoneDepth.GetHashCode();
+            hash = hash * 31 + (settings.generateCaves ? 1 : 0);
+            hash = hash * 31 + settings.caveScale.GetHashCode();
+            hash = hash * 31 + settings.caveThreshold.GetHashCode();
+            hash = hash * 31 + settings.caveSurfaceClearance.GetHashCode();
             return hash;
         }
     }
@@ -353,12 +390,12 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     }
 
     public Vector3 GetPlanetCenterWorld()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(118);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(122);
         return transform.TransformPoint(planetCenterLocal);
     }
 
     public Vector3 GetPlanetCenterLocal()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(119);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(129);
         return planetCenterLocal;
     }
 
@@ -396,7 +433,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     }
 
     public void GenerateEntirePlanet()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(120);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(130);
         float loadStartedAt = Time.realtimeSinceStartup;
         int chunkCountU = Mathf.CeilToInt(faceGridSize / (float)VoxelTypes.ChunkSize);
         int chunkCountV = Mathf.CeilToInt(faceGridSize / (float)VoxelTypes.ChunkSize);
@@ -423,6 +460,8 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         savedMeshCache.Clear();
         loadingCompleteSnapshot = false;
         loadingCompleteMeshSnapshot = false;
+        migrateSavedTerrainChanges = false;
+        previousTerrainSettings = null;
 
         if (!restoredMeshSnapshot)
             RebuildAllChunkMeshes();
@@ -474,7 +513,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     }
 
     public void SpawnHarvestableResources()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(121);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(131);
         ClearGeneratedResources();
 
         if (!spawnHarvestableResources || resourceSpawnSettings == null || resourceSpawnSettings.Count == 0)
@@ -696,7 +735,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
                     int depth = originDepth + z;
                     byte voxel = VoxelQuadSphereTerrain.GenerateVoxel(
                         key.Face, cellU, cellV, depth,
-                        faceGridSize, maxDepth, innerSolidDepthLayers, seed, planetCenterLocal, planetRadius);
+                        faceGridSize, maxDepth, innerSolidDepthLayers, seed, planetCenterLocal, planetRadius, terrainSettings);
                     chunk.Voxels[VoxelTypes.ToIndex(x, y, z)] = voxel;
                 }
             }
@@ -705,8 +744,41 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         if (modifiedChunkCache.TryGetValue(chunk.Key, out byte[] saved)
             && saved.Length == chunk.Voxels.Length)
         {
-            System.Array.Copy(saved, chunk.Voxels, saved.Length);
-            chunk.MarkModified();
+            bool appliedChanges = false;
+            if (migrateSavedTerrainChanges)
+            {
+                for (int z = 0; z < VoxelTypes.ChunkSize; z++)
+                {
+                    for (int y = 0; y < VoxelTypes.ChunkSize; y++)
+                    {
+                        for (int x = 0; x < VoxelTypes.ChunkSize; x++)
+                        {
+                            int cellU = originU + x;
+                            int cellV = originV + y;
+                            int depth = originDepth + z;
+                            int index = VoxelTypes.ToIndex(x, y, z);
+                            byte previousGenerated = VoxelQuadSphereTerrain.GenerateVoxel(
+                                key.Face, cellU, cellV, depth,
+                                faceGridSize, maxDepth, innerSolidDepthLayers, seed,
+                                planetCenterLocal, planetRadius, previousTerrainSettings);
+                            if (saved[index] == previousGenerated)
+                                continue;
+                            chunk.Voxels[index] = saved[index];
+                            appliedChanges = true;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                System.Array.Copy(saved, chunk.Voxels, saved.Length);
+                appliedChanges = true;
+            }
+
+            if (appliedChanges)
+                chunk.MarkModified();
+            else
+                chunk.ClearModifiedFlag();
         }
         else
         {
@@ -735,16 +807,16 @@ public class VoxelQuadSphereWorld : MonoBehaviour
 
         return VoxelQuadSphereTerrain.GenerateVoxel(
             address.Face, address.U, address.V, address.Depth,
-            faceGridSize, maxDepth, innerSolidDepthLayers, seed, planetCenterLocal, planetRadius);
+            faceGridSize, maxDepth, innerSolidDepthLayers, seed, planetCenterLocal, planetRadius, terrainSettings);
     }
 
     public bool DigVoxel(QuadSphereVoxelAddress address)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(122);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(132);
         return SetVoxel(address, VoxelTypes.Air);
     }
 
     public bool SetVoxel(QuadSphereVoxelAddress address, byte value)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(129, (int)value);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(133, (int)value);
         if (address.U < 0 || address.V < 0 || address.Depth < 0
             || address.U >= faceGridSize || address.V >= faceGridSize || address.Depth >= maxDepth)
             return false;
@@ -779,7 +851,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     }
 
     public bool TryDigAtLocalPoint(Vector3 localPoint)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(130);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(134);
         if (!VoxelQuadSphereMapping.TryLocalPointToVoxel(
                 localPoint, planetCenterLocal, planetRadius, faceGridSize, maxDepth, out QuadSphereVoxelAddress address))
             return false;

@@ -810,6 +810,18 @@ MonoBehaviour:
     seed: 12345
     mapColor: {r: 0.85, g: 0.53, b: 0.24, a: 1}
     iconResourcePath: Galaxy/planet_amber
+    terrain:
+      continentScale: 0.022
+      continentHeight: 7
+      detailScale: 0.075
+      detailHeight: 3
+      ridgeHeight: 2
+      surfaceLayerDepth: 1
+      stoneDepth: 4
+      generateCaves: 1
+      caveScale: 0.06
+      caveThreshold: 0.66
+      caveSurfaceClearance: 3
     spawnHarvestableResources: 1
     resourceSpawnSettings: []
   - planetId: verdant
@@ -818,6 +830,18 @@ MonoBehaviour:
     seed: 24680
     mapColor: {r: 0.3, g: 0.82, b: 0.5, a: 1}
     iconResourcePath: Galaxy/planet_green
+    terrain:
+      continentScale: 0.012
+      continentHeight: 10
+      detailScale: 0.045
+      detailHeight: 1.5
+      ridgeHeight: 0.5
+      surfaceLayerDepth: 1.5
+      stoneDepth: 5
+      generateCaves: 1
+      caveScale: 0.045
+      caveThreshold: 0.72
+      caveSurfaceClearance: 4
     spawnHarvestableResources: 1
     resourceSpawnSettings: []
   - planetId: crimson
@@ -826,6 +850,18 @@ MonoBehaviour:
     seed: 97531
     mapColor: {r: 0.9, g: 0.3, b: 0.2, a: 1}
     iconResourcePath: Galaxy/planet_red
+    terrain:
+      continentScale: 0.025
+      continentHeight: 9
+      detailScale: 0.085
+      detailHeight: 4.5
+      ridgeHeight: 7
+      surfaceLayerDepth: 0.6
+      stoneDepth: 2.5
+      generateCaves: 1
+      caveScale: 0.075
+      caveThreshold: 0.59
+      caveSurfaceClearance: 2
     spawnHarvestableResources: 1
     resourceSpawnSettings: []
   - planetId: azure
@@ -834,6 +870,18 @@ MonoBehaviour:
     seed: 48127
     mapColor: {r: 0.25, g: 0.65, b: 0.95, a: 1}
     iconResourcePath: Galaxy/planet_blue
+    terrain:
+      continentScale: 0.01
+      continentHeight: 6
+      detailScale: 0.035
+      detailHeight: 0.8
+      ridgeHeight: 0.2
+      surfaceLayerDepth: 2
+      stoneDepth: 6
+      generateCaves: 1
+      caveScale: 0.035
+      caveThreshold: 0.78
+      caveSurfaceClearance: 5
     spawnHarvestableResources: 1
     resourceSpawnSettings: []
   - planetId: violet
@@ -842,6 +890,18 @@ MonoBehaviour:
     seed: 86420
     mapColor: {r: 0.65, g: 0.35, b: 0.9, a: 1}
     iconResourcePath: Galaxy/planet_violet
+    terrain:
+      continentScale: 0.03
+      continentHeight: 6
+      detailScale: 0.11
+      detailHeight: 5.5
+      ridgeHeight: 6
+      surfaceLayerDepth: 0.7
+      stoneDepth: 3
+      generateCaves: 1
+      caveScale: 0.095
+      caveThreshold: 0.57
+      caveSurfaceClearance: 1.5
     spawnHarvestableResources: 1
     resourceSpawnSettings: []
 --- !u!1660057539 &9223372036854775807

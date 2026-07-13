@@ -11,12 +11,29 @@ public sealed class GalaxyPlanetSaveData
     public int faceGridSize;
     public int maxDepth;
     public int chunkSize;
+    public int terrainConfigurationHash;
+    public PlanetTerrainSettings terrainSettings;
     public bool hasFullMeshSnapshot;
     public QuadSphereChunkSaveEntry[] chunks;
     public string[] harvestedResourceIds;
     public bool hasFullResourceSnapshot;
     public int resourceConfigurationHash;
     public GalaxyResourceSaveEntry[] resources;
+    public GalaxyBuildingSaveEntry[] buildings;
+}
+
+[Serializable]
+public sealed class GalaxyBuildingSaveEntry
+{
+    public string buildingTypeId;
+    public Vector3 localOrigin;
+    public Vector3 localUp;
+    public Vector3 localForward;
+    public float cellSize;
+    public float slabHeight;
+    public float pillarHeight;
+    public float pillarSize;
+    public Vector2Int[] occupiedCells;
 }
 
 [Serializable]

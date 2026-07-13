@@ -40,7 +40,7 @@ public sealed class HarvestableResource : MonoBehaviour
     public int RemainingHarvestClicks => Mathf.Max(0, requiredHarvestClicks - completedHarvestClicks);
 
     public void AssignStableResourceId(string resourceId)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(30);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(31);
         stableResourceId = resourceId;
     }
 

@@ -256,6 +256,34 @@ public class BuildingAnchor : MonoBehaviour
         return pieces.TryGetValue(grid, out piece);
     }
 
+    public int RestoreCells(IReadOnlyList<Vector2Int> cells)
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(22);
+        if (cells == null || cells.Count == 0)
+            return 0;
+
+        var pending = new HashSet<Vector2Int>(cells);
+        int restored = 0;
+        bool madeProgress = true;
+        while (pending.Count > 0 && madeProgress)
+        {
+            madeProgress = false;
+            var placedThisPass = new List<Vector2Int>();
+            foreach (Vector2Int cell in pending)
+            {
+                if (!TryPlace(cell, out _))
+                    continue;
+                placedThisPass.Add(cell);
+                restored++;
+                madeProgress = true;
+            }
+
+            foreach (Vector2Int cell in placedThisPass)
+                pending.Remove(cell);
+        }
+
+        return restored;
+    }
+
     void RepositionAllPieces()
     {
         foreach (KeyValuePair<Vector2Int, BuildingFoundationPiece> entry in pieces)

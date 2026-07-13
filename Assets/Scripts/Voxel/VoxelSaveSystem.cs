@@ -25,7 +25,7 @@ public class VoxelSaveSystem : MonoBehaviour
     }
 
     public void Save()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(73);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(74);
         if (voxelWorld == null)
             return;
 
@@ -42,7 +42,7 @@ public class VoxelSaveSystem : MonoBehaviour
     }
 
     public void Load()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(74);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(75);
         if (voxelWorld == null || !File.Exists(SavePath))
             return;
 
@@ -57,7 +57,7 @@ public class VoxelSaveSystem : MonoBehaviour
     }
 
     public bool HasSaveFile()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(75);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(76);
         return File.Exists(SavePath);
     }
 }

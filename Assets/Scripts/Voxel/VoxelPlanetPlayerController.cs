@@ -49,7 +49,7 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     public bool IsGrounded { get; private set; }
 
     public void TeleportTo(Vector3 worldPosition, Quaternion worldRotation)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(69);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(70);
         if (body == null)
             body = GetComponent<Rigidbody>();
 

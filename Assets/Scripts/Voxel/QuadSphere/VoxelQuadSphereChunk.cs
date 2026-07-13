@@ -34,12 +34,12 @@ public class VoxelQuadSphereChunk
     }
 
     public byte GetLocalVoxel(int x, int y, int z)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(93, (int)x, (int)y, (int)z);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(94, (int)x, (int)y, (int)z);
         return Voxels[VoxelTypes.ToIndex(x, y, z)];
     }
 
     public void SetLocalVoxel(int x, int y, int z, byte value)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(94, (int)x, (int)y, (int)z, (int)value);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(95, (int)x, (int)y, (int)z, (int)value);
         if (x < 0 || y < 0 || z < 0 || x >= VoxelTypes.ChunkSize || y >= VoxelTypes.ChunkSize || z >= VoxelTypes.ChunkSize)
             return;
 
@@ -57,7 +57,7 @@ public class VoxelQuadSphereChunk
     public void ClearModifiedFlag() => IsModified = false;
 
     public void RebuildMesh(System.Func<QuadSphereVoxelAddress, byte> getVoxel, int gridSize, int maxDepth, float planetRadius, Vector3 planetCenter)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(95, (int)gridSize, (int)maxDepth, (int)planetRadius);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(96, (int)gridSize, (int)maxDepth, (int)planetRadius);
         if (runtimeMesh != null)
             Object.Destroy(runtimeMesh);
 
@@ -117,7 +117,7 @@ public class VoxelQuadSphereChunk
     }
 
     public void Destroy()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(96);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(99);
         if (runtimeMesh != null)
             Object.Destroy(runtimeMesh);
 

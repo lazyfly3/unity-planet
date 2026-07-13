@@ -14,6 +14,8 @@ public sealed class GalaxyPlanetDefinition
     public int seed;
     public Color mapColor = Color.white;
     public string iconResourcePath;
+    [Header("Terrain")]
+    public PlanetTerrainSettings terrain = new PlanetTerrainSettings();
     [Header("Surface Resources")]
     public bool spawnHarvestableResources = true;
     public List<HarvestableResourceSpawnSettings> resourceSpawnSettings = new List<HarvestableResourceSpawnSettings>();
@@ -22,7 +24,7 @@ public sealed class GalaxyPlanetDefinition
 public sealed class GalaxyTravelManager : MonoBehaviour
 {
     const int PlanetSaveMagic = 0x504C4E54;
-    const int PlanetSaveVersion = 5;
+    const int PlanetSaveVersion = 7;
 
     static GalaxyTravelManager instance;
 
@@ -82,7 +84,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     }
 
     public void OpenGalaxyMap(VoxelQuadSphereWorld world)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(26);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(27);
         if (transitionInProgress || world == null)
             return;
 
@@ -97,14 +99,14 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     }
 
     public void MoveShip(Vector2Int delta)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(27);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(28);
         shipGridPosition = new Vector2Int(
             Mathf.Clamp(shipGridPosition.x + delta.x, 0, GridColumns - 1),
             Mathf.Clamp(shipGridPosition.y + delta.y, 0, GridRows - 1));
     }
 
     public GalaxyPlanetDefinition GetPlanetAt(Vector2Int gridPosition)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(28);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(29);
         foreach (GalaxyPlanetDefinition planet in planets)
         {
             if (planet.gridPosition == gridPosition)
@@ -115,7 +117,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     }
 
     public void EnterPlanet(GalaxyPlanetDefinition planet)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(29);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(30);
         if (transitionInProgress || planet == null)
             return;
 
@@ -143,8 +145,10 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             save,
             surfaceColor,
             rockColor,
+            planet.terrain,
             planet.spawnHarvestableResources,
             planet.resourceSpawnSettings);
+        RestoreBuildings(world, save);
         RestoreInventory();
     }
 
@@ -164,12 +168,15 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             faceGridSize = world.FaceGridSize,
             maxDepth = world.MaxDepth,
             chunkSize = VoxelTypes.ChunkSize,
+            terrainConfigurationHash = world.TerrainConfigurationHash,
+            terrainSettings = world.TerrainSettingsSnapshot,
             hasFullMeshSnapshot = world.HasCompleteMeshSnapshot,
             chunks = chunks.ToArray(),
             harvestedResourceIds = world.GetHarvestedResourceIds(),
             hasFullResourceSnapshot = true,
             resourceConfigurationHash = world.ResourceConfigurationHash,
-            resources = world.GetResourceSnapshots()
+            resources = world.GetResourceSnapshots(),
+            buildings = CaptureBuildings(world)
         };
 
         Directory.CreateDirectory(GetSaveDirectory());
@@ -229,6 +236,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             writer.Write(data.faceGridSize);
             writer.Write(data.maxDepth);
             writer.Write(data.chunkSize);
+            WriteTerrainSettings(writer, data.terrainSettings);
+            writer.Write(data.terrainConfigurationHash);
             writer.Write(data.hasFullMeshSnapshot);
 
             QuadSphereChunkSaveEntry[] chunks = data.chunks ?? new QuadSphereChunkSaveEntry[0];
@@ -305,6 +314,29 @@ public sealed class GalaxyTravelManager : MonoBehaviour
                 writer.Write(resource.localRotation.w);
                 writer.Write(resource.minimumSpacing);
             }
+
+            GalaxyBuildingSaveEntry[] buildings = data.buildings ?? new GalaxyBuildingSaveEntry[0];
+            writer.Write(buildings.Length);
+            foreach (GalaxyBuildingSaveEntry buildingValue in buildings)
+            {
+                GalaxyBuildingSaveEntry building = buildingValue ?? new GalaxyBuildingSaveEntry();
+                writer.Write(building.buildingTypeId ?? string.Empty);
+                WriteVector3(writer, building.localOrigin);
+                WriteVector3(writer, building.localUp);
+                WriteVector3(writer, building.localForward);
+                writer.Write(building.cellSize);
+                writer.Write(building.slabHeight);
+                writer.Write(building.pillarHeight);
+                writer.Write(building.pillarSize);
+
+                Vector2Int[] cells = building.occupiedCells ?? new Vector2Int[0];
+                writer.Write(cells.Length);
+                foreach (Vector2Int cell in cells)
+                {
+                    writer.Write(cell.x);
+                    writer.Write(cell.y);
+                }
+            }
         }
 
         if (File.Exists(path))
@@ -336,6 +368,11 @@ public sealed class GalaxyTravelManager : MonoBehaviour
                 maxDepth = reader.ReadInt32(),
                 chunkSize = reader.ReadInt32()
             };
+            if (version >= 6)
+            {
+                data.terrainSettings = ReadTerrainSettings(reader);
+                data.terrainConfigurationHash = reader.ReadInt32();
+            }
             if (version >= 4)
                 data.hasFullMeshSnapshot = reader.ReadBoolean();
 
@@ -438,8 +475,45 @@ public sealed class GalaxyTravelManager : MonoBehaviour
                 }
             }
 
+            if (version >= 7)
+            {
+                int buildingCount = ReadBoundedCount(reader, "building", 100000);
+                data.buildings = new GalaxyBuildingSaveEntry[buildingCount];
+                for (int i = 0; i < buildingCount; i++)
+                {
+                    GalaxyBuildingSaveEntry building = new GalaxyBuildingSaveEntry
+                    {
+                        buildingTypeId = reader.ReadString(),
+                        localOrigin = ReadVector3(reader),
+                        localUp = ReadVector3(reader),
+                        localForward = ReadVector3(reader),
+                        cellSize = reader.ReadSingle(),
+                        slabHeight = reader.ReadSingle(),
+                        pillarHeight = reader.ReadSingle(),
+                        pillarSize = reader.ReadSingle()
+                    };
+                    int cellCount = ReadBoundedCount(reader, "building cell", 1000000);
+                    building.occupiedCells = new Vector2Int[cellCount];
+                    for (int cell = 0; cell < cellCount; cell++)
+                        building.occupiedCells[cell] = new Vector2Int(reader.ReadInt32(), reader.ReadInt32());
+                    data.buildings[i] = building;
+                }
+            }
+
             return data;
         }
+    }
+
+    static void WriteVector3(BinaryWriter writer, Vector3 value)
+    {
+        writer.Write(value.x);
+        writer.Write(value.y);
+        writer.Write(value.z);
+    }
+
+    static Vector3 ReadVector3(BinaryReader reader)
+    {
+        return new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
     }
 
     static int ReadBoundedCount(BinaryReader reader, string valueName, int maximum)
@@ -448,6 +522,40 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         if (value < 0 || value > maximum)
             throw new InvalidDataException($"Invalid {valueName} count {value}.");
         return value;
+    }
+
+    static void WriteTerrainSettings(BinaryWriter writer, PlanetTerrainSettings settings)
+    {
+        settings = settings ?? new PlanetTerrainSettings();
+        writer.Write(settings.continentScale);
+        writer.Write(settings.continentHeight);
+        writer.Write(settings.detailScale);
+        writer.Write(settings.detailHeight);
+        writer.Write(settings.ridgeHeight);
+        writer.Write(settings.surfaceLayerDepth);
+        writer.Write(settings.stoneDepth);
+        writer.Write(settings.generateCaves);
+        writer.Write(settings.caveScale);
+        writer.Write(settings.caveThreshold);
+        writer.Write(settings.caveSurfaceClearance);
+    }
+
+    static PlanetTerrainSettings ReadTerrainSettings(BinaryReader reader)
+    {
+        return new PlanetTerrainSettings
+        {
+            continentScale = reader.ReadSingle(),
+            continentHeight = reader.ReadSingle(),
+            detailScale = reader.ReadSingle(),
+            detailHeight = reader.ReadSingle(),
+            ridgeHeight = reader.ReadSingle(),
+            surfaceLayerDepth = reader.ReadSingle(),
+            stoneDepth = reader.ReadSingle(),
+            generateCaves = reader.ReadBoolean(),
+            caveScale = reader.ReadSingle(),
+            caveThreshold = reader.ReadSingle(),
+            caveSurfaceClearance = reader.ReadSingle()
+        };
     }
 
     static void GetPlanetPalette(
@@ -629,6 +737,80 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         placed.Add(position);
     }
 
+    static GalaxyBuildingSaveEntry[] CaptureBuildings(VoxelQuadSphereWorld world)
+    {
+        if (world == null)
+            return new GalaxyBuildingSaveEntry[0];
+
+        var result = new List<GalaxyBuildingSaveEntry>();
+        IReadOnlyList<BuildingAnchor> anchors = BuildingAnchor.GetActiveAnchors();
+        foreach (BuildingAnchor anchor in anchors)
+        {
+            if (anchor == null || anchor.OccupiedCells.Count == 0)
+                continue;
+
+            var cells = new List<Vector2Int>(anchor.OccupiedCells);
+            cells.Sort((left, right) =>
+            {
+                int xComparison = left.x.CompareTo(right.x);
+                return xComparison != 0 ? xComparison : left.y.CompareTo(right.y);
+            });
+            result.Add(new GalaxyBuildingSaveEntry
+            {
+                buildingTypeId = "foundation",
+                localOrigin = world.transform.InverseTransformPoint(anchor.OriginWorld),
+                localUp = world.transform.InverseTransformDirection(anchor.Up).normalized,
+                localForward = world.transform.InverseTransformDirection(anchor.Forward).normalized,
+                cellSize = anchor.CellSize,
+                slabHeight = anchor.SlabHeight,
+                pillarHeight = anchor.PillarHeight,
+                pillarSize = anchor.PillarSize,
+                occupiedCells = cells.ToArray()
+            });
+        }
+
+        return result.ToArray();
+    }
+
+    static void RestoreBuildings(VoxelQuadSphereWorld world, GalaxyPlanetSaveData save)
+    {
+        if (world == null || save == null || save.buildings == null || save.buildings.Length == 0)
+            return;
+
+        BuildingPlacer placer = FindObjectOfType<BuildingPlacer>();
+        Material foundationMaterial = placer != null ? placer.FoundationMaterial : null;
+        int restoredPieces = 0;
+        foreach (GalaxyBuildingSaveEntry building in save.buildings)
+        {
+            if (building == null
+                || building.buildingTypeId != "foundation"
+                || building.occupiedCells == null
+                || building.occupiedCells.Length == 0)
+            {
+                continue;
+            }
+
+            Vector3 up = world.transform.TransformDirection(building.localUp).normalized;
+            Vector3 forward = world.transform.TransformDirection(building.localForward).normalized;
+            if (up.sqrMagnitude < 0.9f || forward.sqrMagnitude < 0.9f)
+                continue;
+
+            BuildingAnchor anchor = BuildingAnchor.Create(
+                world.transform.TransformPoint(building.localOrigin),
+                up,
+                forward,
+                Mathf.Max(0.1f, building.cellSize),
+                Mathf.Max(0.01f, building.slabHeight),
+                Mathf.Max(0f, building.pillarHeight),
+                Mathf.Max(0.01f, building.pillarSize),
+                foundationMaterial);
+            anchor.transform.SetParent(world.transform, true);
+            restoredPieces += anchor.RestoreCells(building.occupiedCells);
+        }
+
+        Debug.Log($"GalaxyTravelManager: restored {restoredPieces} building pieces for planet '{save.planetId}'.");
+    }
+
     void CaptureInventory()
     {
         PlayerInventory inventory = FindObjectOfType<PlayerInventory>();
@@ -693,7 +875,55 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             gridPosition = new Vector2Int(x, y),
             seed = planetSeed,
             mapColor = color,
-            iconResourcePath = iconPath
+            iconResourcePath = iconPath,
+            terrain = CreateTerrainPreset(id)
         };
+    }
+
+    static PlanetTerrainSettings CreateTerrainPreset(string planetId)
+    {
+        switch (planetId)
+        {
+            case "verdant":
+                return new PlanetTerrainSettings
+                {
+                    continentScale = 0.012f, continentHeight = 10f,
+                    detailScale = 0.045f, detailHeight = 1.5f, ridgeHeight = 0.5f,
+                    surfaceLayerDepth = 1.5f, stoneDepth = 5f,
+                    caveScale = 0.045f, caveThreshold = 0.72f, caveSurfaceClearance = 4f
+                };
+            case "crimson":
+                return new PlanetTerrainSettings
+                {
+                    continentScale = 0.025f, continentHeight = 9f,
+                    detailScale = 0.085f, detailHeight = 4.5f, ridgeHeight = 7f,
+                    surfaceLayerDepth = 0.6f, stoneDepth = 2.5f,
+                    caveScale = 0.075f, caveThreshold = 0.59f, caveSurfaceClearance = 2f
+                };
+            case "azure":
+                return new PlanetTerrainSettings
+                {
+                    continentScale = 0.01f, continentHeight = 6f,
+                    detailScale = 0.035f, detailHeight = 0.8f, ridgeHeight = 0.2f,
+                    surfaceLayerDepth = 2f, stoneDepth = 6f,
+                    caveScale = 0.035f, caveThreshold = 0.78f, caveSurfaceClearance = 5f
+                };
+            case "violet":
+                return new PlanetTerrainSettings
+                {
+                    continentScale = 0.03f, continentHeight = 6f,
+                    detailScale = 0.11f, detailHeight = 5.5f, ridgeHeight = 6f,
+                    surfaceLayerDepth = 0.7f, stoneDepth = 3f,
+                    caveScale = 0.095f, caveThreshold = 0.57f, caveSurfaceClearance = 1.5f
+                };
+            default:
+                return new PlanetTerrainSettings
+                {
+                    continentScale = 0.022f, continentHeight = 7f,
+                    detailScale = 0.075f, detailHeight = 3f, ridgeHeight = 2f,
+                    surfaceLayerDepth = 1f, stoneDepth = 4f,
+                    caveScale = 0.06f, caveThreshold = 0.66f, caveSurfaceClearance = 3f
+                };
+        }
     }
 }

@@ -15,7 +15,7 @@ public sealed class InventorySlotView : MonoBehaviour, IBeginDragHandler, IDragH
     public bool IsHotbar { get; private set; }
 
     public void Initialize(InventoryUI inventoryUI, int index, bool isHotbar)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(34, (int)index, (isHotbar?1:0));
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(35, (int)index, (isHotbar?1:0));
         owner = inventoryUI;
         slotIndex = index;
         IsHotbar = isHotbar;
@@ -27,7 +27,7 @@ public sealed class InventorySlotView : MonoBehaviour, IBeginDragHandler, IDragH
     }
 
     public void Refresh(InventorySlot slot, bool selected)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(35, (selected?1:0));
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(36, (selected?1:0));
         bool hasItem = slot != null && !slot.IsEmpty;
         icon.enabled = hasItem;
         icon.sprite = hasItem ? slot.item.Icon : null;
@@ -36,27 +36,27 @@ public sealed class InventorySlotView : MonoBehaviour, IBeginDragHandler, IDragH
     }
 
     public void OnBeginDrag(PointerEventData eventData)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(36);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(37);
         owner.BeginDrag(slotIndex, eventData.position);
     }
 
     public void OnDrag(PointerEventData eventData)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(37);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(38);
         owner.UpdateDrag(eventData.position);
     }
 
     public void OnEndDrag(PointerEventData eventData)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(38);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(39);
         owner.EndDrag();
     }
 
     public void OnDrop(PointerEventData eventData)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(39);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(40);
         owner.DropOn(slotIndex, eventData.button == PointerEventData.InputButton.Right);
     }
 
     public void OnPointerClick(PointerEventData eventData)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(40);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(41);
         if (eventData.button == PointerEventData.InputButton.Left && slotIndex < owner.Inventory.HotbarSize)
             owner.Inventory.SelectSlot(slotIndex);
     }

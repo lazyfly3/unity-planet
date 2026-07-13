@@ -23,7 +23,7 @@ public sealed class InventoryItem : ScriptableObject
         string name,
         Sprite itemIcon,
         int itemMaxStack)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(31, (int)itemMaxStack);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(32, (int)itemMaxStack);
         id = string.IsNullOrWhiteSpace(id) ? "item" : id.Trim();
         if (RuntimeItems.TryGetValue(id, out InventoryItem existing) && existing != null)
             return existing;

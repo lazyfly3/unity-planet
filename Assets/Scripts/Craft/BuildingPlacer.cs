@@ -37,6 +37,7 @@ public class BuildingPlacer : MonoBehaviour
     [SerializeField] Color previewInvalidColor = new Color(0.9f, 0.25f, 0.2f, 0.45f);
 
     public bool IsBuildMode => buildMode;
+    public Material FoundationMaterial => foundationMaterial;
 
     bool buildMode;
     bool forceNewAnchor;

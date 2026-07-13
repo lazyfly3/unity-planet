@@ -41,12 +41,12 @@ public class VoxelWorld : MonoBehaviour
     public float GravitationalParameter => PlanetGravity.ComputeGravitationalParameter(surfaceGravity, planetRadius);
 
     public Vector3 GetPlanetCenterWorld()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(84);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(85);
         return transform.TransformPoint(planetCenterLocal);
     }
 
     public Vector3 GetPlanetCenterLocal()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(85);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(86);
         return planetCenterLocal;
     }
 
@@ -80,7 +80,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public void GenerateEntirePlanet()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(86);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(87);
         if (!usePlanetGeneration)
             return;
 
@@ -108,7 +108,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public void UpdateStreaming(Vector3 worldPosition)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(87);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(88);
         if (usePlanetGeneration)
             return;
 
@@ -223,7 +223,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public byte GetVoxel(int worldX, int worldY, int worldZ)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(88, (int)worldX, (int)worldY, (int)worldZ);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(89, (int)worldX, (int)worldY, (int)worldZ);
         return SampleVoxelAt(worldX, worldY, worldZ);
     }
 
@@ -252,7 +252,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public bool SetVoxel(int worldX, int worldY, int worldZ, byte value)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(89, (int)worldX, (int)worldY, (int)worldZ, (int)value);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(90, (int)worldX, (int)worldY, (int)worldZ, (int)value);
         if (!usePlanetGeneration && !VoxelTypes.IsInsideHeight(worldY))
             return false;
 
@@ -269,7 +269,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public bool DigVoxel(int worldX, int worldY, int worldZ)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(90, (int)worldX, (int)worldY, (int)worldZ);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(91, (int)worldX, (int)worldY, (int)worldZ);
         return SetVoxel(worldX, worldY, worldZ, VoxelTypes.Air);
     }
 
@@ -283,7 +283,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public List<ChunkSaveEntry> GetModifiedChunkSnapshots()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(91);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(92);
         List<ChunkSaveEntry> result = new List<ChunkSaveEntry>();
         HashSet<Vector3Int> added = new HashSet<Vector3Int>();
 
@@ -319,7 +319,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public void ApplySaveData(VoxelWorldSaveData data)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(92);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(93);
         if (data == null)
             return;
 
