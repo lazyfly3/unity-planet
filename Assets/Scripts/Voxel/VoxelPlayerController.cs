@@ -35,6 +35,9 @@ public class VoxelPlayerController : MonoBehaviour
 
     void Update()
     {
+        if (InventoryUI.BlocksGameplayInput)
+            return;
+
         HandleLook();
         HandleMove();
     }

@@ -58,6 +58,9 @@ public class BuildingPlacer : MonoBehaviour
 
     void LateUpdate()
     {
+        if (InventoryUI.BlocksGameplayInput)
+            return;
+
         if (!buildMode)
             return;
 
@@ -70,6 +73,9 @@ public class BuildingPlacer : MonoBehaviour
 
     void Update()
     {
+        if (InventoryUI.BlocksGameplayInput)
+            return;
+
         if (Input.GetKeyDown(KeyCode.B))
         {
             buildMode = !buildMode;

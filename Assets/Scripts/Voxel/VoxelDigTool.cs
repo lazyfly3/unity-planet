@@ -17,6 +17,9 @@ public class VoxelDigTool : MonoBehaviour
 
     void Update()
     {
+        if (InventoryUI.BlocksGameplayInput)
+            return;
+
         if (voxelWorld == null || digCamera == null)
             return;
 

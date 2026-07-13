@@ -42,6 +42,9 @@ public class VoxelPlanetPlayerController : MonoBehaviour
 
     void Update()
     {
+        if (InventoryUI.BlocksGameplayInput)
+            return;
+
         UpdateBuildModeLock();
         UpdateSmoothUp();
         HandleLook();
