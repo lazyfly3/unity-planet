@@ -255,9 +255,73 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         if (!autoPlacePlayerOnStart || playerSpawn == null)
             return;
 
-        Vector3 direction = spawnDirectionLocal.sqrMagnitude < 0.001f ? Vector3.up : spawnDirectionLocal.normalized;
+        Vector3 preferredDirection = spawnDirectionLocal.sqrMagnitude < 0.001f
+            ? Vector3.up
+            : spawnDirectionLocal.normalized;
+        Vector3 direction = FindSafeSpawnDirection(preferredDirection);
         Vector3 localSpawn = planetCenterLocal + direction * (planetRadius + spawnHeightOffset);
         playerSpawn.position = transform.TransformPoint(localSpawn);
         playerSpawn.rotation = PlanetGravity.GetSurfaceRotation(playerSpawn.position, GetPlanetCenterWorld());
+    }
+
+    Vector3 FindSafeSpawnDirection(Vector3 preferredDirection)
+    {
+        if (HasSolidSpawnPatch(preferredDirection))
+            return preferredDirection;
+
+        Vector3 tangentX = Vector3.Cross(
+            preferredDirection,
+            Mathf.Abs(Vector3.Dot(preferredDirection, Vector3.up)) < 0.9f
+                ? Vector3.up
+                : Vector3.forward
+        ).normalized;
+        Vector3 tangentY = Vector3.Cross(preferredDirection, tangentX).normalized;
+
+        const int samplesPerRing = 12;
+        for (int ring = 1; ring <= 12; ring++)
+        {
+            float angle = ring * 2.5f * Mathf.Deg2Rad;
+            for (int sample = 0; sample < samplesPerRing; sample++)
+            {
+                float azimuth = sample / (float)samplesPerRing * Mathf.PI * 2f;
+                Vector3 tangent = tangentX * Mathf.Cos(azimuth) + tangentY * Mathf.Sin(azimuth);
+                Vector3 candidate = (preferredDirection * Mathf.Cos(angle) + tangent * Mathf.Sin(angle)).normalized;
+                if (HasSolidSpawnPatch(candidate))
+                    return candidate;
+            }
+        }
+
+        Debug.LogWarning("VoxelQuadSphereWorld: No safe spawn patch found; using the requested direction.");
+        return preferredDirection;
+    }
+
+    bool HasSolidSpawnPatch(Vector3 direction)
+    {
+        Vector3 surfacePoint = planetCenterLocal + direction.normalized * (planetRadius - 0.5f);
+        if (!VoxelQuadSphereMapping.TryLocalPointToVoxel(
+                surfacePoint, planetCenterLocal, planetRadius,
+                faceGridSize, maxDepth, out QuadSphereVoxelAddress center))
+            return false;
+
+        center.Depth = 0;
+        if (!VoxelTypes.IsSolid(SampleVoxelAt(center)))
+            return false;
+
+        QuadSphereVoxelAddress[] neighbors =
+        {
+            new QuadSphereVoxelAddress(center.Face, center.U + 1, center.V, 0),
+            new QuadSphereVoxelAddress(center.Face, center.U - 1, center.V, 0),
+            new QuadSphereVoxelAddress(center.Face, center.U, center.V + 1, 0),
+            new QuadSphereVoxelAddress(center.Face, center.U, center.V - 1, 0)
+        };
+
+        foreach (QuadSphereVoxelAddress neighbor in neighbors)
+        {
+            QuadSphereVoxelAddress remapped = VoxelQuadSphereMapping.RemapAcrossFace(neighbor, faceGridSize);
+            if (!VoxelTypes.IsSolid(SampleVoxelAt(remapped)))
+                return false;
+        }
+
+        return true;
     }
 }
