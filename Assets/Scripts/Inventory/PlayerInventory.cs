@@ -47,7 +47,7 @@ public sealed class PlayerInventory : MonoBehaviour
     }
 
     public int Add(InventoryItem item, int amount = 1)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(40, (int)amount);
         if (item == null || amount <= 0)
             return amount;
 
@@ -76,8 +76,29 @@ public sealed class PlayerInventory : MonoBehaviour
         return amount;
     }
 
+    public bool CanAdd(InventoryItem item, int amount = 1)
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(47, (int)amount);
+        if (item == null || amount <= 0)
+            return false;
+
+        int capacity = 0;
+        for (int i = 0; i < slots.Count; i++)
+        {
+            InventorySlot slot = slots[i];
+            if (slot.IsEmpty)
+                capacity += item.MaxStack;
+            else if (slot.item == item)
+                capacity += Mathf.Max(0, item.MaxStack - slot.amount);
+
+            if (capacity >= amount)
+                return true;
+        }
+
+        return false;
+    }
+
     public bool Remove(InventoryItem item, int amount = 1)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(41, (int)amount);
         if (item == null || amount <= 0 || Count(item) < amount)
             return false;
 
@@ -99,7 +120,7 @@ public sealed class PlayerInventory : MonoBehaviour
     }
 
     public int Count(InventoryItem item)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(42);
         int total = 0;
         foreach (InventorySlot slot in slots)
             if (slot.item == item)
@@ -108,7 +129,7 @@ public sealed class PlayerInventory : MonoBehaviour
     }
 
     public void MoveOrMerge(int from, int to)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(43, (int)from, (int)to);
         if (!IsValid(from) || !IsValid(to) || from == to || slots[from].IsEmpty)
             return;
 
@@ -139,7 +160,7 @@ public sealed class PlayerInventory : MonoBehaviour
     }
 
     public void SplitHalf(int from, int to)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(44, (int)from, (int)to);
         if (!IsValid(from) || !IsValid(to) || from == to || slots[from].amount < 2 || !slots[to].IsEmpty)
             return;
 
@@ -150,7 +171,7 @@ public sealed class PlayerInventory : MonoBehaviour
     }
 
     public void SelectSlot(int index)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(45, (int)index);
         if (index < 0 || index >= HotbarSize || index == SelectedSlotIndex)
             return;
 
@@ -159,7 +180,7 @@ public sealed class PlayerInventory : MonoBehaviour
     }
 
     public void UseSelectedItem()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(46);
         if (SelectedSlot != null && !SelectedSlot.IsEmpty)
             ItemUsed?.Invoke(SelectedSlot.item);
     }

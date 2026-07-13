@@ -25,6 +25,7 @@ public sealed class WorldItem : MonoBehaviour
     public Sprite Icon => icon;
     public int MaxStack => Mathf.Max(1, maxStack);
     public int Amount => Mathf.Max(1, amount);
+    public InventoryItem Definition => GetDefinition();
 
     void Reset()
     {
@@ -34,8 +35,7 @@ public sealed class WorldItem : MonoBehaviour
     void Awake()
     {
         ConfigureComponents();
-        runtimeDefinition = InventoryItem.GetOrCreateRuntime(
-            ItemId, DisplayName, icon, MaxStack);
+        runtimeDefinition = GetDefinition();
         mainCamera = Camera.main;
     }
 
@@ -93,5 +93,16 @@ public sealed class WorldItem : MonoBehaviour
     string GetBaseObjectName()
     {
         return gameObject.name.Replace("(Clone)", string.Empty).Trim();
+    }
+
+    InventoryItem GetDefinition()
+    {
+        if (runtimeDefinition == null)
+        {
+            runtimeDefinition = InventoryItem.GetOrCreateRuntime(
+                ItemId, DisplayName, icon, MaxStack);
+        }
+
+        return runtimeDefinition;
     }
 }

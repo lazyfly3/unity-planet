@@ -16,7 +16,7 @@ public static class VoxelQuadSphereTerrain
         int seed,
         Vector3 planetCenter,
         float planetRadius)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(101, (int)cellU, (int)cellV, (int)depth, (int)gridSize, (int)maxDepth, (int)innerSolidDepthLayers, (int)seed);
         if (cellU < 0 || cellV < 0 || cellU >= gridSize || cellV >= gridSize || depth < 0 || depth >= maxDepth)
             return VoxelTypes.Air;
 

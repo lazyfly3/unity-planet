@@ -35,7 +35,7 @@ public static class PortalPrefabCreator
     }
 
     public static GameObject CreatePortalPrefab()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(25);
         EnsureFolders();
         EnsureRenderTexture();
         EnsureMaterials();

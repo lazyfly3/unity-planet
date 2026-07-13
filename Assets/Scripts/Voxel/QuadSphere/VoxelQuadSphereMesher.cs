@@ -26,7 +26,7 @@ public static class VoxelQuadSphereMesher
         int maxDepth,
         float planetRadius,
         Vector3 planetCenter)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(100, (int)gridSize, (int)maxDepth, (int)planetRadius);
         List<Vector3> dirtVertices = new List<Vector3>();
         List<int> dirtTriangles = new List<int>();
         List<Vector3> stoneVertices = new List<Vector3>();

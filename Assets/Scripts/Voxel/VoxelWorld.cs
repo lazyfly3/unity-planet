@@ -41,12 +41,12 @@ public class VoxelWorld : MonoBehaviour
     public float GravitationalParameter => PlanetGravity.ComputeGravitationalParameter(surfaceGravity, planetRadius);
 
     public Vector3 GetPlanetCenterWorld()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(77);
         return transform.TransformPoint(planetCenterLocal);
     }
 
     public Vector3 GetPlanetCenterLocal()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(78);
         return planetCenterLocal;
     }
 
@@ -80,7 +80,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public void GenerateEntirePlanet()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(79);
         if (!usePlanetGeneration)
             return;
 
@@ -108,7 +108,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public void UpdateStreaming(Vector3 worldPosition)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(80);
         if (usePlanetGeneration)
             return;
 
@@ -223,7 +223,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public byte GetVoxel(int worldX, int worldY, int worldZ)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(81, (int)worldX, (int)worldY, (int)worldZ);
         return SampleVoxelAt(worldX, worldY, worldZ);
     }
 
@@ -252,7 +252,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public bool SetVoxel(int worldX, int worldY, int worldZ, byte value)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(82, (int)worldX, (int)worldY, (int)worldZ, (int)value);
         if (!usePlanetGeneration && !VoxelTypes.IsInsideHeight(worldY))
             return false;
 
@@ -269,7 +269,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public bool DigVoxel(int worldX, int worldY, int worldZ)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(83, (int)worldX, (int)worldY, (int)worldZ);
         return SetVoxel(worldX, worldY, worldZ, VoxelTypes.Air);
     }
 
@@ -283,7 +283,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public List<ChunkSaveEntry> GetModifiedChunkSnapshots()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(84);
         List<ChunkSaveEntry> result = new List<ChunkSaveEntry>();
         HashSet<Vector3Int> added = new HashSet<Vector3Int>();
 
@@ -319,7 +319,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public void ApplySaveData(VoxelWorldSaveData data)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(85);
         if (data == null)
             return;
 
@@ -404,8 +404,28 @@ public class VoxelWorld : MonoBehaviour
         {
             Vector3 direction = spawnDirectionLocal.sqrMagnitude < 0.001f ? Vector3.up : spawnDirectionLocal.normalized;
             Vector3 localSpawn = planetCenterLocal + direction * (planetRadius + spawnHeightOffset);
-            playerSpawn.position = transform.TransformPoint(localSpawn);
-            playerSpawn.rotation = PlanetGravity.GetSurfaceRotation(playerSpawn.position, GetPlanetCenterWorld());
+            Vector3 worldPosition = transform.TransformPoint(localSpawn);
+            Quaternion worldRotation = PlanetGravity.GetSurfaceRotation(worldPosition, GetPlanetCenterWorld());
+            VoxelPlanetPlayerController playerController = playerSpawn.GetComponent<VoxelPlanetPlayerController>();
+            if (playerController != null)
+            {
+                playerController.TeleportTo(worldPosition, worldRotation);
+                return;
+            }
+
+            Rigidbody playerBody = playerSpawn.GetComponent<Rigidbody>();
+
+            if (playerBody != null)
+            {
+                playerBody.position = worldPosition;
+                playerBody.rotation = worldRotation;
+                playerBody.velocity = Vector3.zero;
+                playerBody.angularVelocity = Vector3.zero;
+            }
+            else
+            {
+                playerSpawn.SetPositionAndRotation(worldPosition, worldRotation);
+            }
             return;
         }
 

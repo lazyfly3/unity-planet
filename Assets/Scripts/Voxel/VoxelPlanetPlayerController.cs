@@ -1,35 +1,86 @@
 using UnityEngine;
 
-[RequireComponent(typeof(CharacterController))]
+[DisallowMultipleComponent]
+[RequireComponent(typeof(Rigidbody), typeof(CapsuleCollider))]
 public class VoxelPlanetPlayerController : MonoBehaviour
 {
     [SerializeField] VoxelWorld voxelWorld;
     [SerializeField] VoxelQuadSphereWorld quadSphereWorld;
-    [SerializeField] BuildingPlacer buildingPlacer;
     [SerializeField] Transform cameraTransform;
+
+    [Header("Movement")]
     [SerializeField] float moveSpeed = 5f;
+    [SerializeField] float groundAcceleration = 35f;
+    [SerializeField] float airAcceleration = 8f;
     [SerializeField] float lookSpeed = 2f;
     [SerializeField] float jumpHeight = 1.2f;
     [SerializeField] float upSmoothSpeed = 8f;
 
-    CharacterController controller;
+    [Header("Radial Grounding")]
+    [SerializeField, Min(0.01f)] float groundProbeDistance = 0.2f;
+    [SerializeField, Range(0.5f, 0.99f)] float groundProbeRadiusScale = 0.9f;
+    [SerializeField, Range(0f, 89f)] float maxGroundAngle = 55f;
+    [SerializeField, Min(0f)] float groundStickAcceleration = 15f;
+    [SerializeField, Min(0f)] float groundDetachSpeed = 0.1f;
+    [SerializeField] LayerMask groundLayers = ~0;
+
+    [Header("Scene Debug")]
+    [SerializeField] bool showGravityGizmo = true;
+    [SerializeField, Min(0.1f)] float gravityGizmoLength = 3f;
+
+    readonly RaycastHit[] groundHits = new RaycastHit[16];
+
+    Rigidbody body;
+    CapsuleCollider capsule;
     Vector3 smoothUp = Vector3.up;
-    Vector3 buildModeLockedUp;
     Vector3 headingForward;
     Vector3 previousUp;
+    Vector2 moveInput;
     float pitch;
-    float radialVelocity;
+    bool jumpQueued;
+    bool gameplayInputBlocked;
+
+    public bool IsGrounded { get; private set; }
+
+    public void TeleportTo(Vector3 worldPosition, Quaternion worldRotation)
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(62);
+        if (body == null)
+            body = GetComponent<Rigidbody>();
+
+        body.position = worldPosition;
+        body.rotation = worldRotation;
+        body.velocity = Vector3.zero;
+        body.angularVelocity = Vector3.zero;
+
+        smoothUp = GetTargetUp(worldPosition);
+        previousUp = smoothUp;
+        headingForward = GetTangentForward(worldRotation * Vector3.forward, smoothUp);
+        body.rotation = Quaternion.LookRotation(headingForward, smoothUp);
+    }
 
     void Awake()
     {
-        controller = GetComponent<CharacterController>();
+        body = GetComponent<Rigidbody>();
+        capsule = GetComponent<CapsuleCollider>();
+
+        body.useGravity = false;
+        body.isKinematic = false;
+        body.interpolation = RigidbodyInterpolation.Interpolate;
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        body.constraints = RigidbodyConstraints.FreezeRotation;
+        capsule.enabled = true;
+        capsule.direction = 1;
+
+        CharacterController legacyController = GetComponent<CharacterController>();
+        if (legacyController != null)
+            legacyController.enabled = false;
 
         if (cameraTransform == null && Camera.main != null)
             cameraTransform = Camera.main.transform;
 
         if (cameraTransform == transform)
         {
-            Debug.LogError("VoxelPlanetPlayerController: Camera Transform 不能是玩家自身。");
+            Debug.LogError("VoxelPlanetPlayerController: Camera Transform cannot be the player transform.");
             cameraTransform = null;
         }
     }
@@ -38,71 +89,99 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
+        if (cameraTransform != null)
+            pitch = Mathf.Clamp(NormalizeAngle(cameraTransform.localEulerAngles.x), -80f, 80f);
+
         InitializeOrientation();
     }
 
     void Update()
     {
-        if (InventoryUI.BlocksGameplayInput)
-            return;
-
-        UpdateBuildModeLock();
-        UpdateSmoothUp();
-        TransportHeadingToCurrentUp();
-        HandleLook();
-        ApplyOrientation();
-        HandleMove();
-    }
-
-    void UpdateBuildModeLock()
-    {
-        if (buildingPlacer == null)
-            buildingPlacer = GetComponent<BuildingPlacer>();
-
-        if (buildingPlacer != null && buildingPlacer.IsBuildMode)
+        gameplayInputBlocked = InventoryUI.BlocksGameplayInput;
+        if (gameplayInputBlocked)
         {
-            if (buildModeLockedUp.sqrMagnitude < 0.0001f)
-                buildModeLockedUp = smoothUp.normalized;
+            moveInput = Vector2.zero;
+            jumpQueued = false;
             return;
         }
 
-        buildModeLockedUp = Vector3.zero;
+        moveInput = Vector2.ClampMagnitude(new Vector2(
+            Input.GetAxisRaw("Horizontal"),
+            Input.GetAxisRaw("Vertical")
+        ), 1f);
+
+        if (Input.GetKeyDown(KeyCode.Space))
+            jumpQueued = true;
+
+        HandleLook();
+    }
+
+    void FixedUpdate()
+    {
+        UpdateSmoothUp(Time.fixedDeltaTime);
+        TransportHeadingToCurrentUp();
+
+        Quaternion targetRotation = Quaternion.LookRotation(headingForward, smoothUp);
+        body.MoveRotation(targetRotation);
+
+        HandlePhysicsMovement();
+    }
+
+    void LateUpdate()
+    {
+        if (cameraTransform != null)
+            cameraTransform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
     }
 
     void InitializeOrientation()
     {
-        smoothUp = GetTargetUp();
+        smoothUp = GetTargetUp(body.position);
         previousUp = smoothUp;
         headingForward = GetTangentForward(transform.forward, smoothUp);
-        ApplyOrientation();
+        body.rotation = Quaternion.LookRotation(headingForward, smoothUp);
     }
 
-    void UpdateSmoothUp()
+    void UpdateSmoothUp(float deltaTime)
     {
-        if (buildingPlacer != null && buildingPlacer.IsBuildMode)
-        {
-            if (buildModeLockedUp.sqrMagnitude > 0.0001f)
-                smoothUp = buildModeLockedUp;
-            return;
-        }
-
-        Vector3 targetUp = GetTargetUp();
+        Vector3 targetUp = GetTargetUp(body.position);
         if (smoothUp.sqrMagnitude < 0.0001f)
             smoothUp = targetUp;
 
-        float blend = 1f - Mathf.Exp(-upSmoothSpeed * Time.deltaTime);
+        float blend = 1f - Mathf.Exp(-upSmoothSpeed * deltaTime);
         smoothUp = Vector3.Slerp(smoothUp, targetUp, blend).normalized;
     }
 
-    Vector3 GetTargetUp()
+    Vector3 GetTargetUp(Vector3 worldPosition)
     {
         if (quadSphereWorld != null)
-            return PlanetGravity.GetUp(transform.position, quadSphereWorld.GetPlanetCenterWorld());
+            return PlanetGravity.GetUp(worldPosition, quadSphereWorld.GetPlanetCenterWorld());
 
         if (voxelWorld == null || !voxelWorld.UsePlanetGeneration)
             return Vector3.up;
 
-        return PlanetGravity.GetUp(transform.position, voxelWorld.GetPlanetCenterWorld());
+        return PlanetGravity.GetUp(worldPosition, voxelWorld.GetPlanetCenterWorld());
+    }
+
+    Vector3 GetGravityAcceleration(Vector3 worldPosition)
+    {
+        if (quadSphereWorld != null)
+        {
+            return PlanetGravity.GetGravitationalAcceleration(
+                worldPosition,
+                quadSphereWorld.GetPlanetCenterWorld(),
+                quadSphereWorld.GravitationalParameter
+            );
+        }
+
+        if (voxelWorld == null || !voxelWorld.UsePlanetGeneration)
+            return Vector3.down * 9.8f;
+
+        return PlanetGravity.GetGravitationalAcceleration(
+            worldPosition,
+            voxelWorld.GetPlanetCenterWorld(),
+            voxelWorld.GravitationalParameter
+        );
     }
 
     void TransportHeadingToCurrentUp()
@@ -129,34 +208,9 @@ public class VoxelPlanetPlayerController : MonoBehaviour
         return Vector3.ProjectOnPlane(fallbackAxis, up).normalized;
     }
 
-    void ApplyOrientation()
+    static float NormalizeAngle(float angle)
     {
-        Vector3 up = smoothUp;
-        transform.rotation = Quaternion.LookRotation(headingForward, up);
-
-        if (cameraTransform != null)
-            cameraTransform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
-    }
-
-    Vector3 GetGravityAcceleration()
-    {
-        if (quadSphereWorld != null)
-        {
-            return PlanetGravity.GetGravitationalAcceleration(
-                transform.position,
-                quadSphereWorld.GetPlanetCenterWorld(),
-                quadSphereWorld.GravitationalParameter
-            );
-        }
-
-        if (voxelWorld == null || !voxelWorld.UsePlanetGeneration)
-            return Vector3.down * 9.8f;
-
-        return PlanetGravity.GetGravitationalAcceleration(
-            transform.position,
-            voxelWorld.GetPlanetCenterWorld(),
-            voxelWorld.GravitationalParameter
-        );
+        return angle > 180f ? angle - 360f : angle;
     }
 
     void HandleLook()
@@ -169,32 +223,149 @@ public class VoxelPlanetPlayerController : MonoBehaviour
         pitch = Mathf.Clamp(pitch - mouseY, -80f, 80f);
     }
 
-    void HandleMove()
+    void HandlePhysicsMovement()
     {
-        Vector3 gravityAccel = GetGravityAcceleration();
-        float g = gravityAccel.magnitude;
-        Vector3 down = g > 0.0001f ? gravityAccel / g : Vector3.down;
-        Vector3 up = smoothUp;
+        Vector3 gravity = GetGravityAcceleration(body.position);
+        float gravityMagnitude = gravity.magnitude;
+        Vector3 up = gravityMagnitude > 0.0001f ? -gravity / gravityMagnitude : smoothUp;
 
-        if (Input.GetKeyDown(KeyCode.Space) && g > 0.0001f)
-            radialVelocity = Mathf.Sqrt(jumpHeight * 2f * g);
+        IsGrounded = CheckRadialGround(up, out RaycastHit groundHit);
+        if (IsGrounded && Vector3.Dot(body.velocity, groundHit.normal) > groundDetachSpeed)
+            IsGrounded = false;
 
-        if (controller.isGrounded && radialVelocity <= 0f)
-            radialVelocity = 0f;
-        else if (g > 0.0001f)
-            radialVelocity -= g * Time.deltaTime;
+        Vector3 forward = GetTangentForward(headingForward, up);
+        Vector3 right = Vector3.Cross(up, forward).normalized;
+        Vector3 desiredDirection = right * moveInput.x + forward * moveInput.y;
 
-        float horizontal = Input.GetAxisRaw("Horizontal");
-        float vertical = Input.GetAxisRaw("Vertical");
-        Vector3 tangentMove = transform.right * horizontal + transform.forward * vertical;
-        tangentMove = Vector3.ProjectOnPlane(tangentMove, up);
+        bool shouldJump = jumpQueued && gravityMagnitude > 0.0001f;
+        jumpQueued = false;
 
-        if (tangentMove.sqrMagnitude > 1f)
-            tangentMove.Normalize();
+        if (IsGrounded)
+        {
+            MoveOnGround(desiredDirection, groundHit.normal);
 
-        tangentMove *= moveSpeed;
-        Vector3 move = tangentMove + up * radialVelocity;
+            if (shouldJump)
+            {
+                body.velocity += up * Mathf.Sqrt(jumpHeight * 2f * gravityMagnitude);
+                IsGrounded = false;
+            }
+            else
+            {
+                // Adhesion follows the actual contact normal, so it cannot pull toward world X/Z zero.
+                body.AddForce(-groundHit.normal * groundStickAcceleration, ForceMode.Acceleration);
+            }
+        }
+        else
+        {
+            MoveInAir(desiredDirection, up);
+            if (shouldJump)
+                body.velocity += up * Mathf.Sqrt(jumpHeight * 2f * gravityMagnitude);
 
-        controller.Move(move * Time.deltaTime);
+            body.AddForce(gravity, ForceMode.Acceleration);
+        }
+    }
+
+    void MoveOnGround(Vector3 desiredDirection, Vector3 groundNormal)
+    {
+        Vector3 desiredVelocity = Vector3.ProjectOnPlane(desiredDirection, groundNormal);
+        if (desiredVelocity.sqrMagnitude > 0.0001f)
+            desiredVelocity = desiredVelocity.normalized * moveSpeed;
+
+        Vector3 surfaceVelocity = Vector3.ProjectOnPlane(body.velocity, groundNormal);
+        body.velocity = Vector3.MoveTowards(
+            surfaceVelocity,
+            desiredVelocity,
+            groundAcceleration * Time.fixedDeltaTime
+        );
+    }
+
+    void MoveInAir(Vector3 desiredDirection, Vector3 up)
+    {
+        Vector3 radialVelocity = up * Vector3.Dot(body.velocity, up);
+        Vector3 lateralVelocity = Vector3.ProjectOnPlane(body.velocity, up);
+        Vector3 desiredVelocity = desiredDirection * moveSpeed;
+
+        lateralVelocity = Vector3.MoveTowards(
+            lateralVelocity,
+            desiredVelocity,
+            airAcceleration * Time.fixedDeltaTime
+        );
+        body.velocity = lateralVelocity + radialVelocity;
+    }
+
+    bool CheckRadialGround(Vector3 up, out RaycastHit closestGround)
+    {
+        closestGround = default;
+
+        Vector3 scale = transform.lossyScale;
+        float radiusScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z));
+        float radius = capsule.radius * radiusScale;
+        float height = Mathf.Max(capsule.height * Mathf.Abs(scale.y), radius * 2f);
+        float probeRadius = Mathf.Max(radius * groundProbeRadiusScale, 0.01f);
+
+        Vector3 center = transform.TransformPoint(capsule.center);
+        Vector3 bottomSphereCenter = center - up * (height * 0.5f - radius);
+        const float startOffset = 0.05f;
+        Vector3 origin = bottomSphereCenter + up * startOffset;
+        float castDistance = startOffset + groundProbeDistance;
+
+        int hitCount = Physics.SphereCastNonAlloc(
+            origin,
+            probeRadius,
+            -up,
+            groundHits,
+            castDistance,
+            groundLayers,
+            QueryTriggerInteraction.Ignore
+        );
+
+        float minimumGroundDot = Mathf.Cos(maxGroundAngle * Mathf.Deg2Rad);
+        float closestDistance = float.PositiveInfinity;
+        for (int i = 0; i < hitCount; i++)
+        {
+            RaycastHit hit = groundHits[i];
+            Collider hitCollider = hit.collider;
+            if (hitCollider == null || hitCollider.transform == transform || hitCollider.transform.IsChildOf(transform))
+                continue;
+            if (Vector3.Dot(hit.normal, up) < minimumGroundDot || hit.distance >= closestDistance)
+                continue;
+
+            closestDistance = hit.distance;
+            closestGround = hit;
+        }
+
+        return closestDistance < float.PositiveInfinity;
+    }
+
+    void OnDrawGizmos()
+    {
+        if (!showGravityGizmo)
+            return;
+
+        Vector3 up = GetTargetUp(transform.position);
+        Vector3 origin = transform.position;
+        float length = Mathf.Max(gravityGizmoLength, 0.1f);
+
+        Gizmos.color = Color.red;
+        DrawGizmoArrow(origin, -up, length);
+        Gizmos.color = Color.green;
+        DrawGizmoArrow(origin, up, length * 0.5f);
+    }
+
+    static void DrawGizmoArrow(Vector3 origin, Vector3 direction, float length)
+    {
+        Vector3 normalizedDirection = direction.normalized;
+        Vector3 end = origin + normalizedDirection * length;
+        Gizmos.DrawLine(origin, end);
+
+        Vector3 side = Vector3.Cross(normalizedDirection, Vector3.up);
+        if (side.sqrMagnitude < 0.0001f)
+            side = Vector3.Cross(normalizedDirection, Vector3.right);
+
+        side.Normalize();
+        Vector3 arrowBack = -normalizedDirection * (length * 0.25f);
+        Vector3 arrowSide = side * (length * 0.12f);
+        Gizmos.DrawLine(end, end + arrowBack + arrowSide);
+        Gizmos.DrawLine(end, end + arrowBack - arrowSide);
     }
 }

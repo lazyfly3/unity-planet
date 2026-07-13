@@ -6,7 +6,7 @@ public class BuildingFoundationPiece : MonoBehaviour
     public Vector2Int Grid { get; private set; }
 
     public static BuildingFoundationPiece Create(BuildingAnchor anchor, Vector2Int grid, Material material)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(22);
         var pieceObject = new GameObject($"Foundation_{grid.x}_{grid.y}");
         pieceObject.transform.SetParent(anchor.transform, false);
 
@@ -20,7 +20,7 @@ public class BuildingFoundationPiece : MonoBehaviour
     }
 
     public void BuildVisuals(Material material)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(23);
         for (int i = transform.childCount - 1; i >= 0; i--)
             Destroy(transform.GetChild(i).gameObject);
 
@@ -54,7 +54,7 @@ public class BuildingFoundationPiece : MonoBehaviour
     }
 
     public void AlignToGrid(Vector2Int grid)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(24);
         Grid = grid;
         if (Anchor == null)
             return;
