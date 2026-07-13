@@ -36,3 +36,8 @@ sysinfo.txt
 *.apk
 *.aab
 *.unitypackage
+
+# LogTrack 本地生成物（插件本身仍提交）
+Assets/LogTrackGenerated/LogPdb.pdb.*
+Assets/LogTrackGenerated/*.json
+Assets/LogTrackGenerated/*.csv
