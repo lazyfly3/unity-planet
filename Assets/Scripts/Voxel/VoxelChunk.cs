@@ -37,12 +37,12 @@ public class VoxelChunk
     }
 
     public byte GetLocalVoxel(int x, int y, int z)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(54, (int)x, (int)y, (int)z);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(61, (int)x, (int)y, (int)z);
         return Voxels[VoxelTypes.ToIndex(x, y, z)];
     }
 
     public void SetLocalVoxel(int x, int y, int z, byte value)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(55, (int)x, (int)y, (int)z, (int)value);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(62, (int)x, (int)y, (int)z, (int)value);
         if (x < 0 || y < 0 || z < 0 || x >= VoxelTypes.ChunkSize || y >= VoxelTypes.ChunkSize || z >= VoxelTypes.ChunkSize)
             return;
 
@@ -56,22 +56,22 @@ public class VoxelChunk
     }
 
     public void MarkDirty()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(56);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(63);
         IsDirty = true;
     }
 
     public void MarkModified()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(57);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(64);
         IsModified = true;
     }
 
     public void ClearModifiedFlag()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(58);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(65);
         IsModified = false;
     }
 
     public void RebuildMesh(System.Func<int, int, int, byte> getWorldVoxel)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(59);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(66);
         if (runtimeMesh != null)
             Object.Destroy(runtimeMesh);
 
@@ -83,7 +83,7 @@ public class VoxelChunk
     }
 
     public void Destroy()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(60);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(67);
         if (runtimeMesh != null)
             Object.Destroy(runtimeMesh);
 

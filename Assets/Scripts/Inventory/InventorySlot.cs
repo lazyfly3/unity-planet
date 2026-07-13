@@ -10,7 +10,7 @@ public sealed class InventorySlot
     public int FreeSpace => IsEmpty ? 0 : item.MaxStack - amount;
 
     public void Set(InventoryItem newItem, int newAmount)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(27, (int)newAmount);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(32, (int)newAmount);
         item = newItem;
         amount = newItem == null ? 0 : Math.Min(newAmount, newItem.MaxStack);
         if (amount <= 0)
@@ -18,7 +18,7 @@ public sealed class InventorySlot
     }
 
     public void Clear()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(28);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(33);
         item = null;
         amount = 0;
     }

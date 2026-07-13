@@ -33,10 +33,16 @@ public sealed class HarvestableResource : MonoBehaviour
     float feedbackVisibleUntil;
     string feedbackText;
     GUIStyle feedbackStyle;
+    string stableResourceId;
 
     public int RequiredHarvestClicks => requiredHarvestClicks;
     public int CompletedHarvestClicks => completedHarvestClicks;
     public int RemainingHarvestClicks => Mathf.Max(0, requiredHarvestClicks - completedHarvestClicks);
+
+    public void AssignStableResourceId(string resourceId)
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(30);
+        stableResourceId = resourceId;
+    }
 
     void Reset()
     {
@@ -124,6 +130,7 @@ public sealed class HarvestableResource : MonoBehaviour
         int remaining = playerInventory.Add(rewardDefinition, rewardAmount);
         if (remaining == 0)
         {
+            GetComponentInParent<VoxelQuadSphereWorld>()?.MarkResourceHarvested(stableResourceId);
             PlayFeedbackSound(harvestCompleteSound);
             Destroy(gameObject);
         }

@@ -47,7 +47,7 @@ public sealed class InventoryUI : MonoBehaviour
     }
 
     public void BeginDrag(int index, Vector2 position)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(36, (int)index);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(41, (int)index);
         InventorySlot slot = Inventory.Slots[index];
         if (slot.IsEmpty)
             return;
@@ -59,13 +59,13 @@ public sealed class InventoryUI : MonoBehaviour
     }
 
     public void UpdateDrag(Vector2 position)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(37);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(42);
         if (dragSource >= 0)
             dragGhost.position = position;
     }
 
     public void DropOn(int target, bool split)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(38, (int)target, (split?1:0));
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(43, (int)target, (split?1:0));
         if (dragSource < 0)
             return;
 
@@ -77,7 +77,7 @@ public sealed class InventoryUI : MonoBehaviour
     }
 
     public void EndDrag()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(39);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(44);
         dragSource = -1;
         if (dragIcon != null)
             dragIcon.enabled = false;

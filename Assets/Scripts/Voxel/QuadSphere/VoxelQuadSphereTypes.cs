@@ -26,17 +26,17 @@ public struct QuadSphereVoxelAddress : IEquatable<QuadSphereVoxelAddress>
     }
 
     public bool Equals(QuadSphereVoxelAddress other)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(102);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(111);
         return Face == other.Face && U == other.U && V == other.V && Depth == other.Depth;
     }
 
     public override bool Equals(object obj)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(103);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(112);
         return obj is QuadSphereVoxelAddress other && Equals(other);
     }
 
     public override int GetHashCode()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(104);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(113);
         unchecked
         {
             int hash = (int)Face;
@@ -64,17 +64,17 @@ public struct QuadSphereChunkKey : IEquatable<QuadSphereChunkKey>
     }
 
     public bool Equals(QuadSphereChunkKey other)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(105);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(114);
         return Face == other.Face && ChunkU == other.ChunkU && ChunkV == other.ChunkV && ChunkDepth == other.ChunkDepth;
     }
 
     public override bool Equals(object obj)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(106);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(115);
         return obj is QuadSphereChunkKey other && Equals(other);
     }
 
     public override int GetHashCode()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(107);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(116);
         unchecked
         {
             int hash = (int)Face;

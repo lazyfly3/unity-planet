@@ -24,6 +24,11 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     [SerializeField, Min(0f)] float groundDetachSpeed = 0.1f;
     [SerializeField] LayerMask groundLayers = ~0;
 
+    [Header("Space Travel")]
+    [SerializeField] bool enableSpaceTravel = true;
+    [SerializeField, Min(0.1f)] float galaxyMapAltitude = 8f;
+    [SerializeField] bool requireOutwardVelocity = true;
+
     [Header("Scene Debug")]
     [SerializeField] bool showGravityGizmo = true;
     [SerializeField, Min(0.1f)] float gravityGizmoLength = 3f;
@@ -39,11 +44,12 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     float pitch;
     bool jumpQueued;
     bool gameplayInputBlocked;
+    bool galaxyTransitionRequested;
 
     public bool IsGrounded { get; private set; }
 
     public void TeleportTo(Vector3 worldPosition, Quaternion worldRotation)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(62);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(69);
         if (body == null)
             body = GetComponent<Rigidbody>();
 
@@ -126,6 +132,7 @@ public class VoxelPlanetPlayerController : MonoBehaviour
         body.MoveRotation(targetRotation);
 
         HandlePhysicsMovement();
+        CheckGalaxyTransition();
     }
 
     void LateUpdate()
@@ -263,6 +270,33 @@ public class VoxelPlanetPlayerController : MonoBehaviour
 
             body.AddForce(gravity, ForceMode.Acceleration);
         }
+    }
+
+    void CheckGalaxyTransition()
+    {
+        if (!enableSpaceTravel || galaxyTransitionRequested || quadSphereWorld == null)
+            return;
+
+        Vector3 center = quadSphereWorld.GetPlanetCenterWorld();
+        Vector3 fromCenter = body.position - center;
+        float worldScale = Mathf.Max(
+            Mathf.Abs(quadSphereWorld.transform.lossyScale.x),
+            Mathf.Abs(quadSphereWorld.transform.lossyScale.y),
+            Mathf.Abs(quadSphereWorld.transform.lossyScale.z));
+        float altitude = fromCenter.magnitude - quadSphereWorld.PlanetRadius * worldScale;
+        if (altitude < galaxyMapAltitude)
+            return;
+
+        Vector3 up = fromCenter.sqrMagnitude > 0.0001f ? fromCenter.normalized : transform.up;
+        if (requireOutwardVelocity && Vector3.Dot(body.velocity, up) <= 0f)
+            return;
+
+        GalaxyTravelManager manager = GalaxyTravelManager.Instance;
+        if (manager == null)
+            return;
+
+        galaxyTransitionRequested = true;
+        manager.OpenGalaxyMap(quadSphereWorld);
     }
 
     void MoveOnGround(Vector3 desiredDirection, Vector3 groundNormal)

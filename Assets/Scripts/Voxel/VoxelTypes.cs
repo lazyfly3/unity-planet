@@ -13,22 +13,22 @@ public static class VoxelTypes
     public const byte Stone = 2;
 
     public static int ToIndex(int x, int y, int z)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(70, (int)x, (int)y, (int)z);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(77, (int)x, (int)y, (int)z);
         return x + y * ChunkSize + z * ChunkSize * ChunkSize;
     }
 
     public static bool IsSolid(byte voxel)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(71, (int)voxel);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(78, (int)voxel);
         return voxel != Air;
     }
 
     public static bool IsInsideHeight(int worldY)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(72, (int)worldY);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(79, (int)worldY);
         return worldY >= MinWorldHeight && worldY < MaxWorldHeight;
     }
 
     public static Vector3Int WorldToChunkCoord(int worldX, int worldY, int worldZ)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(73, (int)worldX, (int)worldY, (int)worldZ);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(80, (int)worldX, (int)worldY, (int)worldZ);
         return new Vector3Int(
             FloorDiv(worldX, ChunkSize),
             FloorDiv(worldY, ChunkSize),
@@ -37,7 +37,7 @@ public static class VoxelTypes
     }
 
     public static Vector3Int WorldToLocalCoord(int worldX, int worldY, int worldZ)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(74, (int)worldX, (int)worldY, (int)worldZ);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(81, (int)worldX, (int)worldY, (int)worldZ);
         return new Vector3Int(
             Mod(worldX, ChunkSize),
             Mod(worldY, ChunkSize),
@@ -46,7 +46,7 @@ public static class VoxelTypes
     }
 
     public static int FloorDiv(int value, int divisor)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(75, (int)value, (int)divisor);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(82, (int)value, (int)divisor);
         if (value >= 0)
             return value / divisor;
 
@@ -54,7 +54,7 @@ public static class VoxelTypes
     }
 
     public static int Mod(int value, int divisor)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(76, (int)value, (int)divisor);
+    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(83, (int)value, (int)divisor);
         int result = value % divisor;
         return result < 0 ? result + divisor : result;
     }
