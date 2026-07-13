@@ -163,7 +163,26 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         Vector3Int local = AddressToLocalCoord(address);
         chunk.SetLocalVoxel(local.x, local.y, local.z, value);
         MarkChunkAndNeighborsDirty(key, local);
+        MarkCrossFaceNeighborsDirty(address);
         return true;
+    }
+
+    void MarkCrossFaceNeighborsDirty(QuadSphereVoxelAddress address)
+    {
+        if (address.U == 0)
+            MarkRemappedNeighborDirty(new QuadSphereVoxelAddress(address.Face, -1, address.V, address.Depth));
+        if (address.U == faceGridSize - 1)
+            MarkRemappedNeighborDirty(new QuadSphereVoxelAddress(address.Face, faceGridSize, address.V, address.Depth));
+        if (address.V == 0)
+            MarkRemappedNeighborDirty(new QuadSphereVoxelAddress(address.Face, address.U, -1, address.Depth));
+        if (address.V == faceGridSize - 1)
+            MarkRemappedNeighborDirty(new QuadSphereVoxelAddress(address.Face, address.U, faceGridSize, address.Depth));
+    }
+
+    void MarkRemappedNeighborDirty(QuadSphereVoxelAddress address)
+    {
+        QuadSphereVoxelAddress remapped = VoxelQuadSphereMapping.RemapAcrossFace(address, faceGridSize);
+        MarkChunkDirty(AddressToChunkKey(remapped));
     }
 
     public bool TryDigAtLocalPoint(Vector3 localPoint)

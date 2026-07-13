@@ -15,7 +15,8 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     CharacterController controller;
     Vector3 smoothUp = Vector3.up;
     Vector3 buildModeLockedUp;
-    float yaw;
+    Vector3 headingForward;
+    Vector3 previousUp;
     float pitch;
     float radialVelocity;
 
@@ -47,6 +48,7 @@ public class VoxelPlanetPlayerController : MonoBehaviour
 
         UpdateBuildModeLock();
         UpdateSmoothUp();
+        TransportHeadingToCurrentUp();
         HandleLook();
         ApplyOrientation();
         HandleMove();
@@ -70,7 +72,8 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     void InitializeOrientation()
     {
         smoothUp = GetTargetUp();
-        InitializeYawFromForward();
+        previousUp = smoothUp;
+        headingForward = GetTangentForward(transform.forward, smoothUp);
         ApplyOrientation();
     }
 
@@ -102,32 +105,34 @@ public class VoxelPlanetPlayerController : MonoBehaviour
         return PlanetGravity.GetUp(transform.position, voxelWorld.GetPlanetCenterWorld());
     }
 
-    void InitializeYawFromForward()
+    void TransportHeadingToCurrentUp()
     {
-        Vector3 up = smoothUp;
-        Vector3 referenceForward = GetReferenceForward(up);
-        Vector3 projectedForward = Vector3.ProjectOnPlane(transform.forward, up);
+        if (previousUp.sqrMagnitude < 0.0001f)
+            previousUp = smoothUp;
+        if (headingForward.sqrMagnitude < 0.0001f)
+            headingForward = GetTangentForward(transform.forward, previousUp);
 
-        if (projectedForward.sqrMagnitude < 0.0001f)
-            yaw = 0f;
-        else
-            yaw = Vector3.SignedAngle(referenceForward, projectedForward.normalized, up);
+        Quaternion transport = Quaternion.FromToRotation(previousUp, smoothUp);
+        headingForward = GetTangentForward(transport * headingForward, smoothUp);
+        previousUp = smoothUp;
     }
 
-    static Vector3 GetReferenceForward(Vector3 up)
+    static Vector3 GetTangentForward(Vector3 preferredForward, Vector3 up)
     {
-        Vector3 referenceForward = Vector3.Cross(up, Vector3.up);
-        if (referenceForward.sqrMagnitude < 0.0001f)
-            referenceForward = Vector3.Cross(up, Vector3.forward);
+        Vector3 tangentForward = Vector3.ProjectOnPlane(preferredForward, up);
+        if (tangentForward.sqrMagnitude >= 0.0001f)
+            return tangentForward.normalized;
 
-        return referenceForward.normalized;
+        Vector3 fallbackAxis = Mathf.Abs(Vector3.Dot(up, Vector3.forward)) < 0.9f
+            ? Vector3.forward
+            : Vector3.right;
+        return Vector3.ProjectOnPlane(fallbackAxis, up).normalized;
     }
 
     void ApplyOrientation()
     {
         Vector3 up = smoothUp;
-        Vector3 forward = Quaternion.AngleAxis(yaw, up) * GetReferenceForward(up);
-        transform.rotation = Quaternion.LookRotation(forward, up);
+        transform.rotation = Quaternion.LookRotation(headingForward, up);
 
         if (cameraTransform != null)
             cameraTransform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
@@ -159,7 +164,8 @@ public class VoxelPlanetPlayerController : MonoBehaviour
         float mouseX = Input.GetAxis("Mouse X") * lookSpeed;
         float mouseY = Input.GetAxis("Mouse Y") * lookSpeed;
 
-        yaw += mouseX;
+        headingForward = Quaternion.AngleAxis(mouseX, smoothUp) * headingForward;
+        headingForward = GetTangentForward(headingForward, smoothUp);
         pitch = Mathf.Clamp(pitch - mouseY, -80f, 80f);
     }
 

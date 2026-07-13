@@ -4,13 +4,15 @@ public static class VoxelQuadSphereMapping
 {
     public static Vector3 GetFaceCubePoint(QuadSphereFace face, float u, float v)
     {
+        // Keep every face in the same handed coordinate system:
+        // cross(+U tangent, outward normal) must point along +V.
         switch (face)
         {
             case QuadSphereFace.PosX: return new Vector3(1f, v, u);
-            case QuadSphereFace.NegX: return new Vector3(-1f, v, u);
+            case QuadSphereFace.NegX: return new Vector3(-1f, -v, u);
             case QuadSphereFace.PosY: return new Vector3(u, 1f, v);
-            case QuadSphereFace.NegY: return new Vector3(u, -1f, v);
-            case QuadSphereFace.PosZ: return new Vector3(u, v, 1f);
+            case QuadSphereFace.NegY: return new Vector3(-u, -1f, v);
+            case QuadSphereFace.PosZ: return new Vector3(u, -v, 1f);
             default: return new Vector3(u, v, -1f);
         }
     }
@@ -163,6 +165,30 @@ public static class VoxelQuadSphereMapping
         return d.z >= 0f ? QuadSphereFace.PosZ : QuadSphereFace.NegZ;
     }
 
+    public static QuadSphereVoxelAddress RemapAcrossFace(
+        QuadSphereVoxelAddress address,
+        int gridSize)
+    {
+        if (address.U >= 0 && address.U < gridSize
+            && address.V >= 0 && address.V < gridSize)
+            return address;
+
+        // Sample the center of the virtual cell just beyond the cube edge,
+        // then project it onto the adjacent dominant face.
+        float u = CellToNormalized(address.U, gridSize);
+        float v = CellToNormalized(address.V, gridSize);
+        Vector3 direction = GetFaceCubePoint(address.Face, u, v).normalized;
+        QuadSphereFace adjacentFace = GetDominantFace(direction);
+        Vector2 adjacentUv = DirectionToFaceUV(direction, adjacentFace);
+
+        return new QuadSphereVoxelAddress(
+            adjacentFace,
+            NormalizedToCell(adjacentUv.x, gridSize),
+            NormalizedToCell(adjacentUv.y, gridSize),
+            address.Depth
+        );
+    }
+
     public static bool TryLocalPointToVoxel(
         Vector3 localPoint,
         Vector3 planetCenter,
@@ -212,8 +238,8 @@ public static class VoxelQuadSphereMapping
             case QuadSphereFace.NegX: return new Vector2(-dir.z / dir.x, dir.y / dir.x);
             case QuadSphereFace.PosY: return new Vector2(dir.x / dir.y, dir.z / dir.y);
             case QuadSphereFace.NegY: return new Vector2(dir.x / dir.y, -dir.z / dir.y);
-            case QuadSphereFace.PosZ: return new Vector2(dir.x / dir.z, dir.y / dir.z);
-            default: return new Vector2(-dir.x / dir.z, dir.y / dir.z);
+            case QuadSphereFace.PosZ: return new Vector2(dir.x / dir.z, -dir.y / dir.z);
+            default: return new Vector2(-dir.x / dir.z, -dir.y / dir.z);
         }
     }
 
