@@ -18,7 +18,10 @@ public sealed class InventoryUI : MonoBehaviour
     int dragSource = -1;
     bool isOpen;
 
-    public static bool BlocksGameplayInput { get; private set; }
+    static bool inventoryBlocksGameplayInput;
+
+    public static bool BlocksGameplayInput => inventoryBlocksGameplayInput || PauseMenuController.IsPaused;
+    public bool IsOpen => isOpen;
     public PlayerInventory Inventory { get; private set; }
     public Color SlotColor => new Color(0.07f, 0.075f, 0.08f, 0.92f);
     public Color SelectedColor => new Color(0.95f, 0.57f, 0.16f, 0.98f);
@@ -37,7 +40,7 @@ public sealed class InventoryUI : MonoBehaviour
         Inventory.Changed -= Refresh;
         Inventory.SelectedSlotChanged -= OnSelectedChanged;
         if (isOpen)
-            BlocksGameplayInput = false;
+            inventoryBlocksGameplayInput = false;
     }
 
     void Update()
@@ -83,10 +86,16 @@ public sealed class InventoryUI : MonoBehaviour
             dragIcon.enabled = false;
     }
 
+    public void CloseInventory()
+    {
+        if (isOpen)
+            SetOpen(false);
+    }
+
     void SetOpen(bool open)
     {
         isOpen = open;
-        BlocksGameplayInput = open;
+        inventoryBlocksGameplayInput = open;
         inventoryPanel.SetActive(open);
         Cursor.lockState = open ? CursorLockMode.None : CursorLockMode.Locked;
         Cursor.visible = open;

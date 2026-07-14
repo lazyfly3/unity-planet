@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -59,6 +60,10 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     [SerializeField] Vector3 spawnDirectionLocal = Vector3.up;
     [SerializeField] float spawnHeightOffset = 2f;
 
+    [Header("Loading")]
+    [SerializeField, Range(5f, 100f)] float generationFrameBudgetMilliseconds = 50f;
+    [SerializeField] PlanetLoadingUI loadingUI;
+
     bool spawnHarvestableResources;
     List<HarvestableResourceSpawnSettings> resourceSpawnSettings = new List<HarvestableResourceSpawnSettings>();
     PlanetTerrainSettings terrainSettings = new PlanetTerrainSettings();
@@ -76,6 +81,8 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     bool loadingCompleteSnapshot;
     bool loadingCompleteMeshSnapshot;
     bool bulkLoadingPlanet;
+    bool generationComplete;
+    bool restoreLogTrackAfterGeneration;
     bool migrateSavedTerrainChanges;
     PlanetTerrainSettings previousTerrainSettings;
     Material runtimeDirtMaterial;
@@ -83,6 +90,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
 
     public int Seed => seed;
     public bool UsePlanetGeneration => true;
+    public bool IsGenerationComplete => generationComplete;
     public float PlanetRadius => planetRadius;
     public float SurfaceGravity => surfaceGravity;
     public float GravitationalParameter => PlanetGravity.ComputeGravitationalParameter(surfaceGravity, planetRadius);
@@ -115,6 +123,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         bool shouldSpawnHarvestableResources,
         List<HarvestableResourceSpawnSettings> planetResourceSpawnSettings)
     {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(123, (int)planetSeed);
+        generationComplete = false;
         seed = planetSeed;
         modifiedChunkCache.Clear();
         savedMeshCache.Clear();
@@ -399,11 +408,54 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         return planetCenterLocal;
     }
 
-    void Start()
+    IEnumerator Start()
     {
-        GenerateEntirePlanet();
+        if (loadingUI == null)
+            loadingUI = FindObjectOfType<PlanetLoadingUI>(true);
+        loadingUI?.Show("正在分析星球数据");
+
+        VoxelPlanetPlayerController playerController = playerSpawn != null
+            ? playerSpawn.GetComponentInParent<VoxelPlanetPlayerController>()
+            : null;
+        Rigidbody playerBody = playerSpawn != null
+            ? playerSpawn.GetComponentInParent<Rigidbody>()
+            : null;
+        bool controllerWasEnabled = playerController != null && playerController.enabled;
+        bool bodyWasKinematic = playerBody != null && playerBody.isKinematic;
+
+        if (playerController != null)
+            playerController.enabled = false;
+        if (playerBody != null)
+        {
+            playerBody.velocity = Vector3.zero;
+            playerBody.angularVelocity = Vector3.zero;
+            playerBody.isKinematic = true;
+        }
+
+        SuspendLogTrackForGeneration();
+        try
+        {
+            // Let the newly loaded scene render before expensive terrain work begins.
+            yield return null;
+            yield return GenerateEntirePlanetIncremental();
+        }
+        finally
+        {
+            RestoreLogTrackAfterGeneration();
+        }
+        if (playerBody != null)
+            playerBody.isKinematic = bodyWasKinematic;
+
+        loadingUI?.SetProgress(0.96f, "正在部署资源与玩家基地");
+        yield return null;
         PlacePlayerAtSpawn();
         SpawnHarvestableResources();
+        loadingUI?.SetProgress(1f, "星球构筑完成");
+        yield return null;
+        loadingUI?.Complete();
+
+        if (playerController != null)
+            playerController.enabled = controllerWasEnabled;
     }
 
     void OnValidate()
@@ -417,6 +469,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
 
     void OnDestroy()
     {
+        RestoreLogTrackAfterGeneration();
         if (runtimeDirtMaterial != null)
             Destroy(runtimeDirtMaterial);
         if (runtimeStoneMaterial != null)
@@ -466,12 +519,129 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         if (!restoredMeshSnapshot)
             RebuildAllChunkMeshes();
 
+        generationComplete = true;
+
         float elapsedMilliseconds = (Time.realtimeSinceStartup - loadStartedAt) * 1000f;
         string source = restoredMeshSnapshot
             ? "complete mesh snapshot"
             : restoredFromSnapshot ? "complete voxel snapshot" : "procedural generation";
         Debug.Log(
             $"VoxelQuadSphereWorld: loaded {chunks.Count} chunks from {source} in {elapsedMilliseconds:0} ms.",
+            this);
+    }
+
+    void SuspendLogTrackForGeneration()
+    {
+        restoreLogTrackAfterGeneration = FSPDebuger.EnableLogTrackInternal;
+        if (restoreLogTrackAfterGeneration)
+            FSPDebuger.EnableLogTrackInternal = false;
+    }
+
+    void RestoreLogTrackAfterGeneration()
+    {
+        if (!restoreLogTrackAfterGeneration)
+            return;
+
+        FSPDebuger.EnableLogTrackInternal = true;
+        restoreLogTrackAfterGeneration = false;
+    }
+
+    IEnumerator GenerateEntirePlanetIncremental()
+    {
+        float loadStartedAt = Time.realtimeSinceStartup;
+        float frameStartedAt = loadStartedAt;
+        float frameBudgetSeconds = Mathf.Max(0.001f, generationFrameBudgetMilliseconds * 0.001f);
+        int chunkCountU = Mathf.CeilToInt(faceGridSize / (float)VoxelTypes.ChunkSize);
+        int chunkCountV = Mathf.CeilToInt(faceGridSize / (float)VoxelTypes.ChunkSize);
+        int chunkCountDepth = Mathf.CeilToInt(maxDepth / (float)VoxelTypes.ChunkSize);
+        int expectedChunks = 6 * chunkCountU * chunkCountV * chunkCountDepth;
+        int generatedChunks = 0;
+
+        bulkLoadingPlanet = true;
+        for (int faceIndex = 0; faceIndex < 6; faceIndex++)
+        {
+            QuadSphereFace face = (QuadSphereFace)faceIndex;
+            for (int cd = 0; cd < chunkCountDepth; cd++)
+            {
+                for (int cv = 0; cv < chunkCountV; cv++)
+                {
+                    for (int cu = 0; cu < chunkCountU; cu++)
+                    {
+                        LoadChunk(new QuadSphereChunkKey(face, cu, cv, cd));
+                        generatedChunks++;
+                        if (Time.realtimeSinceStartup - frameStartedAt < frameBudgetSeconds)
+                            continue;
+
+                        loadingUI?.SetProgress(
+                            0.05f + 0.53f * generatedChunks / Mathf.Max(1f, expectedChunks),
+                            "正在生成星球体素");
+                        yield return null;
+                        frameStartedAt = Time.realtimeSinceStartup;
+                    }
+                }
+            }
+        }
+        bulkLoadingPlanet = false;
+
+        bool restoredFromSnapshot = loadingCompleteSnapshot;
+        bool restoredMeshSnapshot = loadingCompleteMeshSnapshot;
+        int processedMeshes = 0;
+        if (restoredMeshSnapshot)
+        {
+            foreach (KeyValuePair<QuadSphereChunkKey, VoxelQuadSphereChunk> pair in chunks)
+            {
+                if (!savedMeshCache.TryGetValue(pair.Key, out QuadSphereChunkSaveEntry entry)
+                    || !pair.Value.RestoreMesh(entry))
+                {
+                    restoredMeshSnapshot = false;
+                    Debug.LogWarning("VoxelQuadSphereWorld: mesh snapshot is incomplete; rebuilding meshes from voxels.", this);
+                    break;
+                }
+
+                processedMeshes++;
+
+                if (Time.realtimeSinceStartup - frameStartedAt < frameBudgetSeconds)
+                    continue;
+
+                loadingUI?.SetProgress(
+                    0.58f + 0.36f * processedMeshes / Mathf.Max(1f, expectedChunks),
+                    "正在恢复星球网格与碰撞体");
+                yield return null;
+                frameStartedAt = Time.realtimeSinceStartup;
+            }
+        }
+
+        if (!restoredMeshSnapshot)
+        {
+            foreach (VoxelQuadSphereChunk chunk in chunks.Values)
+            {
+                chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, planetRadius, planetCenterLocal);
+                processedMeshes++;
+                if (Time.realtimeSinceStartup - frameStartedAt < frameBudgetSeconds)
+                    continue;
+
+                loadingUI?.SetProgress(
+                    0.58f + 0.36f * processedMeshes / Mathf.Max(1f, expectedChunks),
+                    "正在构建星球网格与碰撞体");
+                yield return null;
+                frameStartedAt = Time.realtimeSinceStartup;
+            }
+        }
+
+        modifiedChunkCache.Clear();
+        savedMeshCache.Clear();
+        loadingCompleteSnapshot = false;
+        loadingCompleteMeshSnapshot = false;
+        migrateSavedTerrainChanges = false;
+        previousTerrainSettings = null;
+        generationComplete = true;
+
+        float elapsedMilliseconds = (Time.realtimeSinceStartup - loadStartedAt) * 1000f;
+        string source = restoredMeshSnapshot
+            ? "complete mesh snapshot"
+            : restoredFromSnapshot ? "complete voxel snapshot" : "procedural generation";
+        Debug.Log(
+            $"VoxelQuadSphereWorld: incrementally loaded {chunks.Count} chunks from {source} in {elapsedMilliseconds:0} ms.",
             this);
     }
 

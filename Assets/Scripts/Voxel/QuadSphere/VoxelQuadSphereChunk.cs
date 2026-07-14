@@ -20,6 +20,9 @@ public class VoxelQuadSphereChunk
         Voxels = new byte[VoxelTypes.ChunkSize * VoxelTypes.ChunkSize * VoxelTypes.ChunkSize];
 
         viewObject = new GameObject($"QSChunk_{key.Face}_{key.ChunkU}_{key.ChunkV}_{key.ChunkDepth}");
+        // Thousands of runtime chunk objects changing every frame can corrupt the
+        // Unity 2022 Hierarchy tree state and add substantial editor-only overhead.
+        viewObject.hideFlags = HideFlags.HideInHierarchy;
         viewObject.transform.SetParent(parent, false);
         viewObject.transform.localPosition = Vector3.zero;
 

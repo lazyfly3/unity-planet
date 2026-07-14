@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -24,20 +24,13 @@ namespace LogTrack.Editor
             return true;
         }
 
-        [MenuItem("Tools/LogTrack/创建演示对象", false, 1005)]
-        public static void CreateDemoObject()
+        [MenuItem("Tools/LogTrack/创建 LogTrackSession", false, 1005)]
+        public static void CreateLogTrackSession()
         {
-            var runnerType = System.Type.GetType("LogTrackDemoRunner, Assembly-CSharp");
-            if (runnerType == null)
-            {
-                Debug.LogError("找不到 LogTrackDemoRunner。请确认 Assets/Scripts/LogTrackDemoRunner.cs 存在且编译通过。");
-                return;
-            }
-
-            var go = new GameObject("LogTrackDemo");
-            go.AddComponent(runnerType);
+            var go = new GameObject("LogTrackSession");
+            var session = go.AddComponent<LogTrackSession>();
             Selection.activeGameObject = go;
-            Debug.Log("已创建 LogTrackDemo。请先执行「插入日志代码」，再点击 Play。");
+            Debug.Log($"已创建 LogTrackSession，RingBuffer={session.RingBufferSize}。请先执行「插入日志代码」，再点击 Play。");
         }
     }
 
@@ -57,14 +50,18 @@ namespace LogTrack.Editor
         {
             DrawUsageHelp();
 
-            m_tabIndex = GUILayout.SelectionGrid(m_tabIndex, new[] { "导出日志文本", "插入日志代码" }, 2, EditorStyles.toolbarButton);
+            m_tabIndex = GUILayout.SelectionGrid(m_tabIndex, new[] { "导出日志文本", "插入日志代码", "运行时设置" }, 3, EditorStyles.toolbarButton);
             if (m_tabIndex == 0)
             {
                 LogTrackExportPanel.OnGUI();
             }
-            else
+            else if (m_tabIndex == 1)
             {
                 LogTrackInsertPanel.OnGUI();
+            }
+            else
+            {
+                LogTrackRuntimePanel.OnGUI();
             }
         }
 
@@ -78,8 +75,9 @@ namespace LogTrack.Editor
 
             EditorGUILayout.HelpBox(
                 "① 插入日志代码：选择脚本目录，点击「插入日志代码」\n" +
-                "② 运行游戏：点击 Play，让游戏跑一会儿\n" +
-                "③ 导出日志：切到「导出日志文本」，选择日志和 Pdb 文件，点击「导出文本格式」",
+                "② 运行时设置：勾选「Play 时自动启动」（默认关闭）\n" +
+                "③ 运行游戏：点击 Play，无需手动挂组件\n" +
+                "④ 导出日志：停止 Play 后自动导出，或在「导出日志文本」页手动转换",
                 MessageType.Info);
         }
     }
@@ -87,7 +85,7 @@ namespace LogTrack.Editor
     internal static class LogTrackExportPanel
     {
         private static string s_logPath = string.Empty;
-        private static string s_pdbPath = "Assets/LogTrackGenerated/LogPdb.pdb.json";
+        private static string s_pdbPath = LogTrackSettings.DefaultPdbRelativePath;
         private static string s_logExpPath = string.Empty;
 
         public static void OnGUI()
@@ -105,7 +103,7 @@ namespace LogTrack.Editor
                 }
             }
 
-            s_pdbPath = EditorGUILayout.TextField("Pdb路径：", s_pdbPath);
+            s_pdbPath = EditorGUILayout.TextField("Pdb路径：", string.IsNullOrEmpty(s_pdbPath) ? LogTrackSettings.PdbRelativePath : s_pdbPath);
             if (GUILayout.Button("选择 Pdb 文件", GUILayout.Width(120)))
             {
                 var picked = EditorUtility.OpenFilePanel("选择 Pdb 文件", GetStartDirectory(s_pdbPath), "json");
@@ -195,28 +193,27 @@ namespace LogTrack.Editor
 
     internal static class LogTrackInsertPanel
     {
-        private static string s_baseDir = "Assets/Scripts";
-        private static string s_pdbDir = "Assets/LogTrackGenerated";
         private static string s_logTrackClass = "FSPDebuger";
         private static string s_logTrackMacro = "FSPDebuger";
-        private static string[] s_excludeFiles = { "Editor/PortalPrefabCreator.cs" };
+        private static string[] s_excludeFiles = { };
 
         public static void OnGUI()
         {
             EditorGUILayout.Space(4);
             EditorGUILayout.LabelField("自动在脚本函数里插入日志记录代码", EditorStyles.miniLabel);
 
-            s_baseDir = EditorGUILayout.TextField("目标目录：", s_baseDir);
+            var baseDir = EditorGUILayout.TextField("目标目录：", LogTrackSettings.InstrumentRoot);
             if (GUILayout.Button("选择脚本目录", GUILayout.Width(120)))
             {
-                var picked = EditorUtility.OpenFolderPanel("选择脚本目录", GetStartDirectory(s_baseDir), string.Empty);
+                var picked = EditorUtility.OpenFolderPanel("选择脚本目录", GetStartDirectory(baseDir), string.Empty);
                 if (!string.IsNullOrEmpty(picked))
                 {
-                    s_baseDir = ToProjectRelativePath(picked);
+                    baseDir = ToProjectRelativePath(picked);
+                    LogTrackSettings.InstrumentRoot = baseDir;
                 }
             }
 
-            s_pdbDir = EditorGUILayout.TextField("Pdb目录：", s_pdbDir);
+            var pdbDir = EditorGUILayout.TextField("Pdb目录：", LogTrackSettings.PdbOutputDir);
             s_logTrackClass = EditorGUILayout.TextField("LogTrack类：", s_logTrackClass);
             s_logTrackMacro = EditorGUILayout.TextField("替代宏：", s_logTrackMacro);
 
@@ -232,11 +229,11 @@ namespace LogTrack.Editor
             EditorGUILayout.Space(4);
             if (GUILayout.Button("从 LogTrackSetting.txt 加载配置"))
             {
-                var settingPath = Path.Combine(s_baseDir, "LogTrackSetting.txt");
+                var settingPath = Path.Combine(LogTrackSettings.InstrumentRoot, "LogTrackSetting.txt");
                 if (File.Exists(settingPath))
                 {
                     var setting = new LogTrackSetting();
-                    setting.Load(Path.GetFullPath(s_baseDir) + Path.DirectorySeparatorChar, "LogTrackSetting.txt");
+                    setting.Load(Path.GetFullPath(LogTrackSettings.InstrumentRoot) + Path.DirectorySeparatorChar, "LogTrackSetting.txt");
                     s_logTrackClass = setting.logTrackClass;
                     s_logTrackMacro = setting.logTrackMacro;
                     s_excludeFiles = setting.excludeFiles ?? System.Array.Empty<string>();
@@ -251,8 +248,12 @@ namespace LogTrack.Editor
             EditorGUILayout.Space(4);
             if (GUILayout.Button("插入日志代码"))
             {
-                var fullBase = Path.GetFullPath(s_baseDir) + Path.DirectorySeparatorChar;
-                var fullPdb = Path.GetFullPath(s_pdbDir) + Path.DirectorySeparatorChar;
+                LogTrackSettings.InstrumentRoot = baseDir;
+                LogTrackSettings.PdbOutputDir = pdbDir;
+                LogTrackSettings.PdbRelativePath = Path.Combine(pdbDir, "LogPdb.pdb.json").Replace('\\', '/');
+
+                var fullBase = Path.GetFullPath(baseDir) + Path.DirectorySeparatorChar;
+                var fullPdb = Path.GetFullPath(pdbDir) + Path.DirectorySeparatorChar;
                 Directory.CreateDirectory(fullPdb);
 
                 FSPDebugerTool.InsertLogTrack(fullBase, fullPdb, s_logTrackClass, s_logTrackMacro, s_excludeFiles);
@@ -260,9 +261,9 @@ namespace LogTrack.Editor
                 Debug.Log("LogTrack 插桩完成，Pdb 输出到: " + fullPdb);
             }
 
-            if (GUILayout.Button("创建演示对象（用于快速测试）"))
+            if (GUILayout.Button("创建 LogTrackSession（用于快速测试）"))
             {
-                LogTrackEditorMenu.CreateDemoObject();
+                LogTrackEditorMenu.CreateLogTrackSession();
             }
         }
 
@@ -293,6 +294,51 @@ namespace LogTrack.Editor
             }
 
             return absolutePath;
+        }
+    }
+
+    internal static class LogTrackRuntimePanel
+    {
+        public static void OnGUI()
+        {
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("Play 时自动启动（默认关闭，开启后无需手动挂组件）", EditorStyles.miniLabel);
+
+            EditorGUILayout.HelpBox(
+                "勾选后，点击 Play 会自动创建 [LogTrack Auto Runner] 并开始记录。\n" +
+                "Ring Buffer = 循环队列保留的最近帧数。数值越大，能回溯的历史越长，内存占用也越高。",
+                MessageType.Info);
+
+            LogTrackProjectSettings.AutoStartOnPlay = EditorGUILayout.Toggle(
+                "Play 时自动启动",
+                LogTrackProjectSettings.AutoStartOnPlay);
+
+            LogTrackProjectSettings.ExportOnStop = EditorGUILayout.Toggle(
+                "停止 Play 时自动导出",
+                LogTrackProjectSettings.ExportOnStop);
+
+            var ringBuffer = LogTrackProjectSettings.RingBufferSize;
+            ringBuffer = EditorGUILayout.IntSlider(
+                "Ring Buffer Size",
+                ringBuffer,
+                LogTrackSettings.MinRingBufferSize,
+                LogTrackSettings.MaxRingBufferSize);
+
+            if (ringBuffer != LogTrackProjectSettings.RingBufferSize)
+            {
+                LogTrackProjectSettings.RingBufferSize = ringBuffer;
+            }
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("高级（可选）", EditorStyles.miniLabel);
+            EditorGUILayout.HelpBox(
+                "若关闭自动启动，或需要 per-scene 独立配置，可手动创建 LogTrackSession。",
+                MessageType.None);
+
+            if (GUILayout.Button("创建 LogTrackSession（手动模式）"))
+            {
+                LogTrackEditorMenu.CreateLogTrackSession();
+            }
         }
     }
 }

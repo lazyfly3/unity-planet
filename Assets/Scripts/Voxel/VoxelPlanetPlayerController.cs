@@ -47,6 +47,11 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     bool galaxyTransitionRequested;
 
     public bool IsGrounded { get; private set; }
+    public float LookSpeed
+    {
+        get => lookSpeed;
+        set => lookSpeed = Mathf.Clamp(value, 0.2f, 5f);
+    }
 
     public void TeleportTo(Vector3 worldPosition, Quaternion worldRotation)
     {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(70);
@@ -55,8 +60,11 @@ public class VoxelPlanetPlayerController : MonoBehaviour
 
         body.position = worldPosition;
         body.rotation = worldRotation;
-        body.velocity = Vector3.zero;
-        body.angularVelocity = Vector3.zero;
+        if (!body.isKinematic)
+        {
+            body.velocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+        }
 
         smoothUp = GetTargetUp(worldPosition);
         previousUp = smoothUp;

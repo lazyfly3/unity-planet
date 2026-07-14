@@ -21,6 +21,7 @@ public sealed class GalaxyPlanetDefinition
     public List<HarvestableResourceSpawnSettings> resourceSpawnSettings = new List<HarvestableResourceSpawnSettings>();
 }
 
+[DefaultExecutionOrder(-1000)]
 public sealed class GalaxyTravelManager : MonoBehaviour
 {
     const int PlanetSaveMagic = 0x504C4E54;
@@ -44,6 +45,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     bool transitionInProgress;
     List<InventorySlot> inventorySnapshot;
     int selectedInventorySlot;
+    GalaxySaveSlotMetadata activeSlotMetadata;
 
     public static GalaxyTravelManager Instance => instance;
     public IReadOnlyList<GalaxyPlanetDefinition> Planets => planets;
@@ -63,7 +65,14 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         instance = this;
         DontDestroyOnLoad(gameObject);
         CreateDefaultGalaxy();
+        LoadActiveSaveSlot();
+        ApplyWorldSeed(activeSlotMetadata.worldSeed);
+        currentPlanetId = string.IsNullOrWhiteSpace(activeSlotMetadata.currentPlanetId)
+            ? "origin"
+            : activeSlotMetadata.currentPlanetId;
         InitializePlanetLayout();
+        RestoreShipPositionFromMetadata();
+        LoadInventoryFromMetadata();
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
@@ -73,14 +82,21 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
+    void Start()
+    {
+        ConfigureSurfaceScene(SceneManager.GetActiveScene());
+    }
+
     void OnApplicationQuit()
     {
-        if (SceneManager.GetActiveScene().name != surfaceSceneName)
-            return;
-
-        VoxelQuadSphereWorld world = FindObjectOfType<VoxelQuadSphereWorld>();
-        if (world != null)
-            SavePlanet(world);
+        if (SceneManager.GetActiveScene().name == surfaceSceneName)
+        {
+            VoxelQuadSphereWorld world = FindObjectOfType<VoxelQuadSphereWorld>();
+            if (world != null)
+                SavePlanet(world);
+            CaptureInventory();
+        }
+        SaveActiveSlotMetadata();
     }
 
     public void OpenGalaxyMap(VoxelQuadSphereWorld world)
@@ -93,6 +109,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         GalaxyPlanetDefinition current = CurrentPlanet;
         if (current != null)
             shipGridPosition = current.gridPosition;
+        SaveActiveSlotMetadata();
 
         transitionInProgress = true;
         SceneManager.LoadScene(mapSceneName, LoadSceneMode.Single);
@@ -103,6 +120,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         shipGridPosition = new Vector2Int(
             Mathf.Clamp(shipGridPosition.x + delta.x, 0, GridColumns - 1),
             Mathf.Clamp(shipGridPosition.y + delta.y, 0, GridRows - 1));
+        activeSlotMetadata.shipGridX = shipGridPosition.x;
+        activeSlotMetadata.shipGridY = shipGridPosition.y;
     }
 
     public GalaxyPlanetDefinition GetPlanetAt(Vector2Int gridPosition)
@@ -123,6 +142,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
         currentPlanetId = planet.planetId;
         shipGridPosition = planet.gridPosition;
+        SaveActiveSlotMetadata();
         transitionInProgress = true;
         SceneManager.LoadScene(surfaceSceneName, LoadSceneMode.Single);
     }
@@ -130,6 +150,29 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         transitionInProgress = false;
+        ConfigureSurfaceScene(scene);
+    }
+
+    public void ReturnToMainMenu(string startMenuSceneName)
+    {
+        if (transitionInProgress)
+            return;
+
+        VoxelQuadSphereWorld world = FindObjectOfType<VoxelQuadSphereWorld>();
+        if (world != null)
+            SavePlanet(world);
+        CaptureInventory();
+        SaveActiveSlotMetadata();
+
+        transitionInProgress = true;
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        instance = null;
+        Destroy(gameObject);
+        SceneManager.LoadScene(startMenuSceneName, LoadSceneMode.Single);
+    }
+
+    void ConfigureSurfaceScene(Scene scene)
+    {
         if (scene.name != surfaceSceneName)
             return;
 
@@ -154,6 +197,12 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
     void SavePlanet(VoxelQuadSphereWorld world)
     {
+        if (!world.IsGenerationComplete)
+        {
+            Debug.LogWarning("GalaxyTravelManager: skipped saving because planet generation is incomplete.", world);
+            return;
+        }
+
         GalaxyPlanetDefinition planet = CurrentPlanet;
         if (planet == null)
             return;
@@ -819,6 +868,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
         inventorySnapshot = inventory.CreateSnapshot();
         selectedInventorySlot = inventory.SelectedSlotIndex;
+        activeSlotMetadata.inventory = SerializeInventory(inventorySnapshot);
+        activeSlotMetadata.selectedInventorySlot = selectedInventorySlot;
     }
 
     void RestoreInventory()
@@ -833,7 +884,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
     string GetSaveDirectory()
     {
-        return Path.Combine(Application.persistentDataPath, "galaxy_planets");
+        return GalaxySaveSlotService.GetPlanetsDirectory(activeSlotMetadata.slotId);
     }
 
     string GetPlanetSavePath(string planetId)
@@ -844,6 +895,193 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     string GetLegacyPlanetSavePath(string planetId)
     {
         return Path.Combine(GetSaveDirectory(), planetId + ".json");
+    }
+
+    void LoadActiveSaveSlot()
+    {
+        string selectedSlotId = GalaxyLaunchContext.SelectedSlotId;
+        if (!string.IsNullOrEmpty(selectedSlotId))
+        {
+            try
+            {
+                activeSlotMetadata = GalaxySaveSlotService.LoadMetadata(selectedSlotId);
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogError($"GalaxyTravelManager: could not open save slot '{selectedSlotId}'. {exception.Message}", this);
+            }
+        }
+
+        if (activeSlotMetadata == null)
+        {
+            activeSlotMetadata = GalaxySaveSlotService.GetOrCreateDevelopmentSlot();
+            GalaxyLaunchContext.SelectSlot(activeSlotMetadata.slotId);
+        }
+    }
+
+    void ApplyWorldSeed(int worldSeed)
+    {
+        galaxyLayoutSeed = DeriveSeed(worldSeed, "galaxy-layout");
+        foreach (GalaxyPlanetDefinition planet in planets)
+            planet.seed = DeriveSeed(worldSeed, planet.planetId);
+    }
+
+    void RestoreShipPositionFromMetadata()
+    {
+        Vector2Int savedPosition = new Vector2Int(activeSlotMetadata.shipGridX, activeSlotMetadata.shipGridY);
+        if (savedPosition.x >= 0 && savedPosition.x < gridColumns
+            && savedPosition.y >= 0 && savedPosition.y < gridRows)
+        {
+            shipGridPosition = savedPosition;
+        }
+    }
+
+    void SaveActiveSlotMetadata()
+    {
+        if (activeSlotMetadata == null)
+            return;
+        activeSlotMetadata.currentPlanetId = currentPlanetId;
+        activeSlotMetadata.shipGridX = shipGridPosition.x;
+        activeSlotMetadata.shipGridY = shipGridPosition.y;
+        activeSlotMetadata.selectedInventorySlot = selectedInventorySlot;
+        if (inventorySnapshot != null)
+            activeSlotMetadata.inventory = SerializeInventory(inventorySnapshot);
+
+        try
+        {
+            GalaxySaveSlotService.SaveMetadata(activeSlotMetadata);
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogError($"GalaxyTravelManager: could not save slot metadata. {exception.Message}", this);
+        }
+    }
+
+    void LoadInventoryFromMetadata()
+    {
+        selectedInventorySlot = activeSlotMetadata.selectedInventorySlot;
+        if (activeSlotMetadata.inventory == null || activeSlotMetadata.inventory.Length == 0)
+            return;
+
+        inventorySnapshot = new List<InventorySlot>(activeSlotMetadata.inventory.Length);
+        var definitions = new Dictionary<string, InventoryItem>();
+        foreach (GalaxyInventorySaveEntry entry in activeSlotMetadata.inventory)
+        {
+            var slot = new InventorySlot();
+            if (entry != null && !string.IsNullOrEmpty(entry.itemId) && entry.amount > 0)
+            {
+                if (!definitions.TryGetValue(entry.itemId, out InventoryItem item))
+                {
+                    Sprite icon = DecodeInventoryIcon(entry.iconPngBase64, entry.itemId);
+                    item = InventoryItem.GetOrCreateRuntime(entry.itemId, entry.displayName, icon, entry.maxStack);
+                    definitions.Add(entry.itemId, item);
+                }
+                slot.Set(item, entry.amount);
+            }
+            inventorySnapshot.Add(slot);
+        }
+    }
+
+    GalaxyInventorySaveEntry[] SerializeInventory(IReadOnlyList<InventorySlot> slots)
+    {
+        if (slots == null)
+            return System.Array.Empty<GalaxyInventorySaveEntry>();
+
+        var previousIcons = new Dictionary<string, string>();
+        if (activeSlotMetadata.inventory != null)
+        {
+            foreach (GalaxyInventorySaveEntry previous in activeSlotMetadata.inventory)
+                if (previous != null && !string.IsNullOrEmpty(previous.itemId) && !string.IsNullOrEmpty(previous.iconPngBase64))
+                    previousIcons[previous.itemId] = previous.iconPngBase64;
+        }
+
+        var result = new GalaxyInventorySaveEntry[slots.Count];
+        for (int i = 0; i < slots.Count; i++)
+        {
+            InventorySlot slot = slots[i];
+            var entry = new GalaxyInventorySaveEntry();
+            if (slot != null && !slot.IsEmpty)
+            {
+                entry.itemId = slot.item.ItemId;
+                entry.displayName = slot.item.DisplayName;
+                entry.maxStack = slot.item.MaxStack;
+                entry.amount = slot.amount;
+                if (!previousIcons.TryGetValue(entry.itemId, out entry.iconPngBase64))
+                    entry.iconPngBase64 = EncodeInventoryIcon(slot.item.Icon);
+            }
+            result[i] = entry;
+        }
+        return result;
+    }
+
+    static string EncodeInventoryIcon(Sprite icon)
+    {
+        if (icon == null || icon.texture == null)
+            return string.Empty;
+        RenderTexture temporary = RenderTexture.GetTemporary(icon.texture.width, icon.texture.height, 0, RenderTextureFormat.ARGB32);
+        RenderTexture previous = RenderTexture.active;
+        try
+        {
+            Graphics.Blit(icon.texture, temporary);
+            RenderTexture.active = temporary;
+            var readable = new Texture2D(temporary.width, temporary.height, TextureFormat.RGBA32, false);
+            readable.ReadPixels(new Rect(0, 0, temporary.width, temporary.height), 0, 0);
+            readable.Apply();
+            byte[] png = readable.EncodeToPNG();
+            Destroy(readable);
+            return System.Convert.ToBase64String(png);
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogWarning("GalaxyTravelManager: could not encode an inventory icon. " + exception.Message);
+            return string.Empty;
+        }
+        finally
+        {
+            RenderTexture.active = previous;
+            RenderTexture.ReleaseTemporary(temporary);
+        }
+    }
+
+    static Sprite DecodeInventoryIcon(string base64, string itemId)
+    {
+        if (string.IsNullOrEmpty(base64))
+            return null;
+        try
+        {
+            byte[] png = System.Convert.FromBase64String(base64);
+            var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false)
+            {
+                name = $"SavedIcon_{itemId}",
+                filterMode = FilterMode.Point,
+                hideFlags = HideFlags.DontUnloadUnusedAsset
+            };
+            if (!texture.LoadImage(png))
+            {
+                Destroy(texture);
+                return null;
+            }
+            Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f);
+            sprite.name = $"SavedIcon_{itemId}";
+            sprite.hideFlags = HideFlags.DontUnloadUnusedAsset;
+            return sprite;
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogWarning("GalaxyTravelManager: could not restore an inventory icon. " + exception.Message);
+            return null;
+        }
+    }
+
+    static int DeriveSeed(int worldSeed, string key)
+    {
+        unchecked
+        {
+            uint hash = 2166136261u ^ (uint)worldSeed;
+            for (int i = 0; i < key.Length; i++)
+                hash = (hash ^ key[i]) * 16777619u;
+            return (int)(hash == 0 ? 1u : hash);
+        }
     }
 
     void CreateDefaultGalaxy()

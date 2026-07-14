@@ -20,8 +20,8 @@ namespace LogTrack.Editor
         {
             if (!LogTrackProjectSettings.AutoInstrumentOnCompile || s_running) return;
 
-            var scriptsRoot = Path.GetFullPath(LogTrackProjectSettings.InstrumentRoot);
-            var pdbDir = Path.GetFullPath(LogTrackProjectSettings.PdbOutputDir);
+            var scriptsRoot = Path.GetFullPath(LogTrackSettings.InstrumentRoot);
+            var pdbDir = Path.GetFullPath(LogTrackSettings.PdbOutputDir);
             if (!Directory.Exists(scriptsRoot))
             {
                 Debug.LogWarning("LogTrack 自动插桩跳过：目录不存在 " + scriptsRoot);
@@ -50,16 +50,32 @@ namespace LogTrack.Editor
 
     public static class LogTrackProjectSettings
     {
-        private const string PrefKey = "LogTrack.AutoInstrumentOnCompile";
+        private const string PrefKeyAutoInstrument = "LogTrack.AutoInstrumentOnCompile";
 
         public static bool AutoInstrumentOnCompile
         {
-            get => EditorPrefs.GetBool(PrefKey, false);
-            set => EditorPrefs.SetBool(PrefKey, value);
+            get => EditorPrefs.GetBool(PrefKeyAutoInstrument, false);
+            set => EditorPrefs.SetBool(PrefKeyAutoInstrument, value);
         }
 
-        public const string InstrumentRoot = "Assets/Scripts";
-        public const string PdbOutputDir = "Assets/LogTrackGenerated";
+        public static int RingBufferSize
+        {
+            get => LogTrackSettings.DefaultRingBufferSize;
+            set => LogTrackSettings.DefaultRingBufferSize = value;
+        }
+
+        public static bool AutoStartOnPlay
+        {
+            get => LogTrackSettings.AutoStartOnPlay;
+            set => LogTrackSettings.AutoStartOnPlay = value;
+        }
+
+        public static bool ExportOnStop
+        {
+            get => LogTrackSettings.ExportOnStop;
+            set => LogTrackSettings.ExportOnStop = value;
+        }
+
         public const string LogTrackClass = "FSPDebuger";
         public const string LogTrackMacro = "FSPDebuger";
         public static readonly string[] ExcludeFiles = { };

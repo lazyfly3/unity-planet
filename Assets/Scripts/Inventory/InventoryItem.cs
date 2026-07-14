@@ -26,7 +26,14 @@ public sealed class InventoryItem : ScriptableObject
     {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(32, (int)itemMaxStack);
         id = string.IsNullOrWhiteSpace(id) ? "item" : id.Trim();
         if (RuntimeItems.TryGetValue(id, out InventoryItem existing) && existing != null)
+        {
+            if (!string.IsNullOrWhiteSpace(name))
+                existing.displayName = name.Trim();
+            if (itemIcon != null)
+                existing.icon = itemIcon;
+            existing.maxStack = Mathf.Max(1, itemMaxStack);
             return existing;
+        }
 
         InventoryItem item = CreateInstance<InventoryItem>();
         item.name = $"RuntimeItem_{id}";

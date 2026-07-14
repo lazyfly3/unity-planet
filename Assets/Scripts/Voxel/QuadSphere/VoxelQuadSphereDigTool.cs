@@ -17,7 +17,7 @@ public class VoxelQuadSphereDigTool : MonoBehaviour
 
     void Update()
     {
-        if (quadSphereWorld == null || digCamera == null)
+        if (quadSphereWorld == null || digCamera == null || PauseMenuController.IsPaused)
             return;
 
         if (Input.GetMouseButton(0))

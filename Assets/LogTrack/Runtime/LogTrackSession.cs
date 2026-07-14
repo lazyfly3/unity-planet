@@ -1,22 +1,40 @@
 using UnityEngine;
 
 /// <summary>
-/// 可选运行时引导：挂到场景空物体上即可开始记录 LogTrack。
-/// 使用前需先通过 Tools/LogTrack 对业务脚本插桩。
+/// 可选手动引导：当关闭「Play 时自动启动」时使用，或需要 per-scene 独立配置时使用。
+/// 场景里已有 LogTrackSession 时，自动启动会被跳过。
 /// </summary>
 public class LogTrackSession : MonoBehaviour
 {
-    [SerializeField] private int ringBufferSize = 100;
+    [SerializeField]
+    [Tooltip("保留最近多少帧的 LogTrack 记录。可在 Tools/LogTrack 工具窗口设置项目默认值。")]
+    private int ringBufferSize = LogTrackSettings.DefaultRingBufferSizeFallback;
+
     [SerializeField] private bool exportOnDestroy = true;
-    [SerializeField] private string pdbRelativePath = "Assets/LogTrackGenerated/LogPdb.pdb.json";
+    [SerializeField] private string pdbRelativePath = LogTrackSettings.DefaultPdbRelativePath;
 
     private int m_frameIndex;
+    private bool m_exported;
+
+    public int RingBufferSize => ringBufferSize;
+
+    private void Reset()
+    {
+        ringBufferSize = LogTrackSettings.DefaultRingBufferSize;
+    }
+
+    private void OnValidate()
+    {
+        ringBufferSize = LogTrackSettings.ClampRingBufferSize(ringBufferSize);
+    }
 
     private void Start()
     {
+        ringBufferSize = LogTrackSettings.ClampRingBufferSize(ringBufferSize);
         FSPDebuger.TrackBufferSize = ringBufferSize;
         FSPDebuger.BeginTrack(ringBufferSize);
-        Debug.Log($"LogTrack 已启动，RingBuffer={ringBufferSize}");
+        Application.quitting += ExportIfNeeded;
+        Debug.Log($"LogTrack 已启动（LogTrackSession），RingBuffer={ringBufferSize}");
     }
 
     private void Update()
@@ -27,10 +45,18 @@ public class LogTrackSession : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (!exportOnDestroy || !FSPDebuger.EnableLogTrackInternal)
+        Application.quitting -= ExportIfNeeded;
+        ExportIfNeeded();
+    }
+
+    private void ExportIfNeeded()
+    {
+        if (m_exported || !exportOnDestroy || !FSPDebuger.EnableLogTrackInternal)
         {
             return;
         }
+
+        m_exported = true;
 
         var binPath = FSPDebuger.SaveTrack();
         if (!string.IsNullOrEmpty(binPath))
@@ -48,8 +74,7 @@ public class LogTrackSession : MonoBehaviour
     [ContextMenu("Export LogTrack Now")]
     private void ExportNow()
     {
-        var binPath = FSPDebuger.SaveTrack();
-        var textPath = FSPDebuger.SaveTrackAsText(pdbRelativePath);
-        Debug.Log($"LogTrack 手动导出: bin={binPath}, log={textPath}");
+        m_exported = false;
+        ExportIfNeeded();
     }
 }
