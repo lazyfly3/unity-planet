@@ -1,14 +1,14 @@
 using UnityEngine;
 
 /// <summary>
-/// Play 后自动创建 LogTrack 运行时，无需手动挂 LogTrackSession。
+/// Play 后自动创建 LogTrack PhaseDriver，无需手动挂组件。
 /// </summary>
 public static class LogTrackRuntimeBootstrap
 {
-    private const string AutoRunnerName = "[LogTrack Auto Runner]";
+    private const string DriverObjectName = "[LogTrack Phase Driver]";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void EnsureAutoRunner()
+    private static void EnsurePhaseDriver()
     {
         if (!LogTrackSettings.AutoStartOnPlay)
         {
@@ -20,13 +20,12 @@ public static class LogTrackRuntimeBootstrap
             return;
         }
 
-        if (Object.FindObjectOfType<LogTrackAutoRunner>() != null)
+        if (Object.FindObjectOfType<LogTrackPhaseDriver>() != null)
         {
             return;
         }
 
-        var go = new GameObject(AutoRunnerName);
-        Object.DontDestroyOnLoad(go);
-        go.AddComponent<LogTrackAutoRunner>();
+        var go = new GameObject(DriverObjectName);
+        go.AddComponent<LogTrackPhaseDriver>();
     }
 }

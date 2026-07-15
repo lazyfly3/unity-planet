@@ -48,33 +48,36 @@ public sealed class StartMenuController : MonoBehaviour
     }
 
     public void ShowMainPage()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(78);}
         titleImage.SetActive(true);
         mainPanel.SetActive(true);
         saveBrowserPanel.SetActive(false);
         CloseDialogs();
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void ShowSaveBrowser()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(79);}
         titleImage.SetActive(false);
         mainPanel.SetActive(false);
         saveBrowserPanel.SetActive(true);
         CloseDialogs();
         RefreshSaveList();
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void OpenCreateDialog()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(80);}
         CloseDialogs();
         createNameInput.text = "新的世界";
         createSeedInput.text = string.Empty;
         createDialog.SetActive(true);
         createNameInput.ActivateInputField();
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void ConfirmCreate()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(81);}
         int? seed = null;
         string seedText = createSeedInput.text.Trim();
         if (seedText.Length > 0)
@@ -97,20 +100,22 @@ public sealed class StartMenuController : MonoBehaviour
         {
             SetStatus("创建存档失败：" + exception.Message);
         }
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void OpenRenameDialog()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(82);}
         if (!HasUsableSelection())
             return;
         CloseDialogs();
         renameInput.text = selectedRow.Slot.DisplayName;
         renameDialog.SetActive(true);
         renameInput.ActivateInputField();
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void ConfirmRename()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(83);}
         if (!HasUsableSelection())
             return;
         try
@@ -123,19 +128,21 @@ public sealed class StartMenuController : MonoBehaviour
         {
             SetStatus("重命名失败：" + exception.Message);
         }
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void OpenDeleteDialog()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(84);}
         if (selectedRow == null)
             return;
         CloseDialogs();
         deleteMessageText.text = $"确定永久删除“{selectedRow.Slot.DisplayName}”吗？\n此操作无法撤销。";
         deleteDialog.SetActive(true);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void ConfirmDelete()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(85);}
         if (selectedRow == null)
             return;
         try
@@ -148,31 +155,35 @@ public sealed class StartMenuController : MonoBehaviour
         {
             SetStatus("删除存档失败：" + exception.Message);
         }
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void EnterSelectedWorld()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(86);}
         if (!HasUsableSelection())
             return;
         GalaxyLaunchContext.SelectSlot(selectedRow.Slot.SlotId);
         SceneManager.LoadScene(surfaceSceneName, LoadSceneMode.Single);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void CloseDialogs()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(87);}
         createDialog.SetActive(false);
         renameDialog.SetActive(false);
         deleteDialog.SetActive(false);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void SelectSlot(StartMenuSaveRow row)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(88);}
         selectedRow = row;
         foreach (StartMenuSaveRow candidate in rows)
             candidate.SetSelected(candidate == row);
         RefreshActionState();
         SetStatus(row.Slot.IsCorrupt ? row.Slot.Error : string.Empty);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     void RefreshSaveList()
     {

@@ -29,8 +29,10 @@ public static class LogTrackCSharp
     private static Regex ms_regexLogTrackCode;
     private static Regex ms_regexLogTrackMacro;
     private static readonly Regex ms_regexLeftBrace = new Regex(@"\{");
-    private static readonly Regex ms_regexValidType = new Regex(@"\b(long|ulong|int|uint|short|ushort|byte|float|double|bool)\b");
     private static readonly Regex ms_regexNumber = new Regex(@"\d+");
+    private static readonly Regex ms_regexValidType = new Regex(@"\b(long|ulong|int|uint|short|ushort|byte|float|double|bool)\b");
+    private static readonly Regex ms_regexClassName = new Regex(@"\bclass\s+(\w+)");
+    private static readonly Regex ms_regexNamespace = new Regex(@"\bnamespace\s+([\w\.]+)");
 
     static LogTrackCSharp()
     {
@@ -80,12 +82,80 @@ public static class LogTrackCSharp
             int len = matchFuncAll.Index + matchFuncAll.Length - (matchLeftBrace.Index + matchLeftBrace.Length);
             var matchFirstCode = ms_regexFirstCode.Match(text, matchLeftBrace.Index + matchLeftBrace.Length, len);
             if (!matchFirstCode.Success) continue;
-            if (ms_regexLogTrackCode.IsMatch(matchFirstCode.Value)) continue;
+            var funcSlice = text.Substring(matchFuncAll.Index, matchFuncAll.Length);
+            if (funcSlice.Contains(ms_logTrackClass + ".LogTrack"))
+            {
+                continue;
+            }
             if (ms_regexLogTrackCodeIgnore.IsMatch(matchFirstCode.Value)) continue;
+
+            var popCode = "\n    if(" + ms_logTrackClass + ".EnableLogTrackInternal)" + ms_logTrackClass + ".PopDepth();";
+            if (!text.Substring(matchFuncAll.Index, matchFuncAll.Length).Contains(".PopDepth()"))
+            {
+                var insertPopAt = matchFuncAll.Index + matchFuncAll.Length - 1;
+                text = text.Insert(insertPopAt, popCode);
+            }
 
             var textLogCode = GetLogTrackCode(matchFuncHead.Value);
             text = text.Insert(matchLeftBrace.Index + matchLeftBrace.Length, textLogCode);
+
             hasChanged = true;
+        }
+
+        if (hasChanged)
+        {
+            File.WriteAllText(fullPath, text);
+        }
+
+        EnsureDepthHooks(ref text, fullPath);
+    }
+
+    /// <summary>为已插桩但缺少 PushDepth/PopDepth 的函数补齐 depth 钩子。</summary>
+    private static void EnsureDepthHooks(ref string text, string fullPath)
+    {
+        var matches = ms_regexFuncAll.Matches(text);
+        var hasChanged = false;
+
+        for (int i = matches.Count - 1; i >= 0; i--)
+        {
+            var matchFuncAll = matches[i];
+            var funcStart = matchFuncAll.Index;
+            var funcLen = matchFuncAll.Length;
+            var funcBody = text.Substring(funcStart, funcLen);
+            if (!funcBody.Contains(ms_logTrackClass + ".LogTrack")) continue;
+
+            var newBody = funcBody;
+            if (!newBody.Contains(".PopDepth()"))
+            {
+                var popCode = "\n    if(" + ms_logTrackClass + ".EnableLogTrackInternal)" + ms_logTrackClass + ".PopDepth();";
+                newBody = newBody.Insert(newBody.Length - 1, popCode);
+            }
+
+            if (!newBody.Contains(".PushDepth()"))
+            {
+                var legacy = "if(" + ms_logTrackClass + ".EnableLogTrackInternal)" + ms_logTrackClass + ".LogTrack";
+                var wrapped = "if(" + ms_logTrackClass + ".EnableLogTrackInternal){" + ms_logTrackClass + ".PushDepth();" + ms_logTrackClass + ".LogTrack";
+                if (newBody.Contains(legacy))
+                {
+                    var idx = newBody.IndexOf(legacy, StringComparison.Ordinal);
+                    newBody = newBody.Substring(0, idx) + wrapped + newBody.Substring(idx + legacy.Length);
+                    var logPos = newBody.IndexOf(ms_logTrackClass + ".LogTrack", StringComparison.Ordinal);
+                    if (logPos >= 0)
+                    {
+                        var semi = newBody.IndexOf(");", logPos, StringComparison.Ordinal);
+                        if (semi >= 0 && semi + 2 < newBody.Length && newBody[semi + 2] != '}')
+                        {
+                            newBody = newBody.Insert(semi + 2, "}");
+                        }
+                    }
+                }
+            }
+
+            if (newBody != funcBody)
+            {
+                text = text.Remove(funcStart, funcLen).Insert(funcStart, newBody);
+                hasChanged = true;
+            }
         }
 
         if (hasChanged)
@@ -96,7 +166,7 @@ public static class LogTrackCSharp
 
     private static string GetLogTrackCode(string textFuncHead)
     {
-        string code = "if(" + ms_logTrackClass + ".EnableLogTrackInternal)" + ms_logTrackClass + ".LogTrack(0";
+        string code = "if(" + ms_logTrackClass + ".EnableLogTrackInternal){" + ms_logTrackClass + ".PushDepth();" + ms_logTrackClass + ".LogTrack(0";
 
         var match = ms_regexFuncParam.Match(textFuncHead);
         var tmp = match.Value.Substring(1, match.Value.Length - 2);
@@ -124,7 +194,7 @@ public static class LogTrackCSharp
             code += match0 == "bool" ? ", (" + name + "?1:0)" : ", (int)" + name;
         }
 
-        code += ");";
+        code += ");}";
         var matchFuncName = ms_regexFuncName.Match(textFuncHead);
         if (matchFuncName.Success)
         {
@@ -162,6 +232,8 @@ public static class LogTrackCSharp
         var fullPath = Path.Combine(baseDir, subPath.Replace('/', Path.DirectorySeparatorChar));
         if (!File.Exists(fullPath)) return;
 
+        var fileText = File.ReadAllText(fullPath);
+        var className = ExtractClassName(fileText, subPath);
         var lines = File.ReadAllLines(fullPath);
         var hasChanged = false;
         for (int i = 0; i < lines.Length; i++)
@@ -176,11 +248,16 @@ public static class LogTrackCSharp
             int.TryParse(matchLogHash.Value, out var hash);
             int argCnt = GetLogTrackArgCnt(matchLogCode.Value);
             var dbgStr = GetLogTrackDebugString(ref line, matchLogCode.Index + matchLogCode.Length);
+            var funcName = !string.IsNullOrEmpty(dbgStr) ? dbgStr : ExtractFuncNameFromLine(line);
+            if (string.IsNullOrEmpty(funcName))
+            {
+                funcName = ExtractFuncNameFromFileAtLine(fileText, i + 1);
+            }
 
             if ((hashType == LogHashType.NewHash && hash == 0) ||
                 (hashType == LogHashType.OldHash && hash != 0))
             {
-                int validHash = pdb.AddItem(hash, argCnt, subPath, i + 1, dbgStr);
+                int validHash = pdb.AddItem(hash, argCnt, subPath, i + 1, dbgStr, className, funcName);
                 if (validHash != hash)
                 {
                     line = line.Remove(matchLogHash.Index, matchLogHash.Length);
@@ -195,6 +272,45 @@ public static class LogTrackCSharp
         {
             File.WriteAllLines(fullPath, lines);
         }
+    }
+
+    private static string ExtractClassName(string fileText, string subPath)
+    {
+        var nsMatch = ms_regexNamespace.Match(fileText);
+        var classMatch = ms_regexClassName.Match(fileText);
+        var shortName = classMatch.Success ? classMatch.Groups[1].Value : Path.GetFileNameWithoutExtension(subPath);
+        if (nsMatch.Success)
+        {
+            return nsMatch.Groups[1].Value + "." + shortName;
+        }
+        return shortName;
+    }
+
+    private static string ExtractFuncNameFromLine(string line)
+    {
+        var a = line.IndexOf("/#", StringComparison.Ordinal);
+        var b = line.IndexOf("#/", StringComparison.Ordinal);
+        if (a >= 0 && b > a)
+        {
+            return line.Substring(a + 2, b - a - 2);
+        }
+        return string.Empty;
+    }
+
+    private static string ExtractFuncNameFromFileAtLine(string fileText, int lineNumber)
+    {
+        var lines = fileText.Split('\n');
+        var start = Math.Max(0, lineNumber - 40);
+        for (int i = lineNumber - 1; i >= start; i--)
+        {
+            var matchFuncHead = ms_regexFuncHead.Match(lines[i]);
+            if (!matchFuncHead.Success) continue;
+            var matchFuncName = ms_regexFuncName.Match(matchFuncHead.Value);
+            if (!matchFuncName.Success) continue;
+            return matchFuncName.Value.Substring(0, matchFuncName.Value.Length - 1);
+        }
+
+        return string.Empty;
     }
 
     private static int GetLogTrackArgCnt(string code)
@@ -280,6 +396,7 @@ public static class FSPDebugerTool
 {
     public static void InsertLogTrack(string baseDir, string pdbDir, string logTrackClass, string logTrackMacro, string[] excludeFiles = null)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         baseDir = baseDir.Replace('\\', '/');
         if (!baseDir.EndsWith("/")) baseDir += "/";
         pdbDir = pdbDir.Replace('\\', '/');
@@ -323,6 +440,8 @@ public static class FSPDebugerTool
         Directory.CreateDirectory(pdbDir);
         pdb.Save(pdbDir + "LogPdb.pdb.json");
         pdb.SaveAsCSV(pdbDir + "LogPdb.pdb.csv");
+        sw.Stop();
+        LogTrackBenchmark.RecordInsertMs(sw.Elapsed.TotalMilliseconds);
     }
 
     private static IEnumerable<string> LoadExternalFiles(string baseDir, string[] excludeFiles)

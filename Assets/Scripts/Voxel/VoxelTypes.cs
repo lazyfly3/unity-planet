@@ -13,49 +13,56 @@ public static class VoxelTypes
     public const byte Stone = 2;
 
     public static int ToIndex(int x, int y, int z)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(78, (int)x, (int)y, (int)z);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(113, (int)x, (int)y, (int)z);}
         return x + y * ChunkSize + z * ChunkSize * ChunkSize;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public static bool IsSolid(byte voxel)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(79, (int)voxel);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(114, (int)voxel);}
         return voxel != Air;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public static bool IsInsideHeight(int worldY)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(80, (int)worldY);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(115, (int)worldY);}
         return worldY >= MinWorldHeight && worldY < MaxWorldHeight;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public static Vector3Int WorldToChunkCoord(int worldX, int worldY, int worldZ)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(81, (int)worldX, (int)worldY, (int)worldZ);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(116, (int)worldX, (int)worldY, (int)worldZ);}
         return new Vector3Int(
             FloorDiv(worldX, ChunkSize),
             FloorDiv(worldY, ChunkSize),
             FloorDiv(worldZ, ChunkSize)
         );
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public static Vector3Int WorldToLocalCoord(int worldX, int worldY, int worldZ)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(82, (int)worldX, (int)worldY, (int)worldZ);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(117, (int)worldX, (int)worldY, (int)worldZ);}
         return new Vector3Int(
             Mod(worldX, ChunkSize),
             Mod(worldY, ChunkSize),
             Mod(worldZ, ChunkSize)
         );
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public static int FloorDiv(int value, int divisor)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(83, (int)value, (int)divisor);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(118, (int)value, (int)divisor);}
         if (value >= 0)
             return value / divisor;
 
         return (value - divisor + 1) / divisor;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public static int Mod(int value, int divisor)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(84, (int)value, (int)divisor);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(119, (int)value, (int)divisor);}
         int result = value % divisor;
         return result < 0 ? result + divisor : result;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 }

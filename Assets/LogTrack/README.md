@@ -1,36 +1,31 @@
 ﻿# LogTrack Unity 插件
 
-基于腾讯 IEG LogTrack 思路的复现版。复制本文件夹到任意 Unity 项目的 `Assets/LogTrack/` 即可使用。
+复制 `Assets/LogTrack/` 到 Unity 项目的 `Assets/LogTrack/` 即可。
 
-## 安装
+## 格式（Jacky 评审对齐）
 
-1. 复制 `Assets/LogTrack/` 到目标 Unity 项目
-2. （推荐）复制 `Assets/LogTrackGenerated/README.txt` 所在目录结构，或首次插桩时自动创建
-3. 用 Unity 2022.3+ 打开项目，等待编译完成
+- 每逻辑帧三个 Phase：`FixedUpdate` → `Update` → `LateUpdate`
+- 调用行：`0[---depth]Namespace.Class::Method(args)`（无 file/line）
+- 解析 JSON：`{ frameIndex, phases[{ phase, calls[{ depth, call }] }] }`
 
 ## 快速开始
 
-1. **Tools → LogTrack → 打开工具窗口 → 插入日志代码**
-   - 目标目录默认 `Assets/Scripts`（可在面板修改，会保存）
-   - Pdb 目录默认 `Assets/LogTrackGenerated`
-2. **Tools → LogTrack → 运行时设置**
-   - 勾选 **Play 时自动启动**（默认关闭）
-   - 调整 Ring Buffer Size
-3. 点击 **Play**，运行后 **Stop**
-4. 日志在 `Application.persistentDataPath/LogTrack/`
+1. **Tools → LogTrack → 插入日志代码**（默认 `Assets/Scripts` → `Assets/LogTrackGenerated/LogPdb.pdb.json`）
+2. **Tools → LogTrack → 运行时设置** → 勾选 **Play 时自动启动**
+3. Play → Stop → 日志在 `Application.persistentDataPath/LogTrack/`
 
-## 自动启动
+## 运行时驱动
 
-插件内置 `LogTrackRuntimeBootstrap`：开启「Play 时自动启动」后，会自动创建 `[LogTrack Auto Runner]`，无需手动挂组件。
+`LogTrackPhaseDriver` 在 Play 时自动创建（`LogTrackRuntimeBootstrap`），按 Unity game update 分段录制。
 
-也可手动创建 `LogTrackSession`（手动模式，优先级高于自动启动）。
-
-## 解析日志
+## 解析
 
 ```powershell
-python tools/logtrack/parse_logtrack.py --log <track.bin> --pdb Assets/LogTrackGenerated/LogPdb.pdb.json --md report.md
+python LogTrackUnity/tools/parse_logtrack.py --log <exported.log> --out analysis.json
+python LogTrackUnity/tools/demo_run.py
+python -m pytest LogTrackUnity/tools/test_parse_logtrack.py -q
 ```
 
-## 参考
+## Vulcan Batch
 
-- https://git.woa.com/kungfu/LogTrack
+`LogTrackBatch.InsertLogTrack` / `FindLatestTrackLog` 供 `logtrack_demo_run` BatchMode 调用。

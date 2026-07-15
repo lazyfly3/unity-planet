@@ -47,7 +47,7 @@ public sealed class PlayerInventory : MonoBehaviour
     }
 
     public int Add(InventoryItem item, int amount = 1)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(46, (int)amount);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(58, (int)amount);}
         if (item == null || amount <= 0)
             return amount;
 
@@ -74,10 +74,11 @@ public sealed class PlayerInventory : MonoBehaviour
 
         Changed?.Invoke();
         return amount;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public bool CanAdd(InventoryItem item, int amount = 1)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(47, (int)amount);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(59, (int)amount);}
         if (item == null || amount <= 0)
             return false;
 
@@ -95,10 +96,11 @@ public sealed class PlayerInventory : MonoBehaviour
         }
 
         return false;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public bool Remove(InventoryItem item, int amount = 1)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(48, (int)amount);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(60, (int)amount);}
         if (item == null || amount <= 0 || Count(item) < amount)
             return false;
 
@@ -117,19 +119,21 @@ public sealed class PlayerInventory : MonoBehaviour
 
         Changed?.Invoke();
         return true;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public int Count(InventoryItem item)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(49);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(61);}
         int total = 0;
         foreach (InventorySlot slot in slots)
             if (slot.item == item)
                 total += slot.amount;
         return total;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public List<InventorySlot> CreateSnapshot()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(53);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(62);}
         List<InventorySlot> snapshot = new List<InventorySlot>(slots.Count);
         foreach (InventorySlot slot in slots)
         {
@@ -139,10 +143,11 @@ public sealed class PlayerInventory : MonoBehaviour
         }
 
         return snapshot;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void RestoreSnapshot(IReadOnlyList<InventorySlot> snapshot, int selectedSlotIndex)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(54, (int)selectedSlotIndex);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(63, (int)selectedSlotIndex);}
         if (snapshot == null)
             return;
 
@@ -158,10 +163,11 @@ public sealed class PlayerInventory : MonoBehaviour
         SelectedSlotIndex = Mathf.Clamp(selectedSlotIndex, 0, Mathf.Max(0, HotbarSize - 1));
         Changed?.Invoke();
         SelectedSlotChanged?.Invoke(SelectedSlotIndex);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void MoveOrMerge(int from, int to)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(50, (int)from, (int)to);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(64, (int)from, (int)to);}
         if (!IsValid(from) || !IsValid(to) || from == to || slots[from].IsEmpty)
             return;
 
@@ -189,10 +195,11 @@ public sealed class PlayerInventory : MonoBehaviour
         }
 
         Changed?.Invoke();
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void SplitHalf(int from, int to)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(51, (int)from, (int)to);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(65, (int)from, (int)to);}
         if (!IsValid(from) || !IsValid(to) || from == to || slots[from].amount < 2 || !slots[to].IsEmpty)
             return;
 
@@ -200,22 +207,25 @@ public sealed class PlayerInventory : MonoBehaviour
         slots[to].Set(slots[from].item, moved);
         slots[from].amount -= moved;
         Changed?.Invoke();
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void SelectSlot(int index)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(52, (int)index);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(66, (int)index);}
         if (index < 0 || index >= HotbarSize || index == SelectedSlotIndex)
             return;
 
         SelectedSlotIndex = index;
         SelectedSlotChanged?.Invoke(index);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void UseSelectedItem()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(55);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(67);}
         if (SelectedSlot != null && !SelectedSlot.IsEmpty)
             ItemUsed?.Invoke(SelectedSlot.item);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     void EnsureSize()
     {

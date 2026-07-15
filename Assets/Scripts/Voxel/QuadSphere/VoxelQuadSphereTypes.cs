@@ -26,17 +26,19 @@ public struct QuadSphereVoxelAddress : IEquatable<QuadSphereVoxelAddress>
     }
 
     public bool Equals(QuadSphereVoxelAddress other)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(115);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(151);}
         return Face == other.Face && U == other.U && V == other.V && Depth == other.Depth;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public override bool Equals(object obj)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(116);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(152);}
         return obj is QuadSphereVoxelAddress other && Equals(other);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public override int GetHashCode()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(117);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(153);}
         unchecked
         {
             int hash = (int)Face;
@@ -45,7 +47,8 @@ public struct QuadSphereVoxelAddress : IEquatable<QuadSphereVoxelAddress>
             hash = (hash * 397) ^ Depth;
             return hash;
         }
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 }
 
 public struct QuadSphereChunkKey : IEquatable<QuadSphereChunkKey>
@@ -64,17 +67,19 @@ public struct QuadSphereChunkKey : IEquatable<QuadSphereChunkKey>
     }
 
     public bool Equals(QuadSphereChunkKey other)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(118);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(154);}
         return Face == other.Face && ChunkU == other.ChunkU && ChunkV == other.ChunkV && ChunkDepth == other.ChunkDepth;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public override bool Equals(object obj)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(119);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(155);}
         return obj is QuadSphereChunkKey other && Equals(other);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public override int GetHashCode()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(120);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(156);}
         unchecked
         {
             int hash = (int)Face;
@@ -83,5 +88,6 @@ public struct QuadSphereChunkKey : IEquatable<QuadSphereChunkKey>
             hash = (hash * 397) ^ ChunkDepth;
             return hash;
         }
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 }

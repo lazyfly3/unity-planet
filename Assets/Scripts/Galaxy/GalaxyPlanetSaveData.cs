@@ -20,6 +20,7 @@ public sealed class GalaxyPlanetSaveData
     public int resourceConfigurationHash;
     public GalaxyResourceSaveEntry[] resources;
     public GalaxyBuildingSaveEntry[] buildings;
+    public GalaxyRiverSaveData riverData;
 }
 
 [Serializable]

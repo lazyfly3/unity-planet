@@ -1,9 +1,13 @@
 using System;
 using System.Linq;
+#if !CONSOLE_DEMO
 using UnityEngine;
+#else
+using System.Text.Json;
+#endif
 
 /// <summary>
-/// Unity 兼容的 JSON 读写。Unity 2022 内置的 System.Text.Json 中 JsonSerializer 不可访问。
+/// Unity / Console 兼容的 JSON 读写。
 /// </summary>
 internal static class LogTrackJson
 {
@@ -13,6 +17,8 @@ internal static class LogTrackJson
         public int frameIndex;
         public int[] items;
         public int[] args;
+        public int[] depths;
+        public int[] phases;
     }
 
     [Serializable]
@@ -31,6 +37,8 @@ internal static class LogTrackJson
         public string file = string.Empty;
         public int line;
         public string dbgStr = string.Empty;
+        public string className = string.Empty;
+        public string funcName = string.Empty;
     }
 
     [Serializable]
@@ -47,12 +55,12 @@ internal static class LogTrackJson
             saveDateTime = file.saveDateTime ?? string.Empty,
             frames = file.frames?.Select(ToDto).ToArray() ?? Array.Empty<LogTrackFrameDto>()
         };
-        return JsonUtility.ToJson(dto);
+        return ToJson(dto);
     }
 
     public static LogTrackFile DeserializeLogTrackFile(string json)
     {
-        var dto = JsonUtility.FromJson<LogTrackFileDto>(json);
+        var dto = FromJson<LogTrackFileDto>(json);
         if (dto == null)
         {
             return null;
@@ -86,15 +94,17 @@ internal static class LogTrackJson
                 argCount = item.argCount,
                 file = item.file ?? string.Empty,
                 line = item.line,
-                dbgStr = item.dbgStr ?? string.Empty
+                dbgStr = item.dbgStr ?? string.Empty,
+                className = item.className ?? string.Empty,
+                funcName = item.funcName ?? string.Empty
             }).ToArray() ?? Array.Empty<LogTrackPdbItemDto>()
         };
-        return JsonUtility.ToJson(dto);
+        return ToJson(dto);
     }
 
     public static LogTrackPdbFile DeserializeLogTrackPdbFile(string json)
     {
-        var dto = JsonUtility.FromJson<LogTrackPdbFileDto>(json);
+        var dto = FromJson<LogTrackPdbFileDto>(json);
         if (dto == null)
         {
             return null;
@@ -105,14 +115,18 @@ internal static class LogTrackJson
         {
             foreach (var itemDto in dto.items)
             {
-                file.items.Add(new LogTrackPdbItem
+                var item = new LogTrackPdbItem
                 {
                     hash = itemDto.hash,
                     argCount = itemDto.argCount,
                     file = itemDto.file ?? string.Empty,
                     line = itemDto.line,
-                    dbgStr = itemDto.dbgStr ?? string.Empty
-                });
+                    dbgStr = itemDto.dbgStr ?? string.Empty,
+                    className = itemDto.className ?? string.Empty,
+                    funcName = itemDto.funcName ?? string.Empty
+                };
+                file.items.Add(item);
+                file.RegisterItem(item);
             }
         }
 
@@ -125,7 +139,9 @@ internal static class LogTrackJson
         {
             frameIndex = frame.frameIndex,
             items = frame.items?.Select(item => (int)item).ToArray() ?? Array.Empty<int>(),
-            args = frame.args?.ToArray() ?? Array.Empty<int>()
+            args = frame.args?.ToArray() ?? Array.Empty<int>(),
+            depths = frame.depths?.Select(d => (int)d).ToArray() ?? Array.Empty<int>(),
+            phases = frame.phases?.Select(p => (int)p).ToArray() ?? Array.Empty<int>()
         };
     }
 
@@ -149,6 +165,48 @@ internal static class LogTrackJson
             frame.args.AddRange(dto.args);
         }
 
+        if (dto.depths != null)
+        {
+            foreach (var depth in dto.depths)
+            {
+                frame.depths.Add((byte)depth);
+            }
+        }
+
+        if (dto.phases != null)
+        {
+            foreach (var phase in dto.phases)
+            {
+                frame.phases.Add((byte)phase);
+            }
+        }
+
         return frame;
+    }
+
+#if CONSOLE_DEMO
+    private static readonly JsonSerializerOptions ConsoleJsonOptions = new JsonSerializerOptions
+    {
+        WriteIndented = false,
+        IncludeFields = true,
+    };
+#endif
+
+    private static string ToJson<T>(T dto)
+    {
+#if CONSOLE_DEMO
+        return JsonSerializer.Serialize(dto, ConsoleJsonOptions);
+#else
+        return JsonUtility.ToJson(dto);
+#endif
+    }
+
+    private static T FromJson<T>(string json) where T : class
+    {
+#if CONSOLE_DEMO
+        return JsonSerializer.Deserialize<T>(json, ConsoleJsonOptions);
+#else
+        return JsonUtility.FromJson<T>(json);
+#endif
     }
 }

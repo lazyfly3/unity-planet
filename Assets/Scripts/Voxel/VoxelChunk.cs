@@ -37,12 +37,13 @@ public class VoxelChunk
     }
 
     public byte GetLocalVoxel(int x, int y, int z)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(62, (int)x, (int)y, (int)z);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(97, (int)x, (int)y, (int)z);}
         return Voxels[VoxelTypes.ToIndex(x, y, z)];
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void SetLocalVoxel(int x, int y, int z, byte value)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(63, (int)x, (int)y, (int)z, (int)value);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(98, (int)x, (int)y, (int)z, (int)value);}
         if (x < 0 || y < 0 || z < 0 || x >= VoxelTypes.ChunkSize || y >= VoxelTypes.ChunkSize || z >= VoxelTypes.ChunkSize)
             return;
 
@@ -53,25 +54,29 @@ public class VoxelChunk
         Voxels[index] = value;
         IsDirty = true;
         IsModified = true;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void MarkDirty()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(64);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(99);}
         IsDirty = true;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void MarkModified()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(65);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(100);}
         IsModified = true;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void ClearModifiedFlag()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(66);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(101);}
         IsModified = false;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void RebuildMesh(System.Func<int, int, int, byte> getWorldVoxel)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(67);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(102);}
         if (runtimeMesh != null)
             Object.Destroy(runtimeMesh);
 
@@ -80,14 +85,16 @@ public class VoxelChunk
         meshCollider.sharedMesh = null;
         meshCollider.sharedMesh = runtimeMesh;
         IsDirty = false;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void Destroy()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(68);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(103);}
         if (runtimeMesh != null)
             Object.Destroy(runtimeMesh);
 
         if (viewObject != null)
             Object.Destroy(viewObject);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 }

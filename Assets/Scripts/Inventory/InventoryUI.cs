@@ -50,7 +50,7 @@ public sealed class InventoryUI : MonoBehaviour
     }
 
     public void BeginDrag(int index, Vector2 position)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(42, (int)index);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(53, (int)index);}
         InventorySlot slot = Inventory.Slots[index];
         if (slot.IsEmpty)
             return;
@@ -59,16 +59,18 @@ public sealed class InventoryUI : MonoBehaviour
         dragIcon.sprite = slot.item.Icon;
         dragIcon.enabled = true;
         UpdateDrag(position);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void UpdateDrag(Vector2 position)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(43);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(54);}
         if (dragSource >= 0)
             dragGhost.position = position;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void DropOn(int target, bool split)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(44, (int)target, (split?1:0));
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(55, (int)target, (split?1:0));}
         if (dragSource < 0)
             return;
 
@@ -77,20 +79,23 @@ public sealed class InventoryUI : MonoBehaviour
         else
             Inventory.MoveOrMerge(dragSource, target);
         EndDrag();
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void EndDrag()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(45);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(56);}
         dragSource = -1;
         if (dragIcon != null)
             dragIcon.enabled = false;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void CloseInventory()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(57);}
         if (isOpen)
             SetOpen(false);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     void SetOpen(bool open)
     {

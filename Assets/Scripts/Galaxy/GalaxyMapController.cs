@@ -8,6 +8,8 @@ public sealed class GalaxyMapController : MonoBehaviour
     [SerializeField, Min(0.03f)] float repeatInterval = 0.11f;
 
     Image[,] cells;
+    Image[,] planetIcons;
+    Text[,] planetLabels;
 
     GalaxyTravelManager travelManager;
     RectTransform shipIcon;
@@ -43,7 +45,7 @@ public sealed class GalaxyMapController : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.F))
         {
-            GalaxyPlanetDefinition planet = travelManager.GetPlanetAt(travelManager.ShipGridPosition);
+            GalaxyPlanetDefinition planet = travelManager.GetPlanetAt(travelManager.ShipCoordinate);
             if (planet != null)
                 travelManager.EnterPlanet(planet);
         }
@@ -51,8 +53,7 @@ public sealed class GalaxyMapController : MonoBehaviour
 
     void HandleMovementInput()
     {
-        Vector2Int direction = ReadHeldDirection();
-        if (direction == Vector2Int.zero)
+        if (!TryReadSingleDirection(out Vector2Int direction))
         {
             heldMoveDirection = Vector2Int.zero;
             return;
@@ -62,28 +63,31 @@ public sealed class GalaxyMapController : MonoBehaviour
         if (!directionChanged && Time.unscaledTime < nextMoveTime)
             return;
 
-        travelManager.MoveShip(direction);
+        travelManager.MoveShip(new GalaxyCoordinateDelta(direction.x, direction.y));
         RefreshShipPosition();
 
         heldMoveDirection = direction;
         nextMoveTime = Time.unscaledTime + (directionChanged ? initialRepeatDelay : repeatInterval);
     }
 
-    static Vector2Int ReadHeldDirection()
+    static bool TryReadSingleDirection(out Vector2Int direction)
     {
-        int horizontal = 0;
-        int vertical = 0;
+        bool left = Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow);
+        bool right = Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow);
+        bool down = Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow);
+        bool up = Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow);
+        int pressedDirectionCount = (left ? 1 : 0) + (right ? 1 : 0) + (down ? 1 : 0) + (up ? 1 : 0);
+        if (pressedDirectionCount != 1)
+        {
+            direction = Vector2Int.zero;
+            return false;
+        }
 
-        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
-            horizontal--;
-        if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
-            horizontal++;
-        if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
-            vertical--;
-        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
-            vertical++;
-
-        return new Vector2Int(horizontal, vertical);
+        direction = left ? Vector2Int.left
+            : right ? Vector2Int.right
+            : down ? Vector2Int.down
+            : Vector2Int.up;
+        return true;
     }
 
     void BuildInterface()
@@ -128,6 +132,8 @@ public sealed class GalaxyMapController : MonoBehaviour
         float cellHeight = (710f - layout.spacing.y * (travelManager.GridRows - 1)) / travelManager.GridRows;
         layout.cellSize = new Vector2(cellWidth, cellHeight);
         cells = new Image[travelManager.GridColumns, travelManager.GridRows];
+        planetIcons = new Image[travelManager.GridColumns, travelManager.GridRows];
+        planetLabels = new Text[travelManager.GridColumns, travelManager.GridRows];
 
         for (int row = travelManager.GridRows - 1; row >= 0; row--)
         {
@@ -139,11 +145,22 @@ public sealed class GalaxyMapController : MonoBehaviour
                 outline.effectColor = new Color(0.18f, 0.5f, 0.68f, 0.48f);
                 outline.effectDistance = new Vector2(1f, -1f);
                 cells[column, row] = cell;
+
+                Image icon = CreateImage("PlanetIcon", cell.transform, null);
+                Stretch(icon.rectTransform);
+                icon.rectTransform.offsetMin = new Vector2(12f, 12f);
+                icon.rectTransform.offsetMax = new Vector2(-12f, -12f);
+                icon.preserveAspect = true;
+                Text label = CreateText("Label", icon.transform, string.Empty, font, 11, TextAnchor.LowerCenter);
+                Stretch(label.rectTransform);
+                label.rectTransform.offsetMin = new Vector2(-22f, -18f);
+                label.rectTransform.offsetMax = new Vector2(22f, 0f);
+                label.color = new Color(0.82f, 0.92f, 1f);
+                icon.gameObject.SetActive(false);
+                planetIcons[column, row] = icon;
+                planetLabels[column, row] = label;
             }
         }
-
-        foreach (GalaxyPlanetDefinition planet in travelManager.Planets)
-            CreatePlanetIcon(planet, font);
 
         Image ship = CreateImage("Ship", veil.transform, Resources.Load<Sprite>("Galaxy/ship"));
         ship.rectTransform.sizeDelta = new Vector2(62f, 62f);
@@ -160,42 +177,57 @@ public sealed class GalaxyMapController : MonoBehaviour
         actionText.color = new Color(1f, 0.73f, 0.3f);
     }
 
-    void CreatePlanetIcon(GalaxyPlanetDefinition planet, Font font)
+    void RefreshPlanetCell(int column, int row, GalaxyCoordinate coordinate)
     {
-        if (!IsInsideGrid(planet.gridPosition))
+        GalaxyPlanetDefinition planet = travelManager.GetPlanetAt(coordinate);
+        Image icon = planetIcons[column, row];
+        if (planet == null)
+        {
+            icon.gameObject.SetActive(false);
             return;
+        }
 
-        RectTransform cell = cells[planet.gridPosition.x, planet.gridPosition.y].rectTransform;
-        Image icon = CreateImage(planet.displayName, cell, Resources.Load<Sprite>(planet.iconResourcePath));
-        Stretch(icon.rectTransform);
-        icon.rectTransform.offsetMin = new Vector2(12f, 12f);
-        icon.rectTransform.offsetMax = new Vector2(-12f, -12f);
-        icon.preserveAspect = true;
-        icon.color = icon.sprite != null ? Color.white : planet.mapColor;
-
-        Text label = CreateText("Label", icon.transform, planet.displayName.ToUpperInvariant(), font, 11, TextAnchor.LowerCenter);
-        Stretch(label.rectTransform);
-        label.rectTransform.offsetMin = new Vector2(-22f, -18f);
-        label.rectTransform.offsetMax = new Vector2(22f, 0f);
-        label.color = new Color(0.82f, 0.92f, 1f);
+        icon.gameObject.SetActive(true);
+        icon.name = planet.displayName;
+        icon.sprite = Resources.Load<Sprite>(planet.iconResourcePath);
+        icon.color = planet.tintMapIcon || icon.sprite == null ? planet.mapColor : Color.white;
+        planetLabels[column, row].text = planet.displayName.ToUpperInvariant();
     }
 
     void RefreshShipPosition()
     {
-        Vector2Int position = travelManager.ShipGridPosition;
-        if (!IsInsideGrid(position) || shipIcon == null)
+        if (shipIcon == null)
             return;
 
-        shipIcon.SetParent(cells[position.x, position.y].transform, false);
+        GalaxyCoordinate position = travelManager.ShipCoordinate;
+        int shipColumn = travelManager.IsInfiniteGalaxy ? 6 : (int)position.x;
+        int shipRow = travelManager.IsInfiniteGalaxy ? 4 : (int)position.y;
+        if (shipColumn < 0 || shipColumn >= travelManager.GridColumns
+            || shipRow < 0 || shipRow >= travelManager.GridRows)
+            return;
+
+        for (int x = 0; x < travelManager.GridColumns; x++)
+        {
+            for (int y = 0; y < travelManager.GridRows; y++)
+            {
+                GalaxyCoordinate coordinate = travelManager.IsInfiniteGalaxy
+                    ? position.Offset(x - shipColumn, y - shipRow)
+                    : new GalaxyCoordinate(x, y);
+                RefreshPlanetCell(x, y, coordinate);
+            }
+        }
+
+        shipIcon.SetParent(cells[shipColumn, shipRow].transform, false);
         shipIcon.anchorMin = shipIcon.anchorMax = new Vector2(0.5f, 0.5f);
         shipIcon.anchoredPosition = Vector2.zero;
+        shipIcon.localRotation = Quaternion.Euler(0f, 0f, GetShipRotation(travelManager.ShipFacing));
         shipIcon.SetAsLastSibling();
 
         for (int x = 0; x < travelManager.GridColumns; x++)
         {
             for (int y = 0; y < travelManager.GridRows; y++)
             {
-                bool selected = x == position.x && y == position.y;
+                bool selected = x == shipColumn && y == shipRow;
                 cells[x, y].color = selected
                     ? new Color(0.08f, 0.35f, 0.46f, 0.82f)
                     : new Color(0.04f, 0.11f, 0.18f, 0.54f);
@@ -203,16 +235,30 @@ public sealed class GalaxyMapController : MonoBehaviour
         }
 
         GalaxyPlanetDefinition planet = travelManager.GetPlanetAt(position);
+        string coordinateText = travelManager.IsInfiniteGalaxy
+            ? $"{FormatCoordinate(position.x)}:{FormatCoordinate(position.y)}"
+            : $"{position.x:00}:{position.y:00}";
         locationText.text = planet == null
-            ? $"SECTOR  {position.x:00}:{position.y:00}   //   EMPTY SPACE"
-            : $"SECTOR  {position.x:00}:{position.y:00}   //   {planet.displayName.ToUpperInvariant()}";
+            ? $"SECTOR  {coordinateText}   //   EMPTY SPACE"
+            : $"SECTOR  {coordinateText}   //   {planet.displayName.ToUpperInvariant()}";
         actionText.text = planet == null ? string.Empty : "PRESS F TO ENTER ORBIT";
     }
 
-    bool IsInsideGrid(Vector2Int position)
+    static string FormatCoordinate(long value) => value >= 0L ? $"+{value}" : value.ToString();
+
+    static float GetShipRotation(GalaxyShipFacing facing)
     {
-        return position.x >= 0 && position.x < travelManager.GridColumns
-            && position.y >= 0 && position.y < travelManager.GridRows;
+        switch (facing)
+        {
+            case GalaxyShipFacing.Right:
+                return -90f;
+            case GalaxyShipFacing.Down:
+                return 180f;
+            case GalaxyShipFacing.Left:
+                return 90f;
+            default:
+                return 0f;
+        }
     }
 
     static void EnsureRenderingCamera()

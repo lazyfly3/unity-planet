@@ -15,6 +15,16 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     [SerializeField] float lookSpeed = 2f;
     [SerializeField] float jumpHeight = 1.2f;
     [SerializeField] float upSmoothSpeed = 8f;
+    [SerializeField, Range(0f, 1f)] float weatherWindInfluence = 0.18f;
+
+    [Header("Swimming")]
+    [SerializeField, Min(0.1f)] float swimSpeed = 3.5f;
+    [SerializeField, Min(0f)] float swimAcceleration = 12f;
+    [SerializeField, Min(0f)] float swimUpSpeed = 3f;
+    [SerializeField, Min(0f)] float waterDrag = 2.2f;
+    [SerializeField, Min(0f)] float buoyancyAcceleration = 12f;
+    [SerializeField, Min(0.1f)] float swimExitJumpHeight = 1.4f;
+    [SerializeField, Min(0f)] float swimExitForwardSpeed = 2.5f;
 
     [Header("Radial Grounding")]
     [SerializeField, Min(0.01f)] float groundProbeDistance = 0.2f;
@@ -45,8 +55,10 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     bool jumpQueued;
     bool gameplayInputBlocked;
     bool galaxyTransitionRequested;
+    float activeGroundTraction = 1f;
 
     public bool IsGrounded { get; private set; }
+    public bool IsSwimming { get; private set; }
     public float LookSpeed
     {
         get => lookSpeed;
@@ -54,7 +66,7 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     }
 
     public void TeleportTo(Vector3 worldPosition, Quaternion worldRotation)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(70);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(105);}
         if (body == null)
             body = GetComponent<Rigidbody>();
 
@@ -70,7 +82,8 @@ public class VoxelPlanetPlayerController : MonoBehaviour
         previousUp = smoothUp;
         headingForward = GetTangentForward(worldRotation * Vector3.forward, smoothUp);
         body.rotation = Quaternion.LookRotation(headingForward, smoothUp);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     void Awake()
     {
@@ -244,6 +257,23 @@ public class VoxelPlanetPlayerController : MonoBehaviour
         float gravityMagnitude = gravity.magnitude;
         Vector3 up = gravityMagnitude > 0.0001f ? -gravity / gravityMagnitude : smoothUp;
 
+        Vector3 waterProbe = body.position - up * Mathf.Max(0.2f, capsule.height * 0.25f);
+        if (PlanetRiverSystem.TrySampleAny(waterProbe, out WaterSample water) && water.signedDistance < 0f)
+        {
+            IsSwimming = true;
+            HandleSwimming(up, gravity, water);
+            IsGrounded = false;
+            return;
+        }
+        IsSwimming = false;
+
+        activeGroundTraction = 1f;
+        if (PlanetWeatherSystem.TrySample(body.position, out WeatherSnapshot weather))
+        {
+            activeGroundTraction = weather.groundTractionMultiplier;
+            body.AddForce(weather.windVelocity * weatherWindInfluence, ForceMode.Acceleration);
+        }
+
         IsGrounded = CheckRadialGround(up, out RaycastHit groundHit);
         if (IsGrounded && Vector3.Dot(body.velocity, groundHit.normal) > groundDetachSpeed)
             IsGrounded = false;
@@ -277,6 +307,43 @@ public class VoxelPlanetPlayerController : MonoBehaviour
                 body.velocity += up * Mathf.Sqrt(jumpHeight * 2f * gravityMagnitude);
 
             body.AddForce(gravity, ForceMode.Acceleration);
+        }
+    }
+
+    void HandleSwimming(Vector3 up, Vector3 gravity, WaterSample water)
+    {
+        bool exitJumpRequested = jumpQueued;
+        jumpQueued = false;
+        Vector3 forward = GetTangentForward(headingForward, up);
+        Vector3 right = Vector3.Cross(up, forward).normalized;
+        Vector3 desiredDirection = right * moveInput.x + forward * moveInput.y;
+        Vector3 desiredVelocity = desiredDirection * swimSpeed + water.flowVelocity;
+        if (Input.GetKey(KeyCode.Space))
+            desiredVelocity += up * swimUpSpeed;
+
+        float submerged = water.Submersion;
+        body.velocity = Vector3.MoveTowards(
+            body.velocity,
+            desiredVelocity,
+            swimAcceleration * Mathf.Max(0.25f, submerged) * Time.fixedDeltaTime);
+        body.AddForce(-body.velocity * waterDrag * submerged, ForceMode.Acceleration);
+        body.AddForce(gravity * (1f - submerged), ForceMode.Acceleration);
+        body.AddForce(up * buoyancyAcceleration * submerged, ForceMode.Acceleration);
+
+        if (exitJumpRequested && gravity.sqrMagnitude > 0.0001f)
+        {
+            float exitSpeed = Mathf.Sqrt(swimExitJumpHeight * 2f * gravity.magnitude);
+            float currentExitSpeed = Vector3.Dot(body.velocity, up);
+            if (currentExitSpeed < exitSpeed)
+                body.velocity += up * (exitSpeed - currentExitSpeed);
+
+            if (desiredDirection.sqrMagnitude > 0.0001f)
+            {
+                Vector3 exitDirection = desiredDirection.normalized;
+                float currentForwardSpeed = Vector3.Dot(body.velocity, exitDirection);
+                if (currentForwardSpeed < swimExitForwardSpeed)
+                    body.velocity += exitDirection * (swimExitForwardSpeed - currentForwardSpeed);
+            }
         }
     }
 
@@ -317,7 +384,7 @@ public class VoxelPlanetPlayerController : MonoBehaviour
         body.velocity = Vector3.MoveTowards(
             surfaceVelocity,
             desiredVelocity,
-            groundAcceleration * Time.fixedDeltaTime
+            groundAcceleration * activeGroundTraction * Time.fixedDeltaTime
         );
     }
 

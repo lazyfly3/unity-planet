@@ -41,14 +41,16 @@ public class VoxelWorld : MonoBehaviour
     public float GravitationalParameter => PlanetGravity.ComputeGravitationalParameter(surfaceGravity, planetRadius);
 
     public Vector3 GetPlanetCenterWorld()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(85);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(120);}
         return transform.TransformPoint(planetCenterLocal);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public Vector3 GetPlanetCenterLocal()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(86);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(121);}
         return planetCenterLocal;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     void Awake()
     {
@@ -80,7 +82,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public void GenerateEntirePlanet()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(87);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(122);}
         if (!usePlanetGeneration)
             return;
 
@@ -105,10 +107,11 @@ public class VoxelWorld : MonoBehaviour
         }
 
         Debug.Log($"星球全量生成完成：{(maxChunk.x - minChunk.x + 1) * (maxChunk.y - minChunk.y + 1) * (maxChunk.z - minChunk.z + 1)} 个 Chunk");
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void UpdateStreaming(Vector3 worldPosition)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(88);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(123);}
         if (usePlanetGeneration)
             return;
 
@@ -133,7 +136,8 @@ public class VoxelWorld : MonoBehaviour
 
         foreach (Vector3Int coord in desiredChunks)
             LoadChunk(coord);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     HashSet<Vector3Int> BuildDesiredChunks(Vector3Int centerChunk)
     {
@@ -223,9 +227,10 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public byte GetVoxel(int worldX, int worldY, int worldZ)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(89, (int)worldX, (int)worldY, (int)worldZ);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(124, (int)worldX, (int)worldY, (int)worldZ);}
         return SampleVoxelAt(worldX, worldY, worldZ);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     byte SampleVoxelAt(int worldX, int worldY, int worldZ)
     {
@@ -252,7 +257,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public bool SetVoxel(int worldX, int worldY, int worldZ, byte value)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(90, (int)worldX, (int)worldY, (int)worldZ, (int)value);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(125, (int)worldX, (int)worldY, (int)worldZ, (int)value);}
         if (!usePlanetGeneration && !VoxelTypes.IsInsideHeight(worldY))
             return false;
 
@@ -266,12 +271,14 @@ public class VoxelWorld : MonoBehaviour
         chunk.SetLocalVoxel(localCoord.x, localCoord.y, localCoord.z, value);
         MarkChunkAndNeighborsDirty(chunkCoord, localCoord);
         return true;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public bool DigVoxel(int worldX, int worldY, int worldZ)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(91, (int)worldX, (int)worldY, (int)worldZ);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(126, (int)worldX, (int)worldY, (int)worldZ);}
         return SetVoxel(worldX, worldY, worldZ, VoxelTypes.Air);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     void EnsureChunkLoaded(Vector3Int chunkCoord)
     {
@@ -283,7 +290,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public List<ChunkSaveEntry> GetModifiedChunkSnapshots()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(92);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(127);}
         List<ChunkSaveEntry> result = new List<ChunkSaveEntry>();
         HashSet<Vector3Int> added = new HashSet<Vector3Int>();
 
@@ -305,7 +312,8 @@ public class VoxelWorld : MonoBehaviour
         }
 
         return result;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     static ChunkSaveEntry CreateSaveEntry(Vector3Int coord, byte[] voxels)
     {
@@ -319,7 +327,7 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public void ApplySaveData(VoxelWorldSaveData data)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(93);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(128);}
         if (data == null)
             return;
 
@@ -340,7 +348,8 @@ public class VoxelWorld : MonoBehaviour
                 modifiedChunkCache[coord] = saved;
             }
         }
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     void UnloadAllChunks()
     {

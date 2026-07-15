@@ -11,21 +11,33 @@ public sealed class GalaxyPlanetDefinition
     public string displayName;
     [System.NonSerialized]
     public Vector2Int gridPosition;
+    [System.NonSerialized]
+    public GalaxyCoordinate coordinate;
+    [System.NonSerialized]
+    public bool isProcedural;
     public int seed;
     public Color mapColor = Color.white;
+    public Color surfaceColor = Color.white;
+    public Color rockColor = Color.gray;
+    public bool hasExplicitPalette;
+    public bool tintMapIcon;
     public string iconResourcePath;
     [Header("Terrain")]
     public PlanetTerrainSettings terrain = new PlanetTerrainSettings();
     [Header("Surface Resources")]
     public bool spawnHarvestableResources = true;
     public List<HarvestableResourceSpawnSettings> resourceSpawnSettings = new List<HarvestableResourceSpawnSettings>();
+    [Header("Rivers")]
+    public PlanetRiverSettings rivers = new PlanetRiverSettings();
+    [Header("Weather")]
+    public PlanetWeatherSettings weather = new PlanetWeatherSettings();
 }
 
 [DefaultExecutionOrder(-1000)]
 public sealed class GalaxyTravelManager : MonoBehaviour
 {
     const int PlanetSaveMagic = 0x504C4E54;
-    const int PlanetSaveVersion = 7;
+    const int PlanetSaveVersion = 9;
 
     static GalaxyTravelManager instance;
 
@@ -39,20 +51,38 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     [SerializeField] int galaxyLayoutSeed = 7319;
     [SerializeField, Min(0)] int planetEdgePadding = 1;
     [SerializeField] List<GalaxyPlanetDefinition> planets = new List<GalaxyPlanetDefinition>();
+    [SerializeField] List<GalaxyResourceCatalogEntry> resourceCatalog = new List<GalaxyResourceCatalogEntry>();
 
     string currentPlanetId = "origin";
     Vector2Int shipGridPosition;
+    GalaxyCoordinate shipCoordinate;
+    GalaxyCoordinate currentPlanetCoordinate;
+    GalaxyShipFacing shipFacing = GalaxyShipFacing.Up;
     bool transitionInProgress;
     List<InventorySlot> inventorySnapshot;
     int selectedInventorySlot;
     GalaxySaveSlotMetadata activeSlotMetadata;
+    readonly Dictionary<GalaxyCoordinate, GalaxyPlanetDefinition> proceduralPlanetCache = new Dictionary<GalaxyCoordinate, GalaxyPlanetDefinition>();
+    readonly Queue<GalaxyCoordinate> proceduralCacheOrder = new Queue<GalaxyCoordinate>();
+    readonly List<GalaxyResourceCatalogEntry> runtimeResourceCatalog = new List<GalaxyResourceCatalogEntry>();
+    readonly HashSet<string> frozenPlanetIds = new HashSet<string>();
+    ProceduralGalaxyGenerator proceduralGenerator;
 
     public static GalaxyTravelManager Instance => instance;
     public IReadOnlyList<GalaxyPlanetDefinition> Planets => planets;
-    public GalaxyPlanetDefinition CurrentPlanet => GetPlanet(currentPlanetId);
+    public GalaxyPlanetDefinition CurrentPlanet => IsInfiniteGalaxy
+        ? GetPlanetAt(currentPlanetCoordinate)
+        : GetPlanet(currentPlanetId);
     public Vector2Int ShipGridPosition => shipGridPosition;
+    public GalaxyCoordinate ShipCoordinate => IsInfiniteGalaxy
+        ? shipCoordinate
+        : new GalaxyCoordinate(shipGridPosition.x, shipGridPosition.y);
+    public bool IsInfiniteGalaxy => activeSlotMetadata != null
+        && activeSlotMetadata.galaxyMode == GalaxyMode.InfiniteProcedural;
+    public GalaxyShipFacing ShipFacing => shipFacing;
     public int GridColumns => gridColumns;
     public int GridRows => gridRows;
+    public double WeatherTimeSeconds => activeSlotMetadata != null ? activeSlotMetadata.weatherTimeSeconds : 0d;
 
     void Awake()
     {
@@ -65,11 +95,34 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         instance = this;
         DontDestroyOnLoad(gameObject);
         CreateDefaultGalaxy();
+        foreach (GalaxyPlanetDefinition planet in planets)
+        {
+            if (planet.weather == null || planet.weather.presets == null || planet.weather.presets.Count == 0)
+                planet.weather = PlanetWeatherDefaults.Create(planet.planetId);
+        }
         LoadActiveSaveSlot();
+        shipFacing = NormalizeShipFacing(activeSlotMetadata.shipFacing);
+        BuildRuntimeResourceCatalog();
+        IndexFrozenPlanetDefinitions();
         ApplyWorldSeed(activeSlotMetadata.worldSeed);
-        currentPlanetId = string.IsNullOrWhiteSpace(activeSlotMetadata.currentPlanetId)
-            ? "origin"
-            : activeSlotMetadata.currentPlanetId;
+        if (IsInfiniteGalaxy)
+        {
+            proceduralGenerator = new ProceduralGalaxyGenerator(activeSlotMetadata.worldSeed, runtimeResourceCatalog);
+            currentPlanetCoordinate = new GalaxyCoordinate(
+                activeSlotMetadata.currentPlanetCoordinateX,
+                activeSlotMetadata.currentPlanetCoordinateY);
+            string currentCoordinateId = ProceduralGalaxyGenerator.EncodePlanetId(currentPlanetCoordinate);
+            if (!frozenPlanetIds.Contains(currentCoordinateId)
+                && !proceduralGenerator.HasPlanet(currentPlanetCoordinate))
+                currentPlanetCoordinate = GalaxyCoordinate.Zero;
+            currentPlanetId = ProceduralGalaxyGenerator.EncodePlanetId(currentPlanetCoordinate);
+        }
+        else
+        {
+            currentPlanetId = string.IsNullOrWhiteSpace(activeSlotMetadata.currentPlanetId)
+                ? "origin"
+                : activeSlotMetadata.currentPlanetId;
+        }
         InitializePlanetLayout();
         RestoreShipPositionFromMetadata();
         LoadInventoryFromMetadata();
@@ -87,6 +140,12 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         ConfigureSurfaceScene(SceneManager.GetActiveScene());
     }
 
+    void Update()
+    {
+        if (activeSlotMetadata != null && Time.deltaTime > 0f)
+            activeSlotMetadata.weatherTimeSeconds += Time.deltaTime;
+    }
+
     void OnApplicationQuit()
     {
         if (SceneManager.GetActiveScene().name == surfaceSceneName)
@@ -100,7 +159,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     }
 
     public void OpenGalaxyMap(VoxelQuadSphereWorld world)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(27);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(37);}
         if (transitionInProgress || world == null)
             return;
 
@@ -108,24 +167,99 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         CaptureInventory();
         GalaxyPlanetDefinition current = CurrentPlanet;
         if (current != null)
-            shipGridPosition = current.gridPosition;
+        {
+            if (IsInfiniteGalaxy)
+                shipCoordinate = current.coordinate;
+            else
+                shipGridPosition = current.gridPosition;
+        }
         SaveActiveSlotMetadata();
 
         transitionInProgress = true;
         SceneManager.LoadScene(mapSceneName, LoadSceneMode.Single);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void MoveShip(Vector2Int delta)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(28);
-        shipGridPosition = new Vector2Int(
-            Mathf.Clamp(shipGridPosition.x + delta.x, 0, GridColumns - 1),
-            Mathf.Clamp(shipGridPosition.y + delta.y, 0, GridRows - 1));
-        activeSlotMetadata.shipGridX = shipGridPosition.x;
-        activeSlotMetadata.shipGridY = shipGridPosition.y;
+    {
+        MoveShip(new GalaxyCoordinateDelta(delta.x, delta.y));
+    }
+
+    public void MoveShip(GalaxyCoordinateDelta delta)
+    {
+        bool isCardinalUnit = (delta.x == 0 && (delta.y == -1 || delta.y == 1))
+            || (delta.y == 0 && (delta.x == -1 || delta.x == 1));
+        if (!isCardinalUnit)
+            return;
+
+        if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(38);}
+        shipFacing = GetFacing(delta);
+        activeSlotMetadata.shipFacing = shipFacing;
+        if (IsInfiniteGalaxy)
+        {
+            shipCoordinate = shipCoordinate.Offset(delta.x, delta.y);
+            activeSlotMetadata.shipCoordinateX = shipCoordinate.x;
+            activeSlotMetadata.shipCoordinateY = shipCoordinate.y;
+        }
+        else
+        {
+            shipGridPosition = new Vector2Int(
+                Mathf.Clamp(shipGridPosition.x + delta.x, 0, GridColumns - 1),
+                Mathf.Clamp(shipGridPosition.y + delta.y, 0, GridRows - 1));
+            activeSlotMetadata.shipGridX = shipGridPosition.x;
+            activeSlotMetadata.shipGridY = shipGridPosition.y;
+        }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+
+    static GalaxyShipFacing GetFacing(GalaxyCoordinateDelta delta)
+    {
+        if (delta.y > 0)
+            return GalaxyShipFacing.Up;
+        if (delta.x > 0)
+            return GalaxyShipFacing.Right;
+        if (delta.y < 0)
+            return GalaxyShipFacing.Down;
+        return GalaxyShipFacing.Left;
+    }
+
+    static GalaxyShipFacing NormalizeShipFacing(GalaxyShipFacing facing)
+    {
+        return facing >= GalaxyShipFacing.Up && facing <= GalaxyShipFacing.Left
+            ? facing
+            : GalaxyShipFacing.Up;
+    }
+
+    public GalaxyPlanetDefinition GetPlanetAt(GalaxyCoordinate coordinate)
+    {
+        if (!IsInfiniteGalaxy)
+        {
+            if (coordinate.x < int.MinValue || coordinate.x > int.MaxValue
+                || coordinate.y < int.MinValue || coordinate.y > int.MaxValue)
+                return null;
+            return GetPlanetAt(new Vector2Int((int)coordinate.x, (int)coordinate.y));
+        }
+
+        if (proceduralPlanetCache.TryGetValue(coordinate, out GalaxyPlanetDefinition cached))
+            return cached;
+
+        string planetId = ProceduralGalaxyGenerator.EncodePlanetId(coordinate);
+        GalaxyPlanetDefinition planet = frozenPlanetIds.Contains(planetId)
+            ? LoadFrozenPlanetDefinition(coordinate)
+            : null;
+        if (planet == null)
+        {
+            if (proceduralGenerator == null || !proceduralGenerator.HasPlanet(coordinate))
+                return null;
+            planet = proceduralGenerator.GeneratePlanet(coordinate);
+        }
+        if (planet != null)
+            CacheProceduralPlanet(coordinate, planet);
+        return planet;
     }
 
     public GalaxyPlanetDefinition GetPlanetAt(Vector2Int gridPosition)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(29);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(39);}
         foreach (GalaxyPlanetDefinition planet in planets)
         {
             if (planet.gridPosition == gridPosition)
@@ -133,19 +267,38 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         }
 
         return null;
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void EnterPlanet(GalaxyPlanetDefinition planet)
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(30);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(40);}
         if (transitionInProgress || planet == null)
             return;
 
+        if (IsInfiniteGalaxy)
+        {
+            try
+            {
+                FreezePlanetDefinition(planet);
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogError($"GalaxyTravelManager: could not freeze planet definition. {exception.Message}", this);
+                return;
+            }
+            currentPlanetCoordinate = planet.coordinate;
+            shipCoordinate = planet.coordinate;
+        }
+        else
+        {
+            shipGridPosition = planet.gridPosition;
+        }
         currentPlanetId = planet.planetId;
-        shipGridPosition = planet.gridPosition;
         SaveActiveSlotMetadata();
         transitionInProgress = true;
         SceneManager.LoadScene(surfaceSceneName, LoadSceneMode.Single);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
@@ -154,7 +307,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     }
 
     public void ReturnToMainMenu(string startMenuSceneName)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(41);}
         if (transitionInProgress)
             return;
 
@@ -169,7 +322,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         instance = null;
         Destroy(gameObject);
         SceneManager.LoadScene(startMenuSceneName, LoadSceneMode.Single);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     void ConfigureSurfaceScene(Scene scene)
     {
@@ -181,6 +335,18 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         if (world == null || planet == null)
             return;
 
+        if (IsInfiniteGalaxy)
+        {
+            try
+            {
+                FreezePlanetDefinition(planet);
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogError($"GalaxyTravelManager: could not freeze the current planet definition. {exception.Message}", this);
+            }
+        }
+
         GalaxyPlanetSaveData save = LoadPlanet(planet.planetId);
         GetPlanetPalette(planet, out Color surfaceColor, out Color rockColor);
         world.ConfigurePlanet(
@@ -190,7 +356,11 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             rockColor,
             planet.terrain,
             planet.spawnHarvestableResources,
-            planet.resourceSpawnSettings);
+            planet.resourceSpawnSettings,
+            planet.rivers,
+            save != null ? save.riverData : null);
+        PlanetWeatherSystem weatherSystem = FindObjectOfType<PlanetWeatherSystem>();
+        weatherSystem?.Configure(world, planet.weather, planet.seed, planet.planetId);
         RestoreBuildings(world, save);
         RestoreInventory();
     }
@@ -225,11 +395,12 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             hasFullResourceSnapshot = true,
             resourceConfigurationHash = world.ResourceConfigurationHash,
             resources = world.GetResourceSnapshots(),
-            buildings = CaptureBuildings(world)
+            buildings = CaptureBuildings(world),
+            riverData = world.RiverSystem != null ? world.RiverSystem.Snapshot : null
         };
 
-        Directory.CreateDirectory(GetSaveDirectory());
         string savePath = GetPlanetSavePath(planet.planetId);
+        Directory.CreateDirectory(Path.GetDirectoryName(savePath));
         float saveStartedAt = Time.realtimeSinceStartup;
         WritePlanetBinary(savePath, data);
         float elapsedMilliseconds = (Time.realtimeSinceStartup - saveStartedAt) * 1000f;
@@ -386,6 +557,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
                     writer.Write(cell.y);
                 }
             }
+
+            WriteRiverData(writer, data.riverData);
         }
 
         if (File.Exists(path))
@@ -549,6 +722,9 @@ public sealed class GalaxyTravelManager : MonoBehaviour
                 }
             }
 
+            if (version >= 8)
+                data.riverData = ReadRiverData(reader, version);
+
             return data;
         }
     }
@@ -563,6 +739,95 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     static Vector3 ReadVector3(BinaryReader reader)
     {
         return new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+    }
+
+    static void WriteRiverData(BinaryWriter writer, GalaxyRiverSaveData data)
+    {
+        writer.Write(data != null);
+        if (data == null)
+            return;
+        writer.Write(data.configurationHash);
+        GalaxyRiverPathSaveEntry[] rivers = data.rivers ?? new GalaxyRiverPathSaveEntry[0];
+        writer.Write(rivers.Length);
+        foreach (GalaxyRiverPathSaveEntry riverValue in rivers)
+        {
+            GalaxyRiverPathSaveEntry river = riverValue ?? new GalaxyRiverPathSaveEntry();
+            writer.Write(river.lakeRadius);
+            writer.Write(river.lakeDepth);
+            GalaxyRiverNodeSaveEntry[] nodes = river.nodes ?? new GalaxyRiverNodeSaveEntry[0];
+            writer.Write(nodes.Length);
+            foreach (GalaxyRiverNodeSaveEntry node in nodes)
+            {
+                WriteVector3(writer, node.direction);
+                writer.Write(node.waterRadius);
+                writer.Write(node.width);
+                writer.Write(node.depth);
+                writer.Write(node.flowSpeed);
+            }
+            WriteFloatArray(writer, river.bedRadii);
+            WriteFloatArray(writer, river.waterDepths);
+            WriteFloatArray(writer, river.discharges);
+            writer.Write(river.lakeWaterDepth);
+        }
+    }
+
+    static GalaxyRiverSaveData ReadRiverData(BinaryReader reader, int version)
+    {
+        if (!reader.ReadBoolean())
+            return null;
+        var data = new GalaxyRiverSaveData
+        {
+            configurationHash = reader.ReadInt32()
+        };
+        int riverCount = ReadBoundedCount(reader, "river", 64);
+        data.rivers = new GalaxyRiverPathSaveEntry[riverCount];
+        for (int i = 0; i < riverCount; i++)
+        {
+            var river = new GalaxyRiverPathSaveEntry
+            {
+                lakeRadius = reader.ReadSingle(),
+                lakeDepth = reader.ReadSingle()
+            };
+            int nodeCount = ReadBoundedCount(reader, "river node", 8192);
+            river.nodes = new GalaxyRiverNodeSaveEntry[nodeCount];
+            for (int node = 0; node < nodeCount; node++)
+            {
+                river.nodes[node] = new GalaxyRiverNodeSaveEntry
+                {
+                    direction = ReadVector3(reader),
+                    waterRadius = reader.ReadSingle(),
+                    width = reader.ReadSingle(),
+                    depth = reader.ReadSingle(),
+                    flowSpeed = reader.ReadSingle()
+                };
+            }
+            if (version >= 9)
+            {
+                river.bedRadii = ReadFloatArray(reader, "river bed radius", 8192);
+                river.waterDepths = ReadFloatArray(reader, "river water depth", 8192);
+                river.discharges = ReadFloatArray(reader, "river discharge", 8192);
+                river.lakeWaterDepth = reader.ReadSingle();
+            }
+            data.rivers[i] = river;
+        }
+        return data;
+    }
+
+    static void WriteFloatArray(BinaryWriter writer, float[] values)
+    {
+        values = values ?? new float[0];
+        writer.Write(values.Length);
+        for (int i = 0; i < values.Length; i++)
+            writer.Write(values[i]);
+    }
+
+    static float[] ReadFloatArray(BinaryReader reader, string valueName, int maximum)
+    {
+        int count = ReadBoundedCount(reader, valueName, maximum);
+        var values = new float[count];
+        for (int i = 0; i < count; i++)
+            values[i] = reader.ReadSingle();
+        return values;
     }
 
     static int ReadBoundedCount(BinaryReader reader, string valueName, int maximum)
@@ -612,6 +877,13 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         out Color surfaceColor,
         out Color rockColor)
     {
+        if (planet.hasExplicitPalette)
+        {
+            surfaceColor = planet.surfaceColor;
+            rockColor = planet.rockColor;
+            return;
+        }
+
         string paletteKey = planet.planetId;
         string iconPath = planet.iconResourcePath ?? string.Empty;
         if (iconPath.EndsWith("planet_amber", System.StringComparison.OrdinalIgnoreCase))
@@ -669,6 +941,13 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     {
         gridColumns = Mathf.Max(1, gridColumns);
         gridRows = Mathf.Max(1, gridRows);
+
+        if (IsInfiniteGalaxy)
+        {
+            currentPlanetId = ProceduralGalaxyGenerator.EncodePlanetId(currentPlanetCoordinate);
+            shipCoordinate = currentPlanetCoordinate;
+            return;
+        }
 
         if (planets.Count == 0)
             return;
@@ -889,11 +1168,15 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
     string GetPlanetSavePath(string planetId)
     {
-        return Path.Combine(GetSaveDirectory(), planetId + ".planet.gz");
+        return IsInfiniteGalaxy
+            ? Path.Combine(GetSaveDirectory(), planetId, "world.planet.gz")
+            : Path.Combine(GetSaveDirectory(), planetId + ".planet.gz");
     }
 
     string GetLegacyPlanetSavePath(string planetId)
     {
+        if (IsInfiniteGalaxy)
+            return Path.Combine(GetSaveDirectory(), planetId, "world.json");
         return Path.Combine(GetSaveDirectory(), planetId + ".json");
     }
 
@@ -928,6 +1211,14 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
     void RestoreShipPositionFromMetadata()
     {
+        if (IsInfiniteGalaxy)
+        {
+            shipCoordinate = new GalaxyCoordinate(
+                activeSlotMetadata.shipCoordinateX,
+                activeSlotMetadata.shipCoordinateY);
+            return;
+        }
+
         Vector2Int savedPosition = new Vector2Int(activeSlotMetadata.shipGridX, activeSlotMetadata.shipGridY);
         if (savedPosition.x >= 0 && savedPosition.x < gridColumns
             && savedPosition.y >= 0 && savedPosition.y < gridRows)
@@ -941,8 +1232,20 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         if (activeSlotMetadata == null)
             return;
         activeSlotMetadata.currentPlanetId = currentPlanetId;
-        activeSlotMetadata.shipGridX = shipGridPosition.x;
-        activeSlotMetadata.shipGridY = shipGridPosition.y;
+        activeSlotMetadata.shipFacing = shipFacing;
+        if (IsInfiniteGalaxy)
+        {
+            activeSlotMetadata.shipCoordinateX = shipCoordinate.x;
+            activeSlotMetadata.shipCoordinateY = shipCoordinate.y;
+            activeSlotMetadata.currentPlanetCoordinateX = currentPlanetCoordinate.x;
+            activeSlotMetadata.currentPlanetCoordinateY = currentPlanetCoordinate.y;
+            activeSlotMetadata.galaxyGeneratorVersion = ProceduralGalaxyGenerator.CurrentVersion;
+        }
+        else
+        {
+            activeSlotMetadata.shipGridX = shipGridPosition.x;
+            activeSlotMetadata.shipGridY = shipGridPosition.y;
+        }
         activeSlotMetadata.selectedInventorySlot = selectedInventorySlot;
         if (inventorySnapshot != null)
             activeSlotMetadata.inventory = SerializeInventory(inventorySnapshot);
@@ -1073,6 +1376,212 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         }
     }
 
+    void BuildRuntimeResourceCatalog()
+    {
+        runtimeResourceCatalog.Clear();
+        if (resourceCatalog != null)
+        {
+            foreach (GalaxyResourceCatalogEntry entry in resourceCatalog)
+                AddRuntimeResource(entry != null ? entry.resourceId : null, entry != null ? entry.prefab : null);
+        }
+
+        foreach (GalaxyPlanetDefinition planet in planets)
+        {
+            if (planet == null || planet.resourceSpawnSettings == null)
+                continue;
+            foreach (HarvestableResourceSpawnSettings settings in planet.resourceSpawnSettings)
+                if (settings != null && settings.prefab != null)
+                    AddRuntimeResource(settings.prefab.name, settings.prefab);
+        }
+    }
+
+    void IndexFrozenPlanetDefinitions()
+    {
+        frozenPlanetIds.Clear();
+        if (!IsInfiniteGalaxy)
+            return;
+
+        string root = GetSaveDirectory();
+        if (!Directory.Exists(root))
+            return;
+        foreach (string directory in Directory.GetDirectories(root, "p_*", SearchOption.TopDirectoryOnly))
+        {
+            if (File.Exists(Path.Combine(directory, "definition.json")))
+                frozenPlanetIds.Add(Path.GetFileName(directory));
+        }
+    }
+
+    void AddRuntimeResource(string resourceId, HarvestableResource prefab)
+    {
+        if (prefab == null)
+            return;
+        resourceId = string.IsNullOrWhiteSpace(resourceId) ? prefab.name : resourceId.Trim();
+        foreach (GalaxyResourceCatalogEntry existing in runtimeResourceCatalog)
+            if (existing.resourceId == resourceId || existing.prefab == prefab)
+                return;
+        runtimeResourceCatalog.Add(new GalaxyResourceCatalogEntry { resourceId = resourceId, prefab = prefab });
+    }
+
+    void CacheProceduralPlanet(GalaxyCoordinate coordinate, GalaxyPlanetDefinition planet)
+    {
+        proceduralPlanetCache[coordinate] = planet;
+        proceduralCacheOrder.Enqueue(coordinate);
+        while (proceduralPlanetCache.Count > 256 && proceduralCacheOrder.Count > 0)
+        {
+            GalaxyCoordinate expired = proceduralCacheOrder.Dequeue();
+            if (expired != currentPlanetCoordinate)
+                proceduralPlanetCache.Remove(expired);
+        }
+    }
+
+    void FreezePlanetDefinition(GalaxyPlanetDefinition planet)
+    {
+        if (!IsInfiniteGalaxy || planet == null || !planet.isProcedural)
+            return;
+
+        string path = GetPlanetDefinitionPath(planet.planetId);
+        if (File.Exists(path))
+        {
+            frozenPlanetIds.Add(planet.planetId);
+            return;
+        }
+
+        var record = new GalaxyGeneratedPlanetRecord
+        {
+            generatorVersion = ProceduralGalaxyGenerator.CurrentVersion,
+            planetId = planet.planetId,
+            displayName = planet.displayName,
+            coordinateX = planet.coordinate.x,
+            coordinateY = planet.coordinate.y,
+            seed = planet.seed,
+            mapColor = planet.mapColor,
+            surfaceColor = planet.surfaceColor,
+            rockColor = planet.rockColor,
+            iconResourcePath = planet.iconResourcePath,
+            terrain = planet.terrain,
+            rivers = planet.rivers,
+            weather = planet.weather
+        };
+
+        if (planet.resourceSpawnSettings != null)
+        {
+            foreach (HarvestableResourceSpawnSettings settings in planet.resourceSpawnSettings)
+            {
+                string catalogId = GetCatalogId(settings != null ? settings.prefab : null);
+                if (settings == null || string.IsNullOrEmpty(catalogId))
+                    continue;
+                record.resources.Add(new GalaxyGeneratedResourceRecord
+                {
+                    catalogId = catalogId,
+                    count = settings.count,
+                    seedOffset = settings.seedOffset,
+                    surfaceOffset = settings.surfaceOffset,
+                    minimumSpacing = settings.minimumSpacing,
+                    playerClearRadius = settings.playerClearRadius,
+                    placementAttempts = settings.placementAttempts,
+                    clockwiseRotationDegrees = settings.clockwiseRotationDegrees,
+                    randomizeYaw = settings.randomizeYaw
+                });
+            }
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
+        string temporaryPath = path + ".tmp";
+        File.WriteAllText(temporaryPath, JsonUtility.ToJson(record, true));
+        if (File.Exists(path))
+            File.Replace(temporaryPath, path, null);
+        else
+            File.Move(temporaryPath, path);
+        frozenPlanetIds.Add(planet.planetId);
+    }
+
+    GalaxyPlanetDefinition LoadFrozenPlanetDefinition(GalaxyCoordinate coordinate)
+    {
+        string planetId = ProceduralGalaxyGenerator.EncodePlanetId(coordinate);
+        string path = GetPlanetDefinitionPath(planetId);
+        if (!File.Exists(path))
+            return null;
+
+        try
+        {
+            GalaxyGeneratedPlanetRecord record = JsonUtility.FromJson<GalaxyGeneratedPlanetRecord>(File.ReadAllText(path));
+            if (record == null || record.formatVersion != 1 || record.planetId != planetId
+                || record.coordinateX != coordinate.x || record.coordinateY != coordinate.y)
+                throw new InvalidDataException("Invalid procedural planet definition.");
+
+            var planet = new GalaxyPlanetDefinition
+            {
+                planetId = record.planetId,
+                displayName = record.displayName,
+                coordinate = coordinate,
+                isProcedural = true,
+                seed = record.seed,
+                mapColor = record.mapColor,
+                surfaceColor = record.surfaceColor,
+                rockColor = record.rockColor,
+                hasExplicitPalette = true,
+                tintMapIcon = true,
+                iconResourcePath = record.iconResourcePath,
+                terrain = record.terrain ?? new PlanetTerrainSettings(),
+                rivers = record.rivers ?? new PlanetRiverSettings(),
+                weather = record.weather ?? new PlanetWeatherSettings(),
+                resourceSpawnSettings = new List<HarvestableResourceSpawnSettings>()
+            };
+
+            if (record.resources != null)
+            {
+                foreach (GalaxyGeneratedResourceRecord resource in record.resources)
+                {
+                    HarvestableResource prefab = ResolveCatalogPrefab(resource != null ? resource.catalogId : null);
+                    if (resource == null || prefab == null)
+                        continue;
+                    planet.resourceSpawnSettings.Add(new HarvestableResourceSpawnSettings
+                    {
+                        prefab = prefab,
+                        count = resource.count,
+                        seedOffset = resource.seedOffset,
+                        surfaceOffset = resource.surfaceOffset,
+                        minimumSpacing = resource.minimumSpacing,
+                        playerClearRadius = resource.playerClearRadius,
+                        placementAttempts = resource.placementAttempts,
+                        clockwiseRotationDegrees = resource.clockwiseRotationDegrees,
+                        randomizeYaw = resource.randomizeYaw
+                    });
+                }
+            }
+            planet.spawnHarvestableResources = planet.resourceSpawnSettings.Count > 0;
+            return planet;
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogError($"GalaxyTravelManager: could not load planet definition '{planetId}'. {exception.Message}", this);
+            return null;
+        }
+    }
+
+    string GetCatalogId(HarvestableResource prefab)
+    {
+        foreach (GalaxyResourceCatalogEntry entry in runtimeResourceCatalog)
+            if (entry.prefab == prefab)
+                return entry.resourceId;
+        return null;
+    }
+
+    HarvestableResource ResolveCatalogPrefab(string resourceId)
+    {
+        foreach (GalaxyResourceCatalogEntry entry in runtimeResourceCatalog)
+            if (entry.resourceId == resourceId)
+                return entry.prefab;
+        if (!string.IsNullOrEmpty(resourceId))
+            Debug.LogWarning($"GalaxyTravelManager: resource catalog entry '{resourceId}' is unavailable.", this);
+        return null;
+    }
+
+    string GetPlanetDefinitionPath(string planetId)
+    {
+        return Path.Combine(GetSaveDirectory(), planetId, "definition.json");
+    }
+
     static int DeriveSeed(int worldSeed, string key)
     {
         unchecked
@@ -1111,11 +1620,61 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             planetId = id,
             displayName = displayName,
             gridPosition = new Vector2Int(x, y),
+            coordinate = new GalaxyCoordinate(x, y),
             seed = planetSeed,
             mapColor = color,
             iconResourcePath = iconPath,
-            terrain = CreateTerrainPreset(id)
+            terrain = CreateTerrainPreset(id),
+            rivers = CreateRiverPreset(id),
+            weather = PlanetWeatherDefaults.Create(id)
         };
+    }
+
+    static PlanetRiverSettings CreateRiverPreset(string planetId)
+    {
+        if (planetId == "verdant")
+        {
+            return new PlanetRiverSettings
+            {
+                enabled = true,
+                riverCount = 4,
+                nodesPerRiver = 48,
+                minWidth = 2f,
+                maxWidth = 4f,
+                minDepth = 0.8f,
+                maxDepth = 1.5f,
+                flowSpeed = 1.5f,
+                lakeRadius = 6f,
+                lakeDepth = 2f,
+                simulationStep = 0.04f,
+                sourceFlowRate = 2.5f,
+                manningRoughness = 0.04f,
+                shallowColor = new Color(0.06f, 0.76f, 0.63f, 0.58f),
+                deepColor = new Color(0.005f, 0.19f, 0.23f, 0.82f)
+            };
+        }
+        if (planetId == "azure")
+        {
+            return new PlanetRiverSettings
+            {
+                enabled = true,
+                riverCount = 7,
+                nodesPerRiver = 56,
+                minWidth = 3f,
+                maxWidth = 6f,
+                minDepth = 1.2f,
+                maxDepth = 2.2f,
+                flowSpeed = 1.1f,
+                lakeRadius = 9f,
+                lakeDepth = 3f,
+                simulationStep = 0.035f,
+                sourceFlowRate = 6f,
+                manningRoughness = 0.03f,
+                shallowColor = new Color(0.04f, 0.55f, 0.88f, 0.58f),
+                deepColor = new Color(0.005f, 0.08f, 0.32f, 0.84f)
+            };
+        }
+        return new PlanetRiverSettings { enabled = false, riverCount = 0 };
     }
 
     static PlanetTerrainSettings CreateTerrainPreset(string planetId)

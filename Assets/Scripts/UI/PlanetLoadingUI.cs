@@ -13,7 +13,7 @@ public sealed class PlanetLoadingUI : MonoBehaviour
     float displayedProgress;
 
     public void Show(string initialStatus)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(75);}
         gameObject.SetActive(true);
         canvasGroup.alpha = 1f;
         canvasGroup.blocksRaycasts = true;
@@ -21,10 +21,11 @@ public sealed class PlanetLoadingUI : MonoBehaviour
         startedAt = Time.realtimeSinceStartup;
         displayedProgress = 0f;
         SetProgress(0.01f, initialStatus);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void SetProgress(float progress, string status)
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(76, (int)progress);}
         progress = Mathf.Clamp01(progress);
         displayedProgress = Mathf.Max(displayedProgress, progress);
         progressFill.fillAmount = displayedProgress;
@@ -42,14 +43,16 @@ public sealed class PlanetLoadingUI : MonoBehaviour
         remainingText.text = remaining >= 60f
             ? $"预计剩余 {Mathf.CeilToInt(remaining / 60f)} 分钟"
             : $"预计剩余 {Mathf.Max(1, Mathf.CeilToInt(remaining))} 秒";
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void Complete()
-    {
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(77);}
         SetProgress(1f, "星球构筑完成");
         canvasGroup.alpha = 0f;
         canvasGroup.blocksRaycasts = false;
         canvasGroup.interactable = false;
         gameObject.SetActive(false);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 }

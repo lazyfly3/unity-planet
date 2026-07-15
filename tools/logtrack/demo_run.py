@@ -1,99 +1,73 @@
 #!/usr/bin/env python3
-"""无需 Unity / .NET 的 LogTrack 端到端演示。
-
-模拟：插桩概念 → 记录 → 导出 JSON → 解析最近 N 帧。
-"""
+"""LogTrack 端到端演示 — 新格式 Phase + depth + Class::Method。"""
 
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
-
-def encode_item(hash_id: int, arg_count: int) -> int:
-    return (hash_id << 3) | (arg_count & 7)
-
-
-def build_demo():
-    pdb = {
-        "items": [
-            {"hash": 1, "argCount": 2, "file": "TestGameplay.cs", "line": 5, "dbgStr": "MovePlayer"},
-            {"hash": 2, "argCount": 2, "file": "TestGameplay.cs", "line": 12, "dbgStr": "SendMessage"},
-            {"hash": 3, "argCount": 2, "file": "TestGameplay.cs", "line": 18, "dbgStr": "Dispatch"},
-        ]
-    }
-
-    frames = []
-    for frame in range(1, 151):
-        items = []
-        args = []
-        items.append(encode_item(1, 2))
-        args.extend([3, frame % 4])
-        if frame % 10 == 0:
-            items.append(encode_item(2, 2))
-            args.extend([1001, frame])
-            items.append(encode_item(3, 2))
-            args.extend([1001, frame])
-        frames.append({"frameIndex": frame, "items": items, "args": args})
-
-    log = {
-        "errorFrameIndex": 0,
-        "saveDateTime": "demo",
-        "frames": frames[-100:],
-    }
-    return log, pdb
+ROOT = Path(__file__).resolve().parents[1]
+PARSE = ROOT / "tools" / "parse_logtrack.py"
+DEMO_PROJ = ROOT / "Demo" / "LogTrackDemo.csproj"
 
 
-def to_text(frames, pdb_map, last_n=100):
-    selected = frames[-last_n:]
-    lines = []
-    for frame in selected:
-        lines.append("======================================================")
-        lines.append(f"#{frame['frameIndex']} [H] [EnterFrame]")
-        lines.append("------------------------------------------------------")
-        arg_index = 0
-        for item in frame["items"]:
-            hash_id = item >> 3
-            arg_count = item & 7
-            meta = pdb_map[hash_id]
-            call_args = frame["args"][arg_index : arg_index + arg_count]
-            arg_index += arg_count
-            lines.append(
-                f"#{frame['frameIndex']} [H] {meta['file']},line:{meta['line']},{meta['dbgStr']}({','.join(map(str, call_args))})"
-            )
-        lines.append("======================================================")
-    return "\n".join(lines)
+def _dotnet_available() -> bool:
+    proc = subprocess.run(["dotnet", "--version"], capture_output=True, text=True)
+    return proc.returncode == 0
 
 
 def main():
-    work = Path(tempfile.mkdtemp(prefix="logtrack_demo_"))
-    log, pdb = build_demo()
-    log_path = work / "track.bin.json"
-    pdb_path = work / "LogPdb.pdb.json"
-    text_path = work / "track.log"
-    analysis_path = work / "analysis.json"
+    print("=== LogTrack smoke (dotnet demo + parse) ===")
+    log_path = None
+    if _dotnet_available():
+        proc = subprocess.run(
+            ["dotnet", "run", "--project", str(DEMO_PROJ), "-c", "Release"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            cwd=str(ROOT),
+        )
+        print(proc.stdout)
+        if proc.returncode != 0:
+            print(proc.stderr, file=sys.stderr)
+            sys.exit(1)
+        logtrack_dir = Path(tempfile.gettempdir()) / "LogTrack"
+        logs = sorted(logtrack_dir.glob("*_LogTrack_Normal.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if logs:
+            log_path = logs[0]
 
-    log_path.write_text(json.dumps(log, ensure_ascii=False, indent=2), encoding="utf-8")
-    pdb_path.write_text(json.dumps(pdb, ensure_ascii=False, indent=2), encoding="utf-8")
-    pdb_map = {item["hash"]: item for item in pdb["items"]}
-    text_path.write_text(to_text(log["frames"], pdb_map, 100), encoding="utf-8")
+    if log_path is None:
+        fallback = ROOT / "samples" / "review_20260714" / "sample_LogTrack_Normal.log"
+        if fallback.exists():
+            print(f"dotnet unavailable — using review sample: {fallback}")
+            log_path = fallback
+        else:
+            print("FAIL: no exported .log and no review sample")
+            sys.exit(1)
+    out_path = log_path.with_suffix(".analysis.json")
+    parse_proc = subprocess.run(
+        [sys.executable, str(PARSE), "--log", str(log_path), "--out", str(out_path)],
+        capture_output=True,
+        text=True,
+    )
+    if parse_proc.returncode != 0:
+        print(parse_proc.stderr, file=sys.stderr)
+        sys.exit(1)
 
-    print("=== LogTrack Python Demo ===")
-    print("工作目录:", work)
-    print("日志:", log_path)
-    print("Pdb:", pdb_path)
-    print("文本:", text_path)
-    print()
-    print("最近100帧中，含 SendMessage 的帧：")
-    for frame in log["frames"]:
-        if frame["frameIndex"] % 10 != 0:
-            continue
-        print(f"  Frame {frame['frameIndex']}: SendMessage(1001,{frame['frameIndex']})")
+    data = json.loads(out_path.read_text(encoding="utf-8"))
+    frame = data["frames"][-1]
+    print(f"\nFrame {frame['frameIndex']} phases:")
+    for seg in frame["phases"]:
+        print(f"  {seg['phase']}: {len(seg['calls'])} calls")
+        for call in seg["calls"][:3]:
+            print(f"    d{call['depth']} {call['call']}")
 
-    print()
-    print("可执行解析：")
-    print(f'  python tools/parse_logtrack.py --log "{log_path}" --pdb "{pdb_path}" --last 100 --out "{analysis_path}"')
+    print("\nSMOKE PASS")
+    sys.exit(0)
 
 
 if __name__ == "__main__":

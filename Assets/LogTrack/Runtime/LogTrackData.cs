@@ -4,15 +4,26 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 
+public enum LogTrackPhase : byte
+{
+    FixedUpdate = 0,
+    Update = 1,
+    LateUpdate = 2
+}
+
 [Serializable]
 public class LogTrackFrame
 {
     public int frameIndex;
     public List<ushort> items = new List<ushort>();
     public List<int> args = new List<int>();
+    public List<byte> depths = new List<byte>();
+    public List<byte> phases = new List<byte>();
 
     internal ILogTrackList<ushort> items_internal = new LogTrackList<ushort>(FSPDebuger.ListLogTrackCapacityStep, 5);
     internal ILogTrackList<int> args_internal = new LogTrackList<int>(FSPDebuger.ListLogTrackCapacityStep, 5);
+    internal ILogTrackList<byte> depths_internal = new LogTrackList<byte>(FSPDebuger.ListLogTrackCapacityStep, 5);
+    internal ILogTrackList<byte> phases_internal = new LogTrackList<byte>(FSPDebuger.ListLogTrackCapacityStep, 5);
 }
 
 public sealed class LogTrackLoopQueue : IDisposable
@@ -34,6 +45,8 @@ public sealed class LogTrackLoopQueue : IDisposable
         {
             frame.args_internal.Dispose();
             frame.items_internal.Dispose();
+            frame.depths_internal.Dispose();
+            frame.phases_internal.Dispose();
         }
         m_disposed = true;
     }
@@ -61,6 +74,8 @@ public sealed class LogTrackLoopQueue : IDisposable
         {
             memSize += frame.items_internal.GetMemorySize();
             memSize += frame.args_internal.GetMemorySize();
+            memSize += frame.depths_internal.GetMemorySize();
+            memSize += frame.phases_internal.GetMemorySize();
         }
         return memSize;
     }
@@ -133,38 +148,67 @@ public class LogTrackFile
             total.AppendFormat("#{0} [H] [EnterFrame]\n", frame.frameIndex);
             total.AppendLine("------------------------------------------------------");
 
-            int argIndex = 0;
-            for (int j = 0; j < frame.items.Count; j++)
-            {
-                ushort item = frame.items[j];
-                int hash = item >> 3;
-                int argCount = item & 7;
-                var pdbItem = pdb.GetItem(hash);
-                if (pdbItem == null)
-                {
-                    total.AppendFormat("#{0} [H] <unknown hash {1}>({2})\n", frame.frameIndex, hash, argCount);
-                    argIndex += argCount;
-                    continue;
-                }
-
-                var methodArgs = new List<string>();
-                for (int k = 0; k < argCount; k++)
-                {
-                    methodArgs.Add(frame.args[argIndex++].ToString());
-                }
-
-                total.AppendFormat("#{0} [H] {1},line:{2},{3}({4})\n",
-                    frame.frameIndex,
-                    pdbItem.file,
-                    pdbItem.line,
-                    pdbItem.dbgStr,
-                    string.Join(",", methodArgs));
-            }
+            AppendPhaseSection(total, frame, pdb, LogTrackPhase.FixedUpdate);
+            AppendPhaseSection(total, frame, pdb, LogTrackPhase.Update);
+            AppendPhaseSection(total, frame, pdb, LogTrackPhase.LateUpdate);
 
             total.AppendLine("======================================================");
         }
 
         File.WriteAllText(path, total.ToString(), Encoding.UTF8);
+    }
+
+    private static void AppendPhaseSection(StringBuilder total, LogTrackFrame frame, LogTrackPdbFile pdb, LogTrackPhase phase)
+    {
+        total.AppendFormat("-- [Phase: {0}] --\n", phase);
+        int argIndex = 0;
+        for (int j = 0; j < frame.items.Count; j++)
+        {
+            byte itemPhase = j < frame.phases.Count ? frame.phases[j] : (byte)LogTrackPhase.Update;
+            if ((LogTrackPhase)itemPhase != phase)
+            {
+                ushort skipItem = frame.items[j];
+                argIndex += skipItem & 7;
+                continue;
+            }
+
+            ushort item = frame.items[j];
+            int hash = item >> 3;
+            int argCount = item & 7;
+            var pdbItem = pdb.GetItem(hash);
+            if (pdbItem == null)
+            {
+                argIndex += argCount;
+                continue;
+            }
+
+            var methodArgs = new List<string>();
+            for (int k = 0; k < argCount; k++)
+            {
+                methodArgs.Add(frame.args[argIndex++].ToString());
+            }
+
+            int depth = j < frame.depths.Count ? frame.depths[j] : 1;
+            var callName = pdbItem.GetCallName();
+            total.AppendFormat("0[{0}{1}]{2}({3})\n",
+                GetPrefixStr(depth),
+                depth,
+                callName,
+                string.Join(",", methodArgs));
+        }
+    }
+
+    internal static string FormatDepthBracket(int depth)
+    {
+        if (depth <= 0) depth = 1;
+        return "[" + GetPrefixStr(depth) + depth + "]";
+    }
+
+    /// <summary>KH LogTracker.GetPrefixStr equivalent — dash padding for depth display.</summary>
+    public static string GetPrefixStr(int depth)
+    {
+        if (depth <= 0) return string.Empty;
+        return new string('-', depth);
     }
 
     internal void Flush()
@@ -173,6 +217,8 @@ public class LogTrackFile
         {
             frame.items = frame.items_internal.ToList();
             frame.args = frame.args_internal.ToList();
+            frame.depths = frame.depths_internal.ToList();
+            frame.phases = frame.phases_internal.ToList();
         }
     }
 }
@@ -185,6 +231,23 @@ public class LogTrackPdbItem
     public string file = string.Empty;
     public int line;
     public string dbgStr = string.Empty;
+    public string className = string.Empty;
+    public string funcName = string.Empty;
+
+    public string GetCallName()
+    {
+        if (!string.IsNullOrEmpty(className) && !string.IsNullOrEmpty(funcName))
+        {
+            return className + "::" + funcName;
+        }
+
+        if (!string.IsNullOrEmpty(dbgStr))
+        {
+            return dbgStr;
+        }
+
+        return "Unknown::hash_" + hash;
+    }
 }
 
 [Serializable]
@@ -204,23 +267,7 @@ public class LogTrackPdbFile
 
         try
         {
-            LogTrackPdbFile file;
-            if (path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
-            {
-                file = LogTrackJson.DeserializeLogTrackPdbFile(File.ReadAllText(path, Encoding.UTF8));
-            }
-            else
-            {
-                file = LogTrackJson.DeserializeLogTrackPdbFile(File.ReadAllText(path, Encoding.UTF8));
-            }
-
-            if (file != null)
-            {
-                foreach (var item in file.items)
-                {
-                    file.m_mapHash2Item[item.hash] = item;
-                }
-            }
+            var file = LogTrackJson.DeserializeLogTrackPdbFile(File.ReadAllText(path, Encoding.UTF8));
             return file;
         }
         catch (Exception e)
@@ -243,8 +290,8 @@ public class LogTrackPdbFile
         sb.Append(items.Count);
         foreach (var item in items)
         {
-            sb.AppendFormat("\n{0,5},{1,5},{2,5}  {3},{4}",
-                item.hash, item.argCount, item.line, item.file, item.dbgStr);
+            sb.AppendFormat("\n{0,5},{1,5},{2,5}  {3}::{4}",
+                item.hash, item.argCount, item.line, item.className, item.funcName);
         }
         File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
     }
@@ -259,7 +306,12 @@ public class LogTrackPdbFile
         items.Sort((a, b) => a.hash.CompareTo(b.hash));
     }
 
-    public int AddItem(int hash, int argCnt, string file, int line, string dbgStr)
+    internal void RegisterItem(LogTrackPdbItem item)
+    {
+        m_mapHash2Item[item.hash] = item;
+    }
+
+    public int AddItem(int hash, int argCnt, string file, int line, string dbgStr, string className, string funcName)
     {
         if (hash == 0 || m_mapHash2Item.ContainsKey(hash))
         {
@@ -272,7 +324,9 @@ public class LogTrackPdbFile
             file = file,
             line = line,
             argCount = argCnt,
-            dbgStr = dbgStr
+            dbgStr = dbgStr,
+            className = className ?? string.Empty,
+            funcName = funcName ?? string.Empty
         };
         m_mapHash2Item.Add(hash, item);
         return hash;

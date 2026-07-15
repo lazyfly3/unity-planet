@@ -25,7 +25,7 @@ public class VoxelSaveSystem : MonoBehaviour
     }
 
     public void Save()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(74);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(109);}
         if (voxelWorld == null)
             return;
 
@@ -39,10 +39,11 @@ public class VoxelSaveSystem : MonoBehaviour
         string json = JsonUtility.ToJson(data, true);
         File.WriteAllText(SavePath, json);
         Debug.Log($"体素存档已保存：{SavePath}（{entries.Count} 个 Chunk）");
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public void Load()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(75);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(110);}
         if (voxelWorld == null || !File.Exists(SavePath))
             return;
 
@@ -54,12 +55,14 @@ public class VoxelSaveSystem : MonoBehaviour
             voxelWorld.GenerateEntirePlanet();
 
         Debug.Log($"体素存档已加载：{SavePath}");
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 
     public bool HasSaveFile()
-    {if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.LogTrack(76);
+    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(111);}
         return File.Exists(SavePath);
-    }
+    
+    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
 }
 
 [System.Serializable]
