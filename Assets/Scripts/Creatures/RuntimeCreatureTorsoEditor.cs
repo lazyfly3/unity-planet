@@ -8,10 +8,7 @@ using UnityEngine.UI;
 public enum RuntimeTorsoHandleKind
 {
     Point,
-    Move,
-    Width,
-    Height,
-    Roll
+    Segment
 }
 
 public sealed class RuntimeTorsoHandle : MonoBehaviour
@@ -44,15 +41,15 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     CreatureTorsoSpline originalSpline;
     Transform handleRoot;
     Material handleMaterial;
+    int handleLayer = -1;
     int selectedPoint = -1;
+    int selectedSegment = -1;
     RuntimeTorsoHandle activeHandle;
     Vector3 dragAnchorWorld;
     Vector3 dragAxisWorld;
     float dragStartParameter;
-    float dragStartValue;
-    Vector3 dragStartPosition;
-    Vector3 dragStartDirection;
-    float nextPreviewTime;
+    Vector3 directDragStartWorld;
+    Vector3[] dragStartPositions;
     float cameraYaw;
     float cameraPitch = 18f;
     float cameraDistance = 10f;
@@ -101,8 +98,10 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
         }
 
         runtime.SetEditing(true);
+        runtime.CancelPendingRebuild();
         originalSpline = runtime.Genome.torsoSpline.Clone();
         selectedPoint = Mathf.Clamp(selectedPoint, 0, runtime.Genome.torsoSpline.points.Count - 1);
+        selectedSegment = -1;
         undo.Clear();
         redo.Clear();
         if (followCamera != null) followCamera.enabled = false;
@@ -134,11 +133,14 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
         CreatureTorsoSpline spline = runtime.Genome.torsoSpline;
         if (spline.points.Count >= CreatureTorsoSpline.MaximumPointCount) return;
         PushUndo();
-        int left = Mathf.Clamp(selectedPoint, 0, spline.points.Count - 2);
+        int left = selectedSegment >= 0
+            ? Mathf.Clamp(selectedSegment, 0, spline.points.Count - 2)
+            : Mathf.Clamp(selectedPoint, 0, spline.points.Count - 2);
         CreatureTorsoControlPoint a = spline.points[left];
         CreatureTorsoControlPoint b = spline.points[left + 1];
         spline.points.Insert(left + 1, LerpPoint(a, b, 0.5f));
         selectedPoint = left + 1;
+        selectedSegment = -1;
         ShapeChanged(false);
     }
 
@@ -218,22 +220,31 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
-            if (!Physics.Raycast(ray, out RaycastHit hit, 500f)) return;
+            int mask = handleLayer >= 0 ? 1 << handleLayer : Physics.AllLayers;
+            if (!Physics.Raycast(ray, out RaycastHit hit, 500f, mask, QueryTriggerInteraction.Collide)) return;
             RuntimeTorsoHandle handle = hit.collider.GetComponent<RuntimeTorsoHandle>();
             if (handle == null) return;
             if (handle.kind == RuntimeTorsoHandleKind.Point)
             {
                 selectedPoint = handle.pointIndex;
-                RebuildHandles();
-                return;
+                selectedSegment = -1;
+                BeginDrag(handle, ray);
             }
-            BeginDrag(handle, ray);
+            else if (handle.kind == RuntimeTorsoHandleKind.Segment)
+            {
+                selectedPoint = Mathf.Clamp(handle.pointIndex + 1, 1,
+                    runtime.Genome.torsoSpline.points.Count - 1);
+                selectedSegment = handle.pointIndex;
+                BeginDrag(handle, ray);
+            }
+            else
+                BeginDrag(handle, ray);
         }
         if (activeHandle != null && Input.GetMouseButton(0)) Drag(ray);
         if (activeHandle != null && Input.GetMouseButtonUp(0))
         {
             activeHandle = null;
-            runtime.RebuildAsync(CreatureBodyMeshQuality.Final);
+            runtime.ScheduleFinalRebuild();
             RebuildHandles();
         }
     }
@@ -241,47 +252,78 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     void BeginDrag(RuntimeTorsoHandle handle, Ray ray)
     {
         activeHandle = handle;
-        selectedPoint = handle.pointIndex;
+        if (handle.kind != RuntimeTorsoHandleKind.Segment)
+        {
+            selectedPoint = handle.pointIndex;
+            selectedSegment = -1;
+        }
         PushUndo();
+        runtime.CancelPendingRebuild();
         CreatureTorsoControlPoint point = runtime.Genome.torsoSpline.points[selectedPoint];
         dragAnchorWorld = runtime.transform.TransformPoint(point.localPosition);
-        dragAxisWorld = runtime.transform.TransformDirection(handle.localAxis).normalized;
-        dragStartParameter = ClosestAxisParameter(ray, dragAnchorWorld, dragAxisWorld);
-        dragStartPosition = point.localPosition;
-        dragStartValue = handle.kind == RuntimeTorsoHandleKind.Width ? point.width
-            : handle.kind == RuntimeTorsoHandleKind.Height ? point.height : point.rollDegrees;
-        if (handle.kind == RuntimeTorsoHandleKind.Roll
-            && TryRayPlane(ray, dragAnchorWorld, GetPointTangentWorld(selectedPoint), out Vector3 hit))
-            dragStartDirection = (hit - dragAnchorWorld).normalized;
+        List<CreatureTorsoControlPoint> points = runtime.Genome.torsoSpline.points;
+        dragStartPositions = new Vector3[points.Count];
+        for (int i = 0; i < points.Count; i++) dragStartPositions[i] = points[i].localPosition;
+        if (handle.kind == RuntimeTorsoHandleKind.Point)
+        {
+            Vector3 planeNormal = editorCamera != null ? editorCamera.transform.forward : transform.forward;
+            if (!TryRayPlane(ray, dragAnchorWorld, planeNormal, out directDragStartWorld))
+                directDragStartWorld = dragAnchorWorld;
+        }
+        else
+        {
+            dragAxisWorld = runtime.transform.TransformDirection(GetStretchAxisLocal(selectedPoint)).normalized;
+            dragStartParameter = ClosestAxisParameter(ray, dragAnchorWorld, dragAxisWorld);
+        }
     }
 
     void Drag(Ray ray)
     {
-        CreatureTorsoControlPoint point = runtime.Genome.torsoSpline.points[selectedPoint];
-        if (activeHandle.kind == RuntimeTorsoHandleKind.Roll)
+        if (activeHandle.kind == RuntimeTorsoHandleKind.Point)
         {
-            Vector3 tangent = GetPointTangentWorld(selectedPoint);
-            if (TryRayPlane(ray, dragAnchorWorld, tangent, out Vector3 hit))
-            {
-                Vector3 direction = (hit - dragAnchorWorld).normalized;
-                point.rollDegrees = dragStartValue + Vector3.SignedAngle(dragStartDirection, direction, tangent);
-            }
+            Vector3 planeNormal = editorCamera != null ? editorCamera.transform.forward : transform.forward;
+            if (TryRayPlane(ray, dragAnchorWorld, planeNormal, out Vector3 hit))
+                ApplyDirectNodeDrag(runtime.transform.InverseTransformVector(hit - directDragStartWorld));
         }
-        else
+        else if (activeHandle.kind == RuntimeTorsoHandleKind.Segment)
         {
             float delta = ClosestAxisParameter(ray, dragAnchorWorld, dragAxisWorld) - dragStartParameter;
-            if (activeHandle.kind == RuntimeTorsoHandleKind.Move)
-            {
-                Vector3 localDelta = runtime.transform.InverseTransformVector(dragAxisWorld * delta);
-                point.localPosition = dragStartPosition + localDelta;
-                KeepPointSeparated(selectedPoint, point);
-            }
-            else if (activeHandle.kind == RuntimeTorsoHandleKind.Width)
-                point.width = Mathf.Clamp(dragStartValue + delta * 2f, 0.16f, 8f);
-            else if (activeHandle.kind == RuntimeTorsoHandleKind.Height)
-                point.height = Mathf.Clamp(dragStartValue + delta * 2f, 0.16f, 8f);
+            ApplySegmentStretch(delta);
         }
         ShapeChanged(true, false);
+    }
+
+    void ApplyDirectNodeDrag(Vector3 localDelta)
+    {
+        List<CreatureTorsoControlPoint> points = runtime.Genome.torsoSpline.points;
+        Vector3 tangent = GetDragStartTangent(selectedPoint);
+        Vector3 stretchDelta = Vector3.Project(localDelta, tangent);
+        Vector3 bendDelta = localDelta - stretchDelta;
+
+        for (int i = 0; i < points.Count; i++)
+        {
+            float bendWeight = Mathf.Clamp01(1f - Mathf.Abs(i - selectedPoint) / 2.5f);
+            Vector3 displacement = bendDelta * bendWeight;
+            if (selectedPoint == 0)
+            {
+                if (i == 0) displacement += stretchDelta;
+            }
+            else if (i >= selectedPoint)
+                displacement += stretchDelta;
+            points[i].localPosition = dragStartPositions[i] + displacement;
+        }
+        ConstrainPointSpacing();
+    }
+
+    Vector3 GetDragStartTangent(int index)
+    {
+        if (dragStartPositions == null || dragStartPositions.Length < 2) return Vector3.forward;
+        Vector3 tangent = index == 0
+            ? dragStartPositions[1] - dragStartPositions[0]
+            : index == dragStartPositions.Length - 1
+                ? dragStartPositions[index] - dragStartPositions[index - 1]
+                : dragStartPositions[index + 1] - dragStartPositions[index - 1];
+        return tangent.sqrMagnitude > 0.0001f ? tangent.normalized : Vector3.forward;
     }
 
     void ShapeChanged(bool preview, bool pushUndo = false)
@@ -289,9 +331,8 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
         if (pushUndo) PushUndo();
         if (preview)
         {
-            if (Time.unscaledTime < nextPreviewTime) return;
-            nextPreviewTime = Time.unscaledTime + 0.1f;
-            runtime.RebuildAsync(CreatureBodyMeshQuality.Preview);
+            runtime.ApplyBonePreview();
+            RefreshSkeletonHandles();
         }
         else
         {
@@ -314,41 +355,16 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
         if (!IsEditing) return;
         CreateHandleRoot();
         CreatureTorsoSpline spline = runtime.Genome.torsoSpline;
+        for (int i = 0; i < spline.points.Count - 1; i++) CreateSegmentHandle(i);
         for (int i = 0; i < spline.points.Count; i++)
             CreatePrimitiveHandle(PrimitiveType.Sphere, RuntimeTorsoHandleKind.Point, i,
-                spline.points[i].localPosition, Vector3.zero, 0.18f,
-                i == selectedPoint ? new Color(1f, 0.72f, 0.12f) : new Color(0.1f, 0.8f, 1f));
-        if (selectedPoint < 0 || selectedPoint >= spline.points.Count) return;
-        CreatureTorsoControlPoint selected = spline.points[selectedPoint];
-        CreatePrimitiveHandle(PrimitiveType.Cube, RuntimeTorsoHandleKind.Move, selectedPoint,
-            selected.localPosition + Vector3.right * 0.72f, Vector3.right, 0.18f, Color.red);
-        CreatePrimitiveHandle(PrimitiveType.Cube, RuntimeTorsoHandleKind.Move, selectedPoint,
-            selected.localPosition + Vector3.up * 0.72f, Vector3.up, 0.18f, Color.green);
-        CreatePrimitiveHandle(PrimitiveType.Cube, RuntimeTorsoHandleKind.Move, selectedPoint,
-            selected.localPosition + Vector3.forward * 0.72f, Vector3.forward, 0.18f, Color.blue);
-        CreatePrimitiveHandle(PrimitiveType.Cube, RuntimeTorsoHandleKind.Width, selectedPoint,
-            selected.localPosition + Vector3.right * selected.width * 0.5f, Vector3.right, 0.24f, Color.magenta);
-        CreatePrimitiveHandle(PrimitiveType.Cube, RuntimeTorsoHandleKind.Height, selectedPoint,
-            selected.localPosition + Vector3.up * selected.height * 0.5f, Vector3.up, 0.24f, Color.yellow);
-        CreateRollRing(selected);
+                spline.points[i].localPosition, Vector3.zero,
+                Mathf.Clamp(0.12f + Mathf.Max(spline.points[i].width, spline.points[i].height) * 0.05f,
+                    0.16f, 0.32f),
+                i == selectedPoint ? new Color(1f, 0.82f, 0.28f, 0.95f) : new Color(0.72f, 0.9f, 1f, 0.82f));
     }
 
-    void CreateRollRing(CreatureTorsoControlPoint point)
-    {
-        Vector3 tangent = GetPointTangentLocal(selectedPoint);
-        Vector3 axisX = Vector3.Cross(Mathf.Abs(Vector3.Dot(tangent, Vector3.up)) > 0.9f ? Vector3.forward : Vector3.up, tangent).normalized;
-        Vector3 axisY = Vector3.Cross(tangent, axisX).normalized;
-        float radius = Mathf.Max(point.width, point.height) * 0.7f;
-        for (int i = 0; i < 16; i++)
-        {
-            float angle = i / 16f * Mathf.PI * 2f;
-            Vector3 offset = (axisX * Mathf.Cos(angle) + axisY * Mathf.Sin(angle)) * radius;
-            CreatePrimitiveHandle(PrimitiveType.Sphere, RuntimeTorsoHandleKind.Roll, selectedPoint,
-                point.localPosition + offset, tangent, 0.08f, new Color(1f, 0.45f, 0.1f));
-        }
-    }
-
-    void CreatePrimitiveHandle(
+    GameObject CreatePrimitiveHandle(
         PrimitiveType primitive, RuntimeTorsoHandleKind kind, int index,
         Vector3 localPosition, Vector3 axis, float scale, Color color)
     {
@@ -357,6 +373,7 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
         handle.transform.SetParent(handleRoot, false);
         handle.transform.localPosition = localPosition;
         handle.transform.localScale = Vector3.one * scale;
+        if (handleLayer >= 0) handle.layer = handleLayer;
         RuntimeTorsoHandle descriptor = handle.AddComponent<RuntimeTorsoHandle>();
         descriptor.kind = kind;
         descriptor.pointIndex = index;
@@ -367,6 +384,93 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
         properties.SetColor("_Color", color);
         renderer.SetPropertyBlock(properties);
         handles.Add(handle);
+        return handle;
+    }
+
+    void CreateSegmentHandle(int segmentIndex)
+    {
+        List<CreatureTorsoControlPoint> points = runtime.Genome.torsoSpline.points;
+        Vector3 start = points[segmentIndex].localPosition;
+        Vector3 end = points[segmentIndex + 1].localPosition;
+        Vector3 direction = end - start;
+        float length = Mathf.Max(0.01f, direction.magnitude);
+        GameObject segment = CreatePrimitiveHandle(
+            PrimitiveType.Cube,
+            RuntimeTorsoHandleKind.Segment,
+            segmentIndex,
+            (start + end) * 0.5f,
+            direction.normalized,
+            1f,
+            selectedSegment == segmentIndex
+                ? new Color(1f, 0.55f, 0.08f, 0.95f)
+                : new Color(0.56f, 0.82f, 1f, 0.62f));
+        if (direction.sqrMagnitude > 0.0001f)
+            segment.transform.localRotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+        segment.transform.localScale = new Vector3(0.07f, 0.07f, length);
+    }
+
+    void RefreshSkeletonHandles()
+    {
+        if (runtime == null) return;
+        List<CreatureTorsoControlPoint> points = runtime.Genome.torsoSpline.points;
+        foreach (GameObject handleObject in handles)
+        {
+            if (handleObject == null) continue;
+            RuntimeTorsoHandle handle = handleObject.GetComponent<RuntimeTorsoHandle>();
+            if (handle == null) continue;
+            if (handle.kind == RuntimeTorsoHandleKind.Point && handle.pointIndex < points.Count)
+                handleObject.transform.localPosition = points[handle.pointIndex].localPosition;
+            else if (handle.kind == RuntimeTorsoHandleKind.Segment && handle.pointIndex + 1 < points.Count)
+            {
+                Vector3 start = points[handle.pointIndex].localPosition;
+                Vector3 end = points[handle.pointIndex + 1].localPosition;
+                Vector3 direction = end - start;
+                handleObject.transform.localPosition = (start + end) * 0.5f;
+                if (direction.sqrMagnitude > 0.0001f)
+                    handleObject.transform.localRotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+                handleObject.transform.localScale = new Vector3(
+                    0.07f, 0.07f, Mathf.Max(0.01f, direction.magnitude));
+            }
+        }
+    }
+
+    void ApplySegmentStretch(float delta)
+    {
+        List<CreatureTorsoControlPoint> points = runtime.Genome.torsoSpline.points;
+        int firstMovedPoint = selectedPoint == 0 ? 1 : selectedPoint;
+        if (firstMovedPoint <= 0 || firstMovedPoint >= points.Count) return;
+        Vector3 axis = GetStretchAxisLocal(firstMovedPoint);
+        float originalLength = Vector3.Distance(
+            dragStartPositions[firstMovedPoint - 1], dragStartPositions[firstMovedPoint]);
+        float constrainedDelta = Mathf.Clamp(delta, -(originalLength - 0.12f), 8f);
+        Vector3 displacement = axis * constrainedDelta;
+        for (int i = firstMovedPoint; i < points.Count; i++)
+            points[i].localPosition = dragStartPositions[i] + displacement;
+        ConstrainPointSpacing();
+    }
+
+    Vector3 GetStretchAxisLocal(int index)
+    {
+        List<CreatureTorsoControlPoint> points = runtime.Genome.torsoSpline.points;
+        int left = Mathf.Clamp(index - 1, 0, points.Count - 2);
+        Vector3 axis = points[left + 1].localPosition - points[left].localPosition;
+        return axis.sqrMagnitude > 0.0001f ? axis.normalized : Vector3.forward;
+    }
+
+    void ConstrainPointSpacing()
+    {
+        const float minimumSpacing = 0.12f;
+        List<CreatureTorsoControlPoint> points = runtime.Genome.torsoSpline.points;
+        for (int i = 1; i < points.Count; i++)
+        {
+            Vector3 segment = points[i].localPosition - points[i - 1].localPosition;
+            if (segment.sqrMagnitude >= minimumSpacing * minimumSpacing) continue;
+            Vector3 fallback = dragStartPositions != null && i < dragStartPositions.Length
+                ? dragStartPositions[i] - dragStartPositions[i - 1] : Vector3.forward;
+            Vector3 direction = segment.sqrMagnitude > 0.000001f ? segment.normalized
+                : fallback.sqrMagnitude > 0.000001f ? fallback.normalized : Vector3.forward;
+            points[i].localPosition = points[i - 1].localPosition + direction * minimumSpacing;
+        }
     }
 
     void UpdateEditorCamera()
@@ -413,15 +517,6 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     Vector3 GetPointTangentWorld(int index)
     {
         return runtime.transform.TransformDirection(GetPointTangentLocal(index)).normalized;
-    }
-
-    void KeepPointSeparated(int index, CreatureTorsoControlPoint point)
-    {
-        List<CreatureTorsoControlPoint> points = runtime.Genome.torsoSpline.points;
-        if (index > 0 && Vector3.Distance(point.localPosition, points[index - 1].localPosition) < 0.12f)
-            point.localPosition = Vector3.MoveTowards(points[index - 1].localPosition, dragStartPosition, 0.12f);
-        if (index < points.Count - 1 && Vector3.Distance(point.localPosition, points[index + 1].localPosition) < 0.12f)
-            point.localPosition = Vector3.MoveTowards(points[index + 1].localPosition, dragStartPosition, 0.12f);
     }
 
     static float ClosestAxisParameter(Ray ray, Vector3 axisOrigin, Vector3 axisDirection)
@@ -494,6 +589,11 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     {
         if (handleRoot != null || runtime == null) return;
         var root = new GameObject("RuntimeTorsoHandles");
+        handleLayer = LayerMask.NameToLayer("CreatureEditHandle");
+        if (handleLayer < 0)
+            Debug.LogError("The CreatureEditHandle layer is missing from TagManager.", this);
+        else
+            root.layer = handleLayer;
         handleRoot = root.transform;
         handleRoot.SetParent(runtime.transform, false);
     }
@@ -501,7 +601,11 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     Material GetHandleMaterial()
     {
         if (handleMaterial == null)
-            handleMaterial = new Material(Shader.Find("Standard")) { name = "RuntimeTorsoHandleMaterial" };
+        {
+            Shader shader = Shader.Find("Creature/HandleXRay");
+            if (shader == null) shader = Shader.Find("Unlit/Color");
+            handleMaterial = new Material(shader) { name = "RuntimeTorsoHandleXRayMaterial" };
+        }
         return handleMaterial;
     }
 
@@ -529,8 +633,9 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     {
         if (statusText == null || runtime == null) return;
         statusText.text = runtime.RebuildInProgress
-            ? "正在重建躯干..."
-            : $"塑形点 {selectedPoint + 1}/{runtime.Genome.torsoSpline.points.Count}  |  E 应用并返回";
+            ? "正在后台重建躯干..."
+            : $"骨骼 {selectedPoint + 1}/{runtime.Genome.torsoSpline.points.Count} | "
+                + "按住节点直接塑形，拖动骨骼线直接拉伸，E 应用";
     }
 
     void SetStatus(string value)

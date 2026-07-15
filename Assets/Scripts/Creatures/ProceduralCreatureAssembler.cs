@@ -35,12 +35,15 @@ public static class ProceduralCreatureAssembler
 
         CreatureRig rig = BuildRig(genome, root.transform);
         RebuildTorsoColliders(genome, rig, root.transform, capsule, generatedPhysicsMaterial);
-        Mesh skinMesh = CreatureSkinnedMeshBuilder.Build(genome, rig, root.transform);
+        CreatureImplicitMeshData torsoData = CreatureImplicitBodyMesher.Build(
+            genome.torsoSpline, CreatureBodyMeshQuality.Final);
+        Mesh torsoMesh = CreatureSkinnedMeshBuilder.BuildTorso(genome, rig, root.transform, torsoData);
+        Mesh attachmentMesh = CreatureSkinnedMeshBuilder.BuildAttachments(genome, rig, root.transform);
 
-        var skinObject = new GameObject("SkinnedBody");
+        var skinObject = new GameObject("SkinnedTorso");
         skinObject.transform.SetParent(root.transform, false);
         var renderer = skinObject.AddComponent<SkinnedMeshRenderer>();
-        renderer.sharedMesh = skinMesh;
+        renderer.sharedMesh = torsoMesh;
         renderer.sharedMaterial = sharedMaterial;
         renderer.rootBone = rig.body;
         renderer.bones = rig.bones;
@@ -51,8 +54,20 @@ public static class ProceduralCreatureAssembler
             genome.legLength * 2f + genome.bodyHeight) * 2f;
         renderer.localBounds = new Bounds(Vector3.zero, Vector3.one * Mathf.Max(10f, boundsSize));
 
+        var attachmentObject = new GameObject("SkinnedAttachments");
+        attachmentObject.transform.SetParent(root.transform, false);
+        var attachmentRenderer = attachmentObject.AddComponent<SkinnedMeshRenderer>();
+        attachmentRenderer.sharedMesh = attachmentMesh;
+        attachmentRenderer.sharedMaterial = sharedMaterial;
+        attachmentRenderer.rootBone = rig.body;
+        attachmentRenderer.bones = rig.bones;
+        attachmentRenderer.quality = SkinQuality.Bone4;
+        attachmentRenderer.updateWhenOffscreen = false;
+        attachmentRenderer.localBounds = renderer.localBounds;
+
         var meshOwner = root.AddComponent<GeneratedCreatureMeshOwner>();
-        meshOwner.Configure(skinMesh, generatedPhysicsMaterial);
+        meshOwner.Configure(torsoMesh, generatedPhysicsMaterial);
+        meshOwner.AddMesh(attachmentMesh);
 
         var motor = root.AddComponent<CreatureSphereMotor>();
         float moveSpeed = genome.topology == CreatureTopology.Serpentine
@@ -379,14 +394,6 @@ public static class ProceduralCreatureAssembler
         CapsuleCollider rootCapsule,
         PhysicMaterial physicsMaterial)
     {
-        for (int i = root.childCount - 1; i >= 0; i--)
-        {
-            Transform child = root.GetChild(i);
-            if (!child.name.StartsWith("ImplicitTorsoCollider_", System.StringComparison.Ordinal)) continue;
-            if (Application.isPlaying) Object.Destroy(child.gameObject);
-            else Object.DestroyImmediate(child.gameObject);
-        }
-
         if (genome.torsoSpline == null || genome.torsoSpline.points.Count < 2) return;
         float largestRadius = 0.1f;
         for (int i = 0; i < genome.torsoSpline.points.Count - 1; i++)
@@ -397,17 +404,27 @@ public static class ProceduralCreatureAssembler
             float radius = Mathf.Max(0.08f,
                 Mathf.Min(a.width, a.height, b.width, b.height) * 0.28f);
             largestRadius = Mathf.Max(largestRadius, radius);
-            var colliderObject = new GameObject($"ImplicitTorsoCollider_{i:00}");
+            string colliderName = $"ImplicitTorsoCollider_{i:00}";
+            Transform existing = root.Find(colliderName);
+            GameObject colliderObject = existing != null ? existing.gameObject : new GameObject(colliderName);
+            colliderObject.SetActive(true);
             colliderObject.transform.SetParent(root, false);
             colliderObject.transform.localPosition = (a.localPosition + b.localPosition) * 0.5f;
             colliderObject.transform.localRotation = segment.sqrMagnitude > 0.0001f
                 ? Quaternion.LookRotation(segment.normalized, Vector3.up) : Quaternion.identity;
-            var capsule = colliderObject.AddComponent<CapsuleCollider>();
+            var capsule = colliderObject.GetComponent<CapsuleCollider>();
+            if (capsule == null) capsule = colliderObject.AddComponent<CapsuleCollider>();
             capsule.direction = 2;
             capsule.radius = radius;
             capsule.height = Mathf.Max(radius * 2f, segment.magnitude + radius * 1.2f);
             if (physicsMaterial != null)
                 capsule.sharedMaterial = physicsMaterial;
+        }
+
+        for (int i = genome.torsoSpline.points.Count - 1; i < CreatureTorsoSpline.MaximumPointCount; i++)
+        {
+            Transform unused = root.Find($"ImplicitTorsoCollider_{i:00}");
+            if (unused != null) unused.gameObject.SetActive(false);
         }
 
         if (rootCapsule != null && genome.topology == CreatureTopology.Serpentine)
@@ -437,6 +454,7 @@ public static class ProceduralCreatureAssembler
 public sealed class GeneratedCreatureMeshOwner : MonoBehaviour
 {
     Mesh generatedMesh;
+    readonly List<Mesh> additionalMeshes = new List<Mesh>();
     PhysicMaterial generatedPhysicsMaterial;
 
     public void Configure(Mesh mesh, PhysicMaterial physicsMaterial = null)
@@ -462,16 +480,23 @@ public sealed class GeneratedCreatureMeshOwner : MonoBehaviour
         else DestroyImmediate(previous);
     }
 
+    public void AddMesh(Mesh mesh)
+    {
+        if (mesh != null && !additionalMeshes.Contains(mesh)) additionalMeshes.Add(mesh);
+    }
+
     void OnDestroy()
     {
         if (Application.isPlaying)
         {
             if (generatedMesh != null) Destroy(generatedMesh);
+            foreach (Mesh mesh in additionalMeshes) if (mesh != null) Destroy(mesh);
             if (generatedPhysicsMaterial != null) Destroy(generatedPhysicsMaterial);
         }
         else
         {
             if (generatedMesh != null) DestroyImmediate(generatedMesh);
+            foreach (Mesh mesh in additionalMeshes) if (mesh != null) DestroyImmediate(mesh);
             if (generatedPhysicsMaterial != null) DestroyImmediate(generatedPhysicsMaterial);
         }
     }

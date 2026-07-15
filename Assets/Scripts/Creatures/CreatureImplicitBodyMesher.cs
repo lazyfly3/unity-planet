@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -41,16 +42,18 @@ public static class CreatureImplicitBodyMesher
     public static Task<CreatureImplicitMeshData> BuildAsync(
         CreatureTorsoSpline spline,
         CreatureBodyMeshQuality quality,
-        int revision)
+        int revision,
+        CancellationToken cancellationToken = default)
     {
         CreatureTorsoSpline snapshot = spline.Clone();
-        return Task.Run(() => Build(snapshot, quality, revision));
+        return Task.Run(() => Build(snapshot, quality, revision, cancellationToken), cancellationToken);
     }
 
     public static CreatureImplicitMeshData Build(
         CreatureTorsoSpline spline,
         CreatureBodyMeshQuality quality,
-        int revision = 0)
+        int revision = 0,
+        CancellationToken cancellationToken = default)
     {
         string error = null;
         if (spline == null || !spline.Validate(out error))
@@ -59,15 +62,21 @@ public static class CreatureImplicitBodyMesher
         float requestedCell = quality == CreatureBodyMeshQuality.Preview ? 0.22f : 0.1f;
         for (int attempt = 0; attempt < 8; attempt++)
         {
-            CreatureImplicitMeshData result = BuildAtCellSize(spline, requestedCell, revision);
+            cancellationToken.ThrowIfCancellationRequested();
+            CreatureImplicitMeshData result = BuildAtCellSize(
+                spline, requestedCell, revision, cancellationToken);
             if (result.vertices.Length <= MaximumVertexCount)
                 return result;
             requestedCell *= 1.22f;
         }
-        return BuildAtCellSize(spline, requestedCell, revision);
+        return BuildAtCellSize(spline, requestedCell, revision, cancellationToken);
     }
 
-    static CreatureImplicitMeshData BuildAtCellSize(CreatureTorsoSpline spline, float cellSize, int revision)
+    static CreatureImplicitMeshData BuildAtCellSize(
+        CreatureTorsoSpline spline,
+        float cellSize,
+        int revision,
+        CancellationToken cancellationToken)
     {
         CalculateBounds(spline, out Vector3 minimum, out Vector3 maximum);
         Vector3 size = maximum - minimum;
@@ -86,11 +95,14 @@ public static class CreatureImplicitBodyMesher
         maximum = minimum + new Vector3((nx - 1) * cellSize, (ny - 1) * cellSize, (nz - 1) * cellSize);
         var field = new float[nx * ny * nz];
         for (int z = 0; z < nz; z++)
+        {
+        cancellationToken.ThrowIfCancellationRequested();
         for (int y = 0; y < ny; y++)
         for (int x = 0; x < nx; x++)
         {
             Vector3 point = minimum + new Vector3(x * cellSize, y * cellSize, z * cellSize);
             field[Index(x, y, z, nx, ny)] = SampleDistance(spline, point);
+        }
         }
 
         var vertices = new List<Vector3>(8192);
@@ -101,6 +113,8 @@ public static class CreatureImplicitBodyMesher
         var polygon = new Vector3[4];
         var polygonAngles = new float[4];
         for (int z = 0; z < nz - 1; z++)
+        {
+        cancellationToken.ThrowIfCancellationRequested();
         for (int y = 0; y < ny - 1; y++)
         for (int x = 0; x < nx - 1; x++)
         {
@@ -114,9 +128,11 @@ public static class CreatureImplicitBodyMesher
             }
             if (!hasInside || !hasOutside) continue;
 
+            Vector3 outward = CalculateCubeGradient(values);
             for (int tetrahedron = 0; tetrahedron < 6; tetrahedron++)
-                PolygonizeTetrahedron(spline, corners, values, tetrahedron, cellSize,
+                PolygonizeTetrahedron(corners, values, tetrahedron, outward,
                     polygon, polygonAngles, vertices, normals, triangles);
+        }
         }
 
         WeldVertices(vertices, normals, triangles,
@@ -199,11 +215,10 @@ public static class CreatureImplicitBodyMesher
     }
 
     static void PolygonizeTetrahedron(
-        CreatureTorsoSpline spline,
         Vector3[] cubeCorners,
         float[] cubeValues,
         int tetrahedron,
-        float cellSize,
+        Vector3 outward,
         Vector3[] polygon,
         float[] polygonAngles,
         List<Vector3> vertices,
@@ -226,7 +241,6 @@ public static class CreatureImplicitBodyMesher
         Vector3 center = Vector3.zero;
         for (int i = 0; i < polygonCount; i++) center += polygon[i];
         center /= polygonCount;
-        Vector3 outward = SampleGradient(spline, center, cellSize * 0.35f);
         Vector3 axisX = Vector3.Cross(Math.Abs(outward.y) > 0.85f ? Vector3.forward : Vector3.up, outward).normalized;
         Vector3 axisY = Vector3.Cross(outward, axisX).normalized;
         for (int i = 0; i < polygonCount; i++)
@@ -264,9 +278,10 @@ public static class CreatureImplicitBodyMesher
             vertices.Add(a);
             vertices.Add(b);
             vertices.Add(c);
-            normals.Add(SampleGradient(spline, a, cellSize * 0.35f));
-            normals.Add(SampleGradient(spline, b, cellSize * 0.35f));
-            normals.Add(SampleGradient(spline, c, cellSize * 0.35f));
+            Vector3 faceNormal = Vector3.Cross(b - a, c - a).normalized;
+            normals.Add(faceNormal);
+            normals.Add(faceNormal);
+            normals.Add(faceNormal);
             triangles.Add(start);
             triangles.Add(start + 1);
             triangles.Add(start + 2);
@@ -308,15 +323,14 @@ public static class CreatureImplicitBodyMesher
         return (normalized - 1f) * Math.Min(width, height);
     }
 
-    static Vector3 SampleGradient(CreatureTorsoSpline spline, Vector3 point, float epsilon)
+    static Vector3 CalculateCubeGradient(float[] values)
     {
-        epsilon = Math.Max(0.001f, epsilon);
-        float x = SampleDistance(spline, point + Vector3.right * epsilon)
-            - SampleDistance(spline, point - Vector3.right * epsilon);
-        float y = SampleDistance(spline, point + Vector3.up * epsilon)
-            - SampleDistance(spline, point - Vector3.up * epsilon);
-        float z = SampleDistance(spline, point + Vector3.forward * epsilon)
-            - SampleDistance(spline, point - Vector3.forward * epsilon);
+        float x = (values[1] + values[2] + values[5] + values[6])
+            - (values[0] + values[3] + values[4] + values[7]);
+        float y = (values[2] + values[3] + values[6] + values[7])
+            - (values[0] + values[1] + values[4] + values[5]);
+        float z = (values[4] + values[5] + values[6] + values[7])
+            - (values[0] + values[1] + values[2] + values[3]);
         Vector3 gradient = new Vector3(x, y, z);
         return gradient.sqrMagnitude > 0.000001f ? gradient.normalized : Vector3.up;
     }

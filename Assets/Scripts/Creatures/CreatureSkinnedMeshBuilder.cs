@@ -35,11 +35,44 @@ public static class CreatureSkinnedMeshBuilder
         for (int i = 0; i < rig.graph.nodes.Count; i++)
             AppendNodeGeometry(vertices, triangles, colors, weights, genome, rig, creatureRoot, i);
 
-        var mesh = new Mesh
-        {
-            name = $"CreatureGraphSkin_{genome.seed}",
-            indexFormat = IndexFormat.UInt32
-        };
+        return CreateMesh($"CreatureGraphSkin_{genome.seed}", vertices, triangles, colors, weights, rig, creatureRoot);
+    }
+
+    public static Mesh BuildTorso(
+        CreatureGenome genome,
+        CreatureRig rig,
+        Transform creatureRoot,
+        CreatureImplicitMeshData implicitBody)
+    {
+        var vertices = new List<Vector3>(implicitBody.vertices.Length);
+        var triangles = new List<int>(implicitBody.triangles.Length);
+        var colors = new List<Color>(implicitBody.vertices.Length);
+        var weights = new List<BoneWeight>(implicitBody.vertices.Length);
+        AppendImplicitBody(vertices, triangles, colors, weights, genome, rig, implicitBody);
+        return CreateMesh($"CreatureTorsoSkin_{genome.seed}", vertices, triangles, colors, weights, rig, creatureRoot);
+    }
+
+    public static Mesh BuildAttachments(CreatureGenome genome, CreatureRig rig, Transform creatureRoot)
+    {
+        var vertices = new List<Vector3>(4096);
+        var triangles = new List<int>(8192);
+        var colors = new List<Color>(4096);
+        var weights = new List<BoneWeight>(4096);
+        for (int i = 0; i < rig.graph.nodes.Count; i++)
+            AppendNodeGeometry(vertices, triangles, colors, weights, genome, rig, creatureRoot, i);
+        return CreateMesh($"CreatureAttachmentSkin_{genome.seed}", vertices, triangles, colors, weights, rig, creatureRoot);
+    }
+
+    static Mesh CreateMesh(
+        string name,
+        List<Vector3> vertices,
+        List<int> triangles,
+        List<Color> colors,
+        List<BoneWeight> weights,
+        CreatureRig rig,
+        Transform creatureRoot)
+    {
+        var mesh = new Mesh { name = name, indexFormat = IndexFormat.UInt32 };
         mesh.SetVertices(vertices);
         mesh.SetTriangles(triangles, 0);
         mesh.SetColors(colors);

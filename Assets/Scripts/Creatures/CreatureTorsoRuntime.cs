@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Collections;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -99,6 +101,8 @@ public sealed class CreatureTorsoRuntime : MonoBehaviour
     bool editing;
     bool rebuildInProgress;
     bool previousKinematic;
+    CancellationTokenSource rebuildCancellation;
+    Coroutine scheduledRebuild;
 
     public CreatureGenome Genome => genome;
     public CreatureRig Rig => rig;
@@ -157,32 +161,77 @@ public sealed class CreatureTorsoRuntime : MonoBehaviour
         }
     }
 
+    public void ApplyBonePreview()
+    {
+        if (genome == null || genome.torsoSpline == null || rig == null) return;
+        CreatureTorsoRigBuilder.BuildOrUpdate(rig, genome.torsoSpline);
+    }
+
+    public void ScheduleFinalRebuild(float delaySeconds = 0.18f)
+    {
+        CancelPendingRebuild();
+        scheduledRebuild = StartCoroutine(RebuildAfterDelay(Mathf.Max(0f, delaySeconds)));
+    }
+
+    public void CancelPendingRebuild()
+    {
+        revision++;
+        if (scheduledRebuild != null)
+        {
+            StopCoroutine(scheduledRebuild);
+            scheduledRebuild = null;
+        }
+        if (rebuildCancellation != null)
+        {
+            rebuildCancellation.Cancel();
+            rebuildCancellation = null;
+        }
+        rebuildInProgress = false;
+    }
+
+    IEnumerator RebuildAfterDelay(float delaySeconds)
+    {
+        if (delaySeconds > 0f)
+            yield return new WaitForSecondsRealtime(delaySeconds);
+        scheduledRebuild = null;
+        RebuildAsync(CreatureBodyMeshQuality.Final);
+    }
+
     public async void RebuildAsync(CreatureBodyMeshQuality quality)
     {
-        if (genome == null || genome.torsoSpline == null || rebuildInProgress && quality == CreatureBodyMeshQuality.Preview)
-            return;
+        if (genome == null || genome.torsoSpline == null) return;
+        CancelPendingRebuild();
         int requestedRevision = ++revision;
+        var cancellation = new CancellationTokenSource();
+        rebuildCancellation = cancellation;
         rebuildInProgress = true;
-        CreatureImplicitMeshData data;
         try
         {
-            data = await CreatureImplicitBodyMesher.BuildAsync(genome.torsoSpline, quality, requestedRevision);
+            CreatureImplicitMeshData data = await CreatureImplicitBodyMesher.BuildAsync(
+                genome.torsoSpline, quality, requestedRevision, cancellation.Token);
+            if (this == null || cancellation.IsCancellationRequested || requestedRevision != revision)
+                return;
+            ApplyMesh(data);
         }
+        catch (OperationCanceledException) { }
         catch (Exception exception)
         {
-            rebuildInProgress = false;
             Debug.LogError("Creature torso rebuild failed: " + exception, this);
-            return;
         }
-
-        if (this == null || requestedRevision != revision)
-            return;
-        ApplyMesh(data);
-        rebuildInProgress = false;
+        finally
+        {
+            if (rebuildCancellation == cancellation)
+            {
+                rebuildCancellation = null;
+                rebuildInProgress = false;
+            }
+            cancellation.Dispose();
+        }
     }
 
     public void RebuildNow(CreatureBodyMeshQuality quality)
     {
+        CancelPendingRebuild();
         int requestedRevision = ++revision;
         CreatureImplicitMeshData data = CreatureImplicitBodyMesher.Build(genome.torsoSpline, quality, requestedRevision);
         ApplyMesh(data);
@@ -191,7 +240,7 @@ public sealed class CreatureTorsoRuntime : MonoBehaviour
     void ApplyMesh(CreatureImplicitMeshData data)
     {
         CreatureTorsoRigBuilder.BuildOrUpdate(rig, genome.torsoSpline);
-        Mesh mesh = CreatureSkinnedMeshBuilder.Build(genome, rig, transform, data);
+        Mesh mesh = CreatureSkinnedMeshBuilder.BuildTorso(genome, rig, transform, data);
         skinRenderer.sharedMesh = mesh;
         float boundsSize = Mathf.Max(
             genome.bodyLength + genome.tailLength + genome.headLength + genome.neckLength,
@@ -205,5 +254,10 @@ public sealed class CreatureTorsoRuntime : MonoBehaviour
         if (motor != null) motor.UpdateBodyGeometry(rootCapsule, clearance);
         if (animator != null) animator.RefreshRestPose();
         MeshRebuilt?.Invoke();
+    }
+
+    void OnDestroy()
+    {
+        CancelPendingRebuild();
     }
 }
