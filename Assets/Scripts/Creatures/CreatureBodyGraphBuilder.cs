@@ -2,7 +2,7 @@ using UnityEngine;
 
 public static class CreatureBodyGraphBuilder
 {
-    const int GeneratorVersion = 2;
+    const int GeneratorVersion = 3;
     // One extra Armature transform keeps the complete skin rig within 48 bones.
     const int MaximumNodes = 47;
 
@@ -59,7 +59,9 @@ public static class CreatureBodyGraphBuilder
         {
             generatorVersion = GeneratorVersion,
             torsoCount = serpentine ? 1 : random.Range(1, 4),
-            spineCount = serpentine ? Mathf.Clamp(genome.spineSegmentCount, 9, 16) : random.Range(2, 9),
+            spineCount = genome.torsoSpline != null && genome.torsoSpline.points != null
+                ? genome.torsoSpline.points.Count
+                : (serpentine ? Mathf.Clamp(genome.spineSegmentCount, 9, 16) : random.Range(2, 9)),
             supportLegPairCount = genome.legPairCount,
             armPairCount = serpentine ? 0 : random.Range(0, 3),
             headCount = !serpentine && random.Value() < 0.12f ? 2 : 1,
@@ -80,15 +82,19 @@ public static class CreatureBodyGraphBuilder
 
     static int[] BuildSpine(CreatureGenome genome, CreatureBodyGraph graph)
     {
+        if (genome.torsoSpline == null || !genome.torsoSpline.Validate(out _))
+            genome.torsoSpline = CreatureTorsoSpline.CreateLegacyFallback(
+                genome.bodyLength, genome.bodyWidth, genome.bodyHeight,
+                genome.topology == CreatureTopology.Serpentine ? 9 : 5);
+        graph.spineCount = genome.torsoSpline.points.Count;
         var indices = new int[graph.spineCount];
-        float spacing = genome.bodyLength / Mathf.Max(1, graph.spineCount - 1);
         for (int i = 0; i < graph.spineCount; i++)
         {
             float t = graph.spineCount == 1 ? 0.5f : i / (float)(graph.spineCount - 1);
-            float profile = Mathf.Lerp(0.58f, 1f, Mathf.Sin(t * Mathf.PI));
+            CreatureTorsoControlPoint point = genome.torsoSpline.points[i];
             Vector3 localPosition = i == 0
-                ? new Vector3(0f, 0f, -genome.bodyLength * 0.5f)
-                : new Vector3(0f, genome.designLanguage.bodyCurve * spacing * 0.12f, spacing);
+                ? point.localPosition
+                : point.localPosition - genome.torsoSpline.points[i - 1].localPosition;
             indices[i] = AddNode(graph, new CreatureBodyNode
             {
                 parentIndex = i == 0 ? -1 : indices[i - 1],
@@ -99,10 +105,11 @@ public static class CreatureBodyGraphBuilder
                 longitudinalPosition = t,
                 localPosition = localPosition,
                 size = new Vector3(
-                    Mathf.Max(0.22f, genome.bodyWidth * profile),
-                    Mathf.Max(0.2f, genome.bodyHeight * profile),
-                    spacing),
-                radius = Mathf.Max(0.12f, genome.bodyWidth * 0.5f * profile),
+                    point.width,
+                    point.height,
+                    i == 0 ? Vector3.Distance(point.localPosition, genome.torsoSpline.points[1].localPosition)
+                        : Vector3.Distance(point.localPosition, genome.torsoSpline.points[i - 1].localPosition)),
+                radius = Mathf.Max(0.08f, Mathf.Min(point.width, point.height) * 0.5f),
                 animationPhase = t
             });
         }

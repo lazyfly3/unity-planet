@@ -11,12 +11,27 @@ public static class CreatureSkinnedMeshBuilder
     if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(35);}
     try
     {
+        CreatureImplicitMeshData implicitBody = CreatureImplicitBodyMesher.Build(
+            genome.torsoSpline, CreatureBodyMeshQuality.Final);
+        return Build(genome, rig, creatureRoot, implicitBody);
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
+
+    public static Mesh Build(
+        CreatureGenome genome,
+        CreatureRig rig,
+        Transform creatureRoot,
+        CreatureImplicitMeshData implicitBody)
+    {
         var vertices = new List<Vector3>(8192);
         var triangles = new List<int>(16384);
         var colors = new List<Color>(8192);
         var weights = new List<BoneWeight>(8192);
 
-        AppendSpineLoft(vertices, triangles, colors, weights, genome, rig, creatureRoot);
+        AppendImplicitBody(vertices, triangles, colors, weights, genome, rig, implicitBody);
         for (int i = 0; i < rig.graph.nodes.Count; i++)
             AppendNodeGeometry(vertices, triangles, colors, weights, genome, rig, creatureRoot, i);
 
@@ -37,10 +52,31 @@ public static class CreatureSkinnedMeshBuilder
         mesh.RecalculateBounds();
         return mesh;
     }
-    finally
+
+    static void AppendImplicitBody(
+        List<Vector3> vertices,
+        List<int> triangles,
+        List<Color> colors,
+        List<BoneWeight> weights,
+        CreatureGenome genome,
+        CreatureRig rig,
+        CreatureImplicitMeshData body)
     {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+        int start = vertices.Count;
+        vertices.AddRange(body.vertices);
+        BoneWeight[] bodyWeights = CreatureSkinWeightSolver.Calculate(
+            body.vertices, genome.torsoSpline, rig.spineIndices);
+        weights.AddRange(bodyWeights);
+        for (int i = 0; i < body.vertices.Length; i++)
+        {
+            int spinePosition = System.Array.IndexOf(rig.spineIndices, bodyWeights[i].boneIndex0);
+            float longitudinal = spinePosition >= 0
+                ? spinePosition / (float)Mathf.Max(1, rig.spineIndices.Length - 1) : 0.5f;
+            colors.Add(PatternColor(genome, longitudinal, i));
+        }
+        for (int i = 0; i < body.triangles.Length; i++)
+            triangles.Add(start + body.triangles[i]);
+    }
 
     static void AppendSpineLoft(
         List<Vector3> vertices,
@@ -109,10 +145,7 @@ public static class CreatureSkinnedMeshBuilder
         switch (node.type)
         {
             case CreatureBodyNodeType.Spine:
-                return;
             case CreatureBodyNodeType.Torso:
-                AppendEllipsoid(vertices, triangles, colors, weights, center, node.size,
-                    primary, boneIndex);
                 return;
             case CreatureBodyNodeType.Head:
                 AppendHead(vertices, triangles, colors, weights, genome, node, center, boneIndex);

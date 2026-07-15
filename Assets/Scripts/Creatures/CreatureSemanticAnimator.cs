@@ -44,6 +44,19 @@ public sealed class CreatureSemanticAnimator : MonoBehaviour
         if(__logTrackDepthEntered)FSPDebuger.PopDepth();
     }}
 
+    public void RefreshRestPose()
+    {
+        if (rig == null) return;
+        bodyRestPosition = rig.body.localPosition;
+        neckRestRotation = rig.neck.localRotation;
+        headRestRotation = rig.head.localRotation;
+        tailRestRotation = rig.tailBase.localRotation;
+        if (rig.secondaryBones == null) return;
+        foreach (CreatureSecondaryRig secondary in rig.secondaryBones)
+            if (secondary != null && secondary.bone != null)
+                secondary.restRotation = secondary.bone.localRotation;
+    }
+
     void LateUpdate()
     {
         if (gravitySource == null || body == null || genome == null || rig == null)

@@ -44,6 +44,7 @@ public static class ProceduralCreatureGenerator
         var genome = new CreatureGenome
         {
             seed = seed,
+            generatorVersion = 3,
             topology = topology,
             bodyStyle = bodyStyle,
             legPairCount = legPairCount,
@@ -93,6 +94,7 @@ public static class ProceduralCreatureGenerator
             primaryColor = Color.HSVToRGB(hue, random.Range(0.55f, 0.9f), random.Range(0.65f, 0.95f)),
             secondaryColor = Color.HSVToRGB(accentHue, random.Range(0.45f, 0.85f), random.Range(0.65f, 1f))
         };
+        genome.torsoSpline = CreatureTorsoSplineGenerator.Generate(genome);
         genome.designLanguage = CreatureBodyGraphBuilder.GenerateDesignLanguage(genome);
         genome.bodyGraph = CreatureBodyGraphBuilder.Build(genome);
         return genome;

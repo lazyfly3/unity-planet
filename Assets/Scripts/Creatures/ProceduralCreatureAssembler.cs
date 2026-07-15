@@ -34,7 +34,7 @@ public static class ProceduralCreatureAssembler
             capsule.sharedMaterial = generatedPhysicsMaterial;
 
         CreatureRig rig = BuildRig(genome, root.transform);
-        BuildCompoundColliders(genome, rig, root.transform, generatedPhysicsMaterial);
+        RebuildTorsoColliders(genome, rig, root.transform, capsule, generatedPhysicsMaterial);
         Mesh skinMesh = CreatureSkinnedMeshBuilder.Build(genome, rig, root.transform);
 
         var skinObject = new GameObject("SkinnedBody");
@@ -72,6 +72,8 @@ public static class ProceduralCreatureAssembler
 
         var semanticAnimator = root.AddComponent<CreatureSemanticAnimator>();
         semanticAnimator.Configure(gravitySource, body, genome, rig, groundLayers);
+        var torsoRuntime = root.AddComponent<CreatureTorsoRuntime>();
+        torsoRuntime.Configure(genome, rig, renderer, meshOwner, body, capsule, generatedPhysicsMaterial);
         return root;
     }
     finally
@@ -99,6 +101,10 @@ public static class ProceduralCreatureAssembler
 
     static void EnsureGraph(CreatureGenome genome)
     {
+        if (genome.torsoSpline == null || !genome.torsoSpline.Validate(out _))
+            genome.torsoSpline = CreatureTorsoSpline.CreateLegacyFallback(
+                genome.bodyLength, genome.bodyWidth, genome.bodyHeight,
+                genome.topology == CreatureTopology.Serpentine ? 9 : 5);
         if (genome.designLanguage == null)
             genome.designLanguage = CreatureBodyGraphBuilder.GenerateDesignLanguage(genome);
         if (genome.bodyGraph == null || !genome.bodyGraph.Validate(out _))
@@ -153,6 +159,12 @@ public static class ProceduralCreatureAssembler
         capsule.height = Mathf.Max(capsule.radius * 2f, colliderTop - colliderBottom);
         capsule.center = Vector3.up * (colliderBottom + capsule.height * 0.5f);
         return -colliderBottom + 0.08f;
+    }
+
+    public static float RefreshRootCollider(CreatureGenome genome, CapsuleCollider capsule)
+    {
+        EnsureGraph(genome);
+        return ConfigureCollider(genome, capsule);
     }
 
     static bool TryGetSupportBounds(CreatureBodyGraph graph, out float supportBottom, out float bodyTop)
@@ -360,26 +372,46 @@ public static class ProceduralCreatureAssembler
             || type == CreatureBodyNodeType.Sensor;
     }
 
-    static void BuildCompoundColliders(
+    public static void RebuildTorsoColliders(
         CreatureGenome genome,
         CreatureRig rig,
         Transform root,
+        CapsuleCollider rootCapsule,
         PhysicMaterial physicsMaterial)
     {
-        if (genome.topology == CreatureTopology.Serpentine)
-            return;
-        foreach (CreatureBodyNode node in rig.graph.nodes)
+        for (int i = root.childCount - 1; i >= 0; i--)
         {
-            if (node.type != CreatureBodyNodeType.Torso)
-                continue;
-            var colliderObject = new GameObject($"TorsoCollider_{node.id:00}");
-            colliderObject.transform.SetParent(root, false);
-            colliderObject.transform.localPosition = root.InverseTransformPoint(rig.nodeBones[node.id].position);
-            var box = colliderObject.AddComponent<BoxCollider>();
-            box.size = Vector3.Max(Vector3.one * 0.1f, node.size * 0.62f);
-            if (physicsMaterial != null)
-                box.sharedMaterial = physicsMaterial;
+            Transform child = root.GetChild(i);
+            if (!child.name.StartsWith("ImplicitTorsoCollider_", System.StringComparison.Ordinal)) continue;
+            if (Application.isPlaying) Object.Destroy(child.gameObject);
+            else Object.DestroyImmediate(child.gameObject);
         }
+
+        if (genome.torsoSpline == null || genome.torsoSpline.points.Count < 2) return;
+        float largestRadius = 0.1f;
+        for (int i = 0; i < genome.torsoSpline.points.Count - 1; i++)
+        {
+            CreatureTorsoControlPoint a = genome.torsoSpline.points[i];
+            CreatureTorsoControlPoint b = genome.torsoSpline.points[i + 1];
+            Vector3 segment = b.localPosition - a.localPosition;
+            float radius = Mathf.Max(0.08f,
+                Mathf.Min(a.width, a.height, b.width, b.height) * 0.28f);
+            largestRadius = Mathf.Max(largestRadius, radius);
+            var colliderObject = new GameObject($"ImplicitTorsoCollider_{i:00}");
+            colliderObject.transform.SetParent(root, false);
+            colliderObject.transform.localPosition = (a.localPosition + b.localPosition) * 0.5f;
+            colliderObject.transform.localRotation = segment.sqrMagnitude > 0.0001f
+                ? Quaternion.LookRotation(segment.normalized, Vector3.up) : Quaternion.identity;
+            var capsule = colliderObject.AddComponent<CapsuleCollider>();
+            capsule.direction = 2;
+            capsule.radius = radius;
+            capsule.height = Mathf.Max(radius * 2f, segment.magnitude + radius * 1.2f);
+            if (physicsMaterial != null)
+                capsule.sharedMaterial = physicsMaterial;
+        }
+
+        if (rootCapsule != null && genome.topology == CreatureTopology.Serpentine)
+            rootCapsule.radius = Mathf.Clamp(largestRadius, 0.18f, 0.9f);
     }
 
     static Transform CreateBone(
@@ -419,6 +451,16 @@ public sealed class GeneratedCreatureMeshOwner : MonoBehaviour
     {
         if(__logTrackDepthEntered)FSPDebuger.PopDepth();
     }}
+
+    public void ReplaceMesh(Mesh mesh)
+    {
+        if (generatedMesh == mesh) return;
+        Mesh previous = generatedMesh;
+        generatedMesh = mesh;
+        if (previous == null) return;
+        if (Application.isPlaying) Destroy(previous);
+        else DestroyImmediate(previous);
+    }
 
     void OnDestroy()
     {

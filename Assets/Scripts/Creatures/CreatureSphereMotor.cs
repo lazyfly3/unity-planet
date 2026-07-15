@@ -69,6 +69,12 @@ public sealed class CreatureSphereMotor : MonoBehaviour
         body.constraints = RigidbodyConstraints.FreezeRotation;
     }
 
+    public void UpdateBodyGeometry(CapsuleCollider targetCapsule, float clearance)
+    {
+        if (targetCapsule != null) capsule = targetCapsule;
+        bodyClearance = Mathf.Max(0.1f, clearance);
+    }
+
     void FixedUpdate()
     {
         if (gravitySource == null || body == null || capsule == null)

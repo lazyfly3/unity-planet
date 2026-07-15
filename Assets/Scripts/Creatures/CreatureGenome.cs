@@ -13,9 +13,10 @@ public enum CreatureTopology
 public sealed class CreatureGenome
 {
     public int seed;
-    public int generatorVersion = 2;
+    public int generatorVersion = 3;
     public CreatureDesignLanguage designLanguage;
     public CreatureBodyGraph bodyGraph;
+    public CreatureTorsoSpline torsoSpline;
     public CreatureTopology topology;
     public int bodyStyle;
     public int legPairCount;
