@@ -159,7 +159,10 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     }
 
     public void OpenGalaxyMap(VoxelQuadSphereWorld world)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(37);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(62);}
+    try
+    {
         if (transitionInProgress || world == null)
             return;
 
@@ -177,13 +180,23 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
         transitionInProgress = true;
         SceneManager.LoadScene(mapSceneName, LoadSceneMode.Single);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public void MoveShip(Vector2Int delta)
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(67);}
+    try
     {
         MoveShip(new GalaxyCoordinateDelta(delta.x, delta.y));
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public void MoveShip(GalaxyCoordinateDelta delta)
     {
@@ -192,7 +205,10 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         if (!isCardinalUnit)
             return;
 
-        if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(38);}
+        bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(63);}
+    try
+    {
         shipFacing = GetFacing(delta);
         activeSlotMetadata.shipFacing = shipFacing;
         if (IsInfiniteGalaxy)
@@ -209,8 +225,11 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             activeSlotMetadata.shipGridX = shipGridPosition.x;
             activeSlotMetadata.shipGridY = shipGridPosition.y;
         }
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     static GalaxyShipFacing GetFacing(GalaxyCoordinateDelta delta)
     {
@@ -231,6 +250,9 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     }
 
     public GalaxyPlanetDefinition GetPlanetAt(GalaxyCoordinate coordinate)
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(68);}
+    try
     {
         if (!IsInfiniteGalaxy)
         {
@@ -257,9 +279,16 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             CacheProceduralPlanet(coordinate, planet);
         return planet;
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public GalaxyPlanetDefinition GetPlanetAt(Vector2Int gridPosition)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(39);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(64);}
+    try
+    {
         foreach (GalaxyPlanetDefinition planet in planets)
         {
             if (planet.gridPosition == gridPosition)
@@ -267,11 +296,17 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         }
 
         return null;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public void EnterPlanet(GalaxyPlanetDefinition planet)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(40);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(65);}
+    try
+    {
         if (transitionInProgress || planet == null)
             return;
 
@@ -297,8 +332,11 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         SaveActiveSlotMetadata();
         transitionInProgress = true;
         SceneManager.LoadScene(surfaceSceneName, LoadSceneMode.Single);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
@@ -307,7 +345,10 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     }
 
     public void ReturnToMainMenu(string startMenuSceneName)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(41);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(66);}
+    try
+    {
         if (transitionInProgress)
             return;
 
@@ -322,8 +363,11 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         instance = null;
         Destroy(gameObject);
         SceneManager.LoadScene(startMenuSceneName, LoadSceneMode.Single);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     void ConfigureSurfaceScene(Scene scene)
     {

@@ -93,6 +93,9 @@ public sealed class PlanetWeatherSystem : MonoBehaviour
 
     public void Configure(VoxelQuadSphereWorld targetWorld, PlanetWeatherSettings planetSettings,
         int targetPlanetSeed, string planetId)
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(166, (int)targetPlanetSeed);}
+    try
     {
         world = targetWorld;
         planetSeed = targetPlanetSeed;
@@ -110,6 +113,10 @@ public sealed class PlanetWeatherSystem : MonoBehaviour
         if (weatherPanel != null)
             weatherPanel.SetActive(configured);
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     void Update()
     {
@@ -122,6 +129,9 @@ public sealed class PlanetWeatherSystem : MonoBehaviour
     }
 
     public static bool TrySample(Vector3 worldPosition, out WeatherSnapshot value)
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(167);}
+    try
     {
         if (Active == null || !Active.configured)
         {
@@ -132,8 +142,15 @@ public sealed class PlanetWeatherSystem : MonoBehaviour
         value.windVelocity = Active.SampleWind(worldPosition);
         return true;
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public Vector3 SampleWind(Vector3 worldPosition)
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(168);}
+    try
     {
         if (!configured || world == null)
             return Vector3.zero;
@@ -146,6 +163,10 @@ public sealed class PlanetWeatherSystem : MonoBehaviour
             tangent = Vector3.Cross(Vector3.Cross(windAxis, Vector3.right).normalized, up);
         return tangent.normalized * snapshot.windSpeed;
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     void ResolveFromStart(double weatherTime)
     {

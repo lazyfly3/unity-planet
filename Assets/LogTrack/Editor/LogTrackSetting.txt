@@ -1,5 +1,6 @@
 FSPDebuger
-KHDebug
+FSPDebuger
+AutoInstrumentOnCompile: false
 ExcludeList:
 Runtime/Utils/KHDebug.cs
 ExternalList:

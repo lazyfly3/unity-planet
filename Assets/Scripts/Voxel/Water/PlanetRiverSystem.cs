@@ -42,9 +42,16 @@ public sealed class PlanetRiverSystem : MonoBehaviour
     public float LastMassBalanceError => lastMassBalanceError;
 
     public void SetWeatherRainfall(float rainfallRate)
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(223, (int)rainfallRate);}
+    try
     {
         weatherRainfallRate = Mathf.Max(0f, rainfallRate);
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     struct ShallowWaterFlux
     {
@@ -97,18 +104,27 @@ public sealed class PlanetRiverSystem : MonoBehaviour
         VoxelQuadSphereWorld targetWorld,
         PlanetRiverSettings riverSettings,
         GalaxyRiverSaveData savedData)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(175);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(215);}
+    try
+    {
         world = targetWorld;
         settings = riverSettings != null ? riverSettings.Clone() : new PlanetRiverSettings();
         settings.ClampValues();
         snapshot = savedData != null && savedData.configurationHash == ConfigurationHash
             ? CloneSnapshot(savedData)
             : null;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public void PrepareHydrology()
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(176);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(216);}
+    try
+    {
         ClearWaterObjects();
         if (world == null || !settings.enabled || settings.riverCount <= 0)
         {
@@ -121,11 +137,17 @@ public sealed class PlanetRiverSystem : MonoBehaviour
             snapshot = GenerateRiverNetwork();
         EnsureSimulationState();
         BuildCarveMap();
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public void BuildWaterSurface()
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(177);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(217);}
+    try
+    {
         ClearWaterObjects();
         if (!IsEnabled || waterMaterial == null)
             return;
@@ -156,26 +178,41 @@ public sealed class PlanetRiverSystem : MonoBehaviour
             });
         }
         UpdateWaterMeshes();
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public float GetCarveDepth(QuadSphereFace face, int u, int v)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(178, (int)u, (int)v);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(218, (int)u, (int)v);}
+    try
+    {
         if (carveDepth == null || u < 0 || v < 0 || u >= world.FaceGridSize || v >= world.FaceGridSize)
             return 0f;
         return carveDepth[(int)face][v * world.FaceGridSize + u];
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public void NotifyVoxelChanged(QuadSphereVoxelAddress address)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(179);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(219);}
+    try
+    {
         if (!IsEnabled || address.Depth > Mathf.CeilToInt(settings.maxDepth + 2f))
             return;
         if (rerouteRoutine != null)
             StopCoroutine(rerouteRoutine);
         rerouteRoutine = StartCoroutine(RerouteAfterDelay(address));
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     IEnumerator RerouteAfterDelay(QuadSphereVoxelAddress changed)
     {
@@ -214,7 +251,10 @@ public sealed class PlanetRiverSystem : MonoBehaviour
     }
 
     public static bool TrySampleAny(Vector3 worldPosition, out WaterSample sample)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(180);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(220);}
+    try
+    {
         float bestDistance = float.PositiveInfinity;
         sample = default;
         bool found = false;
@@ -230,11 +270,17 @@ public sealed class PlanetRiverSystem : MonoBehaviour
             found = true;
         }
         return found;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public bool TrySample(Vector3 worldPosition, out WaterSample sample)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(181);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(221);}
+    try
+    {
         sample = default;
         if (!IsEnabled)
             return false;
@@ -293,8 +339,11 @@ public sealed class PlanetRiverSystem : MonoBehaviour
             signedDistance = radius - surfaceRadius
         };
         return sample.signedDistance <= sample.depth * 0.35f;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     void EnsureSimulationState()
     {
@@ -488,14 +537,20 @@ public sealed class PlanetRiverSystem : MonoBehaviour
     }
 
     public static void ApplyImpulseAny(Vector3 worldPosition, Vector3 impulse)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(182);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(222);}
+    try
+    {
         foreach (PlanetRiverSystem system in ActiveSystems)
         {
             if (system.ApplyImpulse(worldPosition, impulse))
                 return;
         }
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     bool ApplyImpulse(Vector3 worldPosition, Vector3 impulse)
     {

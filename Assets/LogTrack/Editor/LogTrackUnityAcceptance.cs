@@ -49,7 +49,7 @@ namespace LogTrack.Editor
             LogTrackSettings.ExportOnStop = true;
             LogTrackSettings.DefaultRingBufferSize = 100;
             LogTrackSettings.PdbRelativePath = LogTrackSettings.DefaultPdbRelativePath;
-            EditorPrefs.SetBool("LogTrack.AutoInstrumentOnCompile", false);
+            LogTrackProjectSettings.ClearAutoInstrumentOverride();
 
             if (!RunInsert())
             {

@@ -49,6 +49,9 @@ public sealed class WeatherPreset
     public Color ambientTint = Color.white;
 
     public void ClampValues()
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(163);}
+    try
     {
         weight = Mathf.Max(0.01f, weight);
         minimumDuration = Mathf.Max(10f, minimumDuration);
@@ -60,6 +63,10 @@ public sealed class WeatherPreset
         riverRainfallRate = Mathf.Max(0f, riverRainfallRate);
         particleCount = Mathf.Clamp(particleCount, 0, 5000);
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 }
 
 [Serializable]
@@ -71,6 +78,9 @@ public sealed class PlanetWeatherSettings
     public List<WeatherPreset> presets = new List<WeatherPreset>();
 
     public void ClampValues()
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(164);}
+    try
     {
         transitionDuration = Mathf.Max(0f, transitionDuration);
         if (presets == null)
@@ -78,6 +88,10 @@ public sealed class PlanetWeatherSettings
         foreach (WeatherPreset preset in presets)
             preset?.ClampValues();
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 }
 
 public struct WeatherSnapshot
@@ -100,6 +114,9 @@ public struct WeatherSnapshot
 public static class PlanetWeatherDefaults
 {
     public static PlanetWeatherSettings Create(string planetId)
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(165);}
+    try
     {
         var settings = new PlanetWeatherSettings();
         switch (planetId)
@@ -138,6 +155,10 @@ public static class PlanetWeatherDefaults
         settings.ClampValues();
         return settings;
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     static WeatherPreset Preset(WeatherType type, string name, float weight, float minDuration,
         float maxDuration, float wind, float precipitation = 0f, float fog = 0f,

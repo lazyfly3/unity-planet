@@ -1,4 +1,4 @@
-﻿/// <summary>
+/// <summary>
 /// LogTrack 运行时全局配置。Editor 工具窗口与 Play 时自动启动共用 PlayerPrefs。
 /// </summary>
 public static class LogTrackSettings

@@ -26,7 +26,7 @@ public static class VoxelQuadSphereMesher
         int maxDepth,
         float planetRadius,
         Vector3 planetCenter)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(145, (int)gridSize, (int)maxDepth, (int)planetRadius);}
+    {
         List<Vector3> dirtVertices = new List<Vector3>();
         List<int> dirtTriangles = new List<int>();
         List<Vector3> stoneVertices = new List<Vector3>();
@@ -73,9 +73,7 @@ public static class VoxelQuadSphereMesher
             }
         }
 
-        return BuildCombinedMesh(chunkKey, dirtVertices, dirtTriangles, stoneVertices, stoneTriangles);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        return BuildCombinedMesh(chunkKey, dirtVertices, dirtTriangles, stoneVertices, stoneTriangles);}
 
     static QuadSphereVoxelAddress GetNeighborAddress(
         QuadSphereVoxelAddress address,

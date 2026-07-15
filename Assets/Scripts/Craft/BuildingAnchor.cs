@@ -47,13 +47,19 @@ public class BuildingAnchor : MonoBehaviour
         float pillarHeight,
         float pillarSize,
         Material material)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(2, (int)cellSize, (int)slabHeight, (int)pillarHeight, (int)pillarSize);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(2, (int)cellSize, (int)slabHeight, (int)pillarHeight, (int)pillarSize);}
+    try
+    {
         var root = new GameObject("BuildingAnchor");
         var anchor = root.AddComponent<BuildingAnchor>();
         anchor.Initialize(surfacePoint, up, forward, cellSize, slabHeight, pillarHeight, pillarSize, material);
         return anchor;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     void OnEnable()
     {
@@ -75,7 +81,10 @@ public class BuildingAnchor : MonoBehaviour
         float pillarHeight,
         float pillarSize,
         Material material)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(3, (int)cellSize, (int)slabHeight, (int)pillarHeight, (int)pillarSize);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(3, (int)cellSize, (int)slabHeight, (int)pillarHeight, (int)pillarSize);}
+    try
+    {
         this.cellSize = cellSize;
         this.slabHeight = slabHeight;
         this.pillarHeight = pillarHeight;
@@ -86,11 +95,17 @@ public class BuildingAnchor : MonoBehaviour
 
         if (!ActiveAnchors.Contains(this))
             ActiveAnchors.Add(this);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public void ApplyFrame(Vector3 surfacePoint, Vector3 up, Vector3 forward)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(4);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(4);}
+    try
+    {
         Up = up.normalized;
         Forward = Vector3.ProjectOnPlane(forward, Up);
         if (Forward.sqrMagnitude < 0.0001f)
@@ -99,8 +114,11 @@ public class BuildingAnchor : MonoBehaviour
         OriginWorld = surfacePoint;
         transform.SetPositionAndRotation(OriginWorld, Quaternion.LookRotation(Forward, Up));
         SyncAxesFromTransform();
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     void SyncAxesFromTransform()
     {
@@ -110,35 +128,56 @@ public class BuildingAnchor : MonoBehaviour
     }
 
     public void RotateForward90()
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(5);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(5);}
+    try
+    {
         Forward = (Quaternion.AngleAxis(90f, Up) * Forward).normalized;
         transform.rotation = Quaternion.LookRotation(Forward, Up);
         SyncAxesFromTransform();
         RepositionAllPieces();
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public bool TrySnapWorldPoint(Vector3 worldPoint, out Vector2Int grid)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(6);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(6);}
+    try
+    {
         Vector3 local = WorldToLocal(worldPoint);
         grid = new Vector2Int(
             Mathf.RoundToInt(local.x / cellSize),
             Mathf.RoundToInt(local.z / cellSize)
         );
         return true;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public Vector3 ProjectPointOntoPlane(Vector3 worldPoint)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(7);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(7);}
+    try
+    {
         Vector3 local = WorldToLocal(worldPoint);
         local.y = 0f;
         return LocalToWorld(local);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public bool TryResolvePlacementGrid(Vector3 worldPoint, out Vector2Int grid)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(8);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(8);}
+    try
+    {
         TrySnapWorldPoint(worldPoint, out grid);
         if (CanPlace(grid) && IsConnectedPlacement(grid))
             return true;
@@ -175,11 +214,17 @@ public class BuildingAnchor : MonoBehaviour
         }
 
         return CanPlace(grid) && IsConnectedPlacement(grid);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public float GetNearestCellDistance(Vector3 worldPoint)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(9);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(9);}
+    try
+    {
         if (occupiedCells.Count == 0)
             return Vector3.Distance(worldPoint, OriginWorld);
 
@@ -192,55 +237,97 @@ public class BuildingAnchor : MonoBehaviour
         }
 
         return bestDistance;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public Vector3 GetSlabLocalCenter(Vector2Int grid)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(10);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(10);}
+    try
+    {
         return new Vector3(
             grid.x * cellSize,
             pillarHeight + slabHeight * 0.5f,
             grid.y * cellSize);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public Vector3 GetCellWorldCenter(Vector2Int grid)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(11);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(11);}
+    try
+    {
         return LocalToWorld(GetSlabLocalCenter(grid));
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public Vector3 GridToLocalPosition(Vector2Int grid)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(12);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(12);}
+    try
+    {
         return GetSlabLocalCenter(grid);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public Vector3 WorldToLocal(Vector3 worldPoint)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(13);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(13);}
+    try
+    {
         Vector3 offset = worldPoint - OriginWorld;
         return new Vector3(
             Vector3.Dot(offset, Right),
             Vector3.Dot(offset, Up),
             Vector3.Dot(offset, Forward)
         );
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public Vector3 LocalToWorld(Vector3 localPoint)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(14);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(14);}
+    try
+    {
         return OriginWorld + Right * localPoint.x + Up * localPoint.y + Forward * localPoint.z;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public bool CanPlace(Vector2Int grid)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(15);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(15);}
+    try
+    {
         return !occupiedCells.Contains(grid);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public bool IsConnectedPlacement(Vector2Int grid)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(16);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(16);}
+    try
+    {
         if (occupiedCells.Count == 0)
             return true;
 
@@ -251,11 +338,17 @@ public class BuildingAnchor : MonoBehaviour
         }
 
         return false;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public bool TryPlace(Vector2Int grid, out BuildingFoundationPiece piece)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(17);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(17);}
+    try
+    {
         piece = null;
         if (!CanPlace(grid) || !IsConnectedPlacement(grid))
             return false;
@@ -264,17 +357,29 @@ public class BuildingAnchor : MonoBehaviour
         occupiedCells.Add(grid);
         pieces[grid] = piece;
         return true;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public bool TryGetPiece(Vector2Int grid, out BuildingFoundationPiece piece)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(18);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(18);}
+    try
+    {
         return pieces.TryGetValue(grid, out piece);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public int RestoreCells(IReadOnlyList<Vector2Int> cells)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(22);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(22);}
+    try
+    {
         if (cells == null || cells.Count == 0)
             return 0;
 
@@ -299,8 +404,11 @@ public class BuildingAnchor : MonoBehaviour
         }
 
         return restored;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     void RepositionAllPieces()
     {
@@ -320,14 +428,20 @@ public class BuildingAnchor : MonoBehaviour
         float slabHeight,
         float pillarHeight,
         Vector2Int grid)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(19, (int)cellSize, (int)slabHeight, (int)pillarHeight);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(19, (int)cellSize, (int)slabHeight, (int)pillarHeight);}
+    try
+    {
         Vector3 local = new Vector3(
             grid.x * cellSize,
             pillarHeight + slabHeight * 0.5f,
             grid.y * cellSize);
         return originWorld + right * local.x + up * local.y + forward * local.z;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static bool TrySnapWorldPointToGrid(
         Vector3 worldPoint,
@@ -337,7 +451,10 @@ public class BuildingAnchor : MonoBehaviour
         Vector3 forward,
         float cellSize,
         out Vector2Int grid)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(20, (int)cellSize);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(20, (int)cellSize);}
+    try
+    {
         Vector3 offset = worldPoint - originWorld;
         Vector3 local = new Vector3(
             Vector3.Dot(offset, right),
@@ -348,8 +465,11 @@ public class BuildingAnchor : MonoBehaviour
             Mathf.RoundToInt(local.z / cellSize)
         );
         return true;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static Vector3 ProjectPointOntoFramePlane(
         Vector3 worldPoint,
@@ -357,10 +477,16 @@ public class BuildingAnchor : MonoBehaviour
         Vector3 right,
         Vector3 up,
         Vector3 forward)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(21);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(21);}
+    try
+    {
         Vector3 offset = worldPoint - originWorld;
         float localY = Vector3.Dot(offset, up);
         return worldPoint - up * localY;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 }

@@ -13,56 +13,98 @@ public static class VoxelTypes
     public const byte Stone = 2;
 
     public static int ToIndex(int x, int y, int z)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(113, (int)x, (int)y, (int)z);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(147, (int)x, (int)y, (int)z);}
+    try
+    {
         return x + y * ChunkSize + z * ChunkSize * ChunkSize;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static bool IsSolid(byte voxel)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(114, (int)voxel);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(148, (int)voxel);}
+    try
+    {
         return voxel != Air;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static bool IsInsideHeight(int worldY)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(115, (int)worldY);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(149, (int)worldY);}
+    try
+    {
         return worldY >= MinWorldHeight && worldY < MaxWorldHeight;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static Vector3Int WorldToChunkCoord(int worldX, int worldY, int worldZ)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(116, (int)worldX, (int)worldY, (int)worldZ);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(150, (int)worldX, (int)worldY, (int)worldZ);}
+    try
+    {
         return new Vector3Int(
             FloorDiv(worldX, ChunkSize),
             FloorDiv(worldY, ChunkSize),
             FloorDiv(worldZ, ChunkSize)
         );
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static Vector3Int WorldToLocalCoord(int worldX, int worldY, int worldZ)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(117, (int)worldX, (int)worldY, (int)worldZ);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(151, (int)worldX, (int)worldY, (int)worldZ);}
+    try
+    {
         return new Vector3Int(
             Mod(worldX, ChunkSize),
             Mod(worldY, ChunkSize),
             Mod(worldZ, ChunkSize)
         );
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static int FloorDiv(int value, int divisor)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(118, (int)value, (int)divisor);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(152, (int)value, (int)divisor);}
+    try
+    {
         if (value >= 0)
             return value / divisor;
 
         return (value - divisor + 1) / divisor;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static int Mod(int value, int divisor)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(119, (int)value, (int)divisor);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(153, (int)value, (int)divisor);}
+    try
+    {
         int result = value % divisor;
         return result < 0 ? result + divisor : result;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 }

@@ -54,8 +54,15 @@ namespace LogTrack.Editor
 
         public static bool AutoInstrumentOnCompile
         {
-            get => EditorPrefs.GetBool(PrefKeyAutoInstrument, false);
+            get => EditorPrefs.HasKey(PrefKeyAutoInstrument)
+                ? EditorPrefs.GetBool(PrefKeyAutoInstrument, false)
+                : LogTrackInsertSettings.GetProjectDefaultAutoInstrumentOnCompile();
             set => EditorPrefs.SetBool(PrefKeyAutoInstrument, value);
+        }
+
+        public static void ClearAutoInstrumentOverride()
+        {
+            EditorPrefs.DeleteKey(PrefKeyAutoInstrument);
         }
 
         public static int RingBufferSize

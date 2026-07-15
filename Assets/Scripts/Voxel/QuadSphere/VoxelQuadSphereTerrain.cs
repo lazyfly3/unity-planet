@@ -22,7 +22,7 @@ public sealed class PlanetTerrainSettings
     [Min(0f)] public float caveSurfaceClearance = 2f;
 
     public static PlanetTerrainSettings CreateLegacy()
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(146);}
+    {
         return new PlanetTerrainSettings
         {
             continentScale = 0.04f,
@@ -35,18 +35,14 @@ public sealed class PlanetTerrainSettings
             caveScale = 0.06f,
             caveThreshold = 0.62f,
             caveSurfaceClearance = 0f
-        };
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        };}
 
     public PlanetTerrainSettings Clone()
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(147);}
-        return (PlanetTerrainSettings)MemberwiseClone();
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    {
+        return (PlanetTerrainSettings)MemberwiseClone();}
 
     public void ClampValues()
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(148);}
+    {
         continentScale = Mathf.Max(0.001f, continentScale);
         continentHeight = Mathf.Max(0f, continentHeight);
         detailScale = Mathf.Max(0.001f, detailScale);
@@ -56,9 +52,7 @@ public sealed class PlanetTerrainSettings
         stoneDepth = Mathf.Max(surfaceLayerDepth, stoneDepth);
         caveScale = Mathf.Max(0.001f, caveScale);
         caveThreshold = Mathf.Clamp01(caveThreshold);
-        caveSurfaceClearance = Mathf.Max(0f, caveSurfaceClearance);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        caveSurfaceClearance = Mathf.Max(0f, caveSurfaceClearance);}
 }
 
 public static class VoxelQuadSphereTerrain
@@ -76,7 +70,7 @@ public static class VoxelQuadSphereTerrain
         float planetRadius,
         PlanetTerrainSettings settings,
         float riverCarveDepth = 0f)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(149, (int)cellU, (int)cellV, (int)depth, (int)gridSize, (int)maxDepth, (int)innerSolidDepthLayers, (int)seed);}
+    {
         if (cellU < 0 || cellV < 0 || cellU >= gridSize || cellV >= gridSize || depth < 0 || depth >= maxDepth)
             return VoxelTypes.Air;
 
@@ -102,9 +96,7 @@ public static class VoxelQuadSphereTerrain
             return VoxelTypes.Air;
         }
 
-        return voxel;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        return voxel;}
 
     static byte GetLayerVoxelByDepth(float depthFromSurface, PlanetTerrainSettings settings)
     {
@@ -114,7 +106,7 @@ public static class VoxelQuadSphereTerrain
     }
 
     public static float GetSurfaceNoise(Vector3 localPosition, int seed, PlanetTerrainSettings settings)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(150, (int)seed);}
+    {
         float offset = seed * 0.017f;
         float continent = SampleSeededNoise(localPosition, settings.continentScale, offset);
         float detail = SampleSeededNoise(localPosition, settings.detailScale, offset + 79.31f);
@@ -123,9 +115,7 @@ public static class VoxelQuadSphereTerrain
 
         return (continent - 0.5f) * settings.continentHeight
             + (detail - 0.5f) * settings.detailHeight
-            + (ridge * ridge - 0.35f) * settings.ridgeHeight;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+            + (ridge * ridge - 0.35f) * settings.ridgeHeight;}
 
     static bool IsCave(Vector3 localPosition, int seed, PlanetTerrainSettings settings)
     {

@@ -32,7 +32,10 @@ public sealed class PlanetRiverSettings
     public PlanetRiverSettings Clone() => (PlanetRiverSettings)MemberwiseClone();
 
     public void ClampValues()
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(173);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(213);}
+    try
+    {
         if (physicsVersion < 1)
         {
             simulationStep = 0.05f;
@@ -64,11 +67,17 @@ public sealed class PlanetRiverSettings
         minimumWaterDepth = Mathf.Max(0.01f, minimumWaterDepth);
         evaporationRate = Mathf.Max(0f, evaporationRate);
         maxSubstepsPerFixedUpdate = Mathf.Clamp(maxSubstepsPerFixedUpdate, 1, 12);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public int CalculateHash()
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(174);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(214);}
+    try
+    {
         unchecked
         {
             int hash = enabled ? 486187739 : 17;
@@ -91,8 +100,11 @@ public sealed class PlanetRiverSettings
             hash = hash * 31 + evaporationRate.GetHashCode();
             return hash;
         }
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 }
 
 [Serializable]

@@ -31,9 +31,16 @@ public struct GalaxyCoordinate : IEquatable<GalaxyCoordinate>
     }
 
     public GalaxyCoordinate Offset(int deltaX, int deltaY)
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(69, (int)deltaX, (int)deltaY);}
+    try
     {
         return new GalaxyCoordinate(SaturatingAdd(x, deltaX), SaturatingAdd(y, deltaY));
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public bool Equals(GalaxyCoordinate other) => x == other.x && y == other.y;
     public override bool Equals(object value) => value is GalaxyCoordinate other && Equals(other);
@@ -141,6 +148,9 @@ public sealed class ProceduralGalaxyGenerator
     }
 
     public bool HasPlanet(GalaxyCoordinate coordinate)
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(70);}
+    try
     {
         if (coordinate == GalaxyCoordinate.Zero)
             return true;
@@ -154,8 +164,15 @@ public sealed class ProceduralGalaxyGenerator
         // Keep the guaranteed origin separated from generated neighbours.
         return AbsDistanceFromZero(coordinate.x) >= 3L || AbsDistanceFromZero(coordinate.y) >= 3L;
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public GalaxyPlanetDefinition GeneratePlanet(GalaxyCoordinate coordinate)
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(71);}
+    try
     {
         if (!HasPlanet(coordinate))
             return null;
@@ -198,6 +215,10 @@ public sealed class ProceduralGalaxyGenerator
         definition.spawnHarvestableResources = definition.resourceSpawnSettings.Count > 0;
         return definition;
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     GalaxyCoordinate GetMacroCellCandidate(long macroX, long macroY)
     {
@@ -358,9 +379,16 @@ public sealed class ProceduralGalaxyGenerator
     }
 
     public static string EncodePlanetId(GalaxyCoordinate coordinate)
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(72);}
+    try
     {
         return $"p_{ToBase36(ZigZag(coordinate.x))}_{ToBase36(ZigZag(coordinate.y))}";
     }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     static ulong ZigZag(long value) => unchecked((ulong)((value << 1) ^ (value >> 63)));
 
@@ -419,24 +447,45 @@ public sealed class ProceduralGalaxyGenerator
         }
 
         public ulong Next()
-        {
+        {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(73);}
+    try
+    {
             state += 0x9E3779B97F4A7C15UL;
             return Mix(state);
-        }
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
         public float Value() => (Next() >> 40) * (1f / 16777216f);
 
         public int Range(int minimum, int maximum)
-        {
+        {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(74, (int)minimum, (int)maximum);}
+    try
+    {
             if (maximum <= minimum)
                 return minimum;
             return minimum + (int)(Next() % (uint)(maximum - minimum));
-        }
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
         public int NextNonZeroInt()
-        {
+        {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(75);}
+    try
+    {
             int value = unchecked((int)Next());
             return value == 0 ? 1 : value;
-        }
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
     }
 }

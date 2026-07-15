@@ -1,4 +1,4 @@
-﻿# LogTrack Unity 插件
+# LogTrack Unity 插件
 
 复制 `Assets/LogTrack/` 到 Unity 项目的 `Assets/LogTrack/` 即可。
 

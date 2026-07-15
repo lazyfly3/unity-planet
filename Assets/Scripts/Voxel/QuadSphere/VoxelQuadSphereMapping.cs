@@ -3,7 +3,7 @@ using UnityEngine;
 public static class VoxelQuadSphereMapping
 {
     public static Vector3 GetFaceCubePoint(QuadSphereFace face, float u, float v)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(135, (int)u, (int)v);}
+    {
         // Keep every face in the same handed coordinate system:
         // cross(+U tangent, outward normal) must point along +V.
         switch (face)
@@ -14,12 +14,10 @@ public static class VoxelQuadSphereMapping
             case QuadSphereFace.NegY: return new Vector3(-u, -1f, v);
             case QuadSphereFace.PosZ: return new Vector3(u, -v, 1f);
             default: return new Vector3(u, v, -1f);
-        }
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        }}
 
     public static Vector3 CubeToSphere(Vector3 cubePoint)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(136);}
+    {
         float x2 = cubePoint.x * cubePoint.x;
         float y2 = cubePoint.y * cubePoint.y;
         float z2 = cubePoint.z * cubePoint.z;
@@ -27,18 +25,14 @@ public static class VoxelQuadSphereMapping
         float x = cubePoint.x * Mathf.Sqrt(Mathf.Max(0f, 1f - y2 / 2f - z2 / 2f + y2 * z2 / 3f));
         float y = cubePoint.y * Mathf.Sqrt(Mathf.Max(0f, 1f - x2 / 2f - z2 / 2f + x2 * z2 / 3f));
         float z = cubePoint.z * Mathf.Sqrt(Mathf.Max(0f, 1f - x2 / 2f - y2 / 2f + x2 * y2 / 3f));
-        return new Vector3(x, y, z);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        return new Vector3(x, y, z);}
 
     public static Vector3 GetRadialDirection(QuadSphereFace face, int cellU, int cellV, int gridSize)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(137, (int)cellU, (int)cellV, (int)gridSize);}
+    {
         float u = CellToNormalized(cellU, gridSize);
         float v = CellToNormalized(cellV, gridSize);
         Vector3 cubePoint = GetFaceCubePoint(face, u, v);
-        return CubeToSphere(cubePoint).normalized;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        return CubeToSphere(cubePoint).normalized;}
 
     public static Vector3 FaceCellCenterLocal(
         QuadSphereFace face,
@@ -48,12 +42,10 @@ public static class VoxelQuadSphereMapping
         int gridSize,
         float planetRadius,
         Vector3 planetCenter)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(138, (int)cellU, (int)cellV, (int)depth, (int)gridSize, (int)planetRadius);}
+    {
         Vector3 radial = GetRadialDirection(face, cellU, cellV, gridSize);
         float distance = planetRadius - depth - 0.5f;
-        return planetCenter + radial * distance;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        return planetCenter + radial * distance;}
 
     public struct CellHalfExtents
     {
@@ -74,7 +66,7 @@ public static class VoxelQuadSphereMapping
         int maxDepth,
         float planetRadius,
         Vector3 planetCenter)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(139, (int)cellU, (int)cellV, (int)depth, (int)gridSize, (int)maxDepth, (int)planetRadius);}
+    {
         const float seamOverlap = 1.004f;
         Vector3 center = FaceCellCenterLocal(face, cellU, cellV, depth, gridSize, planetRadius, planetCenter);
 
@@ -101,9 +93,7 @@ public static class VoxelQuadSphereMapping
             NegV = GetOneSidedHalfExtent(center, TryGetNeighbor(0, -1, 0, out Vector3 vNeg), vNeg, TryGetNeighbor(0, 1, 0, out Vector3 vPos), vPos) * seamOverlap,
             PosOut = GetOneSidedHalfExtent(center, TryGetNeighbor(0, 0, -1, out Vector3 outPlus), outPlus, TryGetNeighbor(0, 0, 1, out Vector3 outMinus), outMinus) * seamOverlap,
             NegIn = GetOneSidedHalfExtent(center, TryGetNeighbor(0, 0, 1, out Vector3 inPlus), inPlus, TryGetNeighbor(0, 0, -1, out Vector3 inMinus), inMinus) * seamOverlap
-        };
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        };}
 
     static float GetOneSidedHalfExtent(
         Vector3 center,
@@ -122,11 +112,9 @@ public static class VoxelQuadSphereMapping
     }
 
     public static Quaternion GetCellOrientation(QuadSphereFace face, int cellU, int cellV, int gridSize)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(140, (int)cellU, (int)cellV, (int)gridSize);}
+    {
         GetCellBasis(face, cellU, cellV, gridSize, out Vector3 up, out Vector3 right, out Vector3 forward);
-        return Quaternion.LookRotation(forward, up);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        return Quaternion.LookRotation(forward, up);}
 
     public static void GetCellBasis(
         QuadSphereFace face,
@@ -136,7 +124,7 @@ public static class VoxelQuadSphereMapping
         out Vector3 up,
         out Vector3 right,
         out Vector3 forward)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(141, (int)cellU, (int)cellV, (int)gridSize);}
+    {
         float u = CellToNormalized(cellU, gridSize);
         float v = CellToNormalized(cellV, gridSize);
         float du = 2f / gridSize;
@@ -154,12 +142,10 @@ public static class VoxelQuadSphereMapping
 
         forward = Vector3.Cross(up, right).normalized;
         if (Vector3.Dot(forward, vTangent) < 0f)
-            forward = -forward;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+            forward = -forward;}
 
     public static QuadSphereFace GetDominantFace(Vector3 directionFromCenter)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(142);}
+    {
         Vector3 d = directionFromCenter.normalized;
         float ax = Mathf.Abs(d.x);
         float ay = Mathf.Abs(d.y);
@@ -169,14 +155,12 @@ public static class VoxelQuadSphereMapping
             return d.x >= 0f ? QuadSphereFace.PosX : QuadSphereFace.NegX;
         if (ay >= ax && ay >= az)
             return d.y >= 0f ? QuadSphereFace.PosY : QuadSphereFace.NegY;
-        return d.z >= 0f ? QuadSphereFace.PosZ : QuadSphereFace.NegZ;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        return d.z >= 0f ? QuadSphereFace.PosZ : QuadSphereFace.NegZ;}
 
     public static QuadSphereVoxelAddress RemapAcrossFace(
         QuadSphereVoxelAddress address,
         int gridSize)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(143, (int)gridSize);}
+    {
         if (address.U >= 0 && address.U < gridSize
             && address.V >= 0 && address.V < gridSize)
             return address;
@@ -194,9 +178,7 @@ public static class VoxelQuadSphereMapping
             NormalizedToCell(adjacentUv.x, gridSize),
             NormalizedToCell(adjacentUv.y, gridSize),
             address.Depth
-        );
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        );}
 
     public static bool TryLocalPointToVoxel(
         Vector3 localPoint,
@@ -205,7 +187,7 @@ public static class VoxelQuadSphereMapping
         int gridSize,
         int maxDepth,
         out QuadSphereVoxelAddress address)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(144, (int)planetRadius, (int)gridSize, (int)maxDepth);}
+    {
         Vector3 offset = localPoint - planetCenter;
         float distance = offset.magnitude;
         if (distance < 0.001f)
@@ -235,9 +217,7 @@ public static class VoxelQuadSphereMapping
         }
 
         address = new QuadSphereVoxelAddress(face, u, v, depth);
-        return true;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        return true;}
 
     static Vector2 DirectionToFaceUV(Vector3 dir, QuadSphereFace face)
     {

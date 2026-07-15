@@ -5,23 +5,38 @@ public static class PlanetGravity
     const float MinDistance = 0.1f;
 
     public static float ComputeGravitationalParameter(float surfaceGravity, float planetRadius)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(91, (int)surfaceGravity, (int)planetRadius);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(125, (int)surfaceGravity, (int)planetRadius);}
+    try
+    {
         return surfaceGravity * planetRadius * planetRadius;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static float GetGravityMagnitude(float distance, float gravitationalParameter)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(92, (int)distance, (int)gravitationalParameter);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(126, (int)distance, (int)gravitationalParameter);}
+    try
+    {
         float r = Mathf.Max(distance, MinDistance);
         return gravitationalParameter / (r * r);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static Vector3 GetGravitationalAcceleration(
         Vector3 worldPosition,
         Vector3 planetCenterWorld,
         float gravitationalParameter)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(93, (int)gravitationalParameter);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(127, (int)gravitationalParameter);}
+    try
+    {
         Vector3 toCenter = planetCenterWorld - worldPosition;
         float distance = toCenter.magnitude;
         if (distance < MinDistance)
@@ -29,29 +44,50 @@ public static class PlanetGravity
 
         float magnitude = gravitationalParameter / (distance * distance);
         return toCenter.normalized * magnitude;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static Vector3 GetUp(Vector3 worldPosition, Vector3 planetCenterWorld)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(94);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(128);}
+    try
+    {
         Vector3 up = worldPosition - planetCenterWorld;
         if (up.sqrMagnitude < 0.0001f)
             return Vector3.up;
 
         return up.normalized;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static Vector3 GetDown(Vector3 worldPosition, Vector3 planetCenterWorld)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(95);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(129);}
+    try
+    {
         return -GetUp(worldPosition, planetCenterWorld);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public static Quaternion GetSurfaceRotation(Vector3 worldPosition, Vector3 planetCenterWorld)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(96);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(130);}
+    try
+    {
         Vector3 up = GetUp(worldPosition, planetCenterWorld);
         return Quaternion.FromToRotation(Vector3.up, up);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 }

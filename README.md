@@ -1,4 +1,4 @@
-﻿# unity-planet
+# unity-planet
 
 Unity 2022.3 体素星球项目：程序化体素地形、万有引力、球面行走、挖掘与存档。
 
@@ -17,13 +17,17 @@ Unity 2022.3 体素星球项目：程序化体素地形、万有引力、球面�
 
 ## LogTrack 调试插件
 
-本仓库已内嵌 [LogTrack](Assets/LogTrack/README.md)（函数调用链记录与导出），clone 后即可使用：
+本仓库已内嵌 [LogTrack](Assets/LogTrack/README.md)（函数调用链记录与导出）：
 
-1. Unity 菜单 `Tools → LogTrack → 插入日志代码`（默认 `Assets/Scripts` → `Assets/LogTrackGenerated/LogPdb.pdb.json`）
-2. 在「运行时设置」开启 **Play 时自动启动** 与 **退出 Play 时自动导出**
-3. Play → Stop → 日志在 `Application.persistentDataPath/LogTrack/`
-4. 用 `tools/logtrack/parse_logtrack.py` 解析日志，或配合 `tools/logtrack/prompts/logtrack_analyst.md` 做 AI 分析
+1. 确认 `Assets/Scripts/LogTrackSetting.txt`（**编译后自动插桩默认关闭**，已排除体素热路径）
+2. `Tools → LogTrack → 插入日志代码`（或仅本机开启「编译后自动插桩」）
+3. `Tools → LogTrack → 运行时设置`：开启 **Play 时自动启动** 与 **退出 Play 时自动导出**
+4. **Inspector**：`VoxelQuadSphereWorld` 上关闭 **Log Track During Generation**（避免生成阶段卡顿）
+5. Play → Stop → 日志在 `%LOCALAPPDATA%\LocalLow\...\LogTrack\`
+6. 解析：`python tools/logtrack/parse_logtrack.py --log "<导出的.log>" --out analysis.json`
 
-**新版特性（2026-07-14）**：三 Phase（FixedUpdate / Update / LateUpdate）、depth 嵌套、`Class::Method` 文本格式；运行时由 `LogTrackPhaseDriver` 驱动（已移除 `LogTrackAutoRunner`）。
+**新版（2026-07-15）**：三 Phase + depth + `Class::Method`；`LogTrackPhaseDriver`；编译后自动插桩支持项目默认 + 本机覆盖。
+
+若脚本曾被旧版插桩，建议先 `git checkout -- Assets/Scripts` 再重新插桩。
 
 详细说明见 [Assets/LogTrack/README.md](Assets/LogTrack/README.md)。

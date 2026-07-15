@@ -52,11 +52,17 @@ public class wsad : MonoBehaviour
     }
 
     public void SetPitch(float value)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(1, (int)value);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(1, (int)value);}
+    try
+    {
         pitch = Mathf.Clamp(value, -80f, 80f);
         ApplyCameraPitch();
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     void HandleMove(float deltaTime)
     {

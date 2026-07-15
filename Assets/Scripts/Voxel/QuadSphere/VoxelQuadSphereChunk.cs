@@ -37,13 +37,11 @@ public class VoxelQuadSphereChunk
     }
 
     public byte GetLocalVoxel(int x, int y, int z)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(129, (int)x, (int)y, (int)z);}
-        return Voxels[VoxelTypes.ToIndex(x, y, z)];
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    {
+        return Voxels[VoxelTypes.ToIndex(x, y, z)];}
 
     public void SetLocalVoxel(int x, int y, int z, byte value)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(130, (int)x, (int)y, (int)z, (int)value);}
+    {
         if (x < 0 || y < 0 || z < 0 || x >= VoxelTypes.ChunkSize || y >= VoxelTypes.ChunkSize || z >= VoxelTypes.ChunkSize)
             return;
 
@@ -53,16 +51,14 @@ public class VoxelQuadSphereChunk
 
         Voxels[index] = value;
         IsDirty = true;
-        IsModified = true;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        IsModified = true;}
 
     public void MarkDirty() => IsDirty = true;
     public void MarkModified() => IsModified = true;
     public void ClearModifiedFlag() => IsModified = false;
 
     public void RebuildMesh(System.Func<QuadSphereVoxelAddress, byte> getVoxel, int gridSize, int maxDepth, float planetRadius, Vector3 planetCenter)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(131, (int)gridSize, (int)maxDepth, (int)planetRadius);}
+    {
         if (runtimeMesh != null)
             Object.Destroy(runtimeMesh);
 
@@ -70,12 +66,10 @@ public class VoxelQuadSphereChunk
         meshFilter.sharedMesh = runtimeMesh;
         meshCollider.sharedMesh = null;
         meshCollider.sharedMesh = runtimeMesh;
-        IsDirty = false;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        IsDirty = false;}
 
     public void AddMeshSnapshot(QuadSphereChunkSaveEntry entry)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(132);}
+    {
         if (entry == null || runtimeMesh == null)
             return;
 
@@ -83,12 +77,10 @@ public class VoxelQuadSphereChunk
         entry.meshNormals = runtimeMesh.normals;
         entry.meshSubMeshTriangles = new int[runtimeMesh.subMeshCount][];
         for (int subMesh = 0; subMesh < runtimeMesh.subMeshCount; subMesh++)
-            entry.meshSubMeshTriangles[subMesh] = runtimeMesh.GetTriangles(subMesh);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+            entry.meshSubMeshTriangles[subMesh] = runtimeMesh.GetTriangles(subMesh);}
 
     public bool RestoreMesh(QuadSphereChunkSaveEntry entry)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(133);}
+    {
         if (entry == null
             || entry.meshVertices == null
             || entry.meshNormals == null
@@ -120,17 +112,13 @@ public class VoxelQuadSphereChunk
         meshCollider.sharedMesh = null;
         meshCollider.sharedMesh = runtimeMesh;
         IsDirty = false;
-        return true;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        return true;}
 
     public void Destroy()
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(134);}
+    {
         if (runtimeMesh != null)
             Object.Destroy(runtimeMesh);
 
         if (viewObject != null)
-            Object.Destroy(viewObject);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+            Object.Destroy(viewObject);}
 }

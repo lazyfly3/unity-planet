@@ -14,7 +14,10 @@ public sealed class StartMenuSaveRow : MonoBehaviour
     public GalaxySaveSlotInfo Slot => slot;
 
     public void Initialize(StartMenuController menuOwner, GalaxySaveSlotInfo slotInfo)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(89);}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(123);}
+    try
+    {
         owner = menuOwner;
         slot = slotInfo;
         nameText.text = slotInfo.DisplayName;
@@ -33,15 +36,24 @@ public sealed class StartMenuSaveRow : MonoBehaviour
         button.onClick.AddListener(() => owner.SelectSlot(this));
         SetSelected(false);
         gameObject.SetActive(true);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     public void SetSelected(bool selected)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(90, (selected?1:0));}
+    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
+    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(124, (selected?1:0));}
+    try
+    {
         if (selectionFrame != null)
             selectionFrame.enabled = selected;
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+    }
+    finally
+    {
+        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
+    }}
 
     static void DateTimeText(long ticks, out string text)
     {

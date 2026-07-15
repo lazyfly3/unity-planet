@@ -1,4 +1,10 @@
 FSPDebuger
 FSPDebuger
+AutoInstrumentOnCompile: false
 ExcludeList:
+Voxel/QuadSphere/VoxelQuadSphereTerrain.cs
+Voxel/QuadSphere/VoxelQuadSphereMapping.cs
+Voxel/QuadSphere/VoxelQuadSphereMesher.cs
+Voxel/QuadSphere/VoxelQuadSphereChunk.cs
+Voxel/VoxelTerrainGenerator.cs
 ExternalList:

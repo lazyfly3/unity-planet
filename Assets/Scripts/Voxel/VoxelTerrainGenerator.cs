@@ -6,13 +6,11 @@ public static class VoxelTerrainGenerator
     const float CaveScale = 0.06f;
 
     public static byte GenerateVoxel(Vector3 localVoxelCenter, int seed, bool planetMode, Vector3 planetCenterLocal, float planetRadius)
-    {if(FSPDebuger.EnableLogTrackInternal){FSPDebuger.PushDepth();FSPDebuger.LogTrack(112, (int)seed, (planetMode?1:0), (int)planetRadius);}
+    {
         if (planetMode)
             return GeneratePlanetVoxel(localVoxelCenter, seed, planetCenterLocal, planetRadius);
 
-        return GenerateFlatVoxel(localVoxelCenter, seed);
-    
-    if(FSPDebuger.EnableLogTrackInternal)FSPDebuger.PopDepth();}
+        return GenerateFlatVoxel(localVoxelCenter, seed);}
 
     static byte GenerateFlatVoxel(Vector3 localVoxelCenter, int seed)
     {
