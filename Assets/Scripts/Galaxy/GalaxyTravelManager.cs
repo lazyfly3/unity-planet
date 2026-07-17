@@ -16,6 +16,8 @@ public sealed class GalaxyPlanetDefinition
     [System.NonSerialized]
     public bool isProcedural;
     public int seed;
+    [Header(nameof(PlanetClimate))]
+    public PlanetClimate climate = PlanetClimate.Barren;
     public Color mapColor = Color.white;
     public Color surfaceColor = Color.white;
     public Color rockColor = Color.gray;
@@ -37,7 +39,7 @@ public sealed class GalaxyPlanetDefinition
 public sealed class GalaxyTravelManager : MonoBehaviour
 {
     const int PlanetSaveMagic = 0x504C4E54;
-    const int PlanetSaveVersion = 9;
+    const int PlanetSaveVersion = 10;
 
     static GalaxyTravelManager instance;
 
@@ -52,6 +54,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     [SerializeField, Min(0)] int planetEdgePadding = 1;
     [SerializeField] List<GalaxyPlanetDefinition> planets = new List<GalaxyPlanetDefinition>();
     [SerializeField] List<GalaxyResourceCatalogEntry> resourceCatalog = new List<GalaxyResourceCatalogEntry>();
+    [SerializeField] PlanetDecorationCatalog decorationCatalog;
 
     string currentPlanetId = "origin";
     Vector2Int shipGridPosition;
@@ -83,6 +86,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     public int GridColumns => gridColumns;
     public int GridRows => gridRows;
     public double WeatherTimeSeconds => activeSlotMetadata != null ? activeSlotMetadata.weatherTimeSeconds : 0d;
+    public PlanetDecorationCatalog DecorationCatalog => decorationCatalog;
 
     void Awake()
     {
@@ -97,6 +101,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         CreateDefaultGalaxy();
         foreach (GalaxyPlanetDefinition planet in planets)
         {
+            if (planet != null && PlanetClimateClassifier.TryGetFixedClimate(planet.planetId, out PlanetClimate fixedClimate))
+                planet.climate = fixedClimate;
             if (planet.weather == null || planet.weather.presets == null || planet.weather.presets.Count == 0)
                 planet.weather = PlanetWeatherDefaults.Create(planet.planetId);
         }
@@ -159,11 +165,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     }
 
     public void OpenGalaxyMap(VoxelQuadSphereWorld world)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(62);}
-    try
     {
-        if (transitionInProgress || world == null)
+if (transitionInProgress || world == null)
             return;
 
         SavePlanet(world);
@@ -180,23 +183,14 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
         transitionInProgress = true;
         SceneManager.LoadScene(mapSceneName, LoadSceneMode.Single);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void MoveShip(Vector2Int delta)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(67);}
-    try
     {
-        MoveShip(new GalaxyCoordinateDelta(delta.x, delta.y));
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+MoveShip(new GalaxyCoordinateDelta(delta.x, delta.y));
+    
+}
 
     public void MoveShip(GalaxyCoordinateDelta delta)
     {
@@ -205,10 +199,6 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         if (!isCardinalUnit)
             return;
 
-        bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(63);}
-    try
-    {
         shipFacing = GetFacing(delta);
         activeSlotMetadata.shipFacing = shipFacing;
         if (IsInfiniteGalaxy)
@@ -225,11 +215,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             activeSlotMetadata.shipGridX = shipGridPosition.x;
             activeSlotMetadata.shipGridY = shipGridPosition.y;
         }
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     static GalaxyShipFacing GetFacing(GalaxyCoordinateDelta delta)
     {
@@ -250,11 +237,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     }
 
     public GalaxyPlanetDefinition GetPlanetAt(GalaxyCoordinate coordinate)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(68);}
-    try
     {
-        if (!IsInfiniteGalaxy)
+if (!IsInfiniteGalaxy)
         {
             if (coordinate.x < int.MinValue || coordinate.x > int.MaxValue
                 || coordinate.y < int.MinValue || coordinate.y > int.MaxValue)
@@ -278,36 +262,24 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         if (planet != null)
             CacheProceduralPlanet(coordinate, planet);
         return planet;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public GalaxyPlanetDefinition GetPlanetAt(Vector2Int gridPosition)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(64);}
-    try
     {
-        foreach (GalaxyPlanetDefinition planet in planets)
+foreach (GalaxyPlanetDefinition planet in planets)
         {
             if (planet.gridPosition == gridPosition)
                 return planet;
         }
 
         return null;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void EnterPlanet(GalaxyPlanetDefinition planet)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(65);}
-    try
     {
-        if (transitionInProgress || planet == null)
+if (transitionInProgress || planet == null)
             return;
 
         if (IsInfiniteGalaxy)
@@ -332,11 +304,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         SaveActiveSlotMetadata();
         transitionInProgress = true;
         SceneManager.LoadScene(surfaceSceneName, LoadSceneMode.Single);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
@@ -345,11 +314,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     }
 
     public void ReturnToMainMenu(string startMenuSceneName)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(66);}
-    try
     {
-        if (transitionInProgress)
+if (transitionInProgress)
             return;
 
         VoxelQuadSphereWorld world = FindObjectOfType<VoxelQuadSphereWorld>();
@@ -363,11 +329,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         instance = null;
         Destroy(gameObject);
         SceneManager.LoadScene(startMenuSceneName, LoadSceneMode.Single);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void ConfigureSurfaceScene(Scene scene)
     {
@@ -393,6 +356,9 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
         GalaxyPlanetSaveData save = LoadPlanet(planet.planetId);
         GetPlanetPalette(planet, out Color surfaceColor, out Color rockColor);
+        List<PlanetSurfacePropSpawnSettings> surfacePropPlan = decorationCatalog != null
+            ? decorationCatalog.BuildSpawnPlan(planet.climate, planet.seed)
+            : new List<PlanetSurfacePropSpawnSettings>();
         world.ConfigurePlanet(
             planet.seed,
             save,
@@ -401,6 +367,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             planet.terrain,
             planet.spawnHarvestableResources,
             planet.resourceSpawnSettings,
+            surfacePropPlan,
             planet.rivers,
             save != null ? save.riverData : null);
         PlanetWeatherSystem weatherSystem = FindObjectOfType<PlanetWeatherSystem>();
@@ -439,6 +406,10 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             hasFullResourceSnapshot = true,
             resourceConfigurationHash = world.ResourceConfigurationHash,
             resources = world.GetResourceSnapshots(),
+            harvestedSurfacePropIds = world.GetHarvestedSurfacePropIds(),
+            hasFullSurfacePropSnapshot = true,
+            surfacePropConfigurationHash = world.SurfacePropConfigurationHash,
+            surfaceProps = world.GetSurfacePropSnapshots(),
             buildings = CaptureBuildings(world),
             riverData = world.RiverSystem != null ? world.RiverSystem.Snapshot : null
         };
@@ -464,6 +435,10 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             {
                 return ReadPlanetBinary(path);
             }
+            catch (InvalidDataException)
+            {
+                return null;
+            }
             catch (System.Exception exception)
             {
                 Debug.LogError($"GalaxyTravelManager: could not load compressed planet '{planetId}'. {exception.Message}");
@@ -476,7 +451,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
         try
         {
-            return JsonUtility.FromJson<GalaxyPlanetSaveData>(File.ReadAllText(legacyPath));
+            GalaxyPlanetSaveData legacy = JsonUtility.FromJson<GalaxyPlanetSaveData>(File.ReadAllText(legacyPath));
+            return legacy != null && legacy.formatVersion == PlanetSaveVersion ? legacy : null;
         }
         catch (System.Exception exception)
         {
@@ -603,6 +579,30 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             }
 
             WriteRiverData(writer, data.riverData);
+
+            writer.Write(data.hasFullSurfacePropSnapshot);
+            writer.Write(data.surfacePropConfigurationHash);
+            string[] harvestedSurfaceProps = data.harvestedSurfacePropIds ?? new string[0];
+            writer.Write(harvestedSurfaceProps.Length);
+            foreach (string instanceId in harvestedSurfaceProps)
+                writer.Write(instanceId ?? string.Empty);
+
+            GalaxySurfacePropSaveEntry[] surfaceProps = data.surfaceProps ?? new GalaxySurfacePropSaveEntry[0];
+            writer.Write(surfaceProps.Length);
+            foreach (GalaxySurfacePropSaveEntry value in surfaceProps)
+            {
+                GalaxySurfacePropSaveEntry prop = value ?? new GalaxySurfacePropSaveEntry();
+                writer.Write(prop.catalogId ?? string.Empty);
+                writer.Write(prop.instanceId ?? string.Empty);
+                WriteVector3(writer, prop.localPosition);
+                writer.Write(prop.localRotation.x);
+                writer.Write(prop.localRotation.y);
+                writer.Write(prop.localRotation.z);
+                writer.Write(prop.localRotation.w);
+                WriteVector3(writer, prop.localScale);
+                writer.Write(prop.minimumSpacing);
+                writer.Write(prop.harvestable);
+            }
         }
 
         if (File.Exists(path))
@@ -621,7 +621,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
                 throw new InvalidDataException("Invalid planet save signature.");
 
             int version = reader.ReadInt32();
-            if (version < 2 || version > PlanetSaveVersion)
+            if (version != PlanetSaveVersion)
                 throw new InvalidDataException($"Unsupported planet save version {version}.");
 
             GalaxyPlanetSaveData data = new GalaxyPlanetSaveData
@@ -768,6 +768,30 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
             if (version >= 8)
                 data.riverData = ReadRiverData(reader, version);
+
+            data.hasFullSurfacePropSnapshot = reader.ReadBoolean();
+            data.surfacePropConfigurationHash = reader.ReadInt32();
+            int harvestedSurfacePropCount = ReadBoundedCount(reader, nameof(harvestedSurfacePropCount), 100000);
+            data.harvestedSurfacePropIds = new string[harvestedSurfacePropCount];
+            for (int i = 0; i < harvestedSurfacePropCount; i++)
+                data.harvestedSurfacePropIds[i] = reader.ReadString();
+
+            int surfacePropCount = ReadBoundedCount(reader, nameof(surfacePropCount), 100000);
+            data.surfaceProps = new GalaxySurfacePropSaveEntry[surfacePropCount];
+            for (int i = 0; i < surfacePropCount; i++)
+            {
+                data.surfaceProps[i] = new GalaxySurfacePropSaveEntry
+                {
+                    catalogId = reader.ReadString(),
+                    instanceId = reader.ReadString(),
+                    localPosition = ReadVector3(reader),
+                    localRotation = new Quaternion(
+                        reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle()),
+                    localScale = ReadVector3(reader),
+                    minimumSpacing = reader.ReadSingle(),
+                    harvestable = reader.ReadBoolean()
+                };
+            }
 
             return data;
         }
@@ -1484,12 +1508,6 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             return;
 
         string path = GetPlanetDefinitionPath(planet.planetId);
-        if (File.Exists(path))
-        {
-            frozenPlanetIds.Add(planet.planetId);
-            return;
-        }
-
         var record = new GalaxyGeneratedPlanetRecord
         {
             generatorVersion = ProceduralGalaxyGenerator.CurrentVersion,
@@ -1498,6 +1516,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             coordinateX = planet.coordinate.x,
             coordinateY = planet.coordinate.y,
             seed = planet.seed,
+            climate = planet.climate,
             mapColor = planet.mapColor,
             surfaceColor = planet.surfaceColor,
             rockColor = planet.rockColor,
@@ -1549,7 +1568,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         try
         {
             GalaxyGeneratedPlanetRecord record = JsonUtility.FromJson<GalaxyGeneratedPlanetRecord>(File.ReadAllText(path));
-            if (record == null || record.formatVersion != 1 || record.planetId != planetId
+            if (record == null || record.formatVersion != 2 || record.planetId != planetId
                 || record.coordinateX != coordinate.x || record.coordinateY != coordinate.y)
                 throw new InvalidDataException("Invalid procedural planet definition.");
 
@@ -1560,6 +1579,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
                 coordinate = coordinate,
                 isProcedural = true,
                 seed = record.seed,
+                climate = record.climate,
                 mapColor = record.mapColor,
                 surfaceColor = record.surfaceColor,
                 rockColor = record.rockColor,
@@ -1659,6 +1679,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         Color color,
         string iconPath)
     {
+        PlanetClimateClassifier.TryGetFixedClimate(id, out PlanetClimate climate);
         return new GalaxyPlanetDefinition
         {
             planetId = id,
@@ -1666,6 +1687,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
             gridPosition = new Vector2Int(x, y),
             coordinate = new GalaxyCoordinate(x, y),
             seed = planetSeed,
+            climate = climate,
             mapColor = color,
             iconResourcePath = iconPath,
             terrain = CreateTerrainPreset(id),

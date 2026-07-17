@@ -25,11 +25,8 @@ public static class VoxelMesher
     };
 
     public static Mesh BuildChunkMesh(Func<int, int, int, byte> getWorldVoxel, Vector3Int chunkCoord)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(138);}
-    try
     {
-        List<Vector3> dirtVertices = new List<Vector3>();
+List<Vector3> dirtVertices = new List<Vector3>();
         List<int> dirtTriangles = new List<int>();
         List<Vector3> stoneVertices = new List<Vector3>();
         List<int> stoneTriangles = new List<int>();
@@ -105,11 +102,8 @@ public static class VoxelMesher
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
         return mesh;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     static void AddFace(List<Vector3> vertices, List<int> triangles, Vector3 blockOrigin, int faceIndex)
     {

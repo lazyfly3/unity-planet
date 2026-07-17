@@ -7,11 +7,8 @@ public static class CreatureBodyGraphBuilder
     const int MaximumNodes = 47;
 
     public static CreatureDesignLanguage GenerateDesignLanguage(CreatureGenome genome)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(32);}
-    try
     {
-        var random = new GraphRandom(genome.seed, 0x51ED270Bu);
+var random = new GraphRandom(genome.seed, 0x51ED270Bu);
         return new CreatureDesignLanguage
         {
             massDistribution = random.Range(-1f, 1f),
@@ -27,18 +24,12 @@ public static class CreatureBodyGraphBuilder
             bellyColor = Color.Lerp(genome.primaryColor, Color.white, random.Range(0.25f, 0.6f)),
             ornamentColor = Color.Lerp(genome.secondaryColor, Color.black, random.Range(0.05f, 0.35f))
         };
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public static CreatureBodyGraph Build(CreatureGenome genome)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(33);}
-    try
     {
-        for (int attempt = 0; attempt < 16; attempt++)
+for (int attempt = 0; attempt < 16; attempt++)
         {
             var random = new GraphRandom(genome.seed, unchecked((uint)(0x9E3779B9u + attempt * 0x85EBCA6Bu)));
             CreatureBodyGraph graph = BuildAttempt(genome, ref random);
@@ -46,11 +37,8 @@ public static class CreatureBodyGraphBuilder
                 return graph;
         }
         return BuildFallback(genome);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     static CreatureBodyGraph BuildAttempt(CreatureGenome genome, ref GraphRandom random)
     {

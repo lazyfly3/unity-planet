@@ -1,5 +1,7 @@
 #if UNITY_EDITOR
+using System;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
@@ -13,33 +15,68 @@ namespace LogTrack.Editor
 
         static LogTrackCompileHook()
         {
-            CompilationPipeline.compilationFinished += OnCompilationFinished;
+            CompilationPipeline.assemblyCompilationFinished += OnAssemblyCompilationFinished;
         }
 
-        private static void OnCompilationFinished(object obj)
+        private static void OnAssemblyCompilationFinished(string assemblyPath, CompilerMessage[] messages)
         {
-            if (!LogTrackProjectSettings.AutoInstrumentOnCompile || s_running) return;
-
-            var scriptsRoot = Path.GetFullPath(LogTrackSettings.InstrumentRoot);
-            var pdbDir = Path.GetFullPath(LogTrackSettings.PdbOutputDir);
-            if (!Directory.Exists(scriptsRoot))
+            if (!LogTrackProjectSettings.AutoInstrumentOnCompile || s_running)
             {
-                Debug.LogWarning("LogTrack 自动插桩跳过：目录不存在 " + scriptsRoot);
+                return;
+            }
+
+            if (!LogTrackInsertSettings.TryLoad(out var setting))
+            {
+                Debug.LogWarning("LogTrack 自动插桩跳过：未找到 LogTrackSetting.txt");
+                return;
+            }
+
+            var assemblyName = Path.GetFileNameWithoutExtension(assemblyPath);
+            var targets = LogTrackIlAssemblyCatalog.ResolveTargetAssemblies(setting);
+            if (Array.IndexOf(targets, assemblyName) < 0)
+            {
+                return;
+            }
+
+            if (messages != null && messages.Any(message => message.type == CompilerMessageType.Error))
+            {
+                return;
+            }
+
+            if (!File.Exists(assemblyPath))
+            {
+                return;
+            }
+
+            if (!LogTrackIlInstrumenter.TryValidateRuntimeHooks(setting.logTrackClass, out var hookError))
+            {
+                Debug.LogWarning("LogTrack 自动插桩跳过：" + hookError);
                 return;
             }
 
             try
             {
                 s_running = true;
+                var pdbDir = Path.GetFullPath(LogTrackSettings.PdbOutputDir);
                 Directory.CreateDirectory(pdbDir);
-                FSPDebugerTool.InsertLogTrack(
-                    scriptsRoot + Path.DirectorySeparatorChar,
-                    pdbDir + Path.DirectorySeparatorChar,
-                    LogTrackProjectSettings.LogTrackClass,
-                    LogTrackProjectSettings.LogTrackMacro,
-                    LogTrackProjectSettings.ExcludeFiles);
-                AssetDatabase.Refresh();
-                Debug.Log("LogTrack 编译后自动插桩完成，Pdb: " + pdbDir);
+                var result = LogTrackIlInstrumenter.PatchAssemblyAtPath(
+                    assemblyPath,
+                    pdbDir,
+                    assemblyName,
+                    setting.logTrackClass);
+
+                if (result.success)
+                {
+                    Debug.Log($"LogTrack IL 自动插桩完成: {assemblyName}, methods={result.patchedMethods}, pdb={pdbDir}");
+                }
+                else if (!string.IsNullOrEmpty(result.error))
+                {
+                    Debug.LogWarning("LogTrack IL 自动插桩: " + result.error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("LogTrack IL 自动插桩失败: " + ex.Message);
             }
             finally
             {
@@ -50,19 +87,36 @@ namespace LogTrack.Editor
 
     public static class LogTrackProjectSettings
     {
-        private const string PrefKeyAutoInstrument = "LogTrack.AutoInstrumentOnCompile";
+        private const string PrefKeyAutoInstrumentOverride = "LogTrack.AutoInstrumentOnCompile.Override";
+        private const string LegacyPrefKeyAutoInstrument = "LogTrack.AutoInstrumentOnCompile";
 
         public static bool AutoInstrumentOnCompile
         {
-            get => EditorPrefs.HasKey(PrefKeyAutoInstrument)
-                ? EditorPrefs.GetBool(PrefKeyAutoInstrument, false)
-                : LogTrackInsertSettings.GetProjectDefaultAutoInstrumentOnCompile();
-            set => EditorPrefs.SetBool(PrefKeyAutoInstrument, value);
+            get
+            {
+                if (EditorPrefs.HasKey(PrefKeyAutoInstrumentOverride))
+                {
+                    return EditorPrefs.GetBool(PrefKeyAutoInstrumentOverride);
+                }
+
+                return LogTrackInsertSettings.GetProjectDefaultAutoInstrumentOnCompile();
+            }
+        }
+
+        public static bool HasAutoInstrumentOverride => EditorPrefs.HasKey(PrefKeyAutoInstrumentOverride);
+
+        public static bool ProjectDefaultAutoInstrumentOnCompile =>
+            LogTrackInsertSettings.GetProjectDefaultAutoInstrumentOnCompile();
+
+        public static void SetAutoInstrumentOnCompile(bool value)
+        {
+            EditorPrefs.SetBool(PrefKeyAutoInstrumentOverride, value);
         }
 
         public static void ClearAutoInstrumentOverride()
         {
-            EditorPrefs.DeleteKey(PrefKeyAutoInstrument);
+            EditorPrefs.DeleteKey(PrefKeyAutoInstrumentOverride);
+            EditorPrefs.DeleteKey(LegacyPrefKeyAutoInstrument);
         }
 
         public static int RingBufferSize
@@ -82,10 +136,6 @@ namespace LogTrack.Editor
             get => LogTrackSettings.ExportOnStop;
             set => LogTrackSettings.ExportOnStop = value;
         }
-
-        public const string LogTrackClass = "FSPDebuger";
-        public const string LogTrackMacro = "FSPDebuger";
-        public static readonly string[] ExcludeFiles = { };
     }
 }
 #endif

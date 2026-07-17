@@ -242,6 +242,7 @@ GameObject:
   m_Component:
   - component: {fileID: 281707459}
   - component: {fileID: 281707460}
+  - component: {fileID: 281707461}
   m_Layer: 0
   m_Name: CreatureSystem
   m_TagString: Untagged
@@ -263,6 +264,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 629110673}
+  - {fileID: 2111000001}
   m_Father: {fileID: 2103856859}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &281707460
@@ -272,7 +274,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 281707458}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c2702b7cb1c41874080ad645844119c9, type: 3}
   m_Name: 
@@ -286,6 +288,35 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   spawnDirection: {x: 0, y: 1, z: 0}
+--- !u!114 &281707461
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 281707458}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 660c609507c28cd4287f1ad960846c74, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  catalog: {fileID: 11400000, guid: 97d9158effeb6b441be724e9c7bb73ed, type: 2}
+  seed: 12345
+  forcedFamilyId: 
+  regenerateWithR: 1
+  gravitySource: {fileID: 2103856858}
+  groundLayers:
+    serializedVersion: 2
+    m_Bits: 1
+  followCamera: {fileID: 1476987111}
+  spawnDirection: {x: 0, y: 1, z: 0}
+  surfaceProbeHeight: 20
+  moveAlongGreatCircle: 1
+  validateRigContinuously: 1
+  rejectInvalidSkinnedMeshes: 1
+  maximumBakedBoundsMultiplier: 4
+  maximumTriangleEdgeStretch: 6
+  maximumAutomaticRetries: 12
 --- !u!1 &290736700
 GameObject:
   m_ObjectHideFlags: 0
@@ -660,7 +691,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 629110672}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 591548af4dd069e4d847fe6b186c79de, type: 3}
   m_Name: 
@@ -1900,7 +1931,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gravitySource: {fileID: 2103856858}
-  target: {fileID: 0}
+  target: {fileID: 2111000001}
   followDistance: 11
   height: 6
   positionSmoothSpeed: 6
@@ -2609,6 +2640,84 @@ Transform:
   - {fileID: 281707459}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &2111000000
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 281707459}
+    m_Modifications:
+    - target: {fileID: 1408569481795709696, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: gravitySource
+      value: 
+      objectReference: {fileID: 2103856858}
+    - target: {fileID: 1408569481795709696, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: surfaceOffset
+      value: 0.03463781
+      objectReference: {fileID: 0}
+    - target: {fileID: 1408569481795709696, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: useSphericalSurface
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2002298543343299035, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2002298543343299035, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 100.03464
+      objectReference: {fileID: 0}
+    - target: {fileID: 2002298543343299035, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2002298543343299035, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2002298543343299035, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2002298543343299035, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2002298543343299035, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3116427160407285931, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7724420041181915329, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: m_Name
+      value: FixedAntelopeV2_SphericalTest
+      objectReference: {fileID: 0}
+    - target: {fileID: 7724420041181915329, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8637785617142490290, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: gravityCenter
+      value: 
+      objectReference: {fileID: 2103856859}
+    - target: {fileID: 8637785617142490290, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+      propertyPath: useSphericalUp
+      value: 1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+--- !u!4 &2111000001 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2002298543343299035, guid: bb310baa3b8095a43af60cae57bf2826, type: 3}
+  m_PrefabInstance: {fileID: 2111000000}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

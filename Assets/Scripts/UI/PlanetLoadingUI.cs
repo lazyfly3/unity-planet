@@ -13,29 +13,20 @@ public sealed class PlanetLoadingUI : MonoBehaviour
     float displayedProgress;
 
     public void Show(string initialStatus)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(109);}
-    try
     {
-        gameObject.SetActive(true);
+gameObject.SetActive(true);
         canvasGroup.alpha = 1f;
         canvasGroup.blocksRaycasts = true;
         canvasGroup.interactable = true;
         startedAt = Time.realtimeSinceStartup;
         displayedProgress = 0f;
         SetProgress(0.01f, initialStatus);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void SetProgress(float progress, string status)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(110, (int)progress);}
-    try
     {
-        progress = Mathf.Clamp01(progress);
+progress = Mathf.Clamp01(progress);
         displayedProgress = Mathf.Max(displayedProgress, progress);
         progressFill.fillAmount = displayedProgress;
         progressText.text = Mathf.RoundToInt(displayedProgress * 100f) + "%";
@@ -52,25 +43,16 @@ public sealed class PlanetLoadingUI : MonoBehaviour
         remainingText.text = remaining >= 60f
             ? $"预计剩余 {Mathf.CeilToInt(remaining / 60f)} 分钟"
             : $"预计剩余 {Mathf.Max(1, Mathf.CeilToInt(remaining))} 秒";
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void Complete()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(111);}
-    try
     {
-        SetProgress(1f, "星球构筑完成");
+SetProgress(1f, "星球构筑完成");
         canvasGroup.alpha = 0f;
         canvasGroup.blocksRaycasts = false;
         canvasGroup.interactable = false;
         gameObject.SetActive(false);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 }

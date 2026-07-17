@@ -15,6 +15,7 @@ public class LogTrackSession : MonoBehaviour
 
     private int m_frameIndex;
     private bool m_exported;
+    private bool m_sessionStarted;
 
     public int RingBufferSize => ringBufferSize;
 
@@ -33,6 +34,7 @@ public class LogTrackSession : MonoBehaviour
         ringBufferSize = LogTrackSettings.ClampRingBufferSize(ringBufferSize);
         FSPDebuger.TrackBufferSize = ringBufferSize;
         FSPDebuger.BeginTrack(ringBufferSize);
+        m_sessionStarted = true;
         Application.quitting += ExportIfNeeded;
         Debug.Log($"LogTrack 已启动（LogTrackSession），RingBuffer={ringBufferSize}");
     }
@@ -51,24 +53,13 @@ public class LogTrackSession : MonoBehaviour
 
     private void ExportIfNeeded()
     {
-        if (m_exported || !exportOnDestroy || !FSPDebuger.EnableLogTrackInternal)
+        if (m_exported || !exportOnDestroy || !m_sessionStarted)
         {
             return;
         }
 
         m_exported = true;
-
-        var binPath = FSPDebuger.SaveTrack();
-        if (!string.IsNullOrEmpty(binPath))
-        {
-            Debug.Log("LogTrack 二进制日志已导出: " + binPath);
-        }
-
-        var textPath = FSPDebuger.SaveTrackAsText(pdbRelativePath);
-        if (!string.IsNullOrEmpty(textPath))
-        {
-            Debug.Log("LogTrack 文本日志已导出: " + textPath);
-        }
+        LogTrackRecordingExport.ExportIfNeeded();
     }
 
     [ContextMenu("Export LogTrack Now")]

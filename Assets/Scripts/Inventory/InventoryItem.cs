@@ -23,11 +23,8 @@ public sealed class InventoryItem : ScriptableObject
         string name,
         Sprite itemIcon,
         int itemMaxStack)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(77, (int)itemMaxStack);}
-    try
     {
-        id = string.IsNullOrWhiteSpace(id) ? "item" : id.Trim();
+id = string.IsNullOrWhiteSpace(id) ? "item" : id.Trim();
         if (RuntimeItems.TryGetValue(id, out InventoryItem existing) && existing != null)
         {
             if (!string.IsNullOrWhiteSpace(name))
@@ -47,11 +44,8 @@ public sealed class InventoryItem : ScriptableObject
         item.maxStack = Mathf.Max(1, itemMaxStack);
         RuntimeItems[id] = item;
         return item;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetRuntimeItems()

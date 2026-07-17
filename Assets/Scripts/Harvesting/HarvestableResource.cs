@@ -11,6 +11,7 @@ public sealed class HarvestableResource : MonoBehaviour
     [SerializeField, Min(1)] int minimumHarvestClicks = 1;
     [SerializeField, Min(1)] int maximumHarvestClicks = 3;
     [SerializeField, Min(0.1f)] float interactionDistance = 6f;
+    [SerializeField] bool preserveAuthoredColliders;
 
     [Header("Feedback")]
     [SerializeField] bool showProgressFeedback = true;
@@ -40,16 +41,9 @@ public sealed class HarvestableResource : MonoBehaviour
     public int RemainingHarvestClicks => Mathf.Max(0, requiredHarvestClicks - completedHarvestClicks);
 
     public void AssignStableResourceId(string resourceId)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(76);}
-    try
     {
         stableResourceId = resourceId;
     }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
 
     void Reset()
     {
@@ -139,7 +133,8 @@ public sealed class HarvestableResource : MonoBehaviour
         {
             GetComponentInParent<VoxelQuadSphereWorld>()?.MarkResourceHarvested(stableResourceId);
             PlayFeedbackSound(harvestCompleteSound);
-            Destroy(gameObject);
+            PlanetSurfacePropInstance generatedInstance = GetComponentInParent<PlanetSurfacePropInstance>();
+            Destroy(generatedInstance != null ? generatedInstance.gameObject : gameObject);
         }
     }
 
@@ -231,20 +226,53 @@ public sealed class HarvestableResource : MonoBehaviour
 
     void EnsureHarvestCollider()
     {
-        if (GetComponentInChildren<Collider>(true) != null)
+        Collider[] existingColliders = GetComponentsInChildren<Collider>(true);
+        bool isSceneInstance = gameObject.scene.IsValid();
+        // Prefab assets can receive OnValidate while entering Play Mode. Never delete their authored colliders.
+        if (!isSceneInstance && existingColliders.Length > 0)
+            return;
+
+        if (preserveAuthoredColliders && existingColliders.Length > 0)
+            return;
+        if (!Application.isPlaying && existingColliders.Length > 0)
+            return;
+
+        foreach (Collider existing in existingColliders)
+        {
+            existing.enabled = false;
+            if (Application.isPlaying && isSceneInstance)
+                Destroy(existing);
+            else
+                DestroyImmediate(existing);
+        }
+
+        bool addedMeshCollider = false;
+        MeshFilter[] meshFilters = GetComponentsInChildren<MeshFilter>(true);
+        if (meshFilters.Length <= 8)
+        {
+            foreach (MeshFilter filter in meshFilters)
+            {
+                if (filter == null || filter.sharedMesh == null || filter.sharedMesh.vertexCount < 4)
+                    continue;
+                MeshCollider meshCollider = filter.gameObject.AddComponent<MeshCollider>();
+                meshCollider.sharedMesh = filter.sharedMesh;
+                meshCollider.convex = true;
+                addedMeshCollider = true;
+            }
+        }
+        if (addedMeshCollider)
             return;
 
         Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
         if (renderers.Length == 0)
             return;
 
-        BoxCollider boxCollider = gameObject.AddComponent<BoxCollider>();
         Vector3 minimum = new Vector3(float.PositiveInfinity, float.PositiveInfinity, float.PositiveInfinity);
         Vector3 maximum = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
 
         foreach (Renderer modelRenderer in renderers)
         {
-            Bounds bounds = modelRenderer.bounds;
+            Bounds bounds = modelRenderer.localBounds;
             Vector3 center = bounds.center;
             Vector3 extents = bounds.extents;
             for (int x = -1; x <= 1; x += 2)
@@ -253,7 +281,8 @@ public sealed class HarvestableResource : MonoBehaviour
                 {
                     for (int z = -1; z <= 1; z += 2)
                     {
-                        Vector3 worldCorner = center + Vector3.Scale(extents, new Vector3(x, y, z));
+                        Vector3 rendererCorner = center + Vector3.Scale(extents, new Vector3(x, y, z));
+                        Vector3 worldCorner = modelRenderer.transform.TransformPoint(rendererCorner);
                         Vector3 localCorner = transform.InverseTransformPoint(worldCorner);
                         minimum = Vector3.Min(minimum, localCorner);
                         maximum = Vector3.Max(maximum, localCorner);
@@ -262,9 +291,39 @@ public sealed class HarvestableResource : MonoBehaviour
             }
         }
 
-        boxCollider.center = (minimum + maximum) * 0.5f;
-        boxCollider.size = Vector3.Max(maximum - minimum, Vector3.one * 0.05f);
-        boxCollider.isTrigger = false;
+        Vector3 colliderCenter = (minimum + maximum) * 0.5f;
+        Vector3 colliderSize = Vector3.Max(maximum - minimum, Vector3.one * 0.05f);
+        if (meshFilters.Length > 8)
+        {
+            CapsuleCollider capsule = gameObject.AddComponent<CapsuleCollider>();
+            capsule.center = colliderCenter;
+            if (colliderSize.x >= colliderSize.y && colliderSize.x >= colliderSize.z)
+            {
+                capsule.direction = 0;
+                capsule.radius = Mathf.Max(0.05f, Mathf.Min(colliderSize.y, colliderSize.z) * 0.38f);
+                capsule.height = Mathf.Max(capsule.radius * 2f, colliderSize.x * 0.9f);
+            }
+            else if (colliderSize.z >= colliderSize.x && colliderSize.z >= colliderSize.y)
+            {
+                capsule.direction = 2;
+                capsule.radius = Mathf.Max(0.05f, Mathf.Min(colliderSize.x, colliderSize.y) * 0.38f);
+                capsule.height = Mathf.Max(capsule.radius * 2f, colliderSize.z * 0.9f);
+            }
+            else
+            {
+                capsule.direction = 1;
+                capsule.radius = Mathf.Max(0.05f, Mathf.Min(colliderSize.x, colliderSize.z) * 0.38f);
+                capsule.height = Mathf.Max(capsule.radius * 2f, colliderSize.y * 0.9f);
+            }
+            capsule.isTrigger = false;
+        }
+        else
+        {
+            BoxCollider box = gameObject.AddComponent<BoxCollider>();
+            box.center = colliderCenter;
+            box.size = Vector3.Max(Vector3.Scale(colliderSize, Vector3.one * 0.82f), Vector3.one * 0.05f);
+            box.isTrigger = false;
+        }
     }
 
     static HarvestableResource GetResourceUnderCrosshair(out float hitDistance)

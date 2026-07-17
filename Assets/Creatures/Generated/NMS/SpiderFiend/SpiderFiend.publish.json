@@ -1,0 +1,96 @@
+{
+  "pipelineVersion": 3,
+  "familyId": "SpiderFiend",
+  "skeletonHash": "e269bd0ce227d94b7d9e0259195f7ae6359db654fe411b24baa60290b1c9edad",
+  "validationHash": "ef8d7e341a1c3ec3dbc5206807c20605ce446dabb9d376351d2bed238d79d2fa",
+  "sourceKind": "Fbx",
+  "sourceModelAsset": "Assets/Creatures/Generated/NMS/SpiderFiend/SpiderFiend.fbx",
+  "sourcePrefabAsset": "",
+  "familyManifestAsset": "Assets/Creatures/Generated/NMS/SpiderFiend/SpiderFiend_family.json",
+  "skeletonManifestAsset": "Assets/Creatures/Generated/NMS/SpiderFiend/SpiderFiend_skeleton.json",
+  "locomotionType": "Quadruped",
+  "surfaceMode": "Ground",
+  "variantIds": [
+    "Fiend"
+  ],
+  "legCount": 4,
+  "allowRareModules": false,
+  "excludedModulePrefixes": [],
+  "selectionWeight": 1,
+  "walkSpeed": 1.35,
+  "surfaceRootOffset": -1.0,
+  "hoverClearance": 0.0,
+  "importScale": 1.0,
+  "importEuler": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "localForwardAxis": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -1.0
+  },
+  "actions": [
+    {
+      "key": "idle",
+      "clipName": "SpiderFiend_IDLE_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/SpiderFiend/SpiderFiend.fbx",
+      "frames": 145,
+      "loop": true
+    },
+    {
+      "key": "walk",
+      "clipName": "SpiderFiend_WALK_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/SpiderFiend/SpiderFiend.fbx",
+      "frames": 49,
+      "loop": true
+    },
+    {
+      "key": "run",
+      "clipName": "SpiderFiend_RUN_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/SpiderFiend/SpiderFiend.fbx",
+      "frames": 21,
+      "loop": true
+    }
+  ],
+  "loadBearingChains": [
+    {
+      "id": "Leg1",
+      "bones": [
+        "RFirstLeg1JNT",
+        "RFirstLeg2JNT",
+        "RFirstLeg3JNT",
+        "RFirstLeg4END"
+      ]
+    },
+    {
+      "id": "Leg2",
+      "bones": [
+        "RFourthLeg1JNT",
+        "RFourthLeg2JNT",
+        "RFourthLeg3JNT",
+        "RFourthLeg4END"
+      ]
+    },
+    {
+      "id": "Leg3",
+      "bones": [
+        "LFirstLeg1JNT",
+        "LFirstLeg2JNT",
+        "LFirstLeg3JNT",
+        "LFirstLeg4END"
+      ]
+    },
+    {
+      "id": "Leg4",
+      "bones": [
+        "LFourthLeg1JNT",
+        "LFourthLeg2JNT",
+        "LFourthLeg3JNT",
+        "LFourthLeg4END"
+      ]
+    }
+  ],
+  "sourceFbxSha256": "a5bcc5def53d862702c2c7d1eba362fa4804554fd18a60ade159b68f30996ca5"
+}

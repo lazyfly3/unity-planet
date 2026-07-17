@@ -7,18 +7,12 @@ public static class CreatureSkinnedMeshBuilder
     const int RingSegments = 10;
 
     public static Mesh Build(CreatureGenome genome, CreatureRig rig, Transform creatureRoot)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(35);}
-    try
     {
-        CreatureImplicitMeshData implicitBody = CreatureImplicitBodyMesher.Build(
+CreatureImplicitMeshData implicitBody = CreatureImplicitBodyMesher.Build(
             genome.torsoSpline, CreatureBodyMeshQuality.Final);
         return Build(genome, rig, creatureRoot, implicitBody);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public static Mesh Build(
         CreatureGenome genome,

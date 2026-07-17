@@ -1,0 +1,1542 @@
+{
+  "pipelineVersion": 3,
+  "familyId": "CatQuadruped",
+  "meshCount": 39,
+  "vertexCount": 36122,
+  "restPoseMaximumVertexError": 3.769728732309837e-07,
+  "unknownWeightGroups": [],
+  "moduleValidation": {
+    "objectCount": 182,
+    "quarantinedModuleCount": 9,
+    "quarantinedModules": [
+      "_BCA_11",
+      "_BCA_12",
+      "_BLBack_2",
+      "_Ext1_Mine",
+      "_Ext2_1",
+      "_Horn_1",
+      "_ShellAcc4_1",
+      "_Tail_Hog",
+      "_Tail_Liz"
+    ],
+    "objects": {
+      "_Antennas_1": {
+        "restPoseMaximumVertexError": 3.769728732309794e-07,
+        "maximumBoundsRatio": 1.064644270377316,
+        "maximumEdgeStretch": 1.0826786650554543,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCA_10": {
+        "restPoseMaximumVertexError": 2.573418027038953e-07,
+        "maximumBoundsRatio": 1.0431121772012706,
+        "maximumEdgeStretch": 1.925756791039223,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCA_11": {
+        "restPoseMaximumVertexError": 2.602375924076584e-07,
+        "maximumBoundsRatio": 1.0716702123918587,
+        "maximumEdgeStretch": 14.071359845802734,
+        "nonFiniteVertexCount": 0,
+        "failures": [
+          "edge stretch reached 14.071x"
+        ],
+        "passed": false
+      },
+      "_BCA_12": {
+        "restPoseMaximumVertexError": 3.625608998714816e-07,
+        "maximumBoundsRatio": 1.0453352793757973,
+        "maximumEdgeStretch": 6.775016743944849,
+        "nonFiniteVertexCount": 0,
+        "failures": [
+          "edge stretch reached 6.775x"
+        ],
+        "passed": false
+      },
+      "_BCA_13": {
+        "restPoseMaximumVertexError": 2.7161428531346e-07,
+        "maximumBoundsRatio": 1.0640962964018281,
+        "maximumEdgeStretch": 5.151149037710657,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCA_14": {
+        "restPoseMaximumVertexError": 2.633124149899526e-07,
+        "maximumBoundsRatio": 1.0700733906346263,
+        "maximumEdgeStretch": 1.8254658062907485,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCA_3": {
+        "restPoseMaximumVertexError": 2.682209014892578e-07,
+        "maximumBoundsRatio": 1.0494766097082033,
+        "maximumEdgeStretch": 1.0001579398361589,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCA_4": {
+        "restPoseMaximumVertexError": 2.5736966513892143e-07,
+        "maximumBoundsRatio": 1.1440381739302579,
+        "maximumEdgeStretch": 1.2395446912808588,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCA_5": {
+        "restPoseMaximumVertexError": 3.625608998714816e-07,
+        "maximumBoundsRatio": 1.0479372874839026,
+        "maximumEdgeStretch": 2.1350468258713344,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCA_8": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0416672224438945,
+        "maximumEdgeStretch": 1.0000774539632133,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCA_9": {
+        "restPoseMaximumVertexError": 3.604110068812318e-07,
+        "maximumBoundsRatio": 1.0519282074016696,
+        "maximumEdgeStretch": 3.603635931580499,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCA_X1": {
+        "restPoseMaximumVertexError": 2.581806951278587e-07,
+        "maximumBoundsRatio": 1.0649164519859573,
+        "maximumEdgeStretch": 2.777759734390878,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCA_X6": {
+        "restPoseMaximumVertexError": 2.5611331941668013e-07,
+        "maximumBoundsRatio": 1.0783348040905192,
+        "maximumEdgeStretch": 2.560957184720997,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCA_X7": {
+        "restPoseMaximumVertexError": 2.5463115409962923e-07,
+        "maximumBoundsRatio": 1.012162650515698,
+        "maximumEdgeStretch": 2.1404389407234627,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_1": {
+        "restPoseMaximumVertexError": 2.602375924076584e-07,
+        "maximumBoundsRatio": 1.093448697815808,
+        "maximumEdgeStretch": 1.8525392496937902,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_10": {
+        "restPoseMaximumVertexError": 2.602375924076584e-07,
+        "maximumBoundsRatio": 1.0432815277602963,
+        "maximumEdgeStretch": 3.259824683332918,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_11": {
+        "restPoseMaximumVertexError": 2.5726241829477826e-07,
+        "maximumBoundsRatio": 1.1955196274099438,
+        "maximumEdgeStretch": 1.0002435101035914,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_12": {
+        "restPoseMaximumVertexError": 2.682209014892578e-07,
+        "maximumBoundsRatio": 1.060408728470042,
+        "maximumEdgeStretch": 1.6304540252288418,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_15": {
+        "restPoseMaximumVertexError": 2.5913712987589363e-07,
+        "maximumBoundsRatio": 1.0405958666250135,
+        "maximumEdgeStretch": 1.6909631454263139,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_2": {
+        "restPoseMaximumVertexError": 2.7677678497145637e-07,
+        "maximumBoundsRatio": 1.0576057200235542,
+        "maximumEdgeStretch": 2.1253669583627914,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_3": {
+        "restPoseMaximumVertexError": 2.573418027038953e-07,
+        "maximumBoundsRatio": 1.044467852648972,
+        "maximumEdgeStretch": 3.4086051529507433,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_4": {
+        "restPoseMaximumVertexError": 2.682209014892578e-07,
+        "maximumBoundsRatio": 1.0885887152373228,
+        "maximumEdgeStretch": 5.315823349605606,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_5": {
+        "restPoseMaximumVertexError": 2.573418027038953e-07,
+        "maximumBoundsRatio": 1.0462466361533258,
+        "maximumEdgeStretch": 3.4561980105765926,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_6": {
+        "restPoseMaximumVertexError": 2.547950317517799e-07,
+        "maximumBoundsRatio": 1.0566934505928194,
+        "maximumEdgeStretch": 3.2289096129528305,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_7": {
+        "restPoseMaximumVertexError": 2.5636927089222153e-07,
+        "maximumBoundsRatio": 1.0626316389228434,
+        "maximumEdgeStretch": 1.0000786288943206,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_X14": {
+        "restPoseMaximumVertexError": 2.5876693407911444e-07,
+        "maximumBoundsRatio": 1.0569719543927618,
+        "maximumEdgeStretch": 3.3671090166271305,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_X8": {
+        "restPoseMaximumVertexError": 2.602375924076584e-07,
+        "maximumBoundsRatio": 1.0108338070739387,
+        "maximumEdgeStretch": 4.2997672167124215,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BCW_X9": {
+        "restPoseMaximumVertexError": 2.54632050926751e-07,
+        "maximumBoundsRatio": 1.1489852942017287,
+        "maximumEdgeStretch": 3.8995236947007927,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_1": {
+        "restPoseMaximumVertexError": 2.596808089214159e-07,
+        "maximumBoundsRatio": 1.0905480521073911,
+        "maximumEdgeStretch": 2.1564008002010016,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_10": {
+        "restPoseMaximumVertexError": 2.5636927089222153e-07,
+        "maximumBoundsRatio": 1.0575302168838239,
+        "maximumEdgeStretch": 1.0000593502006137,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_13": {
+        "restPoseMaximumVertexError": 2.573418027038953e-07,
+        "maximumBoundsRatio": 1.0314447525343067,
+        "maximumEdgeStretch": 1.600169182450067,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_2": {
+        "restPoseMaximumVertexError": 2.6098975460294475e-07,
+        "maximumBoundsRatio": 1.0860472845721973,
+        "maximumEdgeStretch": 13.43666622072146,
+        "nonFiniteVertexCount": 0,
+        "failures": [
+          "edge stretch reached 13.437x"
+        ],
+        "passed": false
+      },
+      "_BLBack_3": {
+        "restPoseMaximumVertexError": 2.6331241645168336e-07,
+        "maximumBoundsRatio": 1.088888244070927,
+        "maximumEdgeStretch": 4.081799945388517,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_4": {
+        "restPoseMaximumVertexError": 2.580486298139281e-07,
+        "maximumBoundsRatio": 1.0754854648806285,
+        "maximumEdgeStretch": 1.6601173401822518,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_5": {
+        "restPoseMaximumVertexError": 2.7677678497145637e-07,
+        "maximumBoundsRatio": 1.0575926735482353,
+        "maximumEdgeStretch": 2.125366955282448,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_6": {
+        "restPoseMaximumVertexError": 2.5596295872780507e-07,
+        "maximumBoundsRatio": 1.0288663270860734,
+        "maximumEdgeStretch": 2.5516054562784487,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_7": {
+        "restPoseMaximumVertexError": 3.5886748369909214e-07,
+        "maximumBoundsRatio": 1.0774491196445735,
+        "maximumEdgeStretch": 3.140415506408389,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_8": {
+        "restPoseMaximumVertexError": 2.573418027038953e-07,
+        "maximumBoundsRatio": 1.037169411367124,
+        "maximumEdgeStretch": 1.747355171970171,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_9": {
+        "restPoseMaximumVertexError": 2.568019619526578e-07,
+        "maximumBoundsRatio": 1.0323404448308535,
+        "maximumEdgeStretch": 2.613505276364052,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_SpinsLotsxRARE": {
+        "restPoseMaximumVertexError": 2.682209014892578e-07,
+        "maximumBoundsRatio": 1.0618151190044103,
+        "maximumEdgeStretch": 3.0105101298291803,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_SpinsxRARE": {
+        "restPoseMaximumVertexError": 2.5583526782029014e-07,
+        "maximumBoundsRatio": 1.1773675612913297,
+        "maximumEdgeStretch": 1.0002207650060067,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_X11": {
+        "restPoseMaximumVertexError": 2.602375924076584e-07,
+        "maximumBoundsRatio": 1.0108337143080774,
+        "maximumEdgeStretch": 4.284439122563354,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_X12": {
+        "restPoseMaximumVertexError": 2.559930012030569e-07,
+        "maximumBoundsRatio": 1.109437597937529,
+        "maximumEdgeStretch": 4.745106820177964,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_BLBack_XTripleFinxRARE": {
+        "restPoseMaximumVertexError": 2.5749681061141145e-07,
+        "maximumBoundsRatio": 1.055481895166884,
+        "maximumEdgeStretch": 2.543856331519831,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Brows_1": {
+        "restPoseMaximumVertexError": 1.6858739404357614e-07,
+        "maximumBoundsRatio": 1.0180398246482367,
+        "maximumEdgeStretch": 1.000162290278656,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CHEars2_B1": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0328325071634183,
+        "maximumEdgeStretch": 1.3164381249241126,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CHEars2_C3": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0431266876990188,
+        "maximumEdgeStretch": 1.166269288385457,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CHEars2_C4": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0425613699897502,
+        "maximumEdgeStretch": 1.1790606657768634,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CHEars2_C5": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0302600162487927,
+        "maximumEdgeStretch": 1.1907355511954214,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CHEars_A": {
+        "restPoseMaximumVertexError": 4.2981520598697533e-07,
+        "maximumBoundsRatio": 1.0874029088117092,
+        "maximumEdgeStretch": 1.685998835291673,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CHEars_B": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0328325071634183,
+        "maximumEdgeStretch": 1.3164381249241126,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CHEars_C": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0425613699897502,
+        "maximumEdgeStretch": 1.1790606657768634,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CHEars_C1": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0597106865162957,
+        "maximumEdgeStretch": 1.185643650887807,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CHEars_C2": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0431266876990188,
+        "maximumEdgeStretch": 1.166269288385457,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CHEars_D": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.1060368763252373,
+        "maximumEdgeStretch": 1.284475613416103,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CHEars_E": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.091314359177615,
+        "maximumEdgeStretch": 1.325802080262165,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CHEars_F": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0525505010957743,
+        "maximumEdgeStretch": 1.778202805082306,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_CatTop_2xRARE": {
+        "restPoseMaximumVertexError": 3.371747880871523e-07,
+        "maximumBoundsRatio": 1.0000020643338343,
+        "maximumEdgeStretch": 1.0900838310940042,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Cheeks_1": {
+        "restPoseMaximumVertexError": 3.769728732309794e-07,
+        "maximumBoundsRatio": 1.1218147820843407,
+        "maximumEdgeStretch": 1.8844754748330008,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Cheeks_2": {
+        "restPoseMaximumVertexError": 4.2981520598697543e-07,
+        "maximumBoundsRatio": 1.0680909884801637,
+        "maximumEdgeStretch": 3.828565603225103,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Ear_1": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0859062360357474,
+        "maximumEdgeStretch": 1.620673122915283,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Ear_2": {
+        "restPoseMaximumVertexError": 4.2981520598697533e-07,
+        "maximumBoundsRatio": 1.046373713571113,
+        "maximumEdgeStretch": 1.242676740298654,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Ear_3": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0841843680805605,
+        "maximumEdgeStretch": 1.4711878132846121,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Ear_4": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.110987937916329,
+        "maximumEdgeStretch": 1.2930513259267324,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Earb_1": {
+        "restPoseMaximumVertexError": 4.2981520598697533e-07,
+        "maximumBoundsRatio": 1.046373713571113,
+        "maximumEdgeStretch": 1.242676740298654,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_EballsB_1": {
+        "restPoseMaximumVertexError": 1.6858739404357614e-07,
+        "maximumBoundsRatio": 1.005850741933682,
+        "maximumEdgeStretch": 1.0001404467296935,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Eeyeblz_1": {
+        "restPoseMaximumVertexError": 1.6858739404357614e-07,
+        "maximumBoundsRatio": 1.0184175973026879,
+        "maximumEdgeStretch": 1.000061465400927,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Ext1_Mine": {
+        "restPoseMaximumVertexError": 2.457562461863554e-07,
+        "maximumBoundsRatio": 1.1190875256291128,
+        "maximumEdgeStretch": 11.730951669527883,
+        "nonFiniteVertexCount": 0,
+        "failures": [
+          "edge stretch reached 11.731x"
+        ],
+        "passed": false
+      },
+      "_Ext2_1": {
+        "restPoseMaximumVertexError": 2.4578447942743725e-07,
+        "maximumBoundsRatio": 1.0869592354322832,
+        "maximumEdgeStretch": 7.841653749981774,
+        "nonFiniteVertexCount": 0,
+        "failures": [
+          "edge stretch reached 7.842x"
+        ],
+        "passed": false
+      },
+      "_Ext_A": {
+        "restPoseMaximumVertexError": 2.4755668231600746e-07,
+        "maximumBoundsRatio": 1.052441721813391,
+        "maximumEdgeStretch": 5.88081753200362,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Eyeballs_1": {
+        "restPoseMaximumVertexError": 1.6858739404357614e-07,
+        "maximumBoundsRatio": 1.0108342787410285,
+        "maximumEdgeStretch": 1.000222682001102,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Eyebrow_1": {
+        "restPoseMaximumVertexError": 1.6858739404357614e-07,
+        "maximumBoundsRatio": 1.0198888597346234,
+        "maximumEdgeStretch": 1.0000802454938236,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_EyesA_1": {
+        "restPoseMaximumVertexError": 1.6858739404357614e-07,
+        "maximumBoundsRatio": 1.0212864725242239,
+        "maximumEdgeStretch": 1.8904069363151392,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_EyesA_2": {
+        "restPoseMaximumVertexError": 1.6858739404357614e-07,
+        "maximumBoundsRatio": 1.0211094412607882,
+        "maximumEdgeStretch": 1.282461040646675,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HCNose_BxRARE": {
+        "restPoseMaximumVertexError": 4.768371617558387e-07,
+        "maximumBoundsRatio": 1.0062503138045824,
+        "maximumEdgeStretch": 1.052662316100184,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HCTopB_B": {
+        "restPoseMaximumVertexError": 3.3717480818433514e-07,
+        "maximumBoundsRatio": 1.0141942665191979,
+        "maximumEdgeStretch": 1.286817315459262,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HCTopB_C": {
+        "restPoseMaximumVertexError": 4.915124923727108e-07,
+        "maximumBoundsRatio": 1.0038529224233899,
+        "maximumEdgeStretch": 1.8590903177368665,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HCTopB_D": {
+        "restPoseMaximumVertexError": 2.6658610497139163e-07,
+        "maximumBoundsRatio": 1.0102423506401392,
+        "maximumEdgeStretch": 1.8181904724106381,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HCTopB_E": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.019022237052606,
+        "maximumEdgeStretch": 1.012725572526822,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HCTopB_F": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0120687521900187,
+        "maximumEdgeStretch": 2.525953028906059,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HCTopB_G": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0195853300453326,
+        "maximumEdgeStretch": 2.062206187305475,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HCTop_A": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0009983623544967,
+        "maximumEdgeStretch": 1.956177106125535,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HCTop_B": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0077913160139456,
+        "maximumEdgeStretch": 1.2738109859809825,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HCTop_C": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.012033740336776,
+        "maximumEdgeStretch": 1.4165702952557357,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HHBEar_C": {
+        "restPoseMaximumVertexError": 2.682209014892578e-07,
+        "maximumBoundsRatio": 1.014592873495108,
+        "maximumEdgeStretch": 1.0000745413709369,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HHBEar_D": {
+        "restPoseMaximumVertexError": 2.682209014892578e-07,
+        "maximumBoundsRatio": 1.0125573397719079,
+        "maximumEdgeStretch": 1.0000419783736125,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HHNose_A": {
+        "restPoseMaximumVertexError": 1.1920928955078125e-07,
+        "maximumBoundsRatio": 1.0004024047802944,
+        "maximumEdgeStretch": 1.1004064593672744,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HHNose_B": {
+        "restPoseMaximumVertexError": 2.384185791015625e-07,
+        "maximumBoundsRatio": 1.02640985948831,
+        "maximumEdgeStretch": 2.346354445844037,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HHNose_CxRARE": {
+        "restPoseMaximumVertexError": 1.1296532594990124e-14,
+        "maximumBoundsRatio": 1.0001380943376181,
+        "maximumEdgeStretch": 1.0001702327423239,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HHToP_G": {
+        "restPoseMaximumVertexError": 2.5084927619505445e-07,
+        "maximumBoundsRatio": 1.033718176251302,
+        "maximumEdgeStretch": 1.4285467852016747,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HHTusk_1": {
+        "restPoseMaximumVertexError": 1.1920928955078125e-07,
+        "maximumBoundsRatio": 1.0206961818506595,
+        "maximumEdgeStretch": 1.0001977536251705,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HHTusk_2": {
+        "restPoseMaximumVertexError": 1.1920928955078125e-07,
+        "maximumBoundsRatio": 1.018781559077616,
+        "maximumEdgeStretch": 1.0001368886930664,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HHTusk_3": {
+        "restPoseMaximumVertexError": 1.1920928955078125e-07,
+        "maximumBoundsRatio": 1.022911080347247,
+        "maximumEdgeStretch": 1.0002318713506306,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLEars_A": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0961547069101238,
+        "maximumEdgeStretch": 1.300407426410257,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLEars_B": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0534896122746724,
+        "maximumEdgeStretch": 1.2509635359812148,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLEars_C": {
+        "restPoseMaximumVertexError": 4.2981520598697533e-07,
+        "maximumBoundsRatio": 1.0856902366217276,
+        "maximumEdgeStretch": 1.1798043356487198,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLEars_D": {
+        "restPoseMaximumVertexError": 3.5762786865234375e-07,
+        "maximumBoundsRatio": 1.0078935590464986,
+        "maximumEdgeStretch": 1.099029871975038,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLEars_E": {
+        "restPoseMaximumVertexError": 2.7314279645418166e-07,
+        "maximumBoundsRatio": 1.0658329503249253,
+        "maximumEdgeStretch": 1.5031842040113728,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLMiddle_A": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0201402615161206,
+        "maximumEdgeStretch": 2.0372926588888984,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLMiddle_B": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0014426871877256,
+        "maximumEdgeStretch": 1.3834701961401594,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLMiddle_C": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0112184243606042,
+        "maximumEdgeStretch": 1.5637492651701448,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLTop_2xRARE": {
+        "restPoseMaximumVertexError": 4.2981520598697533e-07,
+        "maximumBoundsRatio": 1.0000995227180554,
+        "maximumEdgeStretch": 1.6811650410391428,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLTop_A": {
+        "restPoseMaximumVertexError": 4.915124923727108e-07,
+        "maximumBoundsRatio": 1.0092110680372872,
+        "maximumEdgeStretch": 3.4436088922134367,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLTop_B": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0171425958873337,
+        "maximumEdgeStretch": 1.066601183425147,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLTop_C": {
+        "restPoseMaximumVertexError": 2.669762502188819e-07,
+        "maximumBoundsRatio": 1.0263172157555684,
+        "maximumEdgeStretch": 1.193131331786057,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLTop_D": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.014880147145465,
+        "maximumEdgeStretch": 1.9287955702883903,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLTop_E": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0180839938300017,
+        "maximumEdgeStretch": 1.0001705654055928,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLTop_F": {
+        "restPoseMaximumVertexError": 2.669762502188819e-07,
+        "maximumBoundsRatio": 1.0102737976885505,
+        "maximumEdgeStretch": 1.2151095713290094,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLTop_G": {
+        "restPoseMaximumVertexError": 2.665603863939045e-07,
+        "maximumBoundsRatio": 1.0129947515617488,
+        "maximumEdgeStretch": 1.0677373765315878,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HLTop_H": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.005124920445968,
+        "maximumEdgeStretch": 2.4440563700064213,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWEars_A": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.094805679956837,
+        "maximumEdgeStretch": 1.4872270486547263,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWEars_B": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0922979556947925,
+        "maximumEdgeStretch": 1.3425434617800467,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWEars_D": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0432920833322712,
+        "maximumEdgeStretch": 1.3214960476183002,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWEars_D1": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0432920833322712,
+        "maximumEdgeStretch": 1.3214960476183002,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWEars_D2": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0431266876990188,
+        "maximumEdgeStretch": 1.166269288385457,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWEars_D3": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0597106865162957,
+        "maximumEdgeStretch": 1.185643650887807,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWEars_D4": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0597106865162957,
+        "maximumEdgeStretch": 1.185643650887807,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWEars_D5": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0431266876990188,
+        "maximumEdgeStretch": 1.166269288385457,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWEars_E": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0892386963015344,
+        "maximumEdgeStretch": 1.3048062513928451,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWEars_E1": {
+        "restPoseMaximumVertexError": 3.998401124775034e-07,
+        "maximumBoundsRatio": 1.0892386963015344,
+        "maximumEdgeStretch": 1.3048062513928451,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWEars_F": {
+        "restPoseMaximumVertexError": 2.7314279645418166e-07,
+        "maximumBoundsRatio": 1.0917602757450702,
+        "maximumEdgeStretch": 1.398850626728419,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWEars_F1": {
+        "restPoseMaximumVertexError": 2.7314279645418166e-07,
+        "maximumBoundsRatio": 1.0917602757450702,
+        "maximumEdgeStretch": 1.398850626728419,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWMiddle_A": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.012327756536695,
+        "maximumEdgeStretch": 1.4608576782315563,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWMiddle_B": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0009918789175187,
+        "maximumEdgeStretch": 1.1515980137433148,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWMiddle_C": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0201949046378131,
+        "maximumEdgeStretch": 1.9966218649606162,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWNose_AxRARE": {
+        "restPoseMaximumVertexError": 4.76837158203125e-07,
+        "maximumBoundsRatio": 1.0029581656528272,
+        "maximumEdgeStretch": 1.0226597771224721,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWNose_BxRARE": {
+        "restPoseMaximumVertexError": 4.768371582031284e-07,
+        "maximumBoundsRatio": 1.0021641138381514,
+        "maximumEdgeStretch": 1.0002573382929283,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWTop_B": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0033169123985561,
+        "maximumEdgeStretch": 1.8735936483067306,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWTop_C": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0158233515523014,
+        "maximumEdgeStretch": 1.2311060562941711,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWTop_D": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0100166231715555,
+        "maximumEdgeStretch": 1.272851602699647,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWTop_E": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0190217023225376,
+        "maximumEdgeStretch": 1.041034077298691,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HWTop_F": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0148199775425317,
+        "maximumEdgeStretch": 1.3444982394445357,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Head_Alien": {
+        "restPoseMaximumVertexError": 2.7314279645418166e-07,
+        "maximumBoundsRatio": 1.0015671781958608,
+        "maximumEdgeStretch": 1.7452205500607045,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Head_Cat": {
+        "restPoseMaximumVertexError": 3.769728732309836e-07,
+        "maximumBoundsRatio": 1.0039841168585621,
+        "maximumEdgeStretch": 2.1937610796773597,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Head_Hog": {
+        "restPoseMaximumVertexError": 3.769728732309794e-07,
+        "maximumBoundsRatio": 1.019608906275743,
+        "maximumEdgeStretch": 2.4480628227378314,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Head_Lizard": {
+        "restPoseMaximumVertexError": 3.769728732309794e-07,
+        "maximumBoundsRatio": 1.0038523981175895,
+        "maximumEdgeStretch": 2.200951537498041,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Head_Predator": {
+        "restPoseMaximumVertexError": 3.769728732309837e-07,
+        "maximumBoundsRatio": 1.0137238749255593,
+        "maximumEdgeStretch": 2.711989369687979,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Head_Wolf": {
+        "restPoseMaximumVertexError": 4.2981520598697533e-07,
+        "maximumBoundsRatio": 1.0033610092245102,
+        "maximumEdgeStretch": 2.6349217582893067,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HornB_1": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0129840302361526,
+        "maximumEdgeStretch": 1.0001051416217726,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HornB_5": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0100168361595707,
+        "maximumEdgeStretch": 1.0000756436659237,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HornB_6": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.019107341805709,
+        "maximumEdgeStretch": 3.046198295928206,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HornB_7": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0113764801311464,
+        "maximumEdgeStretch": 1.0089025188800647,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HornC_1": {
+        "restPoseMaximumVertexError": 2.669762502188819e-07,
+        "maximumBoundsRatio": 1.0116428598006733,
+        "maximumEdgeStretch": 1.0000663854136054,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_HornC_2": {
+        "restPoseMaximumVertexError": 4.915124923727108e-07,
+        "maximumBoundsRatio": 1.004546530241102,
+        "maximumEdgeStretch": 1.124232497106664,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Horn_1": {
+        "restPoseMaximumVertexError": 3.371747880871523e-07,
+        "maximumBoundsRatio": 1.0069632392612626,
+        "maximumEdgeStretch": 7.372091617314681,
+        "nonFiniteVertexCount": 0,
+        "failures": [
+          "edge stretch reached 7.372x"
+        ],
+        "passed": false
+      },
+      "_Horn_2": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0003086357525228,
+        "maximumEdgeStretch": 1.7009316594486301,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Horn_3": {
+        "restPoseMaximumVertexError": 3.371747880871523e-07,
+        "maximumBoundsRatio": 1.0148815456630567,
+        "maximumEdgeStretch": 1.4303801586817095,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Horn_4": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0187669884311403,
+        "maximumEdgeStretch": 1.943091124179696,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Jawgum_1": {
+        "restPoseMaximumVertexError": 3.769728732309794e-07,
+        "maximumBoundsRatio": 1.1417040875253732,
+        "maximumEdgeStretch": 1.610915053736084,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_LHNose_AxRARE": {
+        "restPoseMaximumVertexError": 2.384185791015625e-07,
+        "maximumBoundsRatio": 1.0082386409936608,
+        "maximumEdgeStretch": 1.0000638330449303,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_LHNose_BxRARE": {
+        "restPoseMaximumVertexError": 2.384185791015625e-07,
+        "maximumBoundsRatio": 1.0,
+        "maximumEdgeStretch": 1.0000992278987155,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_LHNose_CxRARE": {
+        "restPoseMaximumVertexError": 4.768371582031284e-07,
+        "maximumBoundsRatio": 1.0010986219511204,
+        "maximumEdgeStretch": 1.000162902195155,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_LHNose_DxRARE": {
+        "restPoseMaximumVertexError": 4.76837158203125e-07,
+        "maximumBoundsRatio": 1.010178541835895,
+        "maximumEdgeStretch": 1.1303083519107613,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_LHNose_ExRARE": {
+        "restPoseMaximumVertexError": 2.3841864305040014e-07,
+        "maximumBoundsRatio": 1.0054724948419362,
+        "maximumEdgeStretch": 1.3179175900579987,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Mesh_Cat": {
+        "restPoseMaximumVertexError": 2.7314279645418166e-07,
+        "maximumBoundsRatio": 1.4314472102052858,
+        "maximumEdgeStretch": 4.622604433419825,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Mesh_Liz": {
+        "restPoseMaximumVertexError": 2.7314279645418166e-07,
+        "maximumBoundsRatio": 1.4023795805410448,
+        "maximumEdgeStretch": 4.32529697326493,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Mesh_Predator": {
+        "restPoseMaximumVertexError": 2.7314279645418166e-07,
+        "maximumBoundsRatio": 1.4314472102052858,
+        "maximumEdgeStretch": 4.622604433419825,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Mesh_Wolf": {
+        "restPoseMaximumVertexError": 2.7314279645418166e-07,
+        "maximumBoundsRatio": 1.4150422056678411,
+        "maximumEdgeStretch": 4.417637776028165,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Scalp_1": {
+        "restPoseMaximumVertexError": 2.666641796853137e-07,
+        "maximumBoundsRatio": 1.0079564070873808,
+        "maximumEdgeStretch": 1.3546218070308982,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_ShellAcc3_1": {
+        "restPoseMaximumVertexError": 3.6378370570342845e-07,
+        "maximumBoundsRatio": 1.0524443656729239,
+        "maximumEdgeStretch": 2.956535938061651,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_ShellAcc4_1": {
+        "restPoseMaximumVertexError": 3.6378370570342845e-07,
+        "maximumBoundsRatio": 1.0615702905014452,
+        "maximumEdgeStretch": 11.886691422274277,
+        "nonFiniteVertexCount": 0,
+        "failures": [
+          "edge stretch reached 11.887x"
+        ],
+        "passed": false
+      },
+      "_ShellAcc_1": {
+        "restPoseMaximumVertexError": 3.6863436927953305e-07,
+        "maximumBoundsRatio": 1.0733101204914164,
+        "maximumEdgeStretch": 2.1921503719689803,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_ShellAcc_2": {
+        "restPoseMaximumVertexError": 2.5876693407911444e-07,
+        "maximumBoundsRatio": 1.078178248906861,
+        "maximumEdgeStretch": 2.793520789229978,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Sides_1": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0339532382035486,
+        "maximumEdgeStretch": 1.7717759710006946,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Sides_2": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0390989493890954,
+        "maximumEdgeStretch": 1.7457592738774361,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Sockets_1": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.042937528682955,
+        "maximumEdgeStretch": 1.1903558692747633,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_THA_X1xRARE": {
+        "restPoseMaximumVertexError": 2.457562461863554e-07,
+        "maximumBoundsRatio": 1.113526333355725,
+        "maximumEdgeStretch": 2.062350867448475,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_THA_X2": {
+        "restPoseMaximumVertexError": 2.457562461863554e-07,
+        "maximumBoundsRatio": 1.1367322478606097,
+        "maximumEdgeStretch": 1.511785511789492,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Tail_Cat": {
+        "restPoseMaximumVertexError": 2.6658610497139163e-07,
+        "maximumBoundsRatio": 1.0006068044561578,
+        "maximumEdgeStretch": 1.1705651497691476,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Tail_Hog": {
+        "restPoseMaximumVertexError": 7.177349673981843e-07,
+        "maximumBoundsRatio": 1.180113717592078,
+        "maximumEdgeStretch": 15.873863572593779,
+        "nonFiniteVertexCount": 0,
+        "failures": [
+          "edge stretch reached 15.874x"
+        ],
+        "passed": false
+      },
+      "_Tail_Liz": {
+        "restPoseMaximumVertexError": 4.805480091749757e-07,
+        "maximumBoundsRatio": 1.1334403415660568,
+        "maximumEdgeStretch": 6.833713267989318,
+        "nonFiniteVertexCount": 0,
+        "failures": [
+          "edge stretch reached 6.834x"
+        ],
+        "passed": false
+      },
+      "_Tail_Predator": {
+        "restPoseMaximumVertexError": 2.6658610497139163e-07,
+        "maximumBoundsRatio": 1.0006068044561578,
+        "maximumEdgeStretch": 1.1705651497691476,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Tail_Wolf": {
+        "restPoseMaximumVertexError": 2.4027400458748785e-07,
+        "maximumBoundsRatio": 1.0011309665317172,
+        "maximumEdgeStretch": 1.249596402415011,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Topgum_1": {
+        "restPoseMaximumVertexError": 3.769728732309794e-07,
+        "maximumBoundsRatio": 1.0700869666593842,
+        "maximumEdgeStretch": 1.410229155910611,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Topgum_2": {
+        "restPoseMaximumVertexError": 3.769728732309794e-07,
+        "maximumBoundsRatio": 1.0675680990190706,
+        "maximumEdgeStretch": 2.616941121813709,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Toungein_1": {
+        "restPoseMaximumVertexError": 1.7120130796843852e-07,
+        "maximumBoundsRatio": 1.049088944103493,
+        "maximumEdgeStretch": 3.7446185264410388,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_UpperGum_1": {
+        "restPoseMaximumVertexError": 2.6656007498500247e-07,
+        "maximumBoundsRatio": 1.0267524116233588,
+        "maximumEdgeStretch": 1.1222208740600317,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_Var_2": {
+        "restPoseMaximumVertexError": 3.371747880871525e-07,
+        "maximumBoundsRatio": 1.0154361509591845,
+        "maximumEdgeStretch": 1.7310749434317096,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_WolfTop_1xRARE": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0001302044332638,
+        "maximumEdgeStretch": 1.2083145825058128,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_eargr_1": {
+        "restPoseMaximumVertexError": 2.6656007498500226e-07,
+        "maximumBoundsRatio": 1.0306849685609012,
+        "maximumEdgeStretch": 1.0001190326630627,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_eargr_2": {
+        "restPoseMaximumVertexError": 4.2981520598697533e-07,
+        "maximumBoundsRatio": 1.0156027619549104,
+        "maximumEdgeStretch": 1.0001028403458339,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      },
+      "_inCheeks_1": {
+        "restPoseMaximumVertexError": 3.769728732309794e-07,
+        "maximumBoundsRatio": 1.1304262582155964,
+        "maximumEdgeStretch": 1.7750073381959233,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      }
+    }
+  },
+  "clips": {
+    "idle": {
+      "action": "CatQuadruped_IDLE_InvBind",
+      "frameCount": 181,
+      "minimumLoadBearingBoneLengthRatio": 0.9999987573375401,
+      "maximumLoadBearingBoneLengthRatio": 1.0000010710388625,
+      "maximumBoundsRatio": 1.001704985640836,
+      "maximumEdgeStretch": 4.346403027296606,
+      "maximumTriangleAreaStretch": 4.899715768621242,
+      "worstEdgeFrame": 79,
+      "nonFiniteVertexCount": 0,
+      "passed": true,
+      "failures": []
+    },
+    "walk": {
+      "action": "CatQuadruped_WALK_InvBind",
+      "frameCount": 65,
+      "minimumLoadBearingBoneLengthRatio": 0.9999985222212189,
+      "maximumLoadBearingBoneLengthRatio": 1.0000015838672047,
+      "maximumBoundsRatio": 1.0063980972708608,
+      "maximumEdgeStretch": 5.365565372837644,
+      "maximumTriangleAreaStretch": 7.935262712750222,
+      "worstEdgeFrame": 43,
+      "nonFiniteVertexCount": 0,
+      "passed": true,
+      "failures": []
+    },
+    "run": {
+      "action": "CatQuadruped_RUN_InvBind",
+      "frameCount": 33,
+      "minimumLoadBearingBoneLengthRatio": 0.9999987729290146,
+      "maximumLoadBearingBoneLengthRatio": 1.0000017036782853,
+      "maximumBoundsRatio": 1.009375675880049,
+      "maximumEdgeStretch": 8.1909792353257,
+      "maximumTriangleAreaStretch": 9.203122549544451,
+      "worstEdgeFrame": 20,
+      "nonFiniteVertexCount": 0,
+      "passed": true,
+      "failures": []
+    }
+  },
+  "passed": true,
+  "failures": []
+}

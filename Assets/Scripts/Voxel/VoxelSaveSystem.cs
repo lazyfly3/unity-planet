@@ -25,11 +25,8 @@ public class VoxelSaveSystem : MonoBehaviour
     }
 
     public void Save()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(143);}
-    try
     {
-        if (voxelWorld == null)
+if (voxelWorld == null)
             return;
 
         List<ChunkSaveEntry> entries = voxelWorld.GetModifiedChunkSnapshots();
@@ -42,18 +39,12 @@ public class VoxelSaveSystem : MonoBehaviour
         string json = JsonUtility.ToJson(data, true);
         File.WriteAllText(SavePath, json);
         Debug.Log($"体素存档已保存：{SavePath}（{entries.Count} 个 Chunk）");
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void Load()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(144);}
-    try
     {
-        if (voxelWorld == null || !File.Exists(SavePath))
+if (voxelWorld == null || !File.Exists(SavePath))
             return;
 
         string json = File.ReadAllText(SavePath);
@@ -64,23 +55,14 @@ public class VoxelSaveSystem : MonoBehaviour
             voxelWorld.GenerateEntirePlanet();
 
         Debug.Log($"体素存档已加载：{SavePath}");
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public bool HasSaveFile()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(145);}
-    try
     {
-        return File.Exists(SavePath);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return File.Exists(SavePath);
+    
+}
 }
 
 [System.Serializable]

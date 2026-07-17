@@ -1,6 +1,8 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
+using System.Linq;
+using LogTrack.Editor;
 using UnityEditor;
 using UnityEngine;
 
@@ -9,15 +11,15 @@ using UnityEngine;
 /// </summary>
 public static class LogTrackBatch
 {
-    private const string DefaultScriptsRelative = "Assets/Scripts";
     private const string DefaultPdbRelative = "Assets/LogTrackGenerated";
-    private const string SettingFileName = "LogTrackSetting.txt";
     public const string RingBufferPrefKey = "LogTrack.RingBufferSize";
 
     public static void InsertLogTrack()
     {
-        var ok = RunInsertLogTrack();
-        EditorApplication.Exit(ok ? 0 : 1);
+        RunInsertLogTrackWithCompile(result =>
+        {
+            EditorApplication.Exit(result ? 0 : 1);
+        });
     }
 
     public static void FindLatestTrackLog()
@@ -44,50 +46,84 @@ public static class LogTrackBatch
         EditorApplication.Exit(0);
     }
 
+    /// <summary>
+    /// BatchMode 插桩速度基准：编译完成后对 IncludeAssemblies 做 IL 插桩并输出 insert_ms。
+    /// Unity -batchmode -executeMethod LogTrackBatch.BenchmarkInsertSpeed -projectPath ...
+    /// </summary>
+    public static void BenchmarkInsertSpeed()
+    {
+        RunInsertLogTrackWithCompile(success =>
+        {
+            if (!success)
+            {
+                EditorApplication.Exit(1);
+                return;
+            }
+
+            var benchDir = Path.GetFullPath(DefaultPdbRelative);
+            Directory.CreateDirectory(benchDir);
+            var benchPath = Path.Combine(benchDir, "logtrack_benchmark.json");
+            LogTrackBenchmark.Save(benchPath);
+
+            var line = "[LogTrackBenchmark] insert_ms="
+                + LogTrackBenchmark.InsertMs.ToString("F2")
+                + " benchmark="
+                + benchPath;
+            Console.WriteLine(line);
+            Debug.Log(line);
+            EditorApplication.Exit(0);
+        });
+    }
+
+    private static void RunInsertLogTrackWithCompile(Action<bool> onComplete)
+    {
+        LogTrackCompileWait.RequestCompileAndWait(
+            () => onComplete?.Invoke(RunInsertLogTrack()),
+            error =>
+            {
+                Debug.LogError("[LogTrackBatch] " + error);
+                onComplete?.Invoke(false);
+            });
+    }
+
     private static bool RunInsertLogTrack()
     {
         try
         {
-            var scriptsRelative = ResolveScriptsRelativeDir();
-            var scriptsFull = Path.GetFullPath(scriptsRelative);
-            if (!scriptsFull.EndsWith(Path.DirectorySeparatorChar.ToString()))
+            if (!LogTrackInsertSettings.TryLoad(out var setting))
             {
-                scriptsFull += Path.DirectorySeparatorChar;
-            }
-
-            if (!Directory.Exists(scriptsFull.TrimEnd(Path.DirectorySeparatorChar)))
-            {
-                Debug.LogError("[LogTrackBatch] Scripts directory not found: " + scriptsFull);
+                Debug.LogError("[LogTrackBatch] Missing LogTrackSetting.txt");
                 return false;
             }
 
-            var settingPath = Path.Combine(scriptsFull, SettingFileName);
-            if (!File.Exists(settingPath))
+            var assemblies = ResolveTargetAssemblies(setting);
+            if (assemblies.Length == 0)
             {
-                Debug.LogError("[LogTrackBatch] Missing LogTrackSetting.txt: " + settingPath);
+                Debug.LogError("[LogTrackBatch] No target assemblies resolved from LogTrackSetting.txt");
                 return false;
             }
 
-            var setting = new LogTrackSetting();
-            setting.Load(scriptsFull, SettingFileName);
+            var pdbFull = Path.GetFullPath(DefaultPdbRelative);
+            Directory.CreateDirectory(pdbFull);
 
-            var pdbRelative = DefaultPdbRelative;
-            var pdbFull = Path.GetFullPath(pdbRelative);
-            if (!pdbFull.EndsWith(Path.DirectorySeparatorChar.ToString()))
-            {
-                pdbFull += Path.DirectorySeparatorChar;
-            }
-            Directory.CreateDirectory(pdbFull.TrimEnd(Path.DirectorySeparatorChar));
-
-            FSPDebugerTool.InsertLogTrack(
-                scriptsFull,
+            var result = LogTrackIlInstrumenter.PatchAssemblies(
+                assemblies,
                 pdbFull,
-                setting.logTrackClass,
-                setting.logTrackMacro,
-                setting.excludeFiles);
+                setting.logTrackClass);
 
-            AssetDatabase.Refresh();
-            Debug.Log("[LogTrackBatch] Insert complete. Pdb: " + pdbFull);
+            if (!result.success)
+            {
+                Debug.LogError("[LogTrackBatch] IL insert failed: " + (result.error ?? "unknown"));
+                return false;
+            }
+
+            Debug.Log(
+                "[LogTrackBatch] IL insert complete. assemblies="
+                + string.Join(",", result.patchedAssemblies)
+                + " methods="
+                + result.patchedMethods
+                + " pdb="
+                + pdbFull);
             return true;
         }
         catch (Exception ex)
@@ -97,18 +133,33 @@ public static class LogTrackBatch
         }
     }
 
-    private static string ResolveScriptsRelativeDir()
+    private static string[] ResolveTargetAssemblies(LogTrackSetting setting)
+    {
+        var overrideAssemblies = ResolveAssembliesFromArgs();
+        if (overrideAssemblies.Length > 0)
+        {
+            return overrideAssemblies;
+        }
+
+        return LogTrackIlAssemblyCatalog.ResolveTargetAssemblies(setting);
+    }
+
+    private static string[] ResolveAssembliesFromArgs()
     {
         var args = Environment.GetCommandLineArgs();
         for (var i = 0; i < args.Length - 1; i++)
         {
-            if (args[i] == "-logtrackScriptsDir" && !string.IsNullOrWhiteSpace(args[i + 1]))
+            if (args[i] == "-logtrackAssemblies" && !string.IsNullOrWhiteSpace(args[i + 1]))
             {
-                return args[i + 1].Replace('\\', '/');
+                return args[i + 1]
+                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(name => name.Trim())
+                    .Where(name => !string.IsNullOrEmpty(name))
+                    .ToArray();
             }
         }
 
-        return DefaultScriptsRelative;
+        return Array.Empty<string>();
     }
 
     private static int ResolveRingBufferSizeFromArgs(int fallback)

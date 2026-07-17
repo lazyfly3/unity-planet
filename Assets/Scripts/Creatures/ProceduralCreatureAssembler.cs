@@ -11,11 +11,8 @@ public static class ProceduralCreatureAssembler
         LayerMask groundLayers,
         Vector3 worldPosition,
         Quaternion worldRotation)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(37);}
-    try
     {
-        EnsureGraph(genome);
+EnsureGraph(genome);
         var root = new GameObject($"Creature_{genome.topology}_{genome.seed}");
         root.transform.SetParent(parent, false);
         root.transform.SetPositionAndRotation(worldPosition, worldRotation);
@@ -90,29 +87,20 @@ public static class ProceduralCreatureAssembler
         var torsoRuntime = root.AddComponent<CreatureTorsoRuntime>();
         torsoRuntime.Configure(genome, rig, renderer, meshOwner, body, capsule, generatedPhysicsMaterial);
         return root;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public static float GetBodyClearance(CreatureGenome genome)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(38);}
-    try
     {
-        EnsureGraph(genome);
+EnsureGraph(genome);
         if (genome.topology == CreatureTopology.Serpentine)
             return Mathf.Max(0.45f, genome.bodyHeight * 0.42f) + 0.08f;
         if (TryGetSupportBounds(genome.bodyGraph, out float supportBottom, out _))
             return -supportBottom + 0.08f;
         return Mathf.Max(genome.frontLegLength, genome.rearLegLength)
             + genome.bodyHeight * 0.35f + 0.08f;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     static void EnsureGraph(CreatureGenome genome)
     {
@@ -458,17 +446,11 @@ public sealed class GeneratedCreatureMeshOwner : MonoBehaviour
     PhysicMaterial generatedPhysicsMaterial;
 
     public void Configure(Mesh mesh, PhysicMaterial physicsMaterial = null)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(39);}
-    try
     {
-        generatedMesh = mesh;
+generatedMesh = mesh;
         generatedPhysicsMaterial = physicsMaterial;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void ReplaceMesh(Mesh mesh)
     {

@@ -42,16 +42,10 @@ public sealed class PlanetRiverSystem : MonoBehaviour
     public float LastMassBalanceError => lastMassBalanceError;
 
     public void SetWeatherRainfall(float rainfallRate)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(223, (int)rainfallRate);}
-    try
     {
-        weatherRainfallRate = Mathf.Max(0f, rainfallRate);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+weatherRainfallRate = Mathf.Max(0f, rainfallRate);
+    
+}
 
     struct ShallowWaterFlux
     {
@@ -104,28 +98,19 @@ public sealed class PlanetRiverSystem : MonoBehaviour
         VoxelQuadSphereWorld targetWorld,
         PlanetRiverSettings riverSettings,
         GalaxyRiverSaveData savedData)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(215);}
-    try
     {
-        world = targetWorld;
+world = targetWorld;
         settings = riverSettings != null ? riverSettings.Clone() : new PlanetRiverSettings();
         settings.ClampValues();
         snapshot = savedData != null && savedData.configurationHash == ConfigurationHash
             ? CloneSnapshot(savedData)
             : null;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void PrepareHydrology()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(216);}
-    try
     {
-        ClearWaterObjects();
+ClearWaterObjects();
         if (world == null || !settings.enabled || settings.riverCount <= 0)
         {
             snapshot = null;
@@ -137,18 +122,12 @@ public sealed class PlanetRiverSystem : MonoBehaviour
             snapshot = GenerateRiverNetwork();
         EnsureSimulationState();
         BuildCarveMap();
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void BuildWaterSurface()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(217);}
-    try
     {
-        ClearWaterObjects();
+ClearWaterObjects();
         if (!IsEnabled || waterMaterial == null)
             return;
 
@@ -178,41 +157,26 @@ public sealed class PlanetRiverSystem : MonoBehaviour
             });
         }
         UpdateWaterMeshes();
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public float GetCarveDepth(QuadSphereFace face, int u, int v)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(218, (int)u, (int)v);}
-    try
     {
-        if (carveDepth == null || u < 0 || v < 0 || u >= world.FaceGridSize || v >= world.FaceGridSize)
+if (carveDepth == null || u < 0 || v < 0 || u >= world.FaceGridSize || v >= world.FaceGridSize)
             return 0f;
         return carveDepth[(int)face][v * world.FaceGridSize + u];
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void NotifyVoxelChanged(QuadSphereVoxelAddress address)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(219);}
-    try
     {
-        if (!IsEnabled || address.Depth > Mathf.CeilToInt(settings.maxDepth + 2f))
+if (!IsEnabled || address.Depth > Mathf.CeilToInt(settings.maxDepth + 2f))
             return;
         if (rerouteRoutine != null)
             StopCoroutine(rerouteRoutine);
         rerouteRoutine = StartCoroutine(RerouteAfterDelay(address));
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     IEnumerator RerouteAfterDelay(QuadSphereVoxelAddress changed)
     {
@@ -251,11 +215,8 @@ public sealed class PlanetRiverSystem : MonoBehaviour
     }
 
     public static bool TrySampleAny(Vector3 worldPosition, out WaterSample sample)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(220);}
-    try
     {
-        float bestDistance = float.PositiveInfinity;
+float bestDistance = float.PositiveInfinity;
         sample = default;
         bool found = false;
         foreach (PlanetRiverSystem system in ActiveSystems)
@@ -270,18 +231,12 @@ public sealed class PlanetRiverSystem : MonoBehaviour
             found = true;
         }
         return found;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public bool TrySample(Vector3 worldPosition, out WaterSample sample)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(221);}
-    try
     {
-        sample = default;
+sample = default;
         if (!IsEnabled)
             return false;
         Vector3 local = world.transform.InverseTransformPoint(worldPosition) - world.GetPlanetCenterLocal();
@@ -339,11 +294,8 @@ public sealed class PlanetRiverSystem : MonoBehaviour
             signedDistance = radius - surfaceRadius
         };
         return sample.signedDistance <= sample.depth * 0.35f;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void EnsureSimulationState()
     {
@@ -537,20 +489,14 @@ public sealed class PlanetRiverSystem : MonoBehaviour
     }
 
     public static void ApplyImpulseAny(Vector3 worldPosition, Vector3 impulse)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(222);}
-    try
     {
-        foreach (PlanetRiverSystem system in ActiveSystems)
+foreach (PlanetRiverSystem system in ActiveSystems)
         {
             if (system.ApplyImpulse(worldPosition, impulse))
                 return;
         }
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     bool ApplyImpulse(Vector3 worldPosition, Vector3 impulse)
     {

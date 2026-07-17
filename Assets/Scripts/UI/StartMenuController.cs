@@ -48,58 +48,37 @@ public sealed class StartMenuController : MonoBehaviour
     }
 
     public void ShowMainPage()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(112);}
-    try
     {
-        titleImage.SetActive(true);
+titleImage.SetActive(true);
         mainPanel.SetActive(true);
         saveBrowserPanel.SetActive(false);
         CloseDialogs();
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void ShowSaveBrowser()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(113);}
-    try
     {
-        titleImage.SetActive(false);
+titleImage.SetActive(false);
         mainPanel.SetActive(false);
         saveBrowserPanel.SetActive(true);
         CloseDialogs();
         RefreshSaveList();
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void OpenCreateDialog()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(114);}
-    try
     {
-        CloseDialogs();
+CloseDialogs();
         createNameInput.text = "新的世界";
         createSeedInput.text = string.Empty;
         createDialog.SetActive(true);
         createNameInput.ActivateInputField();
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void ConfirmCreate()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(115);}
-    try
     {
-        int? seed = null;
+int? seed = null;
         string seedText = createSeedInput.text.Trim();
         if (seedText.Length > 0)
         {
@@ -121,35 +100,23 @@ public sealed class StartMenuController : MonoBehaviour
         {
             SetStatus("创建存档失败：" + exception.Message);
         }
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void OpenRenameDialog()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(116);}
-    try
     {
-        if (!HasUsableSelection())
+if (!HasUsableSelection())
             return;
         CloseDialogs();
         renameInput.text = selectedRow.Slot.DisplayName;
         renameDialog.SetActive(true);
         renameInput.ActivateInputField();
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void ConfirmRename()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(117);}
-    try
     {
-        if (!HasUsableSelection())
+if (!HasUsableSelection())
             return;
         try
         {
@@ -161,34 +128,22 @@ public sealed class StartMenuController : MonoBehaviour
         {
             SetStatus("重命名失败：" + exception.Message);
         }
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void OpenDeleteDialog()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(118);}
-    try
     {
-        if (selectedRow == null)
+if (selectedRow == null)
             return;
         CloseDialogs();
         deleteMessageText.text = $"确定永久删除“{selectedRow.Slot.DisplayName}”吗？\n此操作无法撤销。";
         deleteDialog.SetActive(true);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void ConfirmDelete()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(119);}
-    try
     {
-        if (selectedRow == null)
+if (selectedRow == null)
             return;
         try
         {
@@ -200,56 +155,35 @@ public sealed class StartMenuController : MonoBehaviour
         {
             SetStatus("删除存档失败：" + exception.Message);
         }
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void EnterSelectedWorld()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(120);}
-    try
     {
-        if (!HasUsableSelection())
+if (!HasUsableSelection())
             return;
         GalaxyLaunchContext.SelectSlot(selectedRow.Slot.SlotId);
         SceneManager.LoadScene(surfaceSceneName, LoadSceneMode.Single);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void CloseDialogs()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(121);}
-    try
     {
-        createDialog.SetActive(false);
+createDialog.SetActive(false);
         renameDialog.SetActive(false);
         deleteDialog.SetActive(false);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void SelectSlot(StartMenuSaveRow row)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(122);}
-    try
     {
-        selectedRow = row;
+selectedRow = row;
         foreach (StartMenuSaveRow candidate in rows)
             candidate.SetSelected(candidate == row);
         RefreshActionState();
         SetStatus(row.Slot.IsCorrupt ? row.Slot.Error : string.Empty);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void RefreshSaveList()
     {

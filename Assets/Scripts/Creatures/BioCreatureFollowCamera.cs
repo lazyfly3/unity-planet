@@ -11,30 +11,18 @@ public sealed class BioCreatureFollowCamera : MonoBehaviour
     [SerializeField, Min(0.1f)] float rotationSmoothSpeed = 8f;
 
     public void Configure(SphericalGravitySource source)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(26);}
-    try
     {
-        gravitySource = source;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+gravitySource = source;
+    
+}
 
     public void SetTarget(Transform newTarget, bool snap = false)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(27, (snap?1:0));}
-    try
     {
-        target = newTarget;
+target = newTarget;
         if (snap && target != null && gravitySource != null)
             ApplyCamera(1f);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void LateUpdate()
     {

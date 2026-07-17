@@ -30,18 +30,12 @@ public sealed class BioCreatureTestController : MonoBehaviour
         SphericalGravitySource source,
         Material creatureMaterial,
         BioCreatureFollowCamera cameraController)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(28);}
-    try
     {
-        gravitySource = source;
+gravitySource = source;
         sharedCreatureMaterial = creatureMaterial;
         followCamera = cameraController;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void Start()
     {
@@ -57,30 +51,18 @@ public sealed class BioCreatureTestController : MonoBehaviour
     }
 
     public void RegenerateNextSeed()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(29);}
-    try
     {
-        seed = unchecked(seed + 1);
+seed = unchecked(seed + 1);
         SpawnCurrentSeed();
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void RegenerateAtSeed(int newSeed)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(30, (int)newSeed);}
-    try
     {
-        seed = newSeed;
+seed = newSeed;
         SpawnCurrentSeed();
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void OnDestroy()
     {

@@ -37,23 +37,14 @@ public class VoxelChunk
     }
 
     public byte GetLocalVoxel(int x, int y, int z)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(131, (int)x, (int)y, (int)z);}
-    try
     {
-        return Voxels[VoxelTypes.ToIndex(x, y, z)];
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return Voxels[VoxelTypes.ToIndex(x, y, z)];
+    
+}
 
     public void SetLocalVoxel(int x, int y, int z, byte value)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(132, (int)x, (int)y, (int)z, (int)value);}
-    try
     {
-        if (x < 0 || y < 0 || z < 0 || x >= VoxelTypes.ChunkSize || y >= VoxelTypes.ChunkSize || z >= VoxelTypes.ChunkSize)
+if (x < 0 || y < 0 || z < 0 || x >= VoxelTypes.ChunkSize || y >= VoxelTypes.ChunkSize || z >= VoxelTypes.ChunkSize)
             return;
 
         int index = VoxelTypes.ToIndex(x, y, z);
@@ -63,54 +54,30 @@ public class VoxelChunk
         Voxels[index] = value;
         IsDirty = true;
         IsModified = true;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void MarkDirty()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(133);}
-    try
     {
-        IsDirty = true;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+IsDirty = true;
+    
+}
 
     public void MarkModified()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(134);}
-    try
     {
-        IsModified = true;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+IsModified = true;
+    
+}
 
     public void ClearModifiedFlag()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(135);}
-    try
     {
-        IsModified = false;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+IsModified = false;
+    
+}
 
     public void RebuildMesh(System.Func<int, int, int, byte> getWorldVoxel)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(136);}
-    try
     {
-        if (runtimeMesh != null)
+if (runtimeMesh != null)
             Object.Destroy(runtimeMesh);
 
         runtimeMesh = VoxelMesher.BuildChunkMesh(getWorldVoxel, Coord);
@@ -118,25 +85,16 @@ public class VoxelChunk
         meshCollider.sharedMesh = null;
         meshCollider.sharedMesh = runtimeMesh;
         IsDirty = false;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void Destroy()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(137);}
-    try
     {
-        if (runtimeMesh != null)
+if (runtimeMesh != null)
             Object.Destroy(runtimeMesh);
 
         if (viewObject != null)
             Object.Destroy(viewObject);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 }

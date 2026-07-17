@@ -1,0 +1,2412 @@
+{
+  "stableId": "antelope",
+  "variant": "antelope",
+  "sourceFbxAssetPath": "Assets/Creatures/Authorized/NMS/AntelopeFamily/Models/antelope_modules.fbx",
+  "descriptorRoots": [
+    {
+      "typeId": "_HEAD_",
+      "options": [
+        {
+          "stableId": "_HEAD_ALIEN",
+          "displayName": "_Head_Alien",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [
+            {
+              "typeId": "_HEAD_",
+              "options": [
+                {
+                  "stableId": "_HEAD_2",
+                  "displayName": "_Head_2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [
+                    {
+                      "typeId": "_HEADALT_",
+                      "options": [
+                        {
+                          "stableId": "_HEADALT_1",
+                          "displayName": "_Headalt_1",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [
+                            {
+                              "typeId": "_CENBASE_",
+                              "options": [
+                                {
+                                  "stableId": "_CENBASE_NONE",
+                                  "displayName": "_CenBase_none",
+                                  "weight": 0.0,
+                                  "explicitNone": true,
+                                  "children": [],
+                                  "moduleIds": []
+                                },
+                                {
+                                  "stableId": "_CENBASE_1",
+                                  "displayName": "_CenBase_1",
+                                  "weight": 0.0,
+                                  "explicitNone": false,
+                                  "children": [],
+                                  "moduleIds": [
+                                    "antelope_cenbase_1"
+                                  ]
+                                },
+                                {
+                                  "stableId": "_CENBASE_2",
+                                  "displayName": "_CenBase_2",
+                                  "weight": 0.0,
+                                  "explicitNone": false,
+                                  "children": [],
+                                  "moduleIds": [
+                                    "antelope_cenbase_2"
+                                  ]
+                                }
+                              ]
+                            }
+                          ],
+                          "moduleIds": [
+                            "antelope_headalt_1"
+                          ]
+                        },
+                        {
+                          "stableId": "_HEADALT_2",
+                          "displayName": "_Headalt_2",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [
+                            {
+                              "typeId": "_BBALLS_",
+                              "options": [
+                                {
+                                  "stableId": "_BBALLS_1",
+                                  "displayName": "_Bballs_1",
+                                  "weight": 0.0,
+                                  "explicitNone": false,
+                                  "children": [],
+                                  "moduleIds": [
+                                    "antelope_bballs_1"
+                                  ]
+                                }
+                              ]
+                            }
+                          ],
+                          "moduleIds": [
+                            "antelope_headalt_2"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "moduleIds": [
+                    "antelope_head_2",
+                    "antelope_headalt_1shape",
+                    "antelope_headalt_shape2"
+                  ]
+                },
+                {
+                  "stableId": "_HEAD_1",
+                  "displayName": "_Head_1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [
+                    {
+                      "typeId": "_ALTA_",
+                      "options": [
+                        {
+                          "stableId": "_ALTA_1",
+                          "displayName": "_AltA_1",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [
+                            {
+                              "typeId": "_CENTERA_",
+                              "options": [
+                                {
+                                  "stableId": "_CENTERA_1",
+                                  "displayName": "_centerA_1",
+                                  "weight": 0.0,
+                                  "explicitNone": false,
+                                  "children": [],
+                                  "moduleIds": []
+                                }
+                              ]
+                            },
+                            {
+                              "typeId": "_BROWB_",
+                              "options": [
+                                {
+                                  "stableId": "_BROWB_1",
+                                  "displayName": "_BrowB_1",
+                                  "weight": 0.0,
+                                  "explicitNone": false,
+                                  "children": [
+                                    {
+                                      "typeId": "_EYESBA_",
+                                      "options": [
+                                        {
+                                          "stableId": "_EYESBA_1",
+                                          "displayName": "_EyesBa_1",
+                                          "weight": 0.0,
+                                          "explicitNone": false,
+                                          "children": [],
+                                          "moduleIds": [
+                                            "antelope_eyesba_1"
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ],
+                                  "moduleIds": [
+                                    "antelope_browb_1"
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "typeId": "_COLLAR_",
+                              "options": [
+                                {
+                                  "stableId": "_COLLAR_1",
+                                  "displayName": "_Collar_1",
+                                  "weight": 0.0,
+                                  "explicitNone": false,
+                                  "children": [],
+                                  "moduleIds": [
+                                    "antelope_collar_1"
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "typeId": "_CENTFING_",
+                              "options": [
+                                {
+                                  "stableId": "_CENTFING_1",
+                                  "displayName": "_CentFing_1",
+                                  "weight": 0.0,
+                                  "explicitNone": false,
+                                  "children": [],
+                                  "moduleIds": [
+                                    "antelope_centfing_1"
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "typeId": "_ANTENNASA_",
+                              "options": [
+                                {
+                                  "stableId": "_ANTENNASA_1",
+                                  "displayName": "_Antennasa_1",
+                                  "weight": 0.0,
+                                  "explicitNone": false,
+                                  "children": [],
+                                  "moduleIds": []
+                                }
+                              ]
+                            },
+                            {
+                              "typeId": "_RIMC_",
+                              "options": [
+                                {
+                                  "stableId": "_RIMC_1",
+                                  "displayName": "_RimC_1",
+                                  "weight": 0.0,
+                                  "explicitNone": false,
+                                  "children": [],
+                                  "moduleIds": [
+                                    "antelope_rimc_1"
+                                  ]
+                                }
+                              ]
+                            }
+                          ],
+                          "moduleIds": []
+                        },
+                        {
+                          "stableId": "_ALTA_2",
+                          "displayName": "_AltA_2",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [
+                            {
+                              "typeId": "_NECKZ_",
+                              "options": [
+                                {
+                                  "stableId": "_NECKZ_1",
+                                  "displayName": "_neckz_1",
+                                  "weight": 0.0,
+                                  "explicitNone": false,
+                                  "children": [
+                                    {
+                                      "typeId": "_FINGERS_",
+                                      "options": [
+                                        {
+                                          "stableId": "_FINGERS_1",
+                                          "displayName": "_Fingers_1",
+                                          "weight": 0.0,
+                                          "explicitNone": false,
+                                          "children": [],
+                                          "moduleIds": [
+                                            "antelope_fingers_1"
+                                          ]
+                                        },
+                                        {
+                                          "stableId": "_FINGERS_NONE",
+                                          "displayName": "_Fingers_none",
+                                          "weight": 0.0,
+                                          "explicitNone": true,
+                                          "children": [],
+                                          "moduleIds": []
+                                        }
+                                      ]
+                                    }
+                                  ],
+                                  "moduleIds": [
+                                    "antelope_neckz_1"
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "typeId": "_ROUND_",
+                              "options": [
+                                {
+                                  "stableId": "_ROUND_2",
+                                  "displayName": "_Round_2",
+                                  "weight": 0.0,
+                                  "explicitNone": false,
+                                  "children": [],
+                                  "moduleIds": [
+                                    "antelope_round_2"
+                                  ]
+                                },
+                                {
+                                  "stableId": "_ROUND_1",
+                                  "displayName": "_Round_1",
+                                  "weight": 0.0,
+                                  "explicitNone": false,
+                                  "children": [
+                                    {
+                                      "typeId": "_EBS_",
+                                      "options": [
+                                        {
+                                          "stableId": "_EBS_NONE",
+                                          "displayName": "_Ebs_none",
+                                          "weight": 0.0,
+                                          "explicitNone": true,
+                                          "children": [],
+                                          "moduleIds": []
+                                        },
+                                        {
+                                          "stableId": "_EBS_1",
+                                          "displayName": "_Ebs_1",
+                                          "weight": 0.0,
+                                          "explicitNone": false,
+                                          "children": [],
+                                          "moduleIds": [
+                                            "antelope_ebs_1"
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ],
+                                  "moduleIds": [
+                                    "antelope_round_1"
+                                  ]
+                                }
+                              ]
+                            }
+                          ],
+                          "moduleIds": []
+                        }
+                      ]
+                    }
+                  ],
+                  "moduleIds": [
+                    "antelope_head_1"
+                  ]
+                }
+              ]
+            }
+          ],
+          "moduleIds": []
+        },
+        {
+          "stableId": "_HEAD_BUFF",
+          "displayName": "_Head_Buff",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [
+            {
+              "typeId": "_BHHORNS_",
+              "options": [
+                {
+                  "stableId": "_BHHORNS_NULL",
+                  "displayName": "_BHHorns_NULL",
+                  "weight": 0.0,
+                  "explicitNone": true,
+                  "children": [],
+                  "moduleIds": []
+                },
+                {
+                  "stableId": "_BHHORNS_1",
+                  "displayName": "_BHHorns_1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_bhhorns_1"
+                  ]
+                },
+                {
+                  "stableId": "_BHHORNS_2",
+                  "displayName": "_BHHorns_2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_bhhorns_2"
+                  ]
+                },
+                {
+                  "stableId": "_BHHORNS_3",
+                  "displayName": "_BHHorns_3",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_bhhorns_3"
+                  ]
+                },
+                {
+                  "stableId": "_BHHORNS_4",
+                  "displayName": "_BHHorns_4",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_bhhorns_4"
+                  ]
+                }
+              ]
+            },
+            {
+              "typeId": "_BHNOSE_",
+              "options": [
+                {
+                  "stableId": "_BHNOSE_2XRARE",
+                  "displayName": "_BHNose_2xRARE",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_bhnose_2xrare"
+                  ]
+                },
+                {
+                  "stableId": "_BHNOSE_NULL",
+                  "displayName": "_BHNose_NULL",
+                  "weight": 0.0,
+                  "explicitNone": true,
+                  "children": [],
+                  "moduleIds": []
+                }
+              ]
+            },
+            {
+              "typeId": "_BHEARS_",
+              "options": [
+                {
+                  "stableId": "_BHEARS_4",
+                  "displayName": "_BHEars_4",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_bhears_4"
+                  ]
+                },
+                {
+                  "stableId": "_BHEARS_3",
+                  "displayName": "_BHEars_3",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_bhears_3"
+                  ]
+                },
+                {
+                  "stableId": "_BHEARS_1N",
+                  "displayName": "_BHEars_1N",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_bhears_1n"
+                  ]
+                }
+              ]
+            },
+            {
+              "typeId": "_HDACC_",
+              "options": [
+                {
+                  "stableId": "_HDACC_NONE",
+                  "displayName": "_HDAcc_none",
+                  "weight": 0.0,
+                  "explicitNone": true,
+                  "children": [],
+                  "moduleIds": []
+                }
+              ]
+            },
+            {
+              "typeId": "_HBTEETH_",
+              "options": [
+                {
+                  "stableId": "_HBTEETH_1",
+                  "displayName": "_HBTeeth_1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hbteethbot1",
+                    "antelope_hbteethtop1",
+                    "antelope_hbtongue1"
+                  ]
+                },
+                {
+                  "stableId": "_HBTEETH_2",
+                  "displayName": "_HBTeeth_2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hbteethbot2",
+                    "antelope_hbteethtop2",
+                    "antelope_hbtongue2"
+                  ]
+                }
+              ]
+            }
+          ],
+          "moduleIds": [
+            "antelope_head_buff",
+            "antelope_gdeyes1"
+          ]
+        },
+        {
+          "stableId": "_HEAD_DEER",
+          "displayName": "_Head_Deer",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [
+            {
+              "typeId": "_HDTEETH_",
+              "options": [
+                {
+                  "stableId": "_HDTEETH_1",
+                  "displayName": "_HDTeeth_1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hdteethbot1",
+                    "antelope_hdteethtop1",
+                    "antelope_hdtongue1"
+                  ]
+                },
+                {
+                  "stableId": "_HDTEETH_2",
+                  "displayName": "_HDTeeth_2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hdteethbot2",
+                    "antelope_hdteethtop2",
+                    "antelope_hdtongue2"
+                  ]
+                }
+              ]
+            },
+            {
+              "typeId": "_HDEARS_",
+              "options": [
+                {
+                  "stableId": "_HDEARS_1",
+                  "displayName": "_HDEars_1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hdears_1"
+                  ]
+                },
+                {
+                  "stableId": "_HDEARS_4",
+                  "displayName": "_HDEars_4",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hdears_4"
+                  ]
+                },
+                {
+                  "stableId": "_HDEARS_3",
+                  "displayName": "_HDEars_3",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hdears_3"
+                  ]
+                },
+                {
+                  "stableId": "_HDEARS_9",
+                  "displayName": "_HDEars_9",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hdears_9"
+                  ]
+                },
+                {
+                  "stableId": "_HDEARS_2XRARE",
+                  "displayName": "_HDEars_2xRARE",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hdears_2xrare"
+                  ]
+                }
+              ]
+            },
+            {
+              "typeId": "_HDHORNS_",
+              "options": [
+                {
+                  "stableId": "_HDHORNS_NULL",
+                  "displayName": "_HDHorns_NULL",
+                  "weight": 0.0,
+                  "explicitNone": true,
+                  "children": [],
+                  "moduleIds": []
+                },
+                {
+                  "stableId": "_HDHORNS_2",
+                  "displayName": "_HDHorns_2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hdhorns_2"
+                  ]
+                },
+                {
+                  "stableId": "_HDHORNS_1",
+                  "displayName": "_HDHorns_1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hdhorns_1"
+                  ]
+                },
+                {
+                  "stableId": "_HDHORNS_3",
+                  "displayName": "_HDHorns_3",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hdhorns_3"
+                  ]
+                },
+                {
+                  "stableId": "_HDHORNS_4",
+                  "displayName": "_HDHorns_4",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hdhorns_4"
+                  ]
+                },
+                {
+                  "stableId": "_HDHORNS_5",
+                  "displayName": "_HDHorns_5",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hdhorns_5"
+                  ]
+                }
+              ]
+            }
+          ],
+          "moduleIds": [
+            "antelope_head_deer",
+            "antelope_deereyes"
+          ]
+        },
+        {
+          "stableId": "_HEAD_GDANE",
+          "displayName": "_Head_GDane",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [
+            {
+              "typeId": "_GDPLATEGRP_",
+              "options": [
+                {
+                  "stableId": "_GDPLATEGRP_1",
+                  "displayName": "_GDPlateGRP_1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [
+                    {
+                      "typeId": "_GD1EAR_",
+                      "options": [
+                        {
+                          "stableId": "_GD1EAR_1N",
+                          "displayName": "_GD1Ear_1N",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_gd1ear_1n"
+                          ]
+                        },
+                        {
+                          "stableId": "_GD1EAR_2N",
+                          "displayName": "_GD1Ear_2N",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_gd1ear_2n"
+                          ]
+                        },
+                        {
+                          "stableId": "_GD1EAR_NULL",
+                          "displayName": "_GD1Ear_NULL",
+                          "weight": 0.0,
+                          "explicitNone": true,
+                          "children": [],
+                          "moduleIds": []
+                        }
+                      ]
+                    },
+                    {
+                      "typeId": "_GD1PLATE_",
+                      "options": [
+                        {
+                          "stableId": "_GD1PLATE_3",
+                          "displayName": "_GD1Plate_3",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_gd1plate_3"
+                          ]
+                        },
+                        {
+                          "stableId": "_GD1PLATE_2",
+                          "displayName": "_GD1Plate_2",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_gd1plate_2"
+                          ]
+                        },
+                        {
+                          "stableId": "_GD1PLATE_1",
+                          "displayName": "_GD1Plate_1",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_gd1plate_1"
+                          ]
+                        },
+                        {
+                          "stableId": "_GD1PLATE_NULL",
+                          "displayName": "_GD1Plate_NULL",
+                          "weight": 0.0,
+                          "explicitNone": true,
+                          "children": [],
+                          "moduleIds": []
+                        }
+                      ]
+                    }
+                  ],
+                  "moduleIds": []
+                },
+                {
+                  "stableId": "_GDPLATEGRP_2",
+                  "displayName": "_GDPlateGRP_2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [
+                    {
+                      "typeId": "_GD2EAR_",
+                      "options": [
+                        {
+                          "stableId": "_GD2EAR_7",
+                          "displayName": "_GD2Ear_7",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_gd2ear_7"
+                          ]
+                        },
+                        {
+                          "stableId": "_GD2EAR_6",
+                          "displayName": "_GD2Ear_6",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_gd2ear_6"
+                          ]
+                        },
+                        {
+                          "stableId": "_GD2EAR_8N",
+                          "displayName": "_GD2Ear_8N",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_gd2ear_8n"
+                          ]
+                        },
+                        {
+                          "stableId": "_GD2EAR_1N1",
+                          "displayName": "_GD2Ear_1N1",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_gd2ear_1n1"
+                          ]
+                        },
+                        {
+                          "stableId": "_GD2EAR_2N1",
+                          "displayName": "_GD2Ear_2N1",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_gd2ear_2n1"
+                          ]
+                        },
+                        {
+                          "stableId": "_GD2EAR_NULL",
+                          "displayName": "_GD2Ear_NULL",
+                          "weight": 0.0,
+                          "explicitNone": true,
+                          "children": [],
+                          "moduleIds": []
+                        }
+                      ]
+                    },
+                    {
+                      "typeId": "_GD2PLATE_",
+                      "options": [
+                        {
+                          "stableId": "_GD2PLATE_3N",
+                          "displayName": "_GD2Plate_3N",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_gd2plate_3n"
+                          ]
+                        },
+                        {
+                          "stableId": "_GD2PLATE_NULL",
+                          "displayName": "_GD2Plate_NULL",
+                          "weight": 0.0,
+                          "explicitNone": true,
+                          "children": [],
+                          "moduleIds": []
+                        }
+                      ]
+                    }
+                  ],
+                  "moduleIds": []
+                }
+              ]
+            },
+            {
+              "typeId": "_HGDTEETH_",
+              "options": [
+                {
+                  "stableId": "_HGDTEETH_1",
+                  "displayName": "_HGDTeeth_1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hgdteethbot1",
+                    "antelope_hgdteethtop1",
+                    "antelope_hgdtongue1"
+                  ]
+                },
+                {
+                  "stableId": "_HGDTEETH_2",
+                  "displayName": "_HGDTeeth_2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hgdteethbot2",
+                    "antelope_hgdteethtop2",
+                    "antelope_hgdtongue2"
+                  ]
+                }
+              ]
+            }
+          ],
+          "moduleIds": [
+            "antelope_head_gdane",
+            "antelope_gdeyes"
+          ]
+        },
+        {
+          "stableId": "_HEAD_LONG",
+          "displayName": "_Head_Long",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [
+            {
+              "typeId": "_HLACC1_",
+              "options": [
+                {
+                  "stableId": "_HLACC1_E1",
+                  "displayName": "_HLAcc1_E1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hlacc1_e1"
+                  ]
+                },
+                {
+                  "stableId": "_HLACC1_E2",
+                  "displayName": "_HLAcc1_E2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hlacc1_e2"
+                  ]
+                },
+                {
+                  "stableId": "_HLACC1_E3",
+                  "displayName": "_HLAcc1_E3",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hlacc1_e3"
+                  ]
+                },
+                {
+                  "stableId": "_HLACC1_E4",
+                  "displayName": "_HLAcc1_E4",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hlacc1_e4"
+                  ]
+                },
+                {
+                  "stableId": "_HLACC1_H1",
+                  "displayName": "_HLAcc1_H1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [
+                    {
+                      "typeId": "_HLA_",
+                      "options": [
+                        {
+                          "stableId": "_HLA_HORN1",
+                          "displayName": "_HLA_Horn1",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_hla_horn1"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "moduleIds": [
+                    "antelope_hlacc1_h1"
+                  ]
+                },
+                {
+                  "stableId": "_HLACC1_H2",
+                  "displayName": "_HLAcc1_H2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [
+                    {
+                      "typeId": "_HLA_",
+                      "options": [
+                        {
+                          "stableId": "_HLA_HORN2",
+                          "displayName": "_HLA_Horn2",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_hla_horn2"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "moduleIds": [
+                    "antelope_hlacc1_h2"
+                  ]
+                },
+                {
+                  "stableId": "_HLACC1_H3",
+                  "displayName": "_HLAcc1_H3",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [
+                    {
+                      "typeId": "_HLA_",
+                      "options": [
+                        {
+                          "stableId": "_HLA_HORN3",
+                          "displayName": "_HLA_Horn3",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_hla_horn3"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "moduleIds": [
+                    "antelope_hlacc1_h3"
+                  ]
+                },
+                {
+                  "stableId": "_HLACC1_H4",
+                  "displayName": "_HLAcc1_H4",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [
+                    {
+                      "typeId": "_HLA_",
+                      "options": [
+                        {
+                          "stableId": "_HLA_HORN4",
+                          "displayName": "_HLA_Horn4",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_hla_horn4"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "moduleIds": [
+                    "antelope_hlacc1_h4"
+                  ]
+                },
+                {
+                  "stableId": "_HLACC1_H5",
+                  "displayName": "_HLAcc1_H5",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [
+                    {
+                      "typeId": "_HLA_",
+                      "options": [
+                        {
+                          "stableId": "_HLA_HORN5",
+                          "displayName": "_HLA_Horn5",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_hla_horn5"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "moduleIds": [
+                    "antelope_hlacc1_h5"
+                  ]
+                },
+                {
+                  "stableId": "_HLACC1_F1",
+                  "displayName": "_HLAcc1_F1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hlacc1_f1"
+                  ]
+                },
+                {
+                  "stableId": "_HLACC1_F2",
+                  "displayName": "_HLAcc1_F2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hlacc1_f2"
+                  ]
+                },
+                {
+                  "stableId": "_HLACC1_F3",
+                  "displayName": "_HLAcc1_F3",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_hlacc1_f3"
+                  ]
+                }
+              ]
+            }
+          ],
+          "moduleIds": [
+            "antelope_head_long",
+            "antelope_hlacc1_h1shape",
+            "antelope_hlacc1_h2shape",
+            "antelope_hlacc1_h3shape",
+            "antelope_hlacc1_h4shape",
+            "antelope_hlacc1_h5shape",
+            "antelope_eyeslong",
+            "antelope_sub1_head_long"
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_BODY_",
+      "options": [
+        {
+          "stableId": "_BODY_DEER",
+          "displayName": "_Body_Deer",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [
+            {
+              "typeId": "_DEERACC_",
+              "options": [
+                {
+                  "stableId": "_DEERACC_NONE",
+                  "displayName": "_DeerAcc_none",
+                  "weight": 0.0,
+                  "explicitNone": true,
+                  "children": [],
+                  "moduleIds": []
+                },
+                {
+                  "stableId": "_DEERACC_1N2",
+                  "displayName": "_DeerAcc_1N2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_deeracc_1n2",
+                    "antelope_sub1_deeracc_1n2"
+                  ]
+                },
+                {
+                  "stableId": "_DEERACC_2N2",
+                  "displayName": "_DeerAcc_2N2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_deeracc_2n2",
+                    "antelope_sub1_deeracc_2n2"
+                  ]
+                },
+                {
+                  "stableId": "_DEERACC_3N2",
+                  "displayName": "_DeerAcc_3N2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_deeracc_3n2"
+                  ]
+                },
+                {
+                  "stableId": "_DEERACC_4N2",
+                  "displayName": "_DeerAcc_4N2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_deeracc_4n2"
+                  ]
+                },
+                {
+                  "stableId": "_DEERACC_5N2",
+                  "displayName": "_DeerAcc_5N2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_deeracc_5n2"
+                  ]
+                },
+                {
+                  "stableId": "_DEERACC_6N2",
+                  "displayName": "_DeerAcc_6N2",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_deeracc_6n2",
+                    "antelope_sub1_deeracc_6n2"
+                  ]
+                },
+                {
+                  "stableId": "_DEERACC_22",
+                  "displayName": "_DeerAcc_22",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_deeracc_22"
+                  ]
+                },
+                {
+                  "stableId": "_DEERACC_23",
+                  "displayName": "_DeerAcc_23",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_deeracc_23"
+                  ]
+                },
+                {
+                  "stableId": "_DEERACC_24",
+                  "displayName": "_DeerAcc_24",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_deeracc_24"
+                  ]
+                },
+                {
+                  "stableId": "_DEERACC_25",
+                  "displayName": "_DeerAcc_25",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_deeracc_25"
+                  ]
+                },
+                {
+                  "stableId": "_DEERACC_2XRARE",
+                  "displayName": "_DeerAcc_2xRARE",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_deeracc_2xrare"
+                  ]
+                }
+              ]
+            }
+          ],
+          "moduleIds": [
+            "antelope_body_deer",
+            "antelope_deeracc_6n2shape",
+            "antelope_petacc_deer",
+            "antelope_sub1_deeracc_6n2shape"
+          ]
+        },
+        {
+          "stableId": "_BODY_FAT",
+          "displayName": "_Body_Fat",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [
+            {
+              "typeId": "_FATACC_",
+              "options": [
+                {
+                  "stableId": "_FATACC_NULL",
+                  "displayName": "_FatAcc_NULL",
+                  "weight": 0.0,
+                  "explicitNone": true,
+                  "children": [],
+                  "moduleIds": []
+                },
+                {
+                  "stableId": "_FATACC_1N",
+                  "displayName": "_FatAcc_1N",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_fatacc_1n",
+                    "antelope_sub1_fatacc_1n"
+                  ]
+                },
+                {
+                  "stableId": "_FATACC_2N",
+                  "displayName": "_FatAcc_2N",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_fatacc_2n",
+                    "antelope_sub1_fatacc_2n"
+                  ]
+                },
+                {
+                  "stableId": "_FATACC_3N",
+                  "displayName": "_FatAcc_3N",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [
+                    {
+                      "typeId": "_FA3N_",
+                      "options": [
+                        {
+                          "stableId": "_FA3N_1",
+                          "displayName": "_FA3N_1",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_fa3n_1"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "moduleIds": [
+                    "antelope_fatacc_3n"
+                  ]
+                },
+                {
+                  "stableId": "_FATACC_4N",
+                  "displayName": "_FatAcc_4N",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [
+                    {
+                      "typeId": "_FA4N_",
+                      "options": [
+                        {
+                          "stableId": "_FA4N_1",
+                          "displayName": "_FA4N_1",
+                          "weight": 0.0,
+                          "explicitNone": false,
+                          "children": [],
+                          "moduleIds": [
+                            "antelope_fa4n_1"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "moduleIds": [
+                    "antelope_fatacc_4n"
+                  ]
+                },
+                {
+                  "stableId": "_FATACC_5N",
+                  "displayName": "_FatAcc_5N",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_fatacc_5n"
+                  ]
+                },
+                {
+                  "stableId": "_FATACC_6N",
+                  "displayName": "_FatAcc_6N",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_fatacc_6n",
+                    "antelope_sub1_fatacc_6n"
+                  ]
+                },
+                {
+                  "stableId": "_FATACC_12OK",
+                  "displayName": "_FatAcc_12OK",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_fatacc_12ok"
+                  ]
+                },
+                {
+                  "stableId": "_FATACC_11OK",
+                  "displayName": "_FatAcc_11OK",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_fatacc_11ok"
+                  ]
+                },
+                {
+                  "stableId": "_FATACC_14OK",
+                  "displayName": "_FatAcc_14OK",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_fatacc_14ok"
+                  ]
+                },
+                {
+                  "stableId": "_FATACC_24OK",
+                  "displayName": "_FatAcc_24OK",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_fatacc_24ok"
+                  ]
+                }
+              ]
+            }
+          ],
+          "moduleIds": [
+            "antelope_body_fat",
+            "antelope_fatacc_3nshape",
+            "antelope_fatacc_4nshape",
+            "antelope_fatacc_6nshape",
+            "antelope_petacc_fat",
+            "antelope_sub1_fatacc_6nshape"
+          ]
+        },
+        {
+          "stableId": "_BODY_SKINNY",
+          "displayName": "_Body_Skinny",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [
+            {
+              "typeId": "_SKINNYACC_",
+              "options": [
+                {
+                  "stableId": "_SKINNYACC_NULL",
+                  "displayName": "_SkinnyAcc_NULL",
+                  "weight": 0.0,
+                  "explicitNone": true,
+                  "children": [],
+                  "moduleIds": []
+                },
+                {
+                  "stableId": "_SKINNYACC_1N1",
+                  "displayName": "_SkinnyAcc_1N1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_skinnyacc_1n1",
+                    "antelope_sub1_skinnyacc_1n1"
+                  ]
+                },
+                {
+                  "stableId": "_SKINNYACC_2N1",
+                  "displayName": "_SkinnyAcc_2N1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_skinnyacc_2n1",
+                    "antelope_sub1_skinnyacc_2n1"
+                  ]
+                },
+                {
+                  "stableId": "_SKINNYACC_3N1",
+                  "displayName": "_SkinnyAcc_3N1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_skinnyacc_3n1"
+                  ]
+                },
+                {
+                  "stableId": "_SKINNYACC_4N1",
+                  "displayName": "_SkinnyAcc_4N1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_skinnyacc_4n1"
+                  ]
+                },
+                {
+                  "stableId": "_SKINNYACC_5N1",
+                  "displayName": "_SkinnyAcc_5N1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_skinnyacc_5n1"
+                  ]
+                },
+                {
+                  "stableId": "_SKINNYACC_6N1",
+                  "displayName": "_SkinnyAcc_6N1",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_skinnyacc_6n1",
+                    "antelope_sub1_skinnyacc_6n1"
+                  ]
+                },
+                {
+                  "stableId": "_SKINNYACC_12",
+                  "displayName": "_SkinnyAcc_12",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_skinnyacc_12"
+                  ]
+                },
+                {
+                  "stableId": "_SKINNYACC_14",
+                  "displayName": "_SkinnyAcc_14",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_skinnyacc_14"
+                  ]
+                },
+                {
+                  "stableId": "_SKINNYACC_20",
+                  "displayName": "_SkinnyAcc_20",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_skinnyacc_20"
+                  ]
+                },
+                {
+                  "stableId": "_SKINNYACC_21",
+                  "displayName": "_SkinnyAcc_21",
+                  "weight": 0.0,
+                  "explicitNone": false,
+                  "children": [],
+                  "moduleIds": [
+                    "antelope_skinnyacc_21"
+                  ]
+                }
+              ]
+            }
+          ],
+          "moduleIds": [
+            "antelope_body_skinny",
+            "antelope_skinnyacc_6n1shape",
+            "antelope_petacc_skinny",
+            "antelope_sub1_skinnyacc_6n1shape"
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_TAIL_",
+      "options": [
+        {
+          "stableId": "_TAIL_ALIEN0",
+          "displayName": "_Tail_Alien0",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [],
+          "moduleIds": [
+            "antelope_tail_alien0"
+          ]
+        },
+        {
+          "stableId": "_TAIL_ALIEN1",
+          "displayName": "_Tail_Alien1",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [],
+          "moduleIds": [
+            "antelope_tail_alien1"
+          ]
+        },
+        {
+          "stableId": "_TAIL_ALIEN2",
+          "displayName": "_Tail_Alien2",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [],
+          "moduleIds": [
+            "antelope_tail_alien2"
+          ]
+        },
+        {
+          "stableId": "_TAIL_ALIEN3",
+          "displayName": "_Tail_Alien3",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [],
+          "moduleIds": [
+            "antelope_tail_alien3"
+          ]
+        },
+        {
+          "stableId": "_TAIL_ALIEN4",
+          "displayName": "_Tail_Alien4",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [],
+          "moduleIds": [
+            "antelope_tail_alien4"
+          ]
+        },
+        {
+          "stableId": "_TAIL_ALIEN5",
+          "displayName": "_Tail_Alien5",
+          "weight": 0.0,
+          "explicitNone": false,
+          "children": [],
+          "moduleIds": [
+            "antelope_tail_alien5"
+          ]
+        }
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "stableId": "antelope_bballs_1",
+      "sourceObjectName": "_Bballs_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_bhears_1n",
+      "sourceObjectName": "_BHEars_1N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_bhears_3",
+      "sourceObjectName": "_BHEars_3",
+      "required": false
+    },
+    {
+      "stableId": "antelope_bhears_4",
+      "sourceObjectName": "_BHEars_4",
+      "required": false
+    },
+    {
+      "stableId": "antelope_bhhorns_1",
+      "sourceObjectName": "_BHHorns_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_bhhorns_2",
+      "sourceObjectName": "_BHHorns_2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_bhhorns_3",
+      "sourceObjectName": "_BHHorns_3",
+      "required": false
+    },
+    {
+      "stableId": "antelope_bhhorns_4",
+      "sourceObjectName": "_BHHorns_4",
+      "required": false
+    },
+    {
+      "stableId": "antelope_bhnose_2xrare",
+      "sourceObjectName": "_BHNose_2xRARE",
+      "required": false
+    },
+    {
+      "stableId": "antelope_body_deer",
+      "sourceObjectName": "_Body_Deer",
+      "required": false
+    },
+    {
+      "stableId": "antelope_body_fat",
+      "sourceObjectName": "_Body_Fat",
+      "required": false
+    },
+    {
+      "stableId": "antelope_body_skinny",
+      "sourceObjectName": "_Body_Skinny",
+      "required": false
+    },
+    {
+      "stableId": "antelope_browb_1",
+      "sourceObjectName": "_BrowB_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_cenbase_1",
+      "sourceObjectName": "_CenBase_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_cenbase_2",
+      "sourceObjectName": "_CenBase_2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_centfing_1",
+      "sourceObjectName": "_CentFing_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_collar_1",
+      "sourceObjectName": "_Collar_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deeracc_1n2",
+      "sourceObjectName": "_DeerAcc_1N2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deeracc_22",
+      "sourceObjectName": "_DeerAcc_22",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deeracc_23",
+      "sourceObjectName": "_DeerAcc_23",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deeracc_24",
+      "sourceObjectName": "_DeerAcc_24",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deeracc_25",
+      "sourceObjectName": "_DeerAcc_25",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deeracc_2n2",
+      "sourceObjectName": "_DeerAcc_2N2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deeracc_2xrare",
+      "sourceObjectName": "_DeerAcc_2xRARE",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deeracc_3n2",
+      "sourceObjectName": "_DeerAcc_3N2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deeracc_4n2",
+      "sourceObjectName": "_DeerAcc_4N2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deeracc_5n2",
+      "sourceObjectName": "_DeerAcc_5N2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deeracc_6n2",
+      "sourceObjectName": "_DeerAcc_6N2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deeracc_6n2shape",
+      "sourceObjectName": "_DeerAcc_6N2Shape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_ebs_1",
+      "sourceObjectName": "_Ebs_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_eyesba_1",
+      "sourceObjectName": "_EyesBa_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fa3n_1",
+      "sourceObjectName": "_FA3N_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fa4n_1",
+      "sourceObjectName": "_FA4N_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_11ok",
+      "sourceObjectName": "_FatAcc_11OK",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_12ok",
+      "sourceObjectName": "_FatAcc_12OK",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_14ok",
+      "sourceObjectName": "_FatAcc_14OK",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_1n",
+      "sourceObjectName": "_FatAcc_1N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_24ok",
+      "sourceObjectName": "_FatAcc_24OK",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_2n",
+      "sourceObjectName": "_FatAcc_2N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_3n",
+      "sourceObjectName": "_FatAcc_3N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_3nshape",
+      "sourceObjectName": "_FatAcc_3NShape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_4n",
+      "sourceObjectName": "_FatAcc_4N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_4nshape",
+      "sourceObjectName": "_FatAcc_4NShape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_5n",
+      "sourceObjectName": "_FatAcc_5N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_6n",
+      "sourceObjectName": "_FatAcc_6N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fatacc_6nshape",
+      "sourceObjectName": "_FatAcc_6NShape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_fingers_1",
+      "sourceObjectName": "_Fingers_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gd1ear_1n",
+      "sourceObjectName": "_GD1Ear_1N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gd1ear_2n",
+      "sourceObjectName": "_GD1Ear_2N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gd1plate_1",
+      "sourceObjectName": "_GD1Plate_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gd1plate_2",
+      "sourceObjectName": "_GD1Plate_2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gd1plate_3",
+      "sourceObjectName": "_GD1Plate_3",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gd2ear_1n1",
+      "sourceObjectName": "_GD2Ear_1N1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gd2ear_2n1",
+      "sourceObjectName": "_GD2Ear_2N1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gd2ear_6",
+      "sourceObjectName": "_GD2Ear_6",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gd2ear_7",
+      "sourceObjectName": "_GD2Ear_7",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gd2ear_8n",
+      "sourceObjectName": "_GD2Ear_8N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gd2plate_3n",
+      "sourceObjectName": "_GD2Plate_3N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdears_1",
+      "sourceObjectName": "_HDEars_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdears_2xrare",
+      "sourceObjectName": "_HDEars_2xRARE",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdears_3",
+      "sourceObjectName": "_HDEars_3",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdears_4",
+      "sourceObjectName": "_HDEars_4",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdears_9",
+      "sourceObjectName": "_HDEars_9",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdhorns_1",
+      "sourceObjectName": "_HDHorns_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdhorns_2",
+      "sourceObjectName": "_HDHorns_2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdhorns_3",
+      "sourceObjectName": "_HDHorns_3",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdhorns_4",
+      "sourceObjectName": "_HDHorns_4",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdhorns_5",
+      "sourceObjectName": "_HDHorns_5",
+      "required": false
+    },
+    {
+      "stableId": "antelope_head_1",
+      "sourceObjectName": "_Head_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_head_2",
+      "sourceObjectName": "_Head_2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_head_buff",
+      "sourceObjectName": "_Head_Buff",
+      "required": false
+    },
+    {
+      "stableId": "antelope_head_deer",
+      "sourceObjectName": "_Head_Deer",
+      "required": false
+    },
+    {
+      "stableId": "antelope_head_gdane",
+      "sourceObjectName": "_Head_GDane",
+      "required": false
+    },
+    {
+      "stableId": "antelope_head_long",
+      "sourceObjectName": "_Head_Long",
+      "required": false
+    },
+    {
+      "stableId": "antelope_headalt_1",
+      "sourceObjectName": "_Headalt_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_headalt_1shape",
+      "sourceObjectName": "_Headalt_1Shape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_headalt_2",
+      "sourceObjectName": "_Headalt_2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_headalt_shape2",
+      "sourceObjectName": "_Headalt_Shape2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hla_horn1",
+      "sourceObjectName": "_HLA_Horn1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hla_horn2",
+      "sourceObjectName": "_HLA_Horn2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hla_horn3",
+      "sourceObjectName": "_HLA_Horn3",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hla_horn4",
+      "sourceObjectName": "_HLA_Horn4",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hla_horn5",
+      "sourceObjectName": "_HLA_Horn5",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_e1",
+      "sourceObjectName": "_HLAcc1_E1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_e2",
+      "sourceObjectName": "_HLAcc1_E2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_e3",
+      "sourceObjectName": "_HLAcc1_E3",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_e4",
+      "sourceObjectName": "_HLAcc1_E4",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_f1",
+      "sourceObjectName": "_HLAcc1_F1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_f2",
+      "sourceObjectName": "_HLAcc1_F2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_f3",
+      "sourceObjectName": "_HLAcc1_F3",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_h1",
+      "sourceObjectName": "_HLAcc1_H1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_h1shape",
+      "sourceObjectName": "_HLAcc1_H1Shape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_h2",
+      "sourceObjectName": "_HLAcc1_H2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_h2shape",
+      "sourceObjectName": "_HLAcc1_H2Shape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_h3",
+      "sourceObjectName": "_HLAcc1_H3",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_h3shape",
+      "sourceObjectName": "_HLAcc1_H3Shape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_h4",
+      "sourceObjectName": "_HLAcc1_H4",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_h4shape",
+      "sourceObjectName": "_HLAcc1_H4Shape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_h5",
+      "sourceObjectName": "_HLAcc1_H5",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hlacc1_h5shape",
+      "sourceObjectName": "_HLAcc1_H5Shape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_neckz_1",
+      "sourceObjectName": "_neckz_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_rimc_1",
+      "sourceObjectName": "_RimC_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_round_1",
+      "sourceObjectName": "_Round_1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_round_2",
+      "sourceObjectName": "_Round_2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_skinnyacc_12",
+      "sourceObjectName": "_SkinnyAcc_12",
+      "required": false
+    },
+    {
+      "stableId": "antelope_skinnyacc_14",
+      "sourceObjectName": "_SkinnyAcc_14",
+      "required": false
+    },
+    {
+      "stableId": "antelope_skinnyacc_1n1",
+      "sourceObjectName": "_SkinnyAcc_1N1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_skinnyacc_20",
+      "sourceObjectName": "_SkinnyAcc_20",
+      "required": false
+    },
+    {
+      "stableId": "antelope_skinnyacc_21",
+      "sourceObjectName": "_SkinnyAcc_21",
+      "required": false
+    },
+    {
+      "stableId": "antelope_skinnyacc_2n1",
+      "sourceObjectName": "_SkinnyAcc_2N1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_skinnyacc_3n1",
+      "sourceObjectName": "_SkinnyAcc_3N1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_skinnyacc_4n1",
+      "sourceObjectName": "_SkinnyAcc_4N1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_skinnyacc_5n1",
+      "sourceObjectName": "_SkinnyAcc_5N1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_skinnyacc_6n1",
+      "sourceObjectName": "_SkinnyAcc_6N1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_skinnyacc_6n1shape",
+      "sourceObjectName": "_SkinnyAcc_6N1Shape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_tail_alien0",
+      "sourceObjectName": "_Tail_Alien0",
+      "required": false
+    },
+    {
+      "stableId": "antelope_tail_alien1",
+      "sourceObjectName": "_Tail_Alien1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_tail_alien2",
+      "sourceObjectName": "_Tail_Alien2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_tail_alien3",
+      "sourceObjectName": "_Tail_Alien3",
+      "required": false
+    },
+    {
+      "stableId": "antelope_tail_alien4",
+      "sourceObjectName": "_Tail_Alien4",
+      "required": false
+    },
+    {
+      "stableId": "antelope_tail_alien5",
+      "sourceObjectName": "_Tail_Alien5",
+      "required": false
+    },
+    {
+      "stableId": "antelope_deereyes",
+      "sourceObjectName": "DeerEyes",
+      "required": false
+    },
+    {
+      "stableId": "antelope_eyeslong",
+      "sourceObjectName": "EyesLong",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gdeyes",
+      "sourceObjectName": "GDEyes",
+      "required": false
+    },
+    {
+      "stableId": "antelope_gdeyes1",
+      "sourceObjectName": "GDEyes1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hbteethbot1",
+      "sourceObjectName": "HBTeethBot1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hbteethbot2",
+      "sourceObjectName": "HBTeethBot2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hbteethtop1",
+      "sourceObjectName": "HBTeethTop1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hbteethtop2",
+      "sourceObjectName": "HBTeethTop2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hbtongue1",
+      "sourceObjectName": "HBTongue1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hbtongue2",
+      "sourceObjectName": "HBTongue2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdteethbot1",
+      "sourceObjectName": "HDTeethbot1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdteethbot2",
+      "sourceObjectName": "HDTeethBot2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdteethtop1",
+      "sourceObjectName": "HDTeethTop1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdteethtop2",
+      "sourceObjectName": "HDTeethTop2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdtongue1",
+      "sourceObjectName": "HDTongue1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hdtongue2",
+      "sourceObjectName": "HDTongue2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hgdteethbot1",
+      "sourceObjectName": "HGDTeethBot1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hgdteethbot2",
+      "sourceObjectName": "HGDTeethBot2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hgdteethtop1",
+      "sourceObjectName": "HGDTeethTop1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hgdteethtop2",
+      "sourceObjectName": "HGDTeethTop2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hgdtongue1",
+      "sourceObjectName": "HGDTongue1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_hgdtongue2",
+      "sourceObjectName": "HGDTongue2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_petacc_deer",
+      "sourceObjectName": "PETACC_deer",
+      "required": false
+    },
+    {
+      "stableId": "antelope_petacc_fat",
+      "sourceObjectName": "PETACC_fat",
+      "required": false
+    },
+    {
+      "stableId": "antelope_petacc_skinny",
+      "sourceObjectName": "PETACC_skinny",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_deeracc_1n2",
+      "sourceObjectName": "SUB1_DeerAcc_1N2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_deeracc_2n2",
+      "sourceObjectName": "SUB1_DeerAcc_2N2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_deeracc_6n2",
+      "sourceObjectName": "SUB1_DeerAcc_6N2",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_deeracc_6n2shape",
+      "sourceObjectName": "SUB1_DeerAcc_6N2Shape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_fatacc_1n",
+      "sourceObjectName": "SUB1_FatAcc_1N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_fatacc_2n",
+      "sourceObjectName": "SUB1_FatAcc_2N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_fatacc_6n",
+      "sourceObjectName": "SUB1_FatAcc_6N",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_fatacc_6nshape",
+      "sourceObjectName": "SUB1_FatAcc_6NShape",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_head_long",
+      "sourceObjectName": "SUB1_Head_Long",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_skinnyacc_1n1",
+      "sourceObjectName": "SUB1_SkinnyAcc_1N1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_skinnyacc_2n1",
+      "sourceObjectName": "SUB1_SkinnyAcc_2N1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_skinnyacc_6n1",
+      "sourceObjectName": "SUB1_SkinnyAcc_6N1",
+      "required": false
+    },
+    {
+      "stableId": "antelope_sub1_skinnyacc_6n1shape",
+      "sourceObjectName": "SUB1_SkinnyAcc_6N1Shape",
+      "required": false
+    }
+  ]
+}

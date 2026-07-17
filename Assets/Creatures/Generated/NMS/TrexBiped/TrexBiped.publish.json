@@ -1,0 +1,73 @@
+{
+  "pipelineVersion": 3,
+  "familyId": "TrexBiped",
+  "skeletonHash": "5d4b4f1a769c46de0ffd492c0408a4407ebad63a3990e880414a0ab9cd01639b",
+  "validationHash": "4da65ab58b7d8876e54c3f17ce262b13ffd87814980dbf10eb9a99d763f36844",
+  "sourceKind": "Fbx",
+  "sourceModelAsset": "Assets/Creatures/Generated/NMS/TrexBiped/TrexBiped.fbx",
+  "sourcePrefabAsset": "",
+  "familyManifestAsset": "Assets/Creatures/Generated/NMS/TrexBiped/TrexBiped_family.json",
+  "skeletonManifestAsset": "Assets/Creatures/Generated/NMS/TrexBiped/TrexBiped_skeleton.json",
+  "locomotionType": "Biped",
+  "legCount": 2,
+  "allowRareModules": false,
+  "excludedModulePrefixes": [],
+  "selectionWeight": 1,
+  "walkSpeed": 1.4,
+  "surfaceRootOffset": -1.0,
+  "importScale": 1.0,
+  "importEuler": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "localForwardAxis": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -1.0
+  },
+  "actions": [
+    {
+      "key": "idle",
+      "clipName": "TrexBiped_IDLE_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/TrexBiped/TrexBiped.fbx",
+      "frames": 751,
+      "loop": true
+    },
+    {
+      "key": "walk",
+      "clipName": "TrexBiped_WALK_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/TrexBiped/TrexBiped.fbx",
+      "frames": 97,
+      "loop": true
+    },
+    {
+      "key": "run",
+      "clipName": "TrexBiped_RUN_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/TrexBiped/TrexBiped.fbx",
+      "frames": 49,
+      "loop": true
+    }
+  ],
+  "loadBearingChains": [
+    {
+      "id": "Leg1",
+      "bones": [
+        "LLegJNT",
+        "LKneeJNT",
+        "LAnkleJNT",
+        "LFootJNT"
+      ]
+    },
+    {
+      "id": "Leg2",
+      "bones": [
+        "RRegJNT",
+        "RKneeJNT",
+        "RAnkleJNT",
+        "RFootJNT"
+      ]
+    }
+  ],
+  "sourceFbxSha256": "81b9c83eeeb000eec608084baac02da95965758677077689412ee6039854b807"
+}

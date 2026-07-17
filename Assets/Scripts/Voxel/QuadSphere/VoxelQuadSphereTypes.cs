@@ -26,35 +26,20 @@ public struct QuadSphereVoxelAddress : IEquatable<QuadSphereVoxelAddress>
     }
 
     public bool Equals(QuadSphereVoxelAddress other)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(191);}
-    try
     {
-        return Face == other.Face && U == other.U && V == other.V && Depth == other.Depth;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return Face == other.Face && U == other.U && V == other.V && Depth == other.Depth;
+    
+}
 
     public override bool Equals(object obj)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(192);}
-    try
     {
-        return obj is QuadSphereVoxelAddress other && Equals(other);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return obj is QuadSphereVoxelAddress other && Equals(other);
+    
+}
 
     public override int GetHashCode()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(193);}
-    try
     {
-        unchecked
+unchecked
         {
             int hash = (int)Face;
             hash = (hash * 397) ^ U;
@@ -62,11 +47,8 @@ public struct QuadSphereVoxelAddress : IEquatable<QuadSphereVoxelAddress>
             hash = (hash * 397) ^ Depth;
             return hash;
         }
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 }
 
 public struct QuadSphereChunkKey : IEquatable<QuadSphereChunkKey>
@@ -85,35 +67,20 @@ public struct QuadSphereChunkKey : IEquatable<QuadSphereChunkKey>
     }
 
     public bool Equals(QuadSphereChunkKey other)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(194);}
-    try
     {
-        return Face == other.Face && ChunkU == other.ChunkU && ChunkV == other.ChunkV && ChunkDepth == other.ChunkDepth;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return Face == other.Face && ChunkU == other.ChunkU && ChunkV == other.ChunkV && ChunkDepth == other.ChunkDepth;
+    
+}
 
     public override bool Equals(object obj)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(195);}
-    try
     {
-        return obj is QuadSphereChunkKey other && Equals(other);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return obj is QuadSphereChunkKey other && Equals(other);
+    
+}
 
     public override int GetHashCode()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(196);}
-    try
     {
-        unchecked
+unchecked
         {
             int hash = (int)Face;
             hash = (hash * 397) ^ ChunkU;
@@ -121,9 +88,6 @@ public struct QuadSphereChunkKey : IEquatable<QuadSphereChunkKey>
             hash = (hash * 397) ^ ChunkDepth;
             return hash;
         }
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 }

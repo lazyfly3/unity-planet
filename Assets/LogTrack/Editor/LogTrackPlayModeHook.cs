@@ -1,47 +1,33 @@
 #if UNITY_EDITOR
-using System.IO;
 using UnityEditor;
-using UnityEngine;
 
-/// <summary>
-/// Editor Play 模式钩子：与 LogTrackPhaseDriver 互斥，不再驱动 EnterTrackFrame。
-/// 仅在未启用 AutoStart 且缺少 PhaseDriver 时作导出兜底。
-/// </summary>
-[InitializeOnLoad]
-public static class LogTrackPlayModeHook
+namespace LogTrack.Editor
 {
-    static LogTrackPlayModeHook()
+    /// <summary>
+    /// Play 模式切换：Stop 后（PhaseDriver OnDestroy 导出完成）弹窗提示日志路径。
+    /// </summary>
+    [InitializeOnLoad]
+    public static class LogTrackPlayModeHook
     {
-        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-    }
-
-    private static void OnPlayModeStateChanged(PlayModeStateChange state)
-    {
-        if (state == PlayModeStateChange.EnteredPlayMode)
+        static LogTrackPlayModeHook()
         {
-            if (LogTrackSettings.AutoStartOnPlay)
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+        }
+
+        private static void OnPlayModeStateChanged(PlayModeStateChange state)
+        {
+            if (state == PlayModeStateChange.EnteredPlayMode)
             {
-                Debug.Log("[LogTrackPlayModeHook] AutoStart enabled — PhaseDriver owns recording.");
+                LogTrackLastExport.Clear();
+                LogTrackRecordingExport.Reset();
+                EditorApplication.delayCall += LogTrackRuntimePanel.TryStartPendingRecording;
+                return;
             }
-            return;
-        }
 
-        if (state != PlayModeStateChange.ExitingPlayMode) return;
-        if (LogTrackSettings.AutoStartOnPlay) return;
-
-        var pdbPath = Path.Combine(Application.dataPath, "LogTrackGenerated", "LogPdb.pdb.json");
-        if (!File.Exists(pdbPath))
-        {
-            Debug.LogWarning("[LogTrackPlayModeHook] Skip export: missing " + pdbPath);
-            return;
-        }
-
-        if (!FSPDebuger.EnableLogTrackInternal) return;
-
-        var exported = FSPDebuger.SaveTrackAsText(pdbPath);
-        if (!string.IsNullOrEmpty(exported))
-        {
-            Debug.Log("[LogTrackPlayModeHook] Exported track: " + exported);
+            if (state == PlayModeStateChange.EnteredEditMode)
+            {
+                LogTrackExportNotifier.ShowPendingIfAny();
+            }
         }
     }
 }

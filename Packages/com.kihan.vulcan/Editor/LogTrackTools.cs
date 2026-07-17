@@ -81,6 +81,47 @@ namespace KDL.Editor.Vulcan
         }
 
         [AICallable(
+            "Return the N newest LogTrack text logs under persistentDataPath/LogTrack, " +
+                          "ordered by LastWriteTimeUtc descending. Args: count=2 (1..20).",
+            Category = "Vulcan.LogTrack")]
+        public static string ListRecentLogTrackLogPaths(int count = 1)
+        {
+            count = Math.Max(1, Math.Min(count, 20));
+            string dir = Path.Combine(Application.persistentDataPath, "LogTrack");
+            if (!Directory.Exists(dir))
+            {
+                return _Json(new
+                {
+                    ok = true,
+                    log_dir = dir,
+                    count = 0,
+                    logs = new object[0],
+                    reason = "log_dir_not_found",
+                });
+            }
+            var files = new DirectoryInfo(dir)
+                .GetFiles("*LogTrack*.log", SearchOption.TopDirectoryOnly)
+                .OrderByDescending(f => f.LastWriteTimeUtc)
+                .Take(count)
+                .ToArray();
+            var list = files.Select((f, i) => new
+            {
+                path = f.FullName,
+                rank = i + 1,
+                size_bytes = f.Length,
+                mtime_utc_iso = f.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                name = f.Name,
+            }).ToArray();
+            return _Json(new
+            {
+                ok = true,
+                log_dir = dir,
+                count = list.Length,
+                logs = list,
+            });
+        }
+
+        [AICallable(
             "Read logtrack_benchmark.json under the LogTrack log directory. " +
                           "Returns insert_ms / peak_memory_bytes / export_file_bytes / parse_ms.",
             Category = "Vulcan.LogTrack")]
@@ -213,21 +254,31 @@ namespace KDL.Editor.Vulcan
         // ------------------------------------------------------------------
 
         [AICallable(
-            "Trigger FSPDebugerTool.InsertLogTrack (the new LogTrack plugin's instrumentation entry). " +
-                          "Only works when the project has the new LogTrack plugin installed.",
+            "Trigger LogTrack IL instrumentation (LogTrackBatch.InsertLogTrack).",
             Category = "Vulcan.LogTrack",
             Kind = ToolKind.Write)]
         public static string InsertLogTrack()
         {
-            // Look up FSPDebugerTool type by name across all loaded assemblies.
-            Type t = _FindTypeByName("FSPDebugerTool");
+            Type t = _FindTypeByName("LogTrackBatch");
+            if (t == null)
+            {
+                t = _FindTypeByName("LogTrack.Editor.LogTrackBatch");
+            }
+            if (t == null)
+            {
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    t = asm.GetType("LogTrack.Editor.LogTrackBatch", false);
+                    if (t != null) break;
+                }
+            }
             if (t == null)
             {
                 return _Json(new
                 {
                     ok = false,
-                    error = "FSPDebugerTool type not found in loaded assemblies",
-                    hint = "Install the new LogTrack Unity plugin (D:\\logtrack学习\\LogTrackUnity) into this project.",
+                    error = "LogTrackBatch type not found in loaded assemblies",
+                    hint = "Install the LogTrack Unity plugin and let Unity compile LogTrack.Editor first.",
                 });
             }
             MethodInfo mi = t.GetMethod("InsertLogTrack", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
@@ -236,8 +287,8 @@ namespace KDL.Editor.Vulcan
                 return _Json(new
                 {
                     ok = false,
-                    error = "FSPDebugerTool.InsertLogTrack method not found",
-                    hint = "Check the LogTrack plugin version; the new version exposes a static InsertLogTrack entry.",
+                    error = "LogTrackBatch.InsertLogTrack method not found",
+                    hint = "Check the LogTrack plugin version; LogTrack.Editor exposes static InsertLogTrack.",
                 });
             }
             try

@@ -41,28 +41,16 @@ public class VoxelWorld : MonoBehaviour
     public float GravitationalParameter => PlanetGravity.ComputeGravitationalParameter(surfaceGravity, planetRadius);
 
     public Vector3 GetPlanetCenterWorld()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(154);}
-    try
     {
-        return transform.TransformPoint(planetCenterLocal);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return transform.TransformPoint(planetCenterLocal);
+    
+}
 
     public Vector3 GetPlanetCenterLocal()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(155);}
-    try
     {
-        return planetCenterLocal;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return planetCenterLocal;
+    
+}
 
     void Awake()
     {
@@ -94,11 +82,8 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public void GenerateEntirePlanet()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(156);}
-    try
     {
-        if (!usePlanetGeneration)
+if (!usePlanetGeneration)
             return;
 
         int bound = Mathf.CeilToInt(planetRadius);
@@ -122,18 +107,12 @@ public class VoxelWorld : MonoBehaviour
         }
 
         Debug.Log($"星球全量生成完成：{(maxChunk.x - minChunk.x + 1) * (maxChunk.y - minChunk.y + 1) * (maxChunk.z - minChunk.z + 1)} 个 Chunk");
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void UpdateStreaming(Vector3 worldPosition)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(157);}
-    try
     {
-        if (usePlanetGeneration)
+if (usePlanetGeneration)
             return;
 
         Vector3 localPosition = transform.InverseTransformPoint(worldPosition);
@@ -157,11 +136,8 @@ public class VoxelWorld : MonoBehaviour
 
         foreach (Vector3Int coord in desiredChunks)
             LoadChunk(coord);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     HashSet<Vector3Int> BuildDesiredChunks(Vector3Int centerChunk)
     {
@@ -251,16 +227,10 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public byte GetVoxel(int worldX, int worldY, int worldZ)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(158, (int)worldX, (int)worldY, (int)worldZ);}
-    try
     {
-        return SampleVoxelAt(worldX, worldY, worldZ);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return SampleVoxelAt(worldX, worldY, worldZ);
+    
+}
 
     byte SampleVoxelAt(int worldX, int worldY, int worldZ)
     {
@@ -287,11 +257,8 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public bool SetVoxel(int worldX, int worldY, int worldZ, byte value)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(159, (int)worldX, (int)worldY, (int)worldZ, (int)value);}
-    try
     {
-        if (!usePlanetGeneration && !VoxelTypes.IsInsideHeight(worldY))
+if (!usePlanetGeneration && !VoxelTypes.IsInsideHeight(worldY))
             return false;
 
         Vector3Int chunkCoord = VoxelTypes.WorldToChunkCoord(worldX, worldY, worldZ);
@@ -304,23 +271,14 @@ public class VoxelWorld : MonoBehaviour
         chunk.SetLocalVoxel(localCoord.x, localCoord.y, localCoord.z, value);
         MarkChunkAndNeighborsDirty(chunkCoord, localCoord);
         return true;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public bool DigVoxel(int worldX, int worldY, int worldZ)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(160, (int)worldX, (int)worldY, (int)worldZ);}
-    try
     {
-        return SetVoxel(worldX, worldY, worldZ, VoxelTypes.Air);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return SetVoxel(worldX, worldY, worldZ, VoxelTypes.Air);
+    
+}
 
     void EnsureChunkLoaded(Vector3Int chunkCoord)
     {
@@ -332,11 +290,8 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public List<ChunkSaveEntry> GetModifiedChunkSnapshots()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(161);}
-    try
     {
-        List<ChunkSaveEntry> result = new List<ChunkSaveEntry>();
+List<ChunkSaveEntry> result = new List<ChunkSaveEntry>();
         HashSet<Vector3Int> added = new HashSet<Vector3Int>();
 
         foreach (VoxelChunk chunk in chunks.Values)
@@ -357,11 +312,8 @@ public class VoxelWorld : MonoBehaviour
         }
 
         return result;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     static ChunkSaveEntry CreateSaveEntry(Vector3Int coord, byte[] voxels)
     {
@@ -375,11 +327,8 @@ public class VoxelWorld : MonoBehaviour
     }
 
     public void ApplySaveData(VoxelWorldSaveData data)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(162);}
-    try
     {
-        if (data == null)
+if (data == null)
             return;
 
         seed = data.seed;
@@ -399,11 +348,8 @@ public class VoxelWorld : MonoBehaviour
                 modifiedChunkCache[coord] = saved;
             }
         }
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void UnloadAllChunks()
     {

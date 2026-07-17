@@ -1,0 +1,133 @@
+{
+  "pipelineVersion": 3,
+  "familyId": "SpiderOctopod",
+  "skeletonHash": "8a1af638f7f1b577aaadd755a74d8bd5c811644494a9296e3a4e7333c422e596",
+  "validationHash": "4cd7e36707cc9041854bdfae5dc891bf1a74deca79d503898da2e5656f5f17fc",
+  "sourceKind": "Fbx",
+  "sourceModelAsset": "Assets/Creatures/Generated/NMS/SpiderOctopod/SpiderOctopod.fbx",
+  "sourcePrefabAsset": "",
+  "familyManifestAsset": "Assets/Creatures/Generated/NMS/SpiderOctopod/SpiderOctopod_family.json",
+  "skeletonManifestAsset": "Assets/Creatures/Generated/NMS/SpiderOctopod/SpiderOctopod_skeleton.json",
+  "locomotionType": "Octopod",
+  "surfaceMode": "Ground",
+  "variantIds": [
+    "Spider",
+    "SpiderFloat"
+  ],
+  "legCount": 8,
+  "allowRareModules": false,
+  "excludedModulePrefixes": [],
+  "selectionWeight": 1,
+  "walkSpeed": 1.2,
+  "surfaceRootOffset": -1.0,
+  "hoverClearance": 0.0,
+  "importScale": 1.0,
+  "importEuler": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "localForwardAxis": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -1.0
+  },
+  "actions": [
+    {
+      "key": "idle",
+      "clipName": "SpiderOctopod_IDLE_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/SpiderOctopod/SpiderOctopod.fbx",
+      "frames": 301,
+      "loop": true
+    },
+    {
+      "key": "walk",
+      "clipName": "SpiderOctopod_WALK_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/SpiderOctopod/SpiderOctopod.fbx",
+      "frames": 65,
+      "loop": true
+    },
+    {
+      "key": "run",
+      "clipName": "SpiderOctopod_RUN_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/SpiderOctopod/SpiderOctopod.fbx",
+      "frames": 25,
+      "loop": true
+    }
+  ],
+  "loadBearingChains": [
+    {
+      "id": "Leg1",
+      "bones": [
+        "RFirstLeg1JNT",
+        "RFirstLeg2JNT",
+        "RFirstLeg3JNT",
+        "RFirstLeg4END"
+      ]
+    },
+    {
+      "id": "Leg2",
+      "bones": [
+        "RSecondLeg1JNT",
+        "RSecondLeg2JNT",
+        "RSecondLeg3JNT",
+        "RSecondLegEND"
+      ]
+    },
+    {
+      "id": "Leg3",
+      "bones": [
+        "RThirdLeg1JNT",
+        "RThirdLeg2JNT",
+        "RThirdLeg3JNT",
+        "RThirdLeg4END"
+      ]
+    },
+    {
+      "id": "Leg4",
+      "bones": [
+        "RFourthLeg1JNT",
+        "RFourthLeg2JNT",
+        "RFourthLeg3JNT",
+        "RFourthLeg4END"
+      ]
+    },
+    {
+      "id": "Leg5",
+      "bones": [
+        "LFirstLeg1JNT",
+        "LFirstLeg2JNT",
+        "LFirstLeg3JNT",
+        "LFirstLeg4END"
+      ]
+    },
+    {
+      "id": "Leg6",
+      "bones": [
+        "LSecondLeg1JNT",
+        "LSecondLeg2JNT",
+        "LSecondLeg3JNT",
+        "LSecondLegEND"
+      ]
+    },
+    {
+      "id": "Leg7",
+      "bones": [
+        "LThirdLeg1JNT",
+        "LThirdLeg2JNT",
+        "LThirdLeg3JNT",
+        "LThirdLeg4END"
+      ]
+    },
+    {
+      "id": "Leg8",
+      "bones": [
+        "LFourthLeg1JNT",
+        "LFourthLeg2JNT",
+        "LFourthLeg3JNT",
+        "LFourthLeg4END"
+      ]
+    }
+  ],
+  "sourceFbxSha256": "7a80cbc8c271b9d615f350a0e769f50d49fceec7842d228393fde603541595fd"
+}

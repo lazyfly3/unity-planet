@@ -52,103 +52,61 @@ public sealed class PauseMenuController : MonoBehaviour
     }
 
     public void ContinueGame()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(102);}
-    try
     {
-        SetPaused(false);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+SetPaused(false);
+    
+}
 
     public void OpenSettings()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(103);}
-    try
     {
-        mainPanel.SetActive(false);
+mainPanel.SetActive(false);
         settingsPanel.SetActive(true);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void ShowMainPanel()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(104);}
-    try
     {
-        settingsPanel.SetActive(false);
+settingsPanel.SetActive(false);
         mainPanel.SetActive(true);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void ApplyVolume(float value)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(105, (int)value);}
-    try
     {
-        value = Mathf.Clamp01(value);
+value = Mathf.Clamp01(value);
         AudioListener.volume = value;
         PlayerPrefs.SetFloat("MasterVolume", value);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void ApplySensitivity(float value)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(106, (int)value);}
-    try
     {
-        value = Mathf.Clamp(value, 0.2f, 5f);
+value = Mathf.Clamp(value, 0.2f, 5f);
         if (playerController == null)
             playerController = FindObjectOfType<VoxelPlanetPlayerController>();
         if (playerController != null)
             playerController.LookSpeed = value;
         PlayerPrefs.SetFloat("MouseSensitivity", value);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void ApplyFullscreen(bool fullscreen)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(107, (fullscreen?1:0));}
-    try
     {
-        Screen.fullScreen = fullscreen;
+Screen.fullScreen = fullscreen;
         PlayerPrefs.SetInt("Fullscreen", fullscreen ? 1 : 0);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void ExitToMainMenu()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(108);}
-    try
     {
-        RestoreGameState();
+RestoreGameState();
         GalaxyTravelManager manager = GalaxyTravelManager.Instance;
         if (manager != null)
             manager.ReturnToMainMenu(startMenuSceneName);
         else
             SceneManager.LoadScene(startMenuSceneName, LoadSceneMode.Single);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void SetPaused(bool shouldPause)
     {

@@ -6,11 +6,8 @@ public class BuildingFoundationPiece : MonoBehaviour
     public Vector2Int Grid { get; private set; }
 
     public static BuildingFoundationPiece Create(BuildingAnchor anchor, Vector2Int grid, Material material)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(23);}
-    try
     {
-        var pieceObject = new GameObject($"Foundation_{grid.x}_{grid.y}");
+var pieceObject = new GameObject($"Foundation_{grid.x}_{grid.y}");
         pieceObject.transform.SetParent(anchor.transform, false);
 
         var piece = pieceObject.AddComponent<BuildingFoundationPiece>();
@@ -20,18 +17,12 @@ public class BuildingFoundationPiece : MonoBehaviour
         piece.AlignToGrid(grid);
 
         return piece;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void BuildVisuals(Material material)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(24);}
-    try
     {
-        for (int i = transform.childCount - 1; i >= 0; i--)
+for (int i = transform.childCount - 1; i >= 0; i--)
             Destroy(transform.GetChild(i).gameObject);
 
         float cellSize = Anchor.CellSize;
@@ -46,11 +37,8 @@ public class BuildingFoundationPiece : MonoBehaviour
         CreateBox("Pillar_NW", new Vector3(-cornerOffset, pillarCenterY, cornerOffset), new Vector3(pillarSize, pillarHeight, pillarSize), material, false);
         CreateBox("Pillar_SE", new Vector3(cornerOffset, pillarCenterY, -cornerOffset), new Vector3(pillarSize, pillarHeight, pillarSize), material, false);
         CreateBox("Pillar_SW", new Vector3(-cornerOffset, pillarCenterY, -cornerOffset), new Vector3(pillarSize, pillarHeight, pillarSize), material, false);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void CreateBox(string objectName, Vector3 localPosition, Vector3 localScale, Material material, bool enableCollider)
     {
@@ -68,18 +56,12 @@ public class BuildingFoundationPiece : MonoBehaviour
     }
 
     public void AlignToGrid(Vector2Int grid)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(25);}
-    try
     {
-        Grid = grid;
+Grid = grid;
         if (Anchor == null)
             return;
 
         transform.localPosition = Anchor.GridToLocalPosition(grid);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 }

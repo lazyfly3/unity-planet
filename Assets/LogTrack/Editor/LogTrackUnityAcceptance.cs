@@ -11,7 +11,7 @@ using UnityEngine.SceneManagement;
 namespace LogTrack.Editor
 {
     /// <summary>
-    /// Unity BatchMode 验收：插桩 → Play N 帧 → 自动导出 → 校验 log 格式。
+    /// Unity BatchMode 验收：IL 插桩 → Play N 帧 → 自动导出 → 校验 log 格式。
     /// 命令: Unity -batchmode -executeMethod LogTrack.Editor.LogTrackUnityAcceptance.Run -projectPath ...
     /// </summary>
     public static class LogTrackUnityAcceptance
@@ -51,12 +51,22 @@ namespace LogTrack.Editor
             LogTrackSettings.PdbRelativePath = LogTrackSettings.DefaultPdbRelativePath;
             LogTrackProjectSettings.ClearAutoInstrumentOverride();
 
-            if (!RunInsert())
-            {
-                Fail("insert_logtrack failed");
-                return;
-            }
+            LogTrackCompileWait.RequestCompileAndWait(
+                () =>
+                {
+                    if (!RunInsert())
+                    {
+                        Fail("insert_logtrack failed");
+                        return;
+                    }
 
+                    EnterPlayAfterInsert();
+                },
+                error => Fail(error));
+        }
+
+        private static void EnterPlayAfterInsert()
+        {
             var scenePath = "Assets/Scenes/SampleScene.unity";
             if (!File.Exists(scenePath))
             {
@@ -93,38 +103,37 @@ namespace LogTrack.Editor
 
         private static bool RunInsert()
         {
-            var scriptsFull = Path.GetFullPath("Assets/Scripts");
-            if (!scriptsFull.EndsWith(Path.DirectorySeparatorChar.ToString()))
-            {
-                scriptsFull += Path.DirectorySeparatorChar;
-            }
-
-            var settingPath = Path.Combine(scriptsFull, "LogTrackSetting.txt");
-            if (!File.Exists(settingPath))
+            if (!LogTrackInsertSettings.TryLoad(out var setting))
             {
                 Debug.LogError("[LogTrackUnityAcceptance] Missing LogTrackSetting.txt");
                 return false;
             }
 
-            var setting = new LogTrackSetting();
-            setting.Load(scriptsFull, "LogTrackSetting.txt");
+            var assemblies = LogTrackIlAssemblyCatalog.ResolveTargetAssemblies(setting);
+            if (assemblies.Length == 0)
+            {
+                assemblies = new[] { "Assembly-CSharp" };
+            }
 
             var pdbFull = Path.GetFullPath("Assets/LogTrackGenerated");
-            if (!pdbFull.EndsWith(Path.DirectorySeparatorChar.ToString()))
-            {
-                pdbFull += Path.DirectorySeparatorChar;
-            }
-            Directory.CreateDirectory(pdbFull.TrimEnd(Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(pdbFull);
 
-            FSPDebugerTool.InsertLogTrack(
-                scriptsFull,
+            var result = LogTrackIlInstrumenter.PatchAssemblies(
+                assemblies,
                 pdbFull,
-                setting.logTrackClass,
-                setting.logTrackMacro,
-                new[] { "LogTrackDemoRunner.cs" });
+                setting.logTrackClass);
 
-            AssetDatabase.Refresh();
-            Debug.Log("[LogTrackUnityAcceptance] Insert complete.");
+            if (!result.success)
+            {
+                Debug.LogError("[LogTrackUnityAcceptance] IL insert failed: " + (result.error ?? "unknown"));
+                return false;
+            }
+
+            Debug.Log(
+                "[LogTrackUnityAcceptance] IL insert complete. methods="
+                + result.patchedMethods
+                + " assemblies="
+                + string.Join(",", result.patchedAssemblies));
             return true;
         }
 

@@ -12,54 +12,30 @@ public sealed class SphericalGravitySource : MonoBehaviour
     public float GravitationalParameter => PlanetGravity.ComputeGravitationalParameter(surfaceGravity, radius);
 
     public Vector3 GetUp(Vector3 worldPosition)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(47);}
-    try
     {
-        return PlanetGravity.GetUp(worldPosition, Center);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return PlanetGravity.GetUp(worldPosition, Center);
+    
+}
 
     public Vector3 GetGravity(Vector3 worldPosition)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(48);}
-    try
     {
-        return PlanetGravity.GetGravitationalAcceleration(worldPosition, Center, GravitationalParameter);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return PlanetGravity.GetGravitationalAcceleration(worldPosition, Center, GravitationalParameter);
+    
+}
 
     public Vector3 GetSurfacePoint(Vector3 direction)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(49);}
-    try
     {
-        Vector3 normalized = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.up;
+Vector3 normalized = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.up;
         return Center + normalized * radius;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void Configure(float newRadius, float newSurfaceGravity)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(50, (int)newRadius, (int)newSurfaceGravity);}
-    try
     {
-        radius = Mathf.Max(0.1f, newRadius);
+radius = Mathf.Max(0.1f, newRadius);
         surfaceGravity = Mathf.Max(0f, newSurfaceGravity);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void OnValidate()
     {

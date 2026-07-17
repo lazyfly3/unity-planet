@@ -14,7 +14,18 @@ public static class FSPDebuger
     public static bool EnableLogFrameVerbose = false;
     public static int TrackBufferSize = 100;
     public static int ListLogTrackCapacityStep = 1024;
-    public static bool EnableLogTrackInternal = false;
+    private static bool _enableLogTrackInternal;
+
+    public static bool EnableLogTrackInternal
+    {
+        get => _enableLogTrackInternal;
+        set => _enableLogTrackInternal = value;
+    }
+
+    private static bool _trackSessionActive;
+
+    /// <summary>本次 Play 是否已调用 BeginTrack。</summary>
+    public static bool HasTrackSession => _trackSessionActive;
 
     private static int ms_currFrameIndex;
     private static LogTrackLoopQueue ms_currLogTrackQueue = new LogTrackLoopQueue(TrackBufferSize);
@@ -73,13 +84,22 @@ public static class FSPDebuger
         ms_depthStack = 0;
         ms_currentPhase = LogTrackPhase.Update;
         EnableLogTrackInternal = EnableLogTrack;
+        _trackSessionActive = true;
         LogTrackStatistics.BeginTrack();
     }
 
     public static void EndTrack()
     {
         EnableLogTrackInternal = false;
+        _trackSessionActive = false;
         LogTrackStatistics.EndTrack();
+    }
+
+    /// <summary>导出完成后关闭会话，不再重复 EndTrack 统计。</summary>
+    public static void CloseTrackSession()
+    {
+        EnableLogTrackInternal = false;
+        _trackSessionActive = false;
     }
 
     public static LogTrackFile CreateTrackFile(int errorFrameIndex = 0)

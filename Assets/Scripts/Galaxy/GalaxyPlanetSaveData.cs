@@ -19,6 +19,10 @@ public sealed class GalaxyPlanetSaveData
     public bool hasFullResourceSnapshot;
     public int resourceConfigurationHash;
     public GalaxyResourceSaveEntry[] resources;
+    public string[] harvestedSurfacePropIds;
+    public bool hasFullSurfacePropSnapshot;
+    public int surfacePropConfigurationHash;
+    public GalaxySurfacePropSaveEntry[] surfaceProps;
     public GalaxyBuildingSaveEntry[] buildings;
     public GalaxyRiverSaveData riverData;
 }
@@ -59,4 +63,16 @@ public sealed class GalaxyResourceSaveEntry
     public Vector3 localPosition;
     public Quaternion localRotation;
     public float minimumSpacing;
+}
+
+[Serializable]
+public sealed class GalaxySurfacePropSaveEntry
+{
+    public string catalogId;
+    public string instanceId;
+    public Vector3 localPosition;
+    public Quaternion localRotation;
+    public Vector3 localScale = Vector3.one;
+    public float minimumSpacing;
+    public bool harvestable;
 }

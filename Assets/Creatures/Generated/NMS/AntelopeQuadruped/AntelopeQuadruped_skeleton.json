@@ -1,0 +1,8 @@
+{
+  "pipelineVersion": 3,
+  "rigBaseline": "legacy-approved-native",
+  "familyId": "AntelopeQuadruped",
+  "skeletonHash": "63711342dfd398be3914320e47fc0048800d1e13b52f9fd097e90a89d976fa1f",
+  "locomotionType": "Quadruped",
+  "legCount": 4
+}

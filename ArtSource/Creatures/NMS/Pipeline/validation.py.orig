@@ -1,0 +1,521 @@
+"""Numerical validation for reviewable inverse-bind creature families."""
+
+from __future__ import annotations
+
+import json
+import math
+
+import bpy
+from mathutils import Vector
+
+
+def triangle_area(a, b, c):
+    return 0.5 * (b - a).cross(c - a).length
+
+
+def sampled(sequence, limit=8000):
+    if len(sequence) <= limit:
+        return list(sequence)
+    step = len(sequence) / limit
+    return [sequence[min(len(sequence) - 1, int(index * step))] for index in range(limit)]
+
+
+def sampled_frames(frame_count, limit=24):
+    if frame_count <= limit:
+        return list(range(frame_count))
+    return sorted({
+        min(frame_count - 1, round(index * (frame_count - 1) / (limit - 1)))
+        for index in range(limit)
+    })
+
+
+def evaluated_vertices(obj, dependency_graph):
+    evaluated = obj.evaluated_get(dependency_graph)
+    mesh = evaluated.to_mesh()
+    return evaluated, mesh
+
+
+def validate_rest_pose(armature, meshes):
+    old_action = armature.animation_data.action if armature.animation_data else None
+    if armature.animation_data:
+        armature.animation_data.action = None
+    for pose in armature.pose.bones:
+        pose.matrix_basis.identity()
+    bpy.context.view_layer.update()
+    dependency_graph = bpy.context.evaluated_depsgraph_get()
+    maximum_error = 0.0
+    for obj in meshes:
+        evaluated, mesh = evaluated_vertices(obj, dependency_graph)
+        try:
+            if len(mesh.vertices) != len(obj.data.vertices):
+                raise RuntimeError(f"{obj.name}: rest vertex count changed")
+            for index in range(len(mesh.vertices)):
+                maximum_error = max(
+                    maximum_error,
+                    (mesh.vertices[index].co - obj.data.vertices[index].co).length,
+                )
+        finally:
+            evaluated.to_mesh_clear()
+    if armature.animation_data:
+        armature.animation_data.action = old_action
+    return maximum_error
+
+
+def reference_geometry(meshes):
+    references = {}
+    for obj in meshes:
+        obj.data.calc_loop_triangles()
+        edges = sampled(obj.data.edges)
+        triangles = sampled(obj.data.loop_triangles)
+        references[obj.name] = {
+            "edges": [
+                (
+                    edge.vertices[0],
+                    edge.vertices[1],
+                    (obj.data.vertices[edge.vertices[0]].co
+                     - obj.data.vertices[edge.vertices[1]].co).length,
+                )
+                for edge in edges
+            ],
+            "triangles": [
+                (
+                    tuple(triangle.vertices),
+                    triangle_area(
+                        obj.data.vertices[triangle.vertices[0]].co,
+                        obj.data.vertices[triangle.vertices[1]].co,
+                        obj.data.vertices[triangle.vertices[2]].co,
+                    ),
+                )
+                for triangle in triangles
+            ],
+        }
+    return references
+
+
+def validate_action(family, armature, meshes, action, frame_count, references):
+    missing_chains = [
+        chain
+        for chain in family["loadBearingChains"]
+        if any(name not in armature.data.bones for name in chain)
+    ]
+    if missing_chains:
+        raise RuntimeError(f"Missing load-bearing chains: {missing_chains}")
+    invalid_parentage = []
+    for chain in family["loadBearingChains"]:
+        for parent, child in zip(chain, chain[1:]):
+            actual = armature.data.bones[child].parent
+            if actual is None or actual.name != parent:
+                invalid_parentage.append(
+                    f"{child}->{actual.name if actual else '<root>'}, expected {parent}"
+                )
+    if invalid_parentage:
+        raise RuntimeError(
+            "Non-contiguous load-bearing chains: " + "; ".join(invalid_parentage)
+        )
+
+    bind_lengths = {}
+    for chain in family["loadBearingChains"]:
+        for parent, child in zip(chain, chain[1:]):
+            bind_lengths[(parent, child)] = (
+                armature.data.bones[parent].matrix_local.translation
+                - armature.data.bones[child].matrix_local.translation
+            ).length
+
+    armature.animation_data.action = action
+    minimum_bone_ratio = float("inf")
+    maximum_bone_ratio = 0.0
+    maximum_bounds_ratio = 0.0
+    non_finite = 0
+    maximum_edge_ratio = 0.0
+    maximum_triangle_ratio = 0.0
+    rest_diagonal = None
+    worst_frame = 0
+    for frame in range(frame_count):
+        bpy.context.scene.frame_set(frame)
+        bpy.context.view_layer.update()
+        for (parent, child), bind_length in bind_lengths.items():
+            current = (
+                armature.pose.bones[parent].matrix.translation
+                - armature.pose.bones[child].matrix.translation
+            ).length
+            ratio = current / bind_length if bind_length > 1.0e-8 else 1.0
+            minimum_bone_ratio = min(minimum_bone_ratio, ratio)
+            maximum_bone_ratio = max(maximum_bone_ratio, ratio)
+
+        dependency_graph = bpy.context.evaluated_depsgraph_get()
+        world_points = []
+        frame_edge = 0.0
+        frame_triangle = 0.0
+        for obj in meshes:
+            evaluated, mesh = evaluated_vertices(obj, dependency_graph)
+            try:
+                for vertex in mesh.vertices:
+                    if not all(math.isfinite(value) for value in vertex.co):
+                        non_finite += 1
+                    world_points.append(obj.matrix_world @ vertex.co)
+                for first, second, rest_length in references[obj.name]["edges"]:
+                    if rest_length > 1.0e-4:
+                        current = (
+                            mesh.vertices[first].co - mesh.vertices[second].co
+                        ).length
+                        frame_edge = max(frame_edge, current / rest_length)
+                for indices, rest_area in references[obj.name]["triangles"]:
+                    if rest_area > 1.0e-7:
+                        current = triangle_area(
+                            mesh.vertices[indices[0]].co,
+                            mesh.vertices[indices[1]].co,
+                            mesh.vertices[indices[2]].co,
+                        )
+                        frame_triangle = max(frame_triangle, current / rest_area)
+            finally:
+                evaluated.to_mesh_clear()
+
+        if not world_points:
+            raise RuntimeError(f"{action.name}: no evaluated vertices")
+        minimum = Vector(tuple(min(point[i] for point in world_points) for i in range(3)))
+        maximum = Vector(tuple(max(point[i] for point in world_points) for i in range(3)))
+        diagonal = (maximum - minimum).length
+        if rest_diagonal is None:
+            rest_diagonal = diagonal
+        bounds_ratio = diagonal / rest_diagonal if rest_diagonal else 1.0
+        maximum_bounds_ratio = max(maximum_bounds_ratio, bounds_ratio)
+        if frame_edge > maximum_edge_ratio:
+            maximum_edge_ratio = frame_edge
+            worst_frame = frame
+        maximum_triangle_ratio = max(maximum_triangle_ratio, frame_triangle)
+
+    failures = []
+    if non_finite:
+        failures.append(f"{non_finite} non-finite evaluated vertices")
+    if minimum_bone_ratio < 0.98 or maximum_bone_ratio > 1.02:
+        failures.append(
+            f"bone lengths changed {minimum_bone_ratio:.6f}..{maximum_bone_ratio:.6f}"
+        )
+    if maximum_bounds_ratio > 2.5:
+        failures.append(f"bounds expanded {maximum_bounds_ratio:.3f}x")
+    if maximum_edge_ratio > 12.0:
+        failures.append(f"edge stretch reached {maximum_edge_ratio:.3f}x")
+    if maximum_triangle_ratio > 24.0:
+        failures.append(
+            f"triangle area stretch reached {maximum_triangle_ratio:.3f}x"
+        )
+    return {
+        "action": action.name,
+        "frameCount": frame_count,
+        "minimumLoadBearingBoneLengthRatio": minimum_bone_ratio,
+        "maximumLoadBearingBoneLengthRatio": maximum_bone_ratio,
+        "maximumBoundsRatio": maximum_bounds_ratio,
+        "maximumEdgeStretch": maximum_edge_ratio,
+        "maximumTriangleAreaStretch": maximum_triangle_ratio,
+        "worstEdgeFrame": worst_frame,
+        "nonFiniteVertexCount": non_finite,
+        "passed": not failures,
+        "failures": failures,
+    }
+
+
+def validate_all_modules(family, armature, meshes, action_records):
+    """Validate every descriptor mesh and quarantine unsafe optional modules."""
+    manifest_path = (
+        family["outputRoot"]
+        / "Manifests"
+        / f"{family['familyId']}_family.json"
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    mesh_by_name = {obj.name: obj for obj in meshes}
+    object_names = sorted({
+        name
+        for module in manifest.get("modules", [])
+        for name in module.get("objects", [])
+        if name in mesh_by_name and mesh_by_name[name].data.vertices
+    })
+    objects = [mesh_by_name[name] for name in object_names]
+    results = {}
+
+    old_action = armature.animation_data.action if armature.animation_data else None
+    armature.animation_data_create()
+    armature.animation_data.action = None
+    for pose in armature.pose.bones:
+        pose.matrix_basis.identity()
+    bpy.context.scene.frame_set(0)
+    bpy.context.view_layer.update()
+    dependency_graph = bpy.context.evaluated_depsgraph_get()
+
+    references = {}
+    for obj in objects:
+        source_vertices = obj.data.vertices
+        source_edges = sampled(obj.data.edges, 2048)
+        obj.data.calc_loop_triangles()
+        source_triangles = sampled(obj.data.loop_triangles, 4096)
+        source_points = [vertex.co for vertex in source_vertices]
+        source_minimum = Vector(tuple(
+            min(point[axis] for point in source_points) for axis in range(3)
+        ))
+        source_maximum = Vector(tuple(
+            max(point[axis] for point in source_points) for axis in range(3)
+        ))
+        source_diagonal = max(
+            (source_maximum - source_minimum).length,
+            1.0e-6,
+        )
+        record = {
+            "restPoseMaximumVertexError": 0.0,
+            "maximumBoundsRatio": 1.0,
+            "maximumEdgeStretch": 1.0,
+            "nonFiniteVertexCount": 0,
+            "failures": [],
+        }
+        evaluated, mesh = evaluated_vertices(obj, dependency_graph)
+        try:
+            if len(mesh.vertices) != len(source_vertices):
+                record["failures"].append("evaluated vertex count changed")
+            else:
+                for index, vertex in enumerate(mesh.vertices):
+                    record["restPoseMaximumVertexError"] = max(
+                        record["restPoseMaximumVertexError"],
+                        (vertex.co - source_vertices[index].co).length,
+                    )
+        finally:
+            evaluated.to_mesh_clear()
+        references[obj.name] = {
+            "sourceDiagonal": source_diagonal,
+            "edges": [
+                (
+                    edge.vertices[0],
+                    edge.vertices[1],
+                    (
+                        source_vertices[edge.vertices[0]].co
+                        - source_vertices[edge.vertices[1]].co
+                    ).length,
+                )
+                for edge in source_edges
+            ],
+            "triangles": [
+                (
+                    tuple(triangle.vertices),
+                    triangle_area(
+                        source_vertices[triangle.vertices[0]].co,
+                        source_vertices[triangle.vertices[1]].co,
+                        source_vertices[triangle.vertices[2]].co,
+                    ),
+                )
+                for triangle in source_triangles
+            ],
+        }
+        results[obj.name] = record
+
+    for clip, action_record in action_records.items():
+        action = bpy.data.actions.get(action_record["name"])
+        if action is None:
+            raise RuntimeError(f"Action is missing: {action_record['name']}")
+        armature.animation_data.action = action
+        for frame in sampled_frames(int(action_record["frames"])):
+            bpy.context.scene.frame_set(frame)
+            bpy.context.view_layer.update()
+            dependency_graph = bpy.context.evaluated_depsgraph_get()
+            for obj in objects:
+                record = results[obj.name]
+                reference = references[obj.name]
+                evaluated, mesh = evaluated_vertices(obj, dependency_graph)
+                try:
+                    if len(mesh.vertices) != len(obj.data.vertices):
+                        record["failures"].append(
+                            f"{clip} frame {frame}: evaluated vertex count changed"
+                        )
+                        continue
+                    points = [vertex.co for vertex in mesh.vertices]
+                    finite_points = [
+                        point
+                        for point in points
+                        if all(math.isfinite(value) for value in point)
+                    ]
+                    record["nonFiniteVertexCount"] += (
+                        len(points) - len(finite_points)
+                    )
+                    if finite_points:
+                        minimum = Vector(tuple(
+                            min(point[axis] for point in finite_points)
+                            for axis in range(3)
+                        ))
+                        maximum = Vector(tuple(
+                            max(point[axis] for point in finite_points)
+                            for axis in range(3)
+                        ))
+                        record["maximumBoundsRatio"] = max(
+                            record["maximumBoundsRatio"],
+                            (maximum - minimum).length
+                            / reference["sourceDiagonal"],
+                        )
+                    for first, second, rest_length in reference["edges"]:
+                        if rest_length <= 1.0e-5:
+                            continue
+                        stretch = (
+                            points[first] - points[second]
+                        ).length / rest_length
+                        record["maximumEdgeStretch"] = max(
+                            record["maximumEdgeStretch"],
+                            stretch,
+                        )
+                    for indices, rest_area in reference["triangles"]:
+                        if rest_area <= 1.0e-7:
+                            continue
+                        area_ratio = triangle_area(
+                            points[indices[0]],
+                            points[indices[1]],
+                            points[indices[2]],
+                        ) / rest_area
+                        if area_ratio > record["maximumTriangleAreaStretch"]:
+                            record["maximumTriangleAreaStretch"] = area_ratio
+                            record["worstTriangleClip"] = clip
+                            record["worstTriangleFrame"] = frame
+                finally:
+                    evaluated.to_mesh_clear()
+
+    armature.animation_data.action = old_action
+    for record in results.values():
+        if record["restPoseMaximumVertexError"] > 1.0e-5:
+            record["failures"].append(
+                "rest pose vertex error reached "
+                f"{record['restPoseMaximumVertexError']:.9g}"
+            )
+        if record["nonFiniteVertexCount"]:
+            record["failures"].append(
+                f"{record['nonFiniteVertexCount']} non-finite evaluated vertices"
+            )
+        if record["maximumBoundsRatio"] > 4.0:
+            record["failures"].append(
+                f"bounds expanded {record['maximumBoundsRatio']:.3f}x"
+            )
+        if record["maximumEdgeStretch"] > 6.0:
+            record["failures"].append(
+                f"edge stretch reached {record['maximumEdgeStretch']:.3f}x"
+            )
+        if record["maximumTriangleAreaStretch"] > 24.0:
+            record["failures"].append(
+                "triangle area stretch reached "
+                f"{record['maximumTriangleAreaStretch']:.3f}x in "
+                f"{record['worstTriangleClip']} frame "
+                f"{record['worstTriangleFrame']}"
+            )
+        record["passed"] = not record["failures"]
+
+    quarantined = []
+    for module in manifest.get("modules", []):
+        failures = []
+        if module.get("unknownWeightGroups"):
+            failures.append(
+                "unknown weighted bones: "
+                + ", ".join(module["unknownWeightGroups"])
+            )
+        for object_name in module.get("objects", []):
+            if object_name not in mesh_by_name:
+                failures.append(f"mesh is missing: {object_name}")
+            elif not mesh_by_name[object_name].data.vertices:
+                continue
+            elif not results[object_name]["passed"]:
+                failures.extend(
+                    f"{object_name}: {failure}"
+                    for failure in results[object_name]["failures"]
+                )
+        module["compatible"] = not failures
+        module["validationFailures"] = failures
+        module["meshValidation"] = {
+            name: results[name]
+            for name in module.get("objects", [])
+            if name in results
+        }
+        if failures:
+            quarantined.append(module["name"])
+
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2),
+        encoding="utf-8",
+    )
+    return {
+        "objectCount": len(objects),
+        "quarantinedModuleCount": len(quarantined),
+        "quarantinedModules": quarantined,
+        "objects": results,
+    }
+
+
+def validation_stage(family, armature, meshes, action_records):
+    module_validation = validate_all_modules(
+        family,
+        armature,
+        meshes,
+        action_records,
+    )
+    visible = [
+        obj
+        for obj in meshes
+        if not obj.hide_get() and obj.data.vertices
+    ]
+    if not visible:
+        raise RuntimeError("No visible descriptor baseline meshes to validate")
+
+    bone_names = set(armature.data.bones.keys())
+    unknown_groups = sorted({
+        group.name
+        for obj in visible
+        for group in obj.vertex_groups
+        if group.name not in bone_names
+    })
+    rest_error = validate_rest_pose(armature, visible)
+    references = reference_geometry(visible)
+    clips = {}
+    for clip, record in action_records.items():
+        action = bpy.data.actions.get(record["name"])
+        if action is None:
+            raise RuntimeError(f"Action is missing: {record['name']}")
+        clips[clip] = validate_action(
+            family,
+            armature,
+            visible,
+            action,
+            int(record["frames"]),
+            references,
+        )
+
+    failures = []
+    if unknown_groups:
+        failures.append(f"Unknown weighted bones: {unknown_groups}")
+    if rest_error > 1.0e-5:
+        failures.append(f"Rest pose vertex error is {rest_error:.9g}")
+    for clip, report in clips.items():
+        failures.extend(
+            f"{clip}: {failure}"
+            for failure in report["failures"]
+        )
+        scale_delta = float(
+            action_records[clip].get("maximumScaleDelta", 0.0)
+        )
+        if scale_delta > 0.02:
+            failures.append(
+                f"{clip}: animated bone scale changed by {scale_delta:.6f}"
+            )
+
+    report = {
+        "pipelineVersion": family["pipelineVersion"],
+        "familyId": family["familyId"],
+        "meshCount": len(visible),
+        "vertexCount": sum(
+            len(obj.data.vertices) for obj in visible
+        ),
+        "restPoseMaximumVertexError": rest_error,
+        "unknownWeightGroups": unknown_groups,
+        "moduleValidation": module_validation,
+        "clips": clips,
+        "passed": not failures,
+        "failures": failures,
+    }
+    path = (
+        family["outputRoot"]
+        / "Validation"
+        / f"{family['familyId']}_validation.json"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    if failures:
+        raise RuntimeError("; ".join(failures))
+    return str(path), report

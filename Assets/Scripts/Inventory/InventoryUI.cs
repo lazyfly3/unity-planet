@@ -50,11 +50,8 @@ public sealed class InventoryUI : MonoBehaviour
     }
 
     public void BeginDrag(int index, Vector2 position)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(87, (int)index);}
-    try
     {
-        InventorySlot slot = Inventory.Slots[index];
+InventorySlot slot = Inventory.Slots[index];
         if (slot.IsEmpty)
             return;
 
@@ -62,31 +59,19 @@ public sealed class InventoryUI : MonoBehaviour
         dragIcon.sprite = slot.item.Icon;
         dragIcon.enabled = true;
         UpdateDrag(position);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void UpdateDrag(Vector2 position)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(88);}
-    try
     {
-        if (dragSource >= 0)
+if (dragSource >= 0)
             dragGhost.position = position;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void DropOn(int target, bool split)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(89, (int)target, (split?1:0));}
-    try
     {
-        if (dragSource < 0)
+if (dragSource < 0)
             return;
 
         if (split)
@@ -94,38 +79,23 @@ public sealed class InventoryUI : MonoBehaviour
         else
             Inventory.MoveOrMerge(dragSource, target);
         EndDrag();
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void EndDrag()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(90);}
-    try
     {
-        dragSource = -1;
+dragSource = -1;
         if (dragIcon != null)
             dragIcon.enabled = false;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void CloseInventory()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(91);}
-    try
     {
-        if (isOpen)
+if (isOpen)
             SetOpen(false);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void SetOpen(bool open)
     {

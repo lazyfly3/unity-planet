@@ -66,11 +66,8 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     }
 
     public void TeleportTo(Vector3 worldPosition, Quaternion worldRotation)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(139);}
-    try
     {
-        if (body == null)
+if (body == null)
             body = GetComponent<Rigidbody>();
 
         body.position = worldPosition;
@@ -85,11 +82,8 @@ public class VoxelPlanetPlayerController : MonoBehaviour
         previousUp = smoothUp;
         headingForward = GetTangentForward(worldRotation * Vector3.forward, smoothUp);
         body.rotation = Quaternion.LookRotation(headingForward, smoothUp);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void Awake()
     {

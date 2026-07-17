@@ -1,0 +1,549 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51c2f5f83ec62f444ad2111650f3a41c, type: 3}
+  m_Name: CatHexapodFamily
+  m_EditorClassIdentifier: 
+  familyId: CatHexapod
+  skeletonHash: 248b075db5b1dcca151450edfef92726aa0778dde6a795f1e02e0f1c8216ca35
+  locomotionType: Hexapod
+  surfaceMode: 0
+  variantIds: []
+  selectionWeight: 1
+  legCount: 6
+  allowRareModules: 0
+  excludedModulePrefixes:
+  - _B6
+  runtimePrefab: {fileID: 3419458815616167257, guid: 1264dd65fe4a5084fb9b8a16962676c6, type: 3}
+  animatorController: {fileID: 9100000, guid: 2b22e72788696fd41976df8cc361540b, type: 2}
+  familyManifest: {fileID: 4900000, guid: ff9b3f0742ba92d4385f4c5244a449c1, type: 3}
+  moduleBindings:
+  - moduleId: _B6CA_BackFur1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CA_BackFur1
+  - moduleId: _B6CA_Crags
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CA_Crags
+  - moduleId: _B6CA_EggsxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CA_EggsxRARE
+  - moduleId: _B6CA_FinLargexRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CA_FinLargexRARE
+  - moduleId: _B6CA_FishShellxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CA_FishShellxRARE
+  - moduleId: _B6CA_Null
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CA_Null
+  - moduleId: _B6CA_Rocks1xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CA_Rocks1xRARE
+  - moduleId: _B6CA_SpinsxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CA_SpinsxRARE
+  - moduleId: _B6CA_TurtShell1xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CA_TurtShell1xRARE
+  - moduleId: _B6CA_XLargeFinsxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CA_XLargeFinsxRARE
+  - moduleId: _B6CA_XSharkFinxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CA_XSharkFinxRARE
+  - moduleId: _B6CA_XTripleFin2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CA_XTripleFin2xRARE
+  - moduleId: _B6CW_BackFur3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CW_BackFur3
+  - moduleId: _B6CW_BackSteg2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CW_BackSteg2xRARE
+  - moduleId: _B6CW_Crags2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CW_Crags2
+  - moduleId: _B6CW_Eggs2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CW_Eggs2xRARE
+  - moduleId: _B6CW_FinLarge2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CW_FinLarge2xRARE
+  - moduleId: _B6CW_FishShell2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CW_FishShell2xRARE
+  - moduleId: _B6CW_Null1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CW_Null1
+  - moduleId: _B6CW_Rocks3xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CW_Rocks3xRARE
+  - moduleId: _B6CW_TurtShell3xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CW_TurtShell3xRARE
+  - moduleId: _B6CW_XLargeFins2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CW_XLargeFins2xRARE
+  - moduleId: _B6CW_XSharkFin2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CW_XSharkFin2xRARE
+  - moduleId: _B6CW_XTripleFin4xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6CW_XTripleFin4xRARE
+  - moduleId: _B6LA_BackFur2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6LA_BackFur2
+  - moduleId: _B6LA_BackSteg1xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6LA_BackSteg1xRARE
+  - moduleId: _B6LA_Crags1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6LA_Crags1
+  - moduleId: _B6LA_Eggs1xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6LA_Eggs1xRARE
+  - moduleId: _B6LA_FishShell1xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6LA_FishShell1xRARE
+  - moduleId: _B6LA_Null2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6LA_Null2
+  - moduleId: _B6LA_Rocks2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6LA_Rocks2xRARE
+  - moduleId: _B6LA_Spins1xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6LA_Spins1xRARE
+  - moduleId: _B6LA_TurtShell2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6LA_TurtShell2xRARE
+  - moduleId: _B6LA_XLargeFins1xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6LA_XLargeFins1xRARE
+  - moduleId: _B6LA_XSharkFin1xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6LA_XSharkFin1xRARE
+  - moduleId: _B6LA_XTripleFin4xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_B6LA_XTripleFin4xRARE
+  - moduleId: _Body_SixLegLiz
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Body_SixLegLiz
+  - moduleId: _Body_SixLegWolf
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Body_SixLegWolf
+  - moduleId: _CExt_BlankYo
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CExt_BlankYo
+  - moduleId: _CHEars_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CHEars_A
+  - moduleId: _CHEars_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CHEars_B
+  - moduleId: _CHEars_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CHEars_C
+  - moduleId: _CHEars_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CHEars_D
+  - moduleId: _CHEars_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CHEars_E
+  - moduleId: _CHEars_F
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CHEars_F
+  - moduleId: _CHEars_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CHEars_NULL
+  - moduleId: _CShellAcc_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CShellAcc_1
+  - moduleId: _CShellAcc_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CShellAcc_2
+  - moduleId: _ExtL2_BlankYo
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_ExtL2_BlankYo
+  - moduleId: _HCAcc_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCAcc_A
+  - moduleId: _HCAcc_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCAcc_B
+  - moduleId: _HCAcc_NULLxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCAcc_NULLxRARE
+  - moduleId: _HCNose_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCNose_A
+  - moduleId: _HCNose_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCNose_B
+  - moduleId: _HCNose_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCNose_NULL
+  - moduleId: _HCTopB_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCTopB_A
+  - moduleId: _HCTopB_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCTopB_B
+  - moduleId: _HCTopB_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCTopB_C
+  - moduleId: _HCTopB_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCTopB_D
+  - moduleId: _HCTopB_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCTopB_E
+  - moduleId: _HCTopB_F
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCTopB_F
+  - moduleId: _HCTopB_G
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCTopB_G
+  - moduleId: _HCTopB_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCTopB_NULL
+  - moduleId: _HCTop_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCTop_A
+  - moduleId: _HCTop_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCTop_B
+  - moduleId: _HCTop_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCTop_C
+  - moduleId: _HCTop_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCTop_NULL
+  - moduleId: _HHAccs_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHAccs_A
+  - moduleId: _HHAccs_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHAccs_B
+  - moduleId: _HHAccs_NULLxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHAccs_NULLxRARE
+  - moduleId: _HHBEar_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHBEar_A
+  - moduleId: _HHBEar_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHBEar_B
+  - moduleId: _HHBEar_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHBEar_C
+  - moduleId: _HHBEar_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHBEar_D
+  - moduleId: _HHBEar_F
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHBEar_F
+  - moduleId: _HHBEar_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHBEar_NULL
+  - moduleId: _HHEars_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHEars_A
+  - moduleId: _HHEars_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHEars_B
+  - moduleId: _HHEars_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHEars_C
+  - moduleId: _HHEars_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHEars_D
+  - moduleId: _HHEars_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHEars_E
+  - moduleId: _HHEars_F
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHEars_F
+  - moduleId: _HHEars_G
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHEars_G
+  - moduleId: _HHEars_H
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHEars_H
+  - moduleId: _HHEars_I
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHEars_I
+  - moduleId: _HHEars_J
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHEars_J
+  - moduleId: _HHEars_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHEars_NULL
+  - moduleId: _HHNose_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHNose_B
+  - moduleId: _HHNose_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHNose_C
+  - moduleId: _HHNose_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHNose_NULL
+  - moduleId: _HHToP_G
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHToP_G
+  - moduleId: _HHTusk_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHTusk_1
+  - moduleId: _HHTusk_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHTusk_2
+  - moduleId: _HHTusk_3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HHTusk_3
+  - moduleId: _HLAcc_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLAcc_A
+  - moduleId: _HLAcc_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLAcc_B
+  - moduleId: _HLAcc_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLAcc_NULL
+  - moduleId: _HLEars_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLEars_A
+  - moduleId: _HLEars_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLEars_B
+  - moduleId: _HLEars_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLEars_C
+  - moduleId: _HLEars_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLEars_D
+  - moduleId: _HLEars_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLEars_E
+  - moduleId: _HLEars_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLEars_NULL
+  - moduleId: _HLMiddle_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLMiddle_A
+  - moduleId: _HLMiddle_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLMiddle_B
+  - moduleId: _HLMiddle_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLMiddle_C
+  - moduleId: _HLMiddle_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLMiddle_NULL
+  - moduleId: _HLTop_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLTop_A
+  - moduleId: _HLTop_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLTop_B
+  - moduleId: _HLTop_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLTop_C
+  - moduleId: _HLTop_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLTop_D
+  - moduleId: _HLTop_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLTop_E
+  - moduleId: _HLTop_F
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLTop_F
+  - moduleId: _HLTop_G
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLTop_G
+  - moduleId: _HLTop_H
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLTop_H
+  - moduleId: _HLTop_I
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLTop_I
+  - moduleId: _HLTop_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLTop_NULL
+  - moduleId: _HWAcc_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWAcc_A
+  - moduleId: _HWAcc_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWAcc_B
+  - moduleId: _HWAcc_NULLxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWAcc_NULLxRARE
+  - moduleId: _HWEars_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWEars_A
+  - moduleId: _HWEars_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWEars_B
+  - moduleId: _HWEars_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWEars_D
+  - moduleId: _HWEars_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWEars_E
+  - moduleId: _HWEars_F
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWEars_F
+  - moduleId: _HWEars_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWEars_NULL
+  - moduleId: _HWMiddle_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWMiddle_A
+  - moduleId: _HWMiddle_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWMiddle_B
+  - moduleId: _HWMiddle_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWMiddle_C
+  - moduleId: _HWMiddle_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWMiddle_NULL
+  - moduleId: _HWNose_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWNose_A
+  - moduleId: _HWNose_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWNose_B
+  - moduleId: _HWNose_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWNose_NULL
+  - moduleId: _HWTop_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWTop_A
+  - moduleId: _HWTop_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWTop_B
+  - moduleId: _HWTop_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWTop_C
+  - moduleId: _HWTop_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWTop_D
+  - moduleId: _HWTop_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWTop_E
+  - moduleId: _HWTop_F
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWTop_F
+  - moduleId: _HWTop_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HWTop_NULL
+  - moduleId: _Head_Cat
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Head_Cat
+  - moduleId: _Head_Hog
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Head_Hog
+  - moduleId: _Head_Lizard
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Head_Lizard
+  - moduleId: _Head_Wolf
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Head_Wolf
+  - moduleId: _LHNose_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_LHNose_A
+  - moduleId: _LHNose_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_LHNose_B
+  - moduleId: _LHNose_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_LHNose_C
+  - moduleId: _LHNose_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_LHNose_D
+  - moduleId: _LHNose_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_LHNose_E
+  - moduleId: _LHNose_NULL
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_LHNose_NULL
+  - moduleId: _LShellAcc3_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_LShellAcc3_1
+  - moduleId: _LShellAcc3_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_LShellAcc3_2
+  - moduleId: _THA_X1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_THA_X1
+  - moduleId: _THA_X2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_THA_X2
+  - moduleId: _Tail_Cat
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Tail_Cat
+  - moduleId: _Tail_Wolf
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Tail_Wolf
+  - moduleId: _WExt1_BlankYo
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_WExt1_BlankYo
+  - moduleId: _WShellAcc1_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_WShellAcc1_1
+  - moduleId: _WShellAcc1_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_WShellAcc1_2
+  loadBearingChains:
+  - id: Leg1
+    bones:
+    - LFShoulderJNT
+    - LFElbowJNT
+    - LFAnkleJNT
+    - LFFootJNT
+  - id: Leg2
+    bones:
+    - RFShoulderJNT
+    - RFElbowJNT
+    - RFAnkleJNT
+    - RFFootJNT
+  - id: Leg3
+    bones:
+    - LMHipJNT
+    - LMKneeJNT
+    - LMAnkleJNT
+    - LMFootJNT
+  - id: Leg4
+    bones:
+    - RMHipJNT
+    - RMKneeJNT
+    - RMAnkleJNT
+    - RMFootJNT
+  - id: Leg5
+    bones:
+    - LBHipJNT
+    - LBKneeJNT
+    - LBAnkleJNT
+    - LBFootJNT
+  - id: Leg6
+    bones:
+    - RBHipJNT
+    - RBKneeJNT
+    - RBAnkleJNT
+    - RBFootJNT
+  walkSpeed: 1.2
+  surfaceRootOffset: 0.23765041
+  hoverClearance: 0
+  localForwardAxis: {x: 0, y: 0, z: -1}
+  idleState: Idle
+  walkState: Walk
+  runState: Run

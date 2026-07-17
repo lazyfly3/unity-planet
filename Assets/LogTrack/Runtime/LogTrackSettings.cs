@@ -1,4 +1,4 @@
-/// <summary>
+﻿/// <summary>
 /// LogTrack 运行时全局配置。Editor 工具窗口与 Play 时自动启动共用 PlayerPrefs。
 /// </summary>
 public static class LogTrackSettings
@@ -7,14 +7,12 @@ public static class LogTrackSettings
     private const string PrefAutoStartOnPlay = "LogTrack.AutoStartOnPlay";
     private const string PrefExportOnStop = "LogTrack.ExportOnStop";
     private const string PrefPdbRelativePath = "LogTrack.PdbRelativePath";
-    private const string PrefInstrumentRoot = "LogTrack.InstrumentRoot";
     private const string PrefPdbOutputDir = "LogTrack.PdbOutputDir";
 
     public const int MinRingBufferSize = 1;
     public const int MaxRingBufferSize = 10000;
     public const int DefaultRingBufferSizeFallback = 100;
     public const string DefaultPdbRelativePath = "Assets/LogTrackGenerated/LogPdb.pdb.json";
-    public const string DefaultInstrumentRoot = "Assets/Scripts";
     public const string DefaultPdbOutputDir = "Assets/LogTrackGenerated";
 
     public static int DefaultRingBufferSize
@@ -43,16 +41,6 @@ public static class LogTrackSettings
             return string.IsNullOrEmpty(path) ? DefaultPdbRelativePath : path;
         }
         set => UnityEngine.PlayerPrefs.SetString(PrefPdbRelativePath, string.IsNullOrEmpty(value) ? DefaultPdbRelativePath : value);
-    }
-
-    public static string InstrumentRoot
-    {
-        get
-        {
-            var path = UnityEngine.PlayerPrefs.GetString(PrefInstrumentRoot, DefaultInstrumentRoot);
-            return string.IsNullOrEmpty(path) ? DefaultInstrumentRoot : path;
-        }
-        set => UnityEngine.PlayerPrefs.SetString(PrefInstrumentRoot, string.IsNullOrEmpty(value) ? DefaultInstrumentRoot : value);
     }
 
     public static string PdbOutputDir

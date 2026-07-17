@@ -30348,6 +30348,7 @@ MonoBehaviour:
   - planetId: origin
     displayName: Aster
     seed: 12345
+    climate: 0
     mapColor: {r: 0.85, g: 0.53, b: 0.24, a: 1}
     surfaceColor: {r: 1, g: 1, b: 1, a: 1}
     rockColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
@@ -30474,6 +30475,7 @@ MonoBehaviour:
   - planetId: verdant
     displayName: Viridia
     seed: 24680
+    climate: 1
     mapColor: {r: 0.3, g: 0.82, b: 0.5, a: 1}
     surfaceColor: {r: 1, g: 1, b: 1, a: 1}
     rockColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
@@ -30635,6 +30637,7 @@ MonoBehaviour:
   - planetId: crimson
     displayName: Cinder
     seed: 97531
+    climate: 5
     mapColor: {r: 0.9, g: 0.3, b: 0.2, a: 1}
     surfaceColor: {r: 1, g: 1, b: 1, a: 1}
     rockColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
@@ -30774,6 +30777,7 @@ MonoBehaviour:
   - planetId: azure
     displayName: Pelagos
     seed: 48127
+    climate: 3
     mapColor: {r: 0.25, g: 0.65, b: 0.95, a: 1}
     surfaceColor: {r: 1, g: 1, b: 1, a: 1}
     rockColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
@@ -30913,6 +30917,7 @@ MonoBehaviour:
   - planetId: violet
     displayName: Nyx
     seed: 86420
+    climate: 6
     mapColor: {r: 0.65, g: 0.35, b: 0.9, a: 1}
     surfaceColor: {r: 1, g: 1, b: 1, a: 1}
     rockColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
@@ -31050,6 +31055,7 @@ MonoBehaviour:
         particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
         ambientTint: {r: 0.55, g: 0.3, b: 0.8, a: 1}
   resourceCatalog: []
+  decorationCatalog: {fileID: 11400000, guid: bfc1507753c20c54f89990af172b4bb7, type: 2}
 --- !u!1 &1969799801
 GameObject:
   m_ObjectHideFlags: 0

@@ -92,11 +92,8 @@ public sealed class CreatureBodyGraph
         + $"-A{armPairCount}-H{headCount}-R{tailCount}-N{tentacleCount}-O{ornamentCount}";
 
     public bool Validate(out string error)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(31);}
-    try
     {
-        if (nodes == null || nodes.Count == 0 || nodes.Count > 64)
+if (nodes == null || nodes.Count == 0 || nodes.Count > 64)
         {
             error = "Node count must be between 1 and 64.";
             return false;
@@ -123,11 +120,8 @@ public sealed class CreatureBodyGraph
         }
         error = null;
         return true;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     static bool IsFinite(Vector3 value)
     {

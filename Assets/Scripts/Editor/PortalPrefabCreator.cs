@@ -35,11 +35,8 @@ public static class PortalPrefabCreator
     }
 
     public static GameObject CreatePortalPrefab()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(51);}
-    try
     {
-        EnsureFolders();
+EnsureFolders();
         EnsureRenderTexture();
         EnsureMaterials();
 
@@ -56,11 +53,8 @@ public static class PortalPrefabCreator
 
         Debug.Log($"传送门预制体已生成：{PrefabPath}");
         return prefab;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     static void EnsureFolders()
     {

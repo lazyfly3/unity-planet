@@ -58,28 +58,16 @@ public static class GalaxyLaunchContext
     }
 
     public static void SelectSlot(string slotId)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(52);}
-    try
     {
-        SelectedSlotId = slotId;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+SelectedSlotId = slotId;
+    
+}
 
     public static void Clear()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(53);}
-    try
     {
-        SelectedSlotId = null;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+SelectedSlotId = null;
+    
+}
 }
 
 public static class GalaxySaveSlotService
@@ -90,11 +78,8 @@ public static class GalaxySaveSlotService
     public static string RootDirectory => Path.Combine(Application.persistentDataPath, "galaxy_saves");
 
     public static IReadOnlyList<GalaxySaveSlotInfo> ListSlots()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(54);}
-    try
     {
-        Directory.CreateDirectory(RootDirectory);
+Directory.CreateDirectory(RootDirectory);
         var slots = new List<GalaxySaveSlotInfo>();
         foreach (string directory in Directory.GetDirectories(RootDirectory))
         {
@@ -136,18 +121,12 @@ public static class GalaxySaveSlotService
             return rightTicks.CompareTo(leftTicks);
         });
         return slots;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public static GalaxySaveSlotMetadata CreateSlot(string displayName, int? requestedSeed)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(55, requestedSeed.GetValueOrDefault());}
-    try
     {
-        displayName = NormalizeDisplayName(displayName);
+displayName = NormalizeDisplayName(displayName);
         string slotId = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "-" + Guid.NewGuid().ToString("N").Substring(0, 8);
         long now = DateTime.UtcNow.Ticks;
         var metadata = new GalaxySaveSlotMetadata
@@ -164,18 +143,12 @@ public static class GalaxySaveSlotService
         };
         SaveMetadata(metadata);
         return metadata;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public static GalaxySaveSlotMetadata LoadMetadata(string slotId)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(56);}
-    try
     {
-        ValidateSlotId(slotId);
+ValidateSlotId(slotId);
         string path = Path.Combine(GetSlotDirectory(slotId), MetadataFileName);
         if (!File.Exists(path))
             return null;
@@ -183,18 +156,12 @@ public static class GalaxySaveSlotService
         GalaxySaveSlotMetadata metadata = JsonUtility.FromJson<GalaxySaveSlotMetadata>(File.ReadAllText(path));
         ValidateMetadata(metadata, slotId);
         return metadata;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public static GalaxySaveSlotMetadata GetOrCreateDevelopmentSlot()
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(57);}
-    try
     {
-        GalaxySaveSlotMetadata existing = LoadMetadata(DevelopmentSlotId);
+GalaxySaveSlotMetadata existing = LoadMetadata(DevelopmentSlotId);
         if (existing != null)
             return existing;
 
@@ -213,18 +180,12 @@ public static class GalaxySaveSlotService
         };
         SaveMetadata(metadata);
         return metadata;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public static void SaveMetadata(GalaxySaveSlotMetadata metadata)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(58);}
-    try
     {
-        if (metadata == null)
+if (metadata == null)
             throw new ArgumentNullException(nameof(metadata));
         metadata.formatVersion = 4;
         ValidateSlotId(metadata.slotId);
@@ -242,57 +203,36 @@ public static class GalaxySaveSlotService
             File.Replace(temporaryPath, path, null);
         else
             File.Move(temporaryPath, path);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public static void RenameSlot(string slotId, string newName)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(59);}
-    try
     {
-        GalaxySaveSlotMetadata metadata = LoadMetadata(slotId)
+GalaxySaveSlotMetadata metadata = LoadMetadata(slotId)
             ?? throw new FileNotFoundException("Save slot metadata was not found.");
         metadata.displayName = NormalizeDisplayName(newName);
         SaveMetadata(metadata);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public static void DeleteSlot(string slotId)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(60);}
-    try
     {
-        ValidateSlotId(slotId);
+ValidateSlotId(slotId);
         string root = Path.GetFullPath(RootDirectory).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         string target = Path.GetFullPath(GetSlotDirectory(slotId));
         if (!target.StartsWith(root, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Refused to delete a path outside the save root.");
         if (Directory.Exists(target))
             Directory.Delete(target, true);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public static string GetPlanetsDirectory(string slotId)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(61);}
-    try
     {
-        ValidateSlotId(slotId);
+ValidateSlotId(slotId);
         return Path.Combine(GetSlotDirectory(slotId), "planets");
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     static string GetSlotDirectory(string slotId)
     {

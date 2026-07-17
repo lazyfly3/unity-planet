@@ -1,0 +1,89 @@
+{
+  "pipelineVersion": 3,
+  "familyId": "AntelopeQuadruped",
+  "skeletonHash": "63711342dfd398be3914320e47fc0048800d1e13b52f9fd097e90a89d976fa1f",
+  "validationHash": "cdb8950ca126dfb8322ef17fc35b3e28933d078f817f5f6140e9697a7e863f18",
+  "sourceKind": "Prefab",
+  "sourceModelAsset": "",
+  "sourcePrefabAsset": "Assets/Creatures/V2/FixedAntelope/FixedAntelopeV2.prefab",
+  "familyManifestAsset": "Assets/Creatures/Generated/NMS/AntelopeQuadruped/AntelopeQuadruped_family.json",
+  "skeletonManifestAsset": "Assets/Creatures/Generated/NMS/AntelopeQuadruped/AntelopeQuadruped_skeleton.json",
+  "locomotionType": "Quadruped",
+  "legCount": 4,
+  "selectionWeight": 1,
+  "walkSpeed": 1.35,
+  "importScale": 1.0,
+  "importEuler": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "actions": [
+    {
+      "key": "idle",
+      "clipName": "AntelopeIdle",
+      "assetPath": "Assets/Creatures/Authorized/NMS/AntelopeFamily/Animations/Runtime/AntelopeIdle.anim",
+      "frames": 600,
+      "loop": true
+    },
+    {
+      "key": "walk",
+      "clipName": "AntelopeWalk",
+      "assetPath": "Assets/Creatures/Authorized/NMS/AntelopeFamily/Animations/Runtime/AntelopeWalk.anim",
+      "frames": 101,
+      "loop": true
+    },
+    {
+      "key": "run",
+      "clipName": "AntelopeRun",
+      "assetPath": "Assets/Creatures/Authorized/NMS/AntelopeFamily/Animations/Runtime/AntelopeRun.anim",
+      "frames": 31,
+      "loop": true
+    }
+  ],
+  "loadBearingChains": [
+    {
+      "id": "FrontLeft",
+      "bones": [
+        "LF2ShoulderJNT",
+        "LF2ElbowJNT",
+        "LF2WristJNT",
+        "LF2FootJNT"
+      ]
+    },
+    {
+      "id": "FrontRight",
+      "bones": [
+        "RF2ShoulderJNT",
+        "RF2ElbowJNT",
+        "RF2WristJNT",
+        "RF2FootJNT"
+      ]
+    },
+    {
+      "id": "RearLeft",
+      "bones": [
+        "LBLegJNT",
+        "LBKneeJNT",
+        "LBAnkleJNT",
+        "LBFootJNT"
+      ]
+    },
+    {
+      "id": "RearRight",
+      "bones": [
+        "RBLegJNT",
+        "RBKneeJNT",
+        "RBAnkleJNT",
+        "RBFootJNT"
+      ]
+    }
+  ],
+  "surfaceRootOffset": 0.03463781,
+  "localForwardAxis": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -1.0
+  },
+  "allowRareModules": false
+}

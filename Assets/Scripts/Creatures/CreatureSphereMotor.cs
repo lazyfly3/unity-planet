@@ -37,11 +37,8 @@ public sealed class CreatureSphereMotor : MonoBehaviour
         Vector3 axis,
         float clearance,
         bool enableDirectTangentialDrive = true)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(36, (int)speed, (int)acceleration, (int)adhesion, (int)clearance, (enableDirectTangentialDrive?1:0));}
-    try
     {
-        gravitySource = source;
+gravitySource = source;
         body = targetBody;
         capsule = targetCapsule;
         groundLayers = layers;
@@ -52,11 +49,8 @@ public sealed class CreatureSphereMotor : MonoBehaviour
         bodyClearance = Mathf.Max(0.1f, clearance);
         directTangentialDrive = enableDirectTangentialDrive;
         InitializeOrientation();
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     void Awake()
     {

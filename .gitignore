@@ -41,3 +41,8 @@ sysinfo.txt
 Assets/LogTrackGenerated/LogPdb.pdb.*
 Assets/LogTrackGenerated/*.json
 Assets/LogTrackGenerated/*.csv
+
+# Local Spore practice assets. Never publish or commit EA/Maxis meshes.
+Assets/Resources/Creatures/SporeEndpoints/
+Assets/Resources/Creatures/SporeEndpoints.meta
+Assets/Resources/Creatures.meta

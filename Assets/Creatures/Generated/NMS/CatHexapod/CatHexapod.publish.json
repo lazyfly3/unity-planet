@@ -1,0 +1,111 @@
+{
+  "pipelineVersion": 3,
+  "familyId": "CatHexapod",
+  "skeletonHash": "248b075db5b1dcca151450edfef92726aa0778dde6a795f1e02e0f1c8216ca35",
+  "validationHash": "73453c9df38d2569b441943394a8b6b6622f0331171502fe789c19f6be449874",
+  "sourceKind": "Fbx",
+  "sourceModelAsset": "Assets/Creatures/Generated/NMS/CatHexapod/CatHexapod.fbx",
+  "sourcePrefabAsset": "",
+  "familyManifestAsset": "Assets/Creatures/Generated/NMS/CatHexapod/CatHexapod_family.json",
+  "skeletonManifestAsset": "Assets/Creatures/Generated/NMS/CatHexapod/CatHexapod_skeleton.json",
+  "locomotionType": "Hexapod",
+  "legCount": 6,
+  "allowRareModules": false,
+  "excludedModulePrefixes": [
+    "_B6"
+  ],
+  "selectionWeight": 1,
+  "walkSpeed": 1.2,
+  "surfaceRootOffset": -1.0,
+  "importScale": 1.0,
+  "importEuler": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "localForwardAxis": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -1.0
+  },
+  "actions": [
+    {
+      "key": "idle",
+      "clipName": "CatHexapod_IDLE_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/CatHexapod/CatHexapod.fbx",
+      "frames": 181,
+      "loop": true
+    },
+    {
+      "key": "walk",
+      "clipName": "CatHexapod_WALK_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/CatHexapod/CatHexapod.fbx",
+      "frames": 65,
+      "loop": true
+    },
+    {
+      "key": "run",
+      "clipName": "CatHexapod_RUN_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/CatHexapod/CatHexapod.fbx",
+      "frames": 33,
+      "loop": true
+    }
+  ],
+  "loadBearingChains": [
+    {
+      "id": "Leg1",
+      "bones": [
+        "LFShoulderJNT",
+        "LFElbowJNT",
+        "LFAnkleJNT",
+        "LFFootJNT"
+      ]
+    },
+    {
+      "id": "Leg2",
+      "bones": [
+        "RFShoulderJNT",
+        "RFElbowJNT",
+        "RFAnkleJNT",
+        "RFFootJNT"
+      ]
+    },
+    {
+      "id": "Leg3",
+      "bones": [
+        "LMHipJNT",
+        "LMKneeJNT",
+        "LMAnkleJNT",
+        "LMFootJNT"
+      ]
+    },
+    {
+      "id": "Leg4",
+      "bones": [
+        "RMHipJNT",
+        "RMKneeJNT",
+        "RMAnkleJNT",
+        "RMFootJNT"
+      ]
+    },
+    {
+      "id": "Leg5",
+      "bones": [
+        "LBHipJNT",
+        "LBKneeJNT",
+        "LBAnkleJNT",
+        "LBFootJNT"
+      ]
+    },
+    {
+      "id": "Leg6",
+      "bones": [
+        "RBHipJNT",
+        "RBKneeJNT",
+        "RBAnkleJNT",
+        "RBFootJNT"
+      ]
+    }
+  ],
+  "sourceFbxSha256": "fdb6175b599a86bd543daa4f7e1c3b59a307f5b988d119783d7f339ac9eff8c7"
+}

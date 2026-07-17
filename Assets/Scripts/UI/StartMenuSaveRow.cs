@@ -14,11 +14,8 @@ public sealed class StartMenuSaveRow : MonoBehaviour
     public GalaxySaveSlotInfo Slot => slot;
 
     public void Initialize(StartMenuController menuOwner, GalaxySaveSlotInfo slotInfo)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(123);}
-    try
     {
-        owner = menuOwner;
+owner = menuOwner;
         slot = slotInfo;
         nameText.text = slotInfo.DisplayName;
         if (slotInfo.IsCorrupt)
@@ -36,24 +33,15 @@ public sealed class StartMenuSaveRow : MonoBehaviour
         button.onClick.AddListener(() => owner.SelectSlot(this));
         SetSelected(false);
         gameObject.SetActive(true);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void SetSelected(bool selected)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(124, (selected?1:0));}
-    try
     {
-        if (selectionFrame != null)
+if (selectionFrame != null)
             selectionFrame.enabled = selected;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     static void DateTimeText(long ticks, out string text)
     {

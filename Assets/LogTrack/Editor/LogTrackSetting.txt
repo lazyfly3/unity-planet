@@ -1,6 +1,9 @@
 FSPDebuger
 FSPDebuger
 AutoInstrumentOnCompile: false
-ExcludeList:
-Runtime/Utils/KHDebug.cs
-ExternalList:
+IncludeAssemblies:
+Assembly-CSharp
+ExcludeAssemblies:
+Assembly-CSharp-Editor
+LogTrack.Runtime
+LogTrack.Editor

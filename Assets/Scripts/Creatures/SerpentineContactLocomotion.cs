@@ -32,11 +32,8 @@ public sealed class SerpentineContactLocomotion : MonoBehaviour
         CreatureRig creatureRig,
         CreatureGenome creatureGenome,
         LayerMask layers)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(45);}
-    try
     {
-        gravitySource = source;
+gravitySource = source;
         body = targetBody;
         rig = creatureRig;
         genome = creatureGenome;
@@ -51,23 +48,14 @@ public sealed class SerpentineContactLocomotion : MonoBehaviour
         for (int i = 0; i < count; i++)
             spineRestRotations[i] = rig.spineBones[i].localRotation;
         tailRestRotation = rig.tailBase.localRotation;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void SetLocomotionEnabled(bool enabled)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(46, (enabled?1:0));}
-    try
     {
-        LocomotionEnabled = enabled;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+LocomotionEnabled = enabled;
+    
+}
 
     void FixedUpdate()
     {

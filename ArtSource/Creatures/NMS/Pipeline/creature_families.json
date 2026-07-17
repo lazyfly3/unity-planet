@@ -1,0 +1,1034 @@
+{
+  "pipelineVersion": 3,
+  "mbinCompiler": "D:/blender/creature/Tools/Downloads/MBINCompiler.exe",
+  "gamePakRoot": "D:/SteamLibrary/steamapps/common/No Man's Sky/GAMEDATA/PCBANKS",
+  "hgpakTool": "D:/blender/creature/Tools/HGPAKtool",
+  "families": {
+    "CatQuadruped": {
+      "extractedRoot": "D:/blender/creature/NMSImport/CatRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/CatRig",
+      "sourceScene": "models/planets/creatures/catrig/cat.scene.mbin",
+      "descriptor": "models/planets/creatures/catrig/cat.descriptor.MXML",
+      "locomotionType": "Quadruped",
+      "legCount": 4,
+      "actions": {
+        "idle": "models/planets/creatures/catrig/animation/catidle.anim.mbin",
+        "walk": "models/planets/creatures/catrig/animation/catwalk.anim.mbin",
+        "run": "models/planets/creatures/catrig/animation/catrun.anim.mbin"
+      },
+      "loadBearingChains": [
+        [
+          "LFShoulderJNT",
+          "LFElbowJNT",
+          "LFAnkleJNT",
+          "LFFootJNT"
+        ],
+        [
+          "RFShoulderJNT",
+          "RFElbowJNT",
+          "RFAnkleJNT",
+          "RFFootJNT"
+        ],
+        [
+          "LBHipJNT",
+          "LBKneeJNT",
+          "LBAnkleJNT",
+          "LBFootJNT"
+        ],
+        [
+          "RBHipJNT",
+          "RBKneeJNT",
+          "RBAnkleJNT",
+          "RBFootJNT"
+        ]
+      ],
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1.3,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false
+      }
+    },
+    "CatHexapod": {
+      "extractedRoot": "D:/blender/creature/NMSImport/CatRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/CatRig",
+      "sourceScene": "models/planets/creatures/catrig/sixlegcat.scene.mbin",
+      "descriptor": "models/planets/creatures/catrig/sixlegcat.descriptor.MXML",
+      "locomotionType": "Hexapod",
+      "legCount": 6,
+      "actions": {
+        "idle": "models/planets/creatures/catrig/animation/sixlegcatidle.anim.mbin",
+        "walk": "models/planets/creatures/catrig/animation/sixlegcatwalk.anim.mbin",
+        "run": "models/planets/creatures/catrig/animation/sixlegcatrun.anim.mbin"
+      },
+      "loadBearingChains": [
+        [
+          "LFShoulderJNT",
+          "LFElbowJNT",
+          "LFAnkleJNT",
+          "LFFootJNT"
+        ],
+        [
+          "RFShoulderJNT",
+          "RFElbowJNT",
+          "RFAnkleJNT",
+          "RFFootJNT"
+        ],
+        [
+          "LMHipJNT",
+          "LMKneeJNT",
+          "LMAnkleJNT",
+          "LMFootJNT"
+        ],
+        [
+          "RMHipJNT",
+          "RMKneeJNT",
+          "RMAnkleJNT",
+          "RMFootJNT"
+        ],
+        [
+          "LBHipJNT",
+          "LBKneeJNT",
+          "LBAnkleJNT",
+          "LBFootJNT"
+        ],
+        [
+          "RBHipJNT",
+          "RBKneeJNT",
+          "RBAnkleJNT",
+          "RBFootJNT"
+        ]
+      ],
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1.2,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false,
+        "excludedModulePrefixes": [
+          "_B6"
+        ]
+      }
+    },
+    "TrexBiped": {
+      "extractedRoot": "D:/blender/creature/NMSImport/TrexRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/TrexRig",
+      "sourceScene": "models/planets/creatures/trexrig/trex.scene.mbin",
+      "descriptorSource": "models/planets/creatures/trexrig/trex.descriptor.mbin",
+      "descriptor": "models/planets/creatures/trexrig/trex.descriptor.MXML",
+      "familyFilter": "models/planets/creatures/trexrig/*",
+      "textureFilters": [
+        "textures/planets/creatures/trexrig/*"
+      ],
+      "extractionPaks": [
+        "NMSARC.MeshPlanetCREATURES.pak",
+        "NMSARC.AnimMBIN.pak",
+        "NMSARC.EntitySceneMBIN.pak",
+        "NMSARC.MetadataEtc.pak",
+        "NMSARC.Precache.pak",
+        "NMSARC.TexCreatureTREXRIG.pak"
+      ],
+      "texturePaks": [
+        "NMSARC.TexCreatureTREXRIG.pak",
+        "NMSARC.TexCreatureSHARED.pak"
+      ],
+      "locomotionType": "Biped",
+      "legCount": 2,
+      "actions": {
+        "idle": "models/planets/creatures/trexrig/anim/trexidle.anim.mbin",
+        "walk": "models/planets/creatures/trexrig/anim/trexwalk.anim.mbin",
+        "run": "models/planets/creatures/trexrig/anim/trexrun.anim.mbin"
+      },
+      "expectedFrames": {
+        "idle": 751,
+        "walk": 97,
+        "run": 49
+      },
+      "loadBearingChains": [
+        [
+          "LLegJNT",
+          "LKneeJNT",
+          "LAnkleJNT",
+          "LFootJNT"
+        ],
+        [
+          "RRegJNT",
+          "RKneeJNT",
+          "RAnkleJNT",
+          "RFootJNT"
+        ]
+      ],
+      "mustDifferFromManifests": [
+        "D:/blender/creature/NMSImport/CatRig/Manifests/CatQuadruped_skeleton.json",
+        "D:/blender/creature/NMSImport/CatRig/Manifests/CatHexapod_skeleton.json"
+      ],
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1.4,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false
+      }
+    },
+    "SpiderOctopod": {
+      "extractedRoot": "D:/blender/creature/NMSImport/SpiderRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/SpiderRig",
+      "familyFilter": "models/planets/creatures/spiderrig/*",
+      "textureFilters": [
+        "textures/planets/creatures/spiderrig/*"
+      ],
+      "extractionPaks": [
+        "NMSARC.MeshPlanetCREATURES.pak",
+        "NMSARC.AnimMBIN.pak",
+        "NMSARC.EntitySceneMBIN.pak",
+        "NMSARC.MetadataEtc.pak",
+        "NMSARC.Precache.pak",
+        "NMSARC.TexCreatureSPIDERRIG.pak"
+      ],
+      "texturePaks": [
+        "NMSARC.TexCreatureSPIDERRIG.pak",
+        "NMSARC.TexCreatureSHARED.pak"
+      ],
+      "loadBearingChains": [
+        [
+          "RFirstLeg1JNT",
+          "RFirstLeg2JNT",
+          "RFirstLeg3JNT",
+          "RFirstLeg4END"
+        ],
+        [
+          "RSecondLeg1JNT",
+          "RSecondLeg2JNT",
+          "RSecondLeg3JNT",
+          "RSecondLegEND"
+        ],
+        [
+          "RThirdLeg1JNT",
+          "RThirdLeg2JNT",
+          "RThirdLeg3JNT",
+          "RThirdLeg4END"
+        ],
+        [
+          "RFourthLeg1JNT",
+          "RFourthLeg2JNT",
+          "RFourthLeg3JNT",
+          "RFourthLeg4END"
+        ],
+        [
+          "LFirstLeg1JNT",
+          "LFirstLeg2JNT",
+          "LFirstLeg3JNT",
+          "LFirstLeg4END"
+        ],
+        [
+          "LSecondLeg1JNT",
+          "LSecondLeg2JNT",
+          "LSecondLeg3JNT",
+          "LSecondLegEND"
+        ],
+        [
+          "LThirdLeg1JNT",
+          "LThirdLeg2JNT",
+          "LThirdLeg3JNT",
+          "LThirdLeg4END"
+        ],
+        [
+          "LFourthLeg1JNT",
+          "LFourthLeg2JNT",
+          "LFourthLeg3JNT",
+          "LFourthLeg4END"
+        ]
+      ],
+      "sourceVariants": [
+        {
+          "variantId": "Spider",
+          "sourceScene": "models/planets/creatures/spiderrig/spider.scene.mbin",
+          "descriptorSource": "models/planets/creatures/spiderrig/spider.descriptor.mbin",
+          "descriptor": "models/planets/creatures/spiderrig/spider.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/spiderrig/anim/spideridle.anim.mbin",
+            "walk": "models/planets/creatures/spiderrig/anim/spiderwalk.anim.mbin",
+            "run": "models/planets/creatures/spiderrig/anim/spiderrun.anim.mbin"
+          }
+        },
+        {
+          "variantId": "SpiderFloat",
+          "sourceScene": "models/planets/creatures/spiderrig/spiderfloat.scene.mbin",
+          "descriptorSource": "models/planets/creatures/spiderrig/spiderfloat.descriptor.mbin",
+          "descriptor": "models/planets/creatures/spiderrig/spiderfloat.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/spiderrig/anim/spiderfloatidle.anim.mbin",
+            "walk": "models/planets/creatures/spiderrig/anim/spiderfloatwalk.anim.mbin",
+            "run": "models/planets/creatures/spiderrig/anim/spiderfloatrun.anim.mbin"
+          }
+        }
+      ],
+      "activeVariantId": "Spider",
+      "locomotionType": "Octopod",
+      "legCount": 8,
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1.2,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false,
+        "surfaceMode": "Ground",
+        "hoverClearance": 0
+      },
+      "mustDifferFromManifests": [
+        "D:/blender/creature/NMSImport/CatRig/Manifests/CatQuadruped_skeleton.json",
+        "D:/blender/creature/NMSImport/CatRig/Manifests/CatHexapod_skeleton.json",
+        "D:/blender/creature/NMSImport/TrexRig/Manifests/TrexBiped_skeleton.json"
+      ]
+    },
+    "SpiderFiend": {
+      "extractedRoot": "D:/blender/creature/NMSImport/SpiderRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/SpiderRig",
+      "familyFilter": "models/planets/creatures/spiderrig/*",
+      "textureFilters": [
+        "textures/planets/creatures/spiderrig/*"
+      ],
+      "extractionPaks": [
+        "NMSARC.MeshPlanetCREATURES.pak",
+        "NMSARC.AnimMBIN.pak",
+        "NMSARC.EntitySceneMBIN.pak",
+        "NMSARC.MetadataEtc.pak",
+        "NMSARC.Precache.pak",
+        "NMSARC.TexCreatureSPIDERRIG.pak"
+      ],
+      "texturePaks": [
+        "NMSARC.TexCreatureSPIDERRIG.pak",
+        "NMSARC.TexCreatureSHARED.pak"
+      ],
+      "loadBearingChains": [
+        [
+          "RFirstLeg1JNT",
+          "RFirstLeg2JNT",
+          "RFirstLeg3JNT",
+          "RFirstLeg4END"
+        ],
+        [
+          "RFourthLeg1JNT",
+          "RFourthLeg2JNT",
+          "RFourthLeg3JNT",
+          "RFourthLeg4END"
+        ],
+        [
+          "LFirstLeg1JNT",
+          "LFirstLeg2JNT",
+          "LFirstLeg3JNT",
+          "LFirstLeg4END"
+        ],
+        [
+          "LFourthLeg1JNT",
+          "LFourthLeg2JNT",
+          "LFourthLeg3JNT",
+          "LFourthLeg4END"
+        ]
+      ],
+      "sourceVariants": [
+        {
+          "variantId": "Fiend",
+          "sourceScene": "models/planets/creatures/spiderrig/fiend.scene.mbin",
+          "descriptorSource": "models/planets/creatures/spiderrig/fiend.descriptor.mbin",
+          "descriptor": "models/planets/creatures/spiderrig/fiend.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/spiderrig/anim/fiendidle.anim.mbin",
+            "walk": "models/planets/creatures/spiderrig/anim/fiendwalk.anim.mbin",
+            "run": "models/planets/creatures/spiderrig/anim/fiendrun.anim.mbin"
+          }
+        }
+      ],
+      "activeVariantId": "Fiend",
+      "locomotionType": "Quadruped",
+      "legCount": 4,
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1.35,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false,
+        "surfaceMode": "Ground",
+        "hoverClearance": 0
+      },
+      "mustDifferFromManifests": [
+        "D:/blender/creature/NMSImport/SpiderRig/Manifests/SpiderOctopod_skeleton.json"
+      ]
+    },
+    "SpiderFloat": {
+      "extractedRoot": "D:/blender/creature/NMSImport/SpiderRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/SpiderRig",
+      "familyFilter": "models/planets/creatures/spiderrig/*",
+      "textureFilters": [
+        "textures/planets/creatures/spiderrig/*"
+      ],
+      "extractionPaks": [
+        "NMSARC.MeshPlanetCREATURES.pak",
+        "NMSARC.AnimMBIN.pak",
+        "NMSARC.EntitySceneMBIN.pak",
+        "NMSARC.MetadataEtc.pak",
+        "NMSARC.Precache.pak",
+        "NMSARC.TexCreatureSPIDERRIG.pak"
+      ],
+      "texturePaks": [
+        "NMSARC.TexCreatureSPIDERRIG.pak",
+        "NMSARC.TexCreatureSHARED.pak"
+      ],
+      "loadBearingChains": [
+        [
+          "RFirstLeg1JNT",
+          "RFirstLeg2JNT",
+          "RFirstLeg3JNT",
+          "RFirstLeg4END"
+        ],
+        [
+          "RSecondLeg1JNT",
+          "RSecondLeg2JNT",
+          "RSecondLeg3JNT",
+          "RSecondLegEND"
+        ],
+        [
+          "RThirdLeg1JNT",
+          "RThirdLeg2JNT",
+          "RThirdLeg3JNT",
+          "RThirdLeg4END"
+        ],
+        [
+          "RFourthLeg1JNT",
+          "RFourthLeg2JNT",
+          "RFourthLeg3JNT",
+          "RFourthLeg4END"
+        ],
+        [
+          "LFirstLeg1JNT",
+          "LFirstLeg2JNT",
+          "LFirstLeg3JNT",
+          "LFirstLeg4END"
+        ],
+        [
+          "LSecondLeg1JNT",
+          "LSecondLeg2JNT",
+          "LSecondLeg3JNT",
+          "LSecondLegEND"
+        ],
+        [
+          "LThirdLeg1JNT",
+          "LThirdLeg2JNT",
+          "LThirdLeg3JNT",
+          "LThirdLeg4END"
+        ],
+        [
+          "LFourthLeg1JNT",
+          "LFourthLeg2JNT",
+          "LFourthLeg3JNT",
+          "LFourthLeg4END"
+        ]
+      ],
+      "sourceVariants": [
+        {
+          "variantId": "Spider",
+          "sourceScene": "models/planets/creatures/spiderrig/spider.scene.mbin",
+          "descriptorSource": "models/planets/creatures/spiderrig/spider.descriptor.mbin",
+          "descriptor": "models/planets/creatures/spiderrig/spider.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/spiderrig/anim/spideridle.anim.mbin",
+            "walk": "models/planets/creatures/spiderrig/anim/spiderwalk.anim.mbin",
+            "run": "models/planets/creatures/spiderrig/anim/spiderrun.anim.mbin"
+          }
+        },
+        {
+          "variantId": "SpiderFloat",
+          "sourceScene": "models/planets/creatures/spiderrig/spiderfloat.scene.mbin",
+          "descriptorSource": "models/planets/creatures/spiderrig/spiderfloat.descriptor.mbin",
+          "descriptor": "models/planets/creatures/spiderrig/spiderfloat.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/spiderrig/anim/spiderfloatidle.anim.mbin",
+            "walk": "models/planets/creatures/spiderrig/anim/spiderfloatwalk.anim.mbin",
+            "run": "models/planets/creatures/spiderrig/anim/spiderfloatrun.anim.mbin"
+          }
+        }
+      ],
+      "activeVariantId": "SpiderFloat",
+      "locomotionType": "Hover",
+      "legCount": 8,
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1.1,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false,
+        "surfaceMode": "Hover",
+        "hoverClearance": 0.65
+      },
+      "mustMatchManifests": [
+        "D:/blender/creature/NMSImport/SpiderRig/Manifests/SpiderOctopod_skeleton.json"
+      ]
+    },
+    "SpiderRock": {
+      "extractedRoot": "D:/blender/creature/NMSImport/SpiderRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/SpiderRig",
+      "familyFilter": "models/planets/creatures/spiderrig/*",
+      "textureFilters": [
+        "textures/planets/creatures/spiderrig/*"
+      ],
+      "extractionPaks": [
+        "NMSARC.MeshPlanetCREATURES.pak",
+        "NMSARC.AnimMBIN.pak",
+        "NMSARC.EntitySceneMBIN.pak",
+        "NMSARC.MetadataEtc.pak",
+        "NMSARC.Precache.pak",
+        "NMSARC.TexCreatureSPIDERRIG.pak"
+      ],
+      "texturePaks": [
+        "NMSARC.TexCreatureSPIDERRIG.pak",
+        "NMSARC.TexCreatureSHARED.pak"
+      ],
+      "loadBearingChains": [
+        [
+          "RFirstLeg1JNT",
+          "RFirstLeg2JNT",
+          "RFirstLeg3JNT",
+          "RFirstLeg4END"
+        ],
+        [
+          "RSecondLeg1JNT",
+          "RSecondLeg2JNT",
+          "RSecondLeg3JNT",
+          "RSecondLegEND"
+        ],
+        [
+          "RThirdLeg1JNT",
+          "RThirdLeg2JNT",
+          "RThirdLeg3JNT",
+          "RThirdLeg4END"
+        ],
+        [
+          "RFourthLeg1JNT",
+          "RFourthLeg2JNT",
+          "RFourthLeg3JNT",
+          "RFourthLeg4END"
+        ],
+        [
+          "LFirstLeg1JNT",
+          "LFirstLeg2JNT",
+          "LFirstLeg3JNT",
+          "LFirstLeg4END"
+        ],
+        [
+          "LSecondLeg1JNT",
+          "LSecondLeg2JNT",
+          "LSecondLeg3JNT",
+          "LSecondLegEND"
+        ],
+        [
+          "LThirdLeg1JNT",
+          "LThirdLeg2JNT",
+          "LThirdLeg3JNT",
+          "LThirdLeg4END"
+        ],
+        [
+          "LFourthLeg1JNT",
+          "LFourthLeg2JNT",
+          "LFourthLeg3JNT",
+          "LFourthLeg4END"
+        ]
+      ],
+      "sourceVariants": [
+        {
+          "variantId": "RockCreature",
+          "sourceScene": "models/planets/creatures/spiderrig/rockcreature.scene.mbin",
+          "descriptorSource": "models/planets/creatures/spiderrig/rockcreature.descriptor.mbin",
+          "descriptor": "models/planets/creatures/spiderrig/rockcreature.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/spiderrig/anim/spideridle.anim.mbin",
+            "walk": "models/planets/creatures/spiderrig/anim/spiderwalk.anim.mbin",
+            "run": "models/planets/creatures/spiderrig/anim/spiderrun.anim.mbin"
+          }
+        }
+      ],
+      "activeVariantId": "RockCreature",
+      "locomotionType": "Octopod",
+      "legCount": 8,
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 0.95,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false,
+        "surfaceMode": "Ground",
+        "hoverClearance": 0
+      },
+      "mustDifferFromManifests": [
+        "D:/blender/creature/NMSImport/SpiderRig/Manifests/SpiderOctopod_skeleton.json"
+      ],
+      "publishEnabled": false,
+      "publishDisabledReason": "RockCreature has a distinct inverse-bind skeleton but no matching native Idle/Walk/Run set."
+    },
+    "CowQuadruped": {
+      "extractedRoot": "D:/blender/creature/NMSImport/CowRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/CowRig",
+      "familyFilter": "models/planets/creatures/cowrig/*",
+      "textureFilters": [
+        "textures/planets/creatures/cowrig/*"
+      ],
+      "extractionPaks": [
+        "NMSARC.MeshPlanetCREATURES.pak",
+        "NMSARC.AnimMBIN.pak",
+        "NMSARC.EntitySceneMBIN.pak",
+        "NMSARC.MetadataEtc.pak",
+        "NMSARC.Precache.pak",
+        "NMSARC.TexCreatureCOWRIG.pak"
+      ],
+      "texturePaks": [
+        "NMSARC.TexCreatureCOWRIG.pak",
+        "NMSARC.TexCreatureSHARED.pak"
+      ],
+      "sourceScene": "models/planets/creatures/cowrig/cow.scene.mbin",
+      "descriptorSource": "models/planets/creatures/cowrig/cow.descriptor.mbin",
+      "descriptor": "models/planets/creatures/cowrig/cow.descriptor.MXML",
+      "locomotionType": "Quadruped",
+      "legCount": 4,
+      "actions": {
+        "idle": "models/planets/creatures/cowrig/anims/cowidle.anim.mbin",
+        "walk": "models/planets/creatures/cowrig/anims/cowwalk.anim.mbin",
+        "run": "models/planets/creatures/cowrig/anims/cowrun.anim.mbin"
+      },
+      "loadBearingChains": [],
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1.15,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false,
+        "surfaceMode": "Ground",
+        "hoverClearance": 0
+      }
+    },
+    "CowHexapod": {
+      "extractedRoot": "D:/blender/creature/NMSImport/CowRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/CowRig",
+      "familyFilter": "models/planets/creatures/cowrig/*",
+      "textureFilters": [
+        "textures/planets/creatures/cowrig/*"
+      ],
+      "extractionPaks": [
+        "NMSARC.MeshPlanetCREATURES.pak",
+        "NMSARC.AnimMBIN.pak",
+        "NMSARC.EntitySceneMBIN.pak",
+        "NMSARC.MetadataEtc.pak",
+        "NMSARC.Precache.pak",
+        "NMSARC.TexCreatureCOWRIG.pak"
+      ],
+      "texturePaks": [
+        "NMSARC.TexCreatureCOWRIG.pak",
+        "NMSARC.TexCreatureSHARED.pak"
+      ],
+      "sourceScene": "models/planets/creatures/cowrig/sixleggedcow.scene.mbin",
+      "descriptorSource": "models/planets/creatures/cowrig/sixleggedcow.descriptor.mbin",
+      "descriptor": "models/planets/creatures/cowrig/sixleggedcow.descriptor.MXML",
+      "locomotionType": "Hexapod",
+      "legCount": 6,
+      "actions": {
+        "idle": "models/planets/creatures/cowrig/anims/sixleggedcowidle.anim.mbin",
+        "walk": "models/planets/creatures/cowrig/anims/sixleggedcowwalk.anim.mbin",
+        "run": "models/planets/creatures/cowrig/anims/sixleggedcowrun.anim.mbin"
+      },
+      "loadBearingChains": [],
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1.1,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false,
+        "surfaceMode": "Ground",
+        "hoverClearance": 0
+      },
+      "mustDifferFromManifests": [
+        "D:/blender/creature/NMSImport/CowRig/Manifests/CowQuadruped_skeleton.json"
+      ]
+    },
+    "RodentQuadruped": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RodentRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RodentRig",
+      "familyFilter": "models/planets/creatures/rodentrig/*",
+      "textureFilters": [
+        "textures/planets/creatures/rodentrig/*"
+      ],
+      "extractionPaks": [
+        "NMSARC.MeshPlanetCREATURES.pak",
+        "NMSARC.AnimMBIN.pak",
+        "NMSARC.EntitySceneMBIN.pak",
+        "NMSARC.MetadataEtc.pak",
+        "NMSARC.Precache.pak",
+        "NMSARC.TexCreatureRODENTRIG.pak"
+      ],
+      "texturePaks": [
+        "NMSARC.TexCreatureRODENTRIG.pak",
+        "NMSARC.TexCreatureSHARED.pak"
+      ],
+      "sourceScene": "models/planets/creatures/rodentrig/rodent.scene.mbin",
+      "descriptorSource": "models/planets/creatures/rodentrig/rodent.descriptor.mbin",
+      "descriptor": "models/planets/creatures/rodentrig/rodent.descriptor.MXML",
+      "locomotionType": "Quadruped",
+      "legCount": 4,
+      "actions": {
+        "idle": "models/planets/creatures/rodentrig/anims/rodentidle.anim.mbin",
+        "walk": "models/planets/creatures/rodentrig/anims/rodentwalk.anim.mbin",
+        "run": "models/planets/creatures/rodentrig/anims/rodentrun.anim.mbin"
+      },
+      "loadBearingChains": [],
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1.25,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false,
+        "surfaceMode": "Ground",
+        "hoverClearance": 0
+      }
+    },
+    "StriderGround": {
+      "extractedRoot": "D:/blender/creature/NMSImport/StriderRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/StriderRig",
+      "familyFilter": "models/planets/creatures/striderrig/*",
+      "textureFilters": [
+        "textures/planets/creatures/striderrig/*"
+      ],
+      "extractionPaks": [
+        "NMSARC.MeshPlanetCREATURES.pak",
+        "NMSARC.AnimMBIN.pak",
+        "NMSARC.EntitySceneMBIN.pak",
+        "NMSARC.MetadataEtc.pak",
+        "NMSARC.Precache.pak",
+        "NMSARC.TexCreatureSTRIDERRIG.pak"
+      ],
+      "texturePaks": [
+        "NMSARC.TexCreatureSTRIDERRIG.pak",
+        "NMSARC.TexCreatureSHARED.pak"
+      ],
+      "sourceVariants": [
+        {
+          "variantId": "Strider",
+          "sourceScene": "models/planets/creatures/striderrig/strider.scene.mbin",
+          "descriptorSource": "models/planets/creatures/striderrig/strider.descriptor.mbin",
+          "descriptor": "models/planets/creatures/striderrig/strider.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/striderrig/anims/striderstillidle.anim.mbin",
+            "walk": "models/planets/creatures/striderrig/anims/striderwalk.anim.mbin",
+            "run": "models/planets/creatures/striderrig/anims/striderrun.anim.mbin"
+          }
+        },
+        {
+          "variantId": "StriderGlow",
+          "sourceScene": "models/planets/creatures/striderrig/striderglow.scene.mbin",
+          "descriptorSource": "models/planets/creatures/striderrig/striderglow.descriptor.mbin",
+          "descriptor": "models/planets/creatures/striderrig/striderglow.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/striderrig/anims/striderstillidle.anim.mbin",
+            "walk": "models/planets/creatures/striderrig/anims/striderwalk.anim.mbin",
+            "run": "models/planets/creatures/striderrig/anims/striderrun.anim.mbin"
+          }
+        }
+      ],
+      "activeVariantId": "Strider",
+      "locomotionType": "Ground",
+      "legCount": 2,
+      "loadBearingChains": [],
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1.5,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false,
+        "surfaceMode": "Ground",
+        "hoverClearance": 0
+      }
+    },
+    "TriceratopsQuadruped": {
+      "extractedRoot": "D:/blender/creature/NMSImport/TriceratopsRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/TriceratopsRig",
+      "familyFilter": "models/planets/creatures/triceratopsrig/*",
+      "textureFilters": [
+        "textures/planets/creatures/triceratopsrig/*"
+      ],
+      "extractionPaks": [
+        "NMSARC.MeshPlanetCREATURES.pak",
+        "NMSARC.AnimMBIN.pak",
+        "NMSARC.EntitySceneMBIN.pak",
+        "NMSARC.MetadataEtc.pak",
+        "NMSARC.Precache.pak",
+        "NMSARC.TexCreatureTRICERATOPSRIG.pak"
+      ],
+      "texturePaks": [
+        "NMSARC.TexCreatureTRICERATOPSRIG.pak",
+        "NMSARC.TexCreatureSHARED.pak"
+      ],
+      "sourceScene": "models/planets/creatures/triceratopsrig/triceratops.scene.mbin",
+      "descriptorSource": "models/planets/creatures/triceratopsrig/triceratops.descriptor.mbin",
+      "descriptor": "models/planets/creatures/triceratopsrig/triceratops.descriptor.MXML",
+      "locomotionType": "Quadruped",
+      "legCount": 4,
+      "actions": {
+        "idle": "models/planets/creatures/triceratopsrig/anims/triidle.anim.mbin",
+        "walk": "models/planets/creatures/triceratopsrig/anims/triwalk.anim.mbin",
+        "run": "models/planets/creatures/triceratopsrig/anims/trirun.anim.mbin"
+      },
+      "loadBearingChains": [],
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1.15,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false,
+        "surfaceMode": "Ground",
+        "hoverClearance": 0
+      }
+    },
+    "GruntGround": {
+      "extractedRoot": "D:/blender/creature/NMSImport/GruntRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/GruntRig",
+      "familyFilter": "models/planets/creatures/gruntrig/*",
+      "textureFilters": [
+        "textures/planets/creatures/gruntrig/*"
+      ],
+      "extractionPaks": [
+        "NMSARC.MeshPlanetCREATURES.pak",
+        "NMSARC.AnimMBIN.pak",
+        "NMSARC.EntitySceneMBIN.pak",
+        "NMSARC.MetadataEtc.pak",
+        "NMSARC.Precache.pak",
+        "NMSARC.TexCreatureGRUNTRIG.pak"
+      ],
+      "texturePaks": [
+        "NMSARC.TexCreatureGRUNTRIG.pak",
+        "NMSARC.TexCreatureSHARED.pak"
+      ],
+      "sourceVariants": [
+        {
+          "variantId": "GruntGround",
+          "sourceScene": "models/planets/creatures/gruntrig/grunt.scene.mbin",
+          "descriptorSource": "models/planets/creatures/gruntrig/grunt.descriptor.mbin",
+          "descriptor": "models/planets/creatures/gruntrig/grunt.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/gruntrig/anim/gruntidle.anim.mbin",
+            "walk": "models/planets/creatures/gruntrig/anim/gruntwalk.anim.mbin",
+            "run": "models/planets/creatures/gruntrig/anim/gruntrun.anim.mbin"
+          }
+        },
+        {
+          "variantId": "GruntFloat",
+          "sourceScene": "models/planets/creatures/gruntrig/grunt.scene.mbin",
+          "descriptorSource": "models/planets/creatures/gruntrig/grunt.descriptor.mbin",
+          "descriptor": "models/planets/creatures/gruntrig/grunt.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/gruntrig/anim/gruntfloatidle.anim.mbin",
+            "walk": "models/planets/creatures/gruntrig/anim/gruntfloatwalk.anim.mbin",
+            "run": "models/planets/creatures/gruntrig/anim/gruntfloatrun.anim.mbin"
+          }
+        }
+      ],
+      "activeVariantId": "GruntGround",
+      "locomotionType": "Ground",
+      "legCount": 2,
+      "loadBearingChains": [],
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1.05,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false,
+        "surfaceMode": "Ground",
+        "hoverClearance": 0
+      }
+    },
+    "GruntFloat": {
+      "extractedRoot": "D:/blender/creature/NMSImport/GruntRig/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/GruntRig",
+      "familyFilter": "models/planets/creatures/gruntrig/*",
+      "textureFilters": [
+        "textures/planets/creatures/gruntrig/*"
+      ],
+      "extractionPaks": [
+        "NMSARC.MeshPlanetCREATURES.pak",
+        "NMSARC.AnimMBIN.pak",
+        "NMSARC.EntitySceneMBIN.pak",
+        "NMSARC.MetadataEtc.pak",
+        "NMSARC.Precache.pak",
+        "NMSARC.TexCreatureGRUNTRIG.pak"
+      ],
+      "texturePaks": [
+        "NMSARC.TexCreatureGRUNTRIG.pak",
+        "NMSARC.TexCreatureSHARED.pak"
+      ],
+      "sourceVariants": [
+        {
+          "variantId": "GruntGround",
+          "sourceScene": "models/planets/creatures/gruntrig/grunt.scene.mbin",
+          "descriptorSource": "models/planets/creatures/gruntrig/grunt.descriptor.mbin",
+          "descriptor": "models/planets/creatures/gruntrig/grunt.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/gruntrig/anim/gruntidle.anim.mbin",
+            "walk": "models/planets/creatures/gruntrig/anim/gruntwalk.anim.mbin",
+            "run": "models/planets/creatures/gruntrig/anim/gruntrun.anim.mbin"
+          }
+        },
+        {
+          "variantId": "GruntFloat",
+          "sourceScene": "models/planets/creatures/gruntrig/grunt.scene.mbin",
+          "descriptorSource": "models/planets/creatures/gruntrig/grunt.descriptor.mbin",
+          "descriptor": "models/planets/creatures/gruntrig/grunt.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/gruntrig/anim/gruntfloatidle.anim.mbin",
+            "walk": "models/planets/creatures/gruntrig/anim/gruntfloatwalk.anim.mbin",
+            "run": "models/planets/creatures/gruntrig/anim/gruntfloatrun.anim.mbin"
+          }
+        }
+      ],
+      "activeVariantId": "GruntFloat",
+      "locomotionType": "Hover",
+      "legCount": 2,
+      "loadBearingChains": [],
+      "mustMatchManifests": [
+        "D:/blender/creature/NMSImport/GruntRig/Manifests/GruntGround_skeleton.json"
+      ],
+      "unity": {
+        "selectionWeight": 1,
+        "walkSpeed": 1,
+        "importScale": 1,
+        "importEuler": [
+          0,
+          0,
+          0
+        ],
+        "localForwardAxis": [
+          0,
+          0,
+          -1
+        ],
+        "allowRareModules": false,
+        "surfaceMode": "Hover",
+        "hoverClearance": 0.65
+      }
+    }
+  },
+  "unityProjectRoot": "D:/unity planet/unity-planet",
+  "unityOutputRoot": "Assets/Creatures/Generated/NMS"
+}

@@ -24,11 +24,8 @@ public sealed class CreatureSemanticAnimator : MonoBehaviour
         CreatureGenome creatureGenome,
         CreatureRig creatureRig,
         LayerMask layers)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(34);}
-    try
     {
-        gravitySource = source;
+gravitySource = source;
         body = targetBody;
         genome = creatureGenome;
         rig = creatureRig;
@@ -38,11 +35,8 @@ public sealed class CreatureSemanticAnimator : MonoBehaviour
         headRestRotation = rig.head.localRotation;
         tailRestRotation = rig.tailBase.localRotation;
         serpentineLocomotion = GetComponent<SerpentineContactLocomotion>();
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     public void RefreshRestPose()
     {

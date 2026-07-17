@@ -3,23 +3,14 @@ using UnityEngine;
 public static class ProceduralCreatureGenerator
 {
     public static CreatureGenome Generate(int seed)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(40, (int)seed);}
-    try
     {
-        return Generate(seed, null);
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+return Generate(seed, null);
+    
+}
 
     public static CreatureGenome Generate(int seed, CreatureTopology? forcedTopology)
-    {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(41, (int)seed);}
-    try
     {
-        var random = new StableCreatureRandom(seed);
+var random = new StableCreatureRandom(seed);
         CreatureTopology generatedTopology = (CreatureTopology)random.Range(0, 4);
         CreatureTopology topology = forcedTopology ?? generatedTopology;
         int bodyStyle = random.Range(0, 4);
@@ -98,11 +89,8 @@ public static class ProceduralCreatureGenerator
         genome.designLanguage = CreatureBodyGraphBuilder.GenerateDesignLanguage(genome);
         genome.bodyGraph = CreatureBodyGraphBuilder.Build(genome);
         return genome;
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+    
+}
 
     static void GenerateBodyProportions(
         CreatureTopology topology,
@@ -198,40 +186,22 @@ public static class ProceduralCreatureGenerator
         }
 
         public int Range(int minimum, int maximum)
-        {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(42, (int)minimum, (int)maximum);}
-    try
-    {
-            return minimum + Mathf.FloorToInt(Next01() * (maximum - minimum));
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+        {
+return minimum + Mathf.FloorToInt(Next01() * (maximum - minimum));
+    
+}
 
         public float Value()
-        {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(43);}
-    try
-    {
-            return Next01();
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+        {
+return Next01();
+    
+}
 
         public float Range(float minimum, float maximum)
-        {bool __logTrackDepthEntered = FSPDebuger.EnableLogTrackInternal;
-    if(__logTrackDepthEntered){FSPDebuger.PushDepth();FSPDebuger.LogTrack(44, (int)minimum, (int)maximum);}
-    try
-    {
-            return Mathf.Lerp(minimum, maximum, Next01());
-    }
-    finally
-    {
-        if(__logTrackDepthEntered)FSPDebuger.PopDepth();
-    }}
+        {
+return Mathf.Lerp(minimum, maximum, Next01());
+    
+}
 
         float Next01()
         {
