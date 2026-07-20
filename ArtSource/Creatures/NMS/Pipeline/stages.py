@@ -27,15 +27,20 @@ def animation_value(animation, node, frame, channel, index_name):
     return getattr(animation.StillFrameData, channel)[index - len(animated)]
 
 
-def animation_local_matrix(animation, node, frame):
+def animation_local_matrix(animation, node, frame, strip_scale_bones=None):
     translation = animation_value(animation, node, frame, "Translations", "TransIndex")
     raw_rotation = animation_value(animation, node, frame, "Rotations", "RotIndex")
     scale = animation_value(animation, node, frame, "Scales", "ScaleIndex")
+    if strip_scale_bones is not None and node.Node in strip_scale_bones:
+        translation = animation_value(
+            animation, node, 0, "Translations", "TransIndex")
+        scale = animation_value(animation, node, 0, "Scales", "ScaleIndex")
     rotation = Quaternion((raw_rotation[3], raw_rotation[0], raw_rotation[1], raw_rotation[2]))
     return Matrix.LocRotScale(Vector(translation[:3]), rotation, Vector(scale[:3]))
 
 
-def build_animation_targets(animation, frame, armature, bind_matrices):
+def build_animation_targets(
+        animation, frame, armature, bind_matrices, strip_scale_bones=None):
     nodes = {node.Node: node for node in animation.NodeData if node.Node in armature.data.bones}
     animated_names = set(nodes)
     animated_globals = {}
@@ -46,7 +51,8 @@ def build_animation_targets(animation, frame, armature, bind_matrices):
         parent = armature.data.bones[name].parent
         while parent is not None and parent.name not in animated_names:
             parent = parent.parent
-        local = animation_local_matrix(animation, nodes[name], frame)
+        local = animation_local_matrix(
+            animation, nodes[name], frame, strip_scale_bones)
         result = animated_global(parent.name) @ local if parent is not None else local
         animated_globals[name] = result
         return result
@@ -87,7 +93,10 @@ def basis_from_target(bone, target, targets, rest):
     return inherited.inverted() @ target
 
 
-def bake_action(armature, bind_matrices, source_path, action_name):
+def bake_action(
+        armature, bind_matrices, source_path, action_name,
+        monitored_scale_bones=None, strip_scale_bones=None,
+        locked_translation_bones=None):
     animation = read_anim(str(source_path))
     old = bpy.data.actions.get(action_name)
     if old is not None:
@@ -104,12 +113,18 @@ def bake_action(armature, bind_matrices, source_path, action_name):
         pose.rotation_mode = "QUATERNION"
         pose.matrix_basis = Matrix.Identity(4)
     for frame in range(animation.FrameCount):
-        targets = build_animation_targets(animation, frame, armature, bind_matrices)
+        targets = build_animation_targets(
+            animation, frame, armature, bind_matrices, strip_scale_bones)
         bpy.context.scene.frame_set(frame)
         for bone in ordered:
             pose = armature.pose.bones[bone.name]
             basis = basis_from_target(bone, targets[bone.name], targets, rest)
             location, rotation, scale = basis.decompose()
+            if strip_scale_bones is not None and bone.name in strip_scale_bones:
+                scale = Vector((1.0, 1.0, 1.0))
+            if (locked_translation_bones is not None
+                    and bone.name in locked_translation_bones):
+                location = Vector((0.0, 0.0, 0.0))
             previous = previous_rotations.get(bone.name)
             if previous is not None and previous.dot(rotation) < 0.0:
                 rotation.negate()
@@ -117,7 +132,11 @@ def bake_action(armature, bind_matrices, source_path, action_name):
             pose.location = location
             pose.rotation_quaternion = rotation
             pose.scale = scale
-            maximum_scale_delta = max(maximum_scale_delta, *(abs(v - 1.0) for v in scale))
+            if monitored_scale_bones is None or bone.name in monitored_scale_bones:
+                maximum_scale_delta = max(
+                    maximum_scale_delta,
+                    *(abs(v - 1.0) for v in scale),
+                )
             pose.keyframe_insert("location", frame=frame, group=bone.name)
             pose.keyframe_insert("rotation_quaternion", frame=frame, group=bone.name)
             pose.keyframe_insert("scale", frame=frame, group=bone.name)
@@ -216,12 +235,47 @@ def baseline_stage(family):
 def actions_stage(family, armature, meshes, bind_matrices, records):
     action_records = {}
     animations = {}
+    weighted_bones = {
+        group.name
+        for mesh in meshes
+        for group in mesh.vertex_groups
+        if group.name in armature.pose.bones
+    }
+    load_bearing_bones = {
+        name
+        for chain in family["loadBearingChains"]
+        for name in chain
+    }
+    correction_scope = family.get(
+        "animationTransformCorrectionScope", "allWeighted")
+    monitored_scale_bones = (
+        set(load_bearing_bones)
+        if correction_scope == "loadBearing"
+        else weighted_bones | load_bearing_bones
+    )
+    strip_scale_bones = set()
+    locked_translation_bones = set()
+    if family.get("stripAnimatedBoneScale", False):
+        strip_scale_bones.update(monitored_scale_bones)
+        if correction_scope != "loadBearing":
+            for name in tuple(monitored_scale_bones):
+                bone = armature.data.bones.get(name)
+                while bone is not None:
+                    strip_scale_bones.add(bone.name)
+                    bone = bone.parent
+        locked_translation_bones.update(load_bearing_bones)
     for clip, relative in family["actions"].items():
         source = family["extractedRoot"] / relative
         require_file(source)
         name = f"{family['familyId']}_{clip.upper()}_InvBind"
         animation, action, scale_delta = bake_action(
-            armature, bind_matrices, source, name
+            armature,
+            bind_matrices,
+            source,
+            name,
+            monitored_scale_bones,
+            strip_scale_bones,
+            locked_translation_bones,
         )
         expected = family.get("expectedFrames", {}).get(clip)
         if expected is not None and animation.FrameCount != expected:
@@ -234,6 +288,7 @@ def actions_stage(family, armature, meshes, bind_matrices, records):
             "source": str(source),
             "frames": animation.FrameCount,
             "maximumScaleDelta": scale_delta,
+            "animatedScaleFrozenAtFirstFrame": bool(strip_scale_bones),
         }
     armature.animation_data.action = bpy.data.actions[action_records["walk"]["name"]]
     scene = bpy.context.scene

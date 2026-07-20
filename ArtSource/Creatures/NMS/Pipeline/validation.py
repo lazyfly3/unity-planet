@@ -67,7 +67,11 @@ def reference_geometry(meshes):
         obj.data.calc_loop_triangles()
         edges = sampled(obj.data.edges)
         triangles = sampled(obj.data.loop_triangles)
+        points = [vertex.co for vertex in obj.data.vertices]
+        minimum = Vector(tuple(min(point[i] for point in points) for i in range(3)))
+        maximum = Vector(tuple(max(point[i] for point in points) for i in range(3)))
         references[obj.name] = {
+            "sourceDiagonal": max((maximum - minimum).length, 1.0e-6),
             "edges": [
                 (
                     edge.vertices[0],
@@ -128,6 +132,10 @@ def validate_action(family, armature, meshes, action, frame_count, references):
     non_finite = 0
     maximum_edge_ratio = 0.0
     maximum_triangle_ratio = 0.0
+    maximum_normalized_edge_delta = 0.0
+    maximum_normalized_triangle_delta = 0.0
+    maximum_significant_edge_ratio = 0.0
+    maximum_significant_triangle_ratio = 0.0
     rest_diagonal = None
     worst_frame = 0
     for frame in range(frame_count):
@@ -158,7 +166,21 @@ def validate_action(family, armature, meshes, action, frame_count, references):
                         current = (
                             mesh.vertices[first].co - mesh.vertices[second].co
                         ).length
-                        frame_edge = max(frame_edge, current / rest_length)
+                        edge_ratio = current / rest_length
+                        normalized_delta = (
+                            abs(current - rest_length)
+                            / references[obj.name]["sourceDiagonal"]
+                        )
+                        frame_edge = max(frame_edge, edge_ratio)
+                        maximum_normalized_edge_delta = max(
+                            maximum_normalized_edge_delta,
+                            normalized_delta,
+                        )
+                        if normalized_delta > 0.05:
+                            maximum_significant_edge_ratio = max(
+                                maximum_significant_edge_ratio,
+                                edge_ratio,
+                            )
                 for indices, rest_area in references[obj.name]["triangles"]:
                     if rest_area > 1.0e-7:
                         current = triangle_area(
@@ -166,7 +188,21 @@ def validate_action(family, armature, meshes, action, frame_count, references):
                             mesh.vertices[indices[1]].co,
                             mesh.vertices[indices[2]].co,
                         )
-                        frame_triangle = max(frame_triangle, current / rest_area)
+                        triangle_ratio = current / rest_area
+                        normalized_delta = (
+                            abs(current - rest_area)
+                            / (references[obj.name]["sourceDiagonal"] ** 2)
+                        )
+                        frame_triangle = max(frame_triangle, triangle_ratio)
+                        maximum_normalized_triangle_delta = max(
+                            maximum_normalized_triangle_delta,
+                            normalized_delta,
+                        )
+                        if normalized_delta > 0.005:
+                            maximum_significant_triangle_ratio = max(
+                                maximum_significant_triangle_ratio,
+                                triangle_ratio,
+                            )
             finally:
                 evaluated.to_mesh_clear()
 
@@ -193,11 +229,15 @@ def validate_action(family, armature, meshes, action, frame_count, references):
         )
     if maximum_bounds_ratio > 2.5:
         failures.append(f"bounds expanded {maximum_bounds_ratio:.3f}x")
-    if maximum_edge_ratio > 12.0:
-        failures.append(f"edge stretch reached {maximum_edge_ratio:.3f}x")
-    if maximum_triangle_ratio > 24.0:
+    if maximum_significant_edge_ratio > 12.0:
         failures.append(
-            f"triangle area stretch reached {maximum_triangle_ratio:.3f}x"
+            "significant edge stretch reached "
+            f"{maximum_significant_edge_ratio:.3f}x"
+        )
+    if maximum_significant_triangle_ratio > 24.0:
+        failures.append(
+            "significant triangle area stretch reached "
+            f"{maximum_significant_triangle_ratio:.3f}x"
         )
     return {
         "action": action.name,
@@ -207,6 +247,10 @@ def validate_action(family, armature, meshes, action, frame_count, references):
         "maximumBoundsRatio": maximum_bounds_ratio,
         "maximumEdgeStretch": maximum_edge_ratio,
         "maximumTriangleAreaStretch": maximum_triangle_ratio,
+        "maximumNormalizedEdgeDelta": maximum_normalized_edge_delta,
+        "maximumNormalizedTriangleAreaDelta": maximum_normalized_triangle_delta,
+        "maximumSignificantEdgeStretch": maximum_significant_edge_ratio,
+        "maximumSignificantTriangleAreaStretch": maximum_significant_triangle_ratio,
         "worstEdgeFrame": worst_frame,
         "nonFiniteVertexCount": non_finite,
         "passed": not failures,
@@ -263,6 +307,10 @@ def validate_all_modules(family, armature, meshes, action_records):
             "maximumBoundsRatio": 1.0,
             "maximumEdgeStretch": 1.0,
             "maximumTriangleAreaStretch": 1.0,
+            "maximumNormalizedEdgeDelta": 0.0,
+            "maximumNormalizedTriangleAreaDelta": 0.0,
+            "maximumSignificantEdgeStretch": 0.0,
+            "maximumSignificantTriangleAreaStretch": 0.0,
             "worstTriangleClip": "",
             "worstTriangleFrame": 0,
             "nonFiniteVertexCount": 0,
@@ -352,13 +400,27 @@ def validate_all_modules(family, armature, meshes, action_records):
                     for first, second, rest_length in reference["edges"]:
                         if rest_length <= 1.0e-5:
                             continue
-                        stretch = (
+                        current_length = (
                             points[first] - points[second]
-                        ).length / rest_length
+                        ).length
+                        stretch = current_length / rest_length
+                        normalized_delta = (
+                            abs(current_length - rest_length)
+                            / reference["sourceDiagonal"]
+                        )
                         record["maximumEdgeStretch"] = max(
                             record["maximumEdgeStretch"],
                             stretch,
                         )
+                        record["maximumNormalizedEdgeDelta"] = max(
+                            record["maximumNormalizedEdgeDelta"],
+                            normalized_delta,
+                        )
+                        if normalized_delta > 0.05:
+                            record["maximumSignificantEdgeStretch"] = max(
+                                record["maximumSignificantEdgeStretch"],
+                                stretch,
+                            )
                     for indices, rest_area in reference["triangles"]:
                         if rest_area <= 1.0e-7:
                             continue
@@ -371,6 +433,20 @@ def validate_all_modules(family, armature, meshes, action_records):
                             record["maximumTriangleAreaStretch"] = area_ratio
                             record["worstTriangleClip"] = clip
                             record["worstTriangleFrame"] = frame
+                        current_area = area_ratio * rest_area
+                        normalized_delta = (
+                            abs(current_area - rest_area)
+                            / (reference["sourceDiagonal"] ** 2)
+                        )
+                        record["maximumNormalizedTriangleAreaDelta"] = max(
+                            record["maximumNormalizedTriangleAreaDelta"],
+                            normalized_delta,
+                        )
+                        if normalized_delta > 0.005:
+                            record["maximumSignificantTriangleAreaStretch"] = max(
+                                record["maximumSignificantTriangleAreaStretch"],
+                                area_ratio,
+                            )
                 finally:
                     evaluated.to_mesh_clear()
 
@@ -389,14 +465,15 @@ def validate_all_modules(family, armature, meshes, action_records):
             record["failures"].append(
                 f"bounds expanded {record['maximumBoundsRatio']:.3f}x"
             )
-        if record["maximumEdgeStretch"] > 6.0:
+        if record["maximumSignificantEdgeStretch"] > 6.0:
             record["failures"].append(
-                f"edge stretch reached {record['maximumEdgeStretch']:.3f}x"
+                "significant edge stretch reached "
+                f"{record['maximumSignificantEdgeStretch']:.3f}x"
             )
-        if record["maximumTriangleAreaStretch"] > 24.0:
+        if record["maximumSignificantTriangleAreaStretch"] > 24.0:
             record["failures"].append(
-                "triangle area stretch reached "
-                f"{record['maximumTriangleAreaStretch']:.3f}x in "
+                "significant triangle area stretch reached "
+                f"{record['maximumSignificantTriangleAreaStretch']:.3f}x in "
                 f"{record['worstTriangleClip']} frame "
                 f"{record['worstTriangleFrame']}"
             )

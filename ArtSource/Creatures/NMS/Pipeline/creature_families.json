@@ -1,5 +1,5 @@
 {
-  "pipelineVersion": 3,
+  "pipelineVersion": 10,
   "mbinCompiler": "D:/blender/creature/Tools/Downloads/MBINCompiler.exe",
   "gamePakRoot": "D:/SteamLibrary/steamapps/common/No Man's Sky/GAMEDATA/PCBANKS",
   "hgpakTool": "D:/blender/creature/Tools/HGPAKtool",
@@ -657,7 +657,32 @@
         "walk": "models/planets/creatures/cowrig/anims/cowwalk.anim.mbin",
         "run": "models/planets/creatures/cowrig/anims/cowrun.anim.mbin"
       },
-      "loadBearingChains": [],
+      "loadBearingChains": [
+        [
+          "LFShoulderJNT",
+          "LFElbowJNT",
+          "LFWristJNT",
+          "LFFootJNT"
+        ],
+        [
+          "RFShoulderJNT",
+          "RFElbowJNT",
+          "RFWristJNT",
+          "RFFootJNT"
+        ],
+        [
+          "LBHipJNT",
+          "LBKneeJNT",
+          "LBAnkleJNT",
+          "LBFootJNT"
+        ],
+        [
+          "RBHipJNT",
+          "RBKneeJNT",
+          "RBAnkleJNT",
+          "RBFootJNT"
+        ]
+      ],
       "unity": {
         "selectionWeight": 1,
         "walkSpeed": 1.15,
@@ -675,7 +700,8 @@
         "allowRareModules": false,
         "surfaceMode": "Ground",
         "hoverClearance": 0
-      }
+      },
+      "stripAnimatedBoneScale": true
     },
     "CowHexapod": {
       "extractedRoot": "D:/blender/creature/NMSImport/CowRig/Extracted",
@@ -706,7 +732,44 @@
         "walk": "models/planets/creatures/cowrig/anims/sixleggedcowwalk.anim.mbin",
         "run": "models/planets/creatures/cowrig/anims/sixleggedcowrun.anim.mbin"
       },
-      "loadBearingChains": [],
+      "loadBearingChains": [
+        [
+          "LFShoulderJNT",
+          "LFElbowJNT",
+          "LFWristJNT",
+          "LFFootJNT"
+        ],
+        [
+          "RFShoulderJNT",
+          "RFElbowJNT",
+          "RFWristJNT",
+          "RFFootJNT"
+        ],
+        [
+          "LMHipJNT",
+          "LMKneeJNT",
+          "LMAnkleJNT",
+          "LMFootJNT"
+        ],
+        [
+          "RMHipJNT",
+          "RMKneeJNT",
+          "RMAnkleJNT",
+          "RMFootJNT"
+        ],
+        [
+          "LBHipJNT",
+          "LBKneeJNT",
+          "LBAnkleJNT",
+          "LBFootJNT"
+        ],
+        [
+          "RBHipJNT",
+          "RBKneeJNT",
+          "RBAnkleJNT",
+          "RBFootJNT"
+        ]
+      ],
       "unity": {
         "selectionWeight": 1,
         "walkSpeed": 1.1,
@@ -723,11 +786,15 @@
         ],
         "allowRareModules": false,
         "surfaceMode": "Ground",
-        "hoverClearance": 0
+        "hoverClearance": 0,
+        "excludedMeshObjects": [
+          "PETACC_rock"
+        ]
       },
       "mustDifferFromManifests": [
         "D:/blender/creature/NMSImport/CowRig/Manifests/CowQuadruped_skeleton.json"
-      ]
+      ],
+      "stripAnimatedBoneScale": true
     },
     "RodentQuadruped": {
       "extractedRoot": "D:/blender/creature/NMSImport/RodentRig/Extracted",
@@ -758,7 +825,34 @@
         "walk": "models/planets/creatures/rodentrig/anims/rodentwalk.anim.mbin",
         "run": "models/planets/creatures/rodentrig/anims/rodentrun.anim.mbin"
       },
-      "loadBearingChains": [],
+      "loadBearingChains": [
+        [
+          "joint202",
+          "joint212",
+          "joint222",
+          "joint232"
+        ],
+        [
+          "joint233",
+          "joint234",
+          "joint235",
+          "joint236"
+        ],
+        [
+          "joint24",
+          "joint25",
+          "joint26",
+          "joint27",
+          "joint28"
+        ],
+        [
+          "joint29",
+          "joint30",
+          "joint31",
+          "joint32",
+          "joint33"
+        ]
+      ],
       "unity": {
         "selectionWeight": 1,
         "walkSpeed": 1.25,
@@ -804,18 +898,7 @@
           "descriptorSource": "models/planets/creatures/striderrig/strider.descriptor.mbin",
           "descriptor": "models/planets/creatures/striderrig/strider.descriptor.MXML",
           "actions": {
-            "idle": "models/planets/creatures/striderrig/anims/striderstillidle.anim.mbin",
-            "walk": "models/planets/creatures/striderrig/anims/striderwalk.anim.mbin",
-            "run": "models/planets/creatures/striderrig/anims/striderrun.anim.mbin"
-          }
-        },
-        {
-          "variantId": "StriderGlow",
-          "sourceScene": "models/planets/creatures/striderrig/striderglow.scene.mbin",
-          "descriptorSource": "models/planets/creatures/striderrig/striderglow.descriptor.mbin",
-          "descriptor": "models/planets/creatures/striderrig/striderglow.descriptor.MXML",
-          "actions": {
-            "idle": "models/planets/creatures/striderrig/anims/striderstillidle.anim.mbin",
+            "idle": "models/planets/creatures/striderrig/anims/strideridle01.anim.mbin",
             "walk": "models/planets/creatures/striderrig/anims/striderwalk.anim.mbin",
             "run": "models/planets/creatures/striderrig/anims/striderrun.anim.mbin"
           }
@@ -824,7 +907,22 @@
       "activeVariantId": "Strider",
       "locomotionType": "Ground",
       "legCount": 2,
-      "loadBearingChains": [],
+      "loadBearingChains": [
+        [
+          "RHipJNT",
+          "RKneeJNT",
+          "RDoubleKneeJNT",
+          "RAnkleJNT",
+          "RBigToeJNT"
+        ],
+        [
+          "LHipJNT",
+          "LKneeJNT",
+          "LDoubleKneeJNT",
+          "LAnkleJNT",
+          "LBigToeJNT"
+        ]
+      ],
       "unity": {
         "selectionWeight": 1,
         "walkSpeed": 1.5,
@@ -842,7 +940,24 @@
         "allowRareModules": false,
         "surfaceMode": "Ground",
         "hoverClearance": 0
-      }
+      },
+      "diagnosticVariants": [
+        {
+          "variantId": "StriderGlow",
+          "sourceScene": "models/planets/creatures/striderrig/striderglow.scene.mbin",
+          "descriptorSource": "models/planets/creatures/striderrig/striderglow.descriptor.mbin",
+          "descriptor": "models/planets/creatures/striderrig/striderglow.descriptor.MXML",
+          "actions": {
+            "idle": "models/planets/creatures/striderrig/anims/strideridle01.anim.mbin",
+            "walk": "models/planets/creatures/striderrig/anims/striderwalk.anim.mbin",
+            "run": "models/planets/creatures/striderrig/anims/striderrun.anim.mbin"
+          },
+          "compatible": false,
+          "skeletonHash": "9b751acc263d2bed04a380b32e99dcd6e596a3675dab31987095b544b619b7c5",
+          "baselineSkeletonHash": "6ec5a95910df2c61ad4cf32edf8b1874baaa15ef1adf0f0d96722d1e42256a45",
+          "reason": "InvBind skeleton hash differs from StriderGround; modules must not be mixed."
+        }
+      ]
     },
     "TriceratopsQuadruped": {
       "extractedRoot": "D:/blender/creature/NMSImport/TriceratopsRig/Extracted",
@@ -873,7 +988,32 @@
         "walk": "models/planets/creatures/triceratopsrig/anims/triwalk.anim.mbin",
         "run": "models/planets/creatures/triceratopsrig/anims/trirun.anim.mbin"
       },
-      "loadBearingChains": [],
+      "loadBearingChains": [
+        [
+          "LFShoulderJNT",
+          "LFElbowJNT",
+          "LFAnkleJNT",
+          "LFToeJNT"
+        ],
+        [
+          "RFShoulderJNT",
+          "RFElbowJNT",
+          "RFAnkleJNT",
+          "RFToeJNT"
+        ],
+        [
+          "LBLegJNT",
+          "LBKneeJNT",
+          "LBAnkleJNT",
+          "LBToeJNT"
+        ],
+        [
+          "RBLegJNT",
+          "RBKneeJNT",
+          "RBAnkleJNT",
+          "RBToeJNT"
+        ]
+      ],
       "unity": {
         "selectionWeight": 1,
         "walkSpeed": 1.15,
@@ -939,7 +1079,18 @@
       "activeVariantId": "GruntGround",
       "locomotionType": "Ground",
       "legCount": 2,
-      "loadBearingChains": [],
+      "loadBearingChains": [
+        [
+          "RLegJNT",
+          "RKneeJNT",
+          "RFootJNT"
+        ],
+        [
+          "LLegJNT",
+          "LKneeJNT",
+          "LFootJNT"
+        ]
+      ],
       "unity": {
         "selectionWeight": 1,
         "walkSpeed": 1.05,
@@ -957,7 +1108,9 @@
         "allowRareModules": false,
         "surfaceMode": "Ground",
         "hoverClearance": 0
-      }
+      },
+      "stripAnimatedBoneScale": true,
+      "animationTransformCorrectionScope": "loadBearing"
     },
     "GruntFloat": {
       "extractedRoot": "D:/blender/creature/NMSImport/GruntRig/Extracted",
@@ -1005,7 +1158,18 @@
       "activeVariantId": "GruntFloat",
       "locomotionType": "Hover",
       "legCount": 2,
-      "loadBearingChains": [],
+      "loadBearingChains": [
+        [
+          "RLegJNT",
+          "RKneeJNT",
+          "RFootJNT"
+        ],
+        [
+          "LLegJNT",
+          "LKneeJNT",
+          "LFootJNT"
+        ]
+      ],
       "mustMatchManifests": [
         "D:/blender/creature/NMSImport/GruntRig/Manifests/GruntGround_skeleton.json"
       ],
@@ -1026,7 +1190,9 @@
         "allowRareModules": false,
         "surfaceMode": "Hover",
         "hoverClearance": 0.65
-      }
+      },
+      "stripAnimatedBoneScale": true,
+      "animationTransformCorrectionScope": "loadBearing"
     }
   },
   "unityProjectRoot": "D:/unity planet/unity-planet",

@@ -208,19 +208,40 @@ def library_stage(family, armature, meshes, action_records):
     manifest_path = (
         output / "Manifests" / f"{family['familyId']}_family.json"
     )
+    validation_input = {
+        "pipelineVersion": family["pipelineVersion"],
+        "animationTransformPolicy": (
+            "freeze_first_frame_and_lock_load_bearing_pose_v2"
+            if family.get("stripAnimatedBoneScale", False)
+            else "native_trs"
+        ),
+        "loadBearingChains": family["loadBearingChains"],
+        "animationTransformCorrectionScope": family.get(
+            "animationTransformCorrectionScope", "allWeighted"),
+        "actions": {
+            clip: {
+                "source": record.get("source", ""),
+                "frames": int(record.get("frames", 0)),
+            }
+            for clip, record in sorted(action_records.items())
+        },
+    }
     prior_modules = {}
     if manifest_path.is_file():
         prior_manifest = json.loads(
             manifest_path.read_text(encoding="utf-8")
         )
-        prior_modules = {
-            module["name"].casefold(): module
-            for module in prior_manifest.get("modules", [])
-            if module.get("name") and not module.get("compatible", True)
-        }
+        if prior_manifest.get("validationInput") == validation_input:
+            prior_modules = {
+                module["name"].casefold(): module
+                for module in prior_manifest.get("modules", [])
+                if module.get("name") and not module.get("compatible", True)
+            }
+    runtime_settings = dict(family.get("unity", {}))
+    runtime_settings.update(family.get("runtimeSettings", {}))
     configured_exclusions = {
         str(value).casefold()
-        for value in family.get("runtimeSettings", {}).get(
+        for value in runtime_settings.get(
             "excludedModulePrefixes", []
         )
         if value
@@ -229,10 +250,18 @@ def library_stage(family, armature, meshes, action_records):
         configured_exclusions | set(prior_modules)
     ))
     pose_bones = set(armature.pose.bones.keys())
+    excluded_mesh_objects = {
+        str(value).casefold()
+        for value in runtime_settings.get(
+            "excludedMeshObjects", []
+        )
+        if value
+    }
     module_records = []
     for name in sorted(descriptor_names):
         objects = [
             obj for obj in meshes
+            if obj.name.casefold() not in excluded_mesh_objects
             if descriptor_ancestors(obj, descriptor_names)
             and descriptor_ancestors(obj, descriptor_names)[-1] == name
         ]
@@ -270,7 +299,10 @@ def library_stage(family, armature, meshes, action_records):
         groups, 0, excluded_names)
     baseline_meshes = []
     for obj in meshes:
-        is_enabled = enabled(obj, baseline_selected, descriptor_names)
+        is_enabled = (
+            obj.name.casefold() not in excluded_mesh_objects
+            and enabled(obj, baseline_selected, descriptor_names)
+        )
         obj.hide_render = not is_enabled
         obj.hide_set(not is_enabled)
         if is_enabled and obj.data.vertices:
@@ -289,7 +321,9 @@ def library_stage(family, armature, meshes, action_records):
         "legCount": family["legCount"],
         "descriptorGroups": flat_groups,
         "availableActions": action_records,
+        "validationInput": validation_input,
         "modules": module_records,
+        "excludedMeshObjects": sorted(excluded_mesh_objects),
         "baselineSeed": 0,
         "baselineChoices": baseline_choices,
     }
@@ -320,7 +354,9 @@ def library_stage(family, armature, meshes, action_records):
         selected, choices = choose(groups, seed, excluded_names)
         visible = [
             obj for obj in source_meshes
-            if obj.data.vertices and enabled(obj, selected, descriptor_names)
+            if (obj.data.vertices
+                and obj.name.casefold() not in excluded_mesh_objects
+                and enabled(obj, selected, descriptor_names))
         ]
         row, column = divmod(index, 4)
         offset = Vector(((column - 1.5) * spacing, (0.5 - row) * spacing, 0.0))
