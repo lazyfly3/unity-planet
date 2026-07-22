@@ -133,6 +133,17 @@ if (body == null)
             return;
         }
 
+        if (Input.GetKeyDown(KeyCode.M))
+        {
+            GalaxyTravelManager manager = GalaxyTravelManager.Instance;
+            if (manager != null && manager.IsInterstellarGalaxy && quadSphereWorld != null)
+            {
+                galaxyTransitionRequested = true;
+                manager.OpenGalaxyMap(quadSphereWorld);
+                return;
+            }
+        }
+
         moveInput = Vector2.ClampMagnitude(new Vector2(
             Input.GetAxisRaw("Horizontal"),
             Input.GetAxisRaw("Vertical")
@@ -371,7 +382,10 @@ if (body == null)
             return;
 
         galaxyTransitionRequested = true;
-        manager.OpenGalaxyMap(quadSphereWorld);
+        if (manager.IsInterstellarGalaxy)
+            manager.OpenInterstellarFlight(quadSphereWorld);
+        else
+            manager.OpenGalaxyMap(quadSphereWorld);
     }
 
     void MoveOnGround(Vector3 desiredDirection, Vector3 groundNormal)

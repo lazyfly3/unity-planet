@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7d5097404570fe47a547343b2238334, type: 3}
+  m_Name: hull_balanced
+  m_EditorClassIdentifier: 
+  hullId: hull.balanced
+  displayName: "\u5747\u8861\u578B\xB7\u692D\u7403"
+  description: "\u7EFC\u5408\u6027\u80FD\u5747\u8861\uFF0C\u9002\u5408\u7B2C\u4E00\u6B21\u8BBE\u8BA1\u98DE\u8239\u3002"
+  modelPrefab: {fileID: 919132149155446097, guid: 0ba6641aebbb68440a4ffa495eca6db1, type: 3}
+  thumbnail: {fileID: 21300000, guid: 4d6e662d876592a458fbf553457ea220, type: 3}
+  collisionMesh: {fileID: 4300000, guid: 79b77c2d9253cda4e88230f8de20a704, type: 2}
+  baseMass: 100
+  dimensions: {x: 3, y: 2.2, z: 6}
+  flightProfile:
+    rcsAcceleration: {x: 8, y: 8, z: 5}
+    maximumAngularSpeed: {x: 75, y: 65, z: 95}
+    maximumAngularAcceleration: {x: 180, y: 180, z: 180}
+    velocityResponse: 3.2
+    angularRateResponse: 7
+    defaultSpeedLimit: 120
+    minimumSpeedLimit: 20
+    maximumSpeedLimit: 300
+    boostMultiplier: 1.5
+    boostCapacitySeconds: 4
+    boostRegenerationPerSecond: 0.65

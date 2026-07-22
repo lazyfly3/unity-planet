@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45571e99e48460845bae7ccc18281763, type: 3}
+  m_Name: weapon_energy_pulse_s2
+  m_EditorClassIdentifier: 
+  partId: weapon.energy_pulse.s2
+  displayName: "\u80FD\u91CF\u8109\u51B2\u70AE S2"
+  prefab: {fileID: 2998263476369599873, guid: aa5a4629145d1334cac692a9c79e3857, type: 3}
+  thumbnail: {fileID: 21300000, guid: f73ad2b6a2321f44b830579fca538cd7, type: 3}
+  category: 2
+  scaleMode: 1
+  placementMode: 0
+  baseMass: 16
+  baseThrust: 0
+  minimumScale: 0.6
+  maximumScale: 1.5
+  fixedScale: 1
+  defaultMaterialId: paint.deep_space_blue
+  exhaustColor: {r: 0, g: 1, b: 1, a: 1}
+  weapon:
+    damageChannel: 1
+    fireMode: 1
+    mountSize: 2
+    mountMode: 0
+    gimbalConeDegrees: 18
+    gimbalTrackingDegreesPerSecond: 120
+    defaultFireGroup: 2
+    roundsPerSecond: 4.65
+    damage: 17.05
+    projectileSpeed: 760
+    range: 1900
+    spreadDegrees: 0.16
+    ammunitionCapacity: 0
+    capacitorCost: 6.2
+    heatPerShot: 0.096099995
+    heatDissipation: 0.27
+    recoilImpulse: 0.465
+    impactImpulse: 5.4249997

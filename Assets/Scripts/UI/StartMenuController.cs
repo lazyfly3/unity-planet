@@ -33,7 +33,7 @@ public sealed class StartMenuController : MonoBehaviour
     [SerializeField] Text deleteMessageText;
 
     [Header("Scenes")]
-    [SerializeField] string surfaceSceneName = "star";
+    [SerializeField] string workshopSceneName = "SpacecraftWorkshop";
 
     readonly List<StartMenuSaveRow> rows = new List<StartMenuSaveRow>();
     StartMenuSaveRow selectedRow;
@@ -94,7 +94,7 @@ int? seed = null;
         {
             GalaxySaveSlotMetadata metadata = GalaxySaveSlotService.CreateSlot(createNameInput.text, seed);
             GalaxyLaunchContext.SelectSlot(metadata.slotId);
-            SceneManager.LoadScene(surfaceSceneName, LoadSceneMode.Single);
+            SceneManager.LoadScene(workshopSceneName, LoadSceneMode.Single);
         }
         catch (Exception exception)
         {
@@ -163,7 +163,7 @@ if (selectedRow == null)
 if (!HasUsableSelection())
             return;
         GalaxyLaunchContext.SelectSlot(selectedRow.Slot.SlotId);
-        SceneManager.LoadScene(surfaceSceneName, LoadSceneMode.Single);
+        SceneManager.LoadScene(workshopSceneName, LoadSceneMode.Single);
     
 }
 

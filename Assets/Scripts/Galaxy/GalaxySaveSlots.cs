@@ -16,7 +16,7 @@ public sealed class GalaxyInventorySaveEntry
 [Serializable]
 public sealed class GalaxySaveSlotMetadata
 {
-    public int formatVersion = 4;
+    public int formatVersion = 6;
     public string slotId;
     public string displayName;
     public int worldSeed;
@@ -36,6 +36,13 @@ public sealed class GalaxySaveSlotMetadata
     public long currentPlanetCoordinateY;
     public int galaxyGeneratorVersion;
     public GalaxyShipFacing shipFacing = GalaxyShipFacing.Up;
+    public long shipCoordinateZ;
+    public long currentPlanetCoordinateZ;
+    public double spacePositionX;
+    public double spacePositionY;
+    public double spacePositionZ;
+    public float spacecraftHullIntegrity = 100f;
+    public VisitedPlanetRecord[] visitedPlanets = Array.Empty<VisitedPlanetRecord>();
 }
 
 public sealed class GalaxySaveSlotInfo
@@ -136,9 +143,9 @@ displayName = NormalizeDisplayName(displayName);
             worldSeed = requestedSeed ?? CreateRandomSeed(),
             createdUtcTicks = now,
             lastPlayedUtcTicks = now,
-            currentPlanetId = ProceduralGalaxyGenerator.EncodePlanetId(GalaxyCoordinate.Zero),
-            galaxyMode = GalaxyMode.InfiniteProcedural,
-            galaxyGeneratorVersion = ProceduralGalaxyGenerator.CurrentVersion,
+            currentPlanetId = ProceduralInterstellarGenerator.EncodePlanetId(InterstellarCoordinate.Zero),
+            galaxyMode = GalaxyMode.Interstellar3DProcedural,
+            galaxyGeneratorVersion = ProceduralInterstellarGenerator.CurrentVersion,
             shipFacing = GalaxyShipFacing.Up
         };
         SaveMetadata(metadata);
@@ -155,6 +162,8 @@ ValidateSlotId(slotId);
 
         GalaxySaveSlotMetadata metadata = JsonUtility.FromJson<GalaxySaveSlotMetadata>(File.ReadAllText(path));
         ValidateMetadata(metadata, slotId);
+        if (MigrateToInterstellarV6(metadata, path))
+            SaveMetadata(metadata);
         return metadata;
     
 }
@@ -173,9 +182,10 @@ GalaxySaveSlotMetadata existing = LoadMetadata(DevelopmentSlotId);
             worldSeed = 7319,
             createdUtcTicks = now,
             lastPlayedUtcTicks = now,
-            currentPlanetId = "origin",
+            currentPlanetId = ProceduralInterstellarGenerator.EncodePlanetId(InterstellarCoordinate.Zero),
             developmentSlot = true,
-            galaxyMode = GalaxyMode.LegacyFinite,
+            galaxyMode = GalaxyMode.Interstellar3DProcedural,
+            galaxyGeneratorVersion = ProceduralInterstellarGenerator.CurrentVersion,
             shipFacing = GalaxyShipFacing.Up
         };
         SaveMetadata(metadata);
@@ -187,12 +197,14 @@ GalaxySaveSlotMetadata existing = LoadMetadata(DevelopmentSlotId);
     {
 if (metadata == null)
             throw new ArgumentNullException(nameof(metadata));
-        metadata.formatVersion = 4;
+        metadata.formatVersion = 6;
         ValidateSlotId(metadata.slotId);
         metadata.displayName = NormalizeDisplayName(metadata.displayName);
         metadata.lastPlayedUtcTicks = DateTime.UtcNow.Ticks;
         if (metadata.inventory == null)
             metadata.inventory = Array.Empty<GalaxyInventorySaveEntry>();
+        if (metadata.visitedPlanets == null)
+            metadata.visitedPlanets = Array.Empty<VisitedPlanetRecord>();
 
         string directory = GetSlotDirectory(metadata.slotId);
         Directory.CreateDirectory(directory);
@@ -234,6 +246,12 @@ ValidateSlotId(slotId);
     
 }
 
+    public static string GetSpacecraftDirectory(string slotId)
+    {
+        ValidateSlotId(slotId);
+        return Path.Combine(GetSlotDirectory(slotId), "spacecraft");
+    }
+
     static string GetSlotDirectory(string slotId)
     {
         return Path.Combine(RootDirectory, slotId);
@@ -249,11 +267,109 @@ ValidateSlotId(slotId);
 
     static void ValidateMetadata(GalaxySaveSlotMetadata metadata, string expectedSlotId)
     {
-        if (metadata == null || (metadata.formatVersion < 1 || metadata.formatVersion > 4)
+        if (metadata == null || (metadata.formatVersion < 1 || metadata.formatVersion > 6)
             || metadata.slotId != expectedSlotId)
             throw new InvalidDataException("Invalid save slot metadata.");
         if (string.IsNullOrWhiteSpace(metadata.displayName))
             throw new InvalidDataException("Save slot has no display name.");
+    }
+
+    static bool MigrateToInterstellarV6(GalaxySaveSlotMetadata metadata, string metadataPath)
+    {
+        bool changed = false;
+        if (metadata.visitedPlanets == null)
+        {
+            metadata.visitedPlanets = Array.Empty<VisitedPlanetRecord>();
+            changed = true;
+        }
+
+        if (metadata.galaxyMode == GalaxyMode.InfiniteProcedural)
+        {
+            string backupPath = metadataPath + ".pre-interstellar-v6.backup";
+            if (!File.Exists(backupPath))
+                File.Copy(metadataPath, backupPath);
+
+            var visited = new List<VisitedPlanetRecord>(metadata.visitedPlanets);
+            var used = new HashSet<InterstellarCoordinate>();
+            foreach (VisitedPlanetRecord item in visited)
+                if (item != null)
+                    used.Add(item.Coordinate);
+
+            string planetsDirectory = GetPlanetsDirectory(metadata.slotId);
+            if (Directory.Exists(planetsDirectory))
+            {
+                foreach (string directory in Directory.GetDirectories(planetsDirectory))
+                {
+                    string definitionPath = Path.Combine(directory, "definition.json");
+                    string worldPath = Path.Combine(directory, "world.planet.gz");
+                    if (!File.Exists(definitionPath) && !File.Exists(worldPath))
+                        continue;
+
+                    string planetId = Path.GetFileName(directory);
+                    if (visited.Exists(item => item != null && item.planetId == planetId))
+                        continue;
+
+                    GalaxyGeneratedPlanetRecord definition = null;
+                    if (File.Exists(definitionPath))
+                    {
+                        try
+                        {
+                            definition = JsonUtility.FromJson<GalaxyGeneratedPlanetRecord>(File.ReadAllText(definitionPath));
+                        }
+                        catch (Exception)
+                        {
+                            // A damaged definition remains untouched and can still be diagnosed separately.
+                        }
+                    }
+
+                    long sourceX = definition != null ? definition.coordinateX : 0L;
+                    long sourceY = definition != null ? definition.coordinateY : 0L;
+                    var coordinate = planetId == metadata.currentPlanetId && planetId.Contains("_0_0")
+                        ? InterstellarCoordinate.Zero
+                        : new InterstellarCoordinate(sourceX, 0L, sourceY);
+                    while (used.Contains(coordinate))
+                        coordinate.z++;
+                    used.Add(coordinate);
+                    visited.Add(new VisitedPlanetRecord
+                    {
+                        planetId = planetId,
+                        displayName = definition != null && !string.IsNullOrWhiteSpace(definition.displayName)
+                            ? definition.displayName
+                            : planetId,
+                        coordinateX = coordinate.x,
+                        coordinateY = coordinate.y,
+                        coordinateZ = coordinate.z,
+                        lastLandingDirection = Vector3.up,
+                        lastVisitedUtcTicks = metadata.lastPlayedUtcTicks
+                    });
+                }
+            }
+
+            VisitedPlanetRecord current = visited.Find(item => item != null && item.planetId == metadata.currentPlanetId);
+            if (current == null && visited.Count > 0)
+                current = visited[0];
+            InterstellarCoordinate currentCoordinate = current != null ? current.Coordinate : InterstellarCoordinate.Zero;
+            metadata.currentPlanetId = current != null
+                ? current.planetId
+                : ProceduralInterstellarGenerator.EncodePlanetId(currentCoordinate);
+            metadata.currentPlanetCoordinateX = currentCoordinate.x;
+            metadata.currentPlanetCoordinateY = currentCoordinate.y;
+            metadata.currentPlanetCoordinateZ = currentCoordinate.z;
+            metadata.shipCoordinateX = currentCoordinate.x;
+            metadata.shipCoordinateY = currentCoordinate.y;
+            metadata.shipCoordinateZ = currentCoordinate.z;
+            metadata.galaxyMode = GalaxyMode.Interstellar3DProcedural;
+            metadata.galaxyGeneratorVersion = ProceduralInterstellarGenerator.CurrentVersion;
+            metadata.visitedPlanets = visited.ToArray();
+            changed = true;
+        }
+
+        if (metadata.formatVersion < 6)
+        {
+            metadata.formatVersion = 6;
+            changed = true;
+        }
+        return changed;
     }
 
     static void ValidateSlotId(string slotId)

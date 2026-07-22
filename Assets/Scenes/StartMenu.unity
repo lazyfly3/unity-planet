@@ -2769,7 +2769,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "\u8FDB\u5165\u4E16\u754C"
+  m_Text: "\u8FDB\u5165\u98DE\u8239\u5DE5\u574A"
 --- !u!222 &1324418137
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -5096,7 +5096,7 @@ MonoBehaviour:
   createSeedInput: {fileID: 1376892255}
   renameInput: {fileID: 79671946}
   deleteMessageText: {fileID: 684996474}
-  surfaceSceneName: star
+  workshopSceneName: SpacecraftWorkshop
 --- !u!1 &1851874112
 GameObject:
   m_ObjectHideFlags: 0

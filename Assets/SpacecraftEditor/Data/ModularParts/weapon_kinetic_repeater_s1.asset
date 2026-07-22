@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45571e99e48460845bae7ccc18281763, type: 3}
+  m_Name: weapon_kinetic_repeater_s1
+  m_EditorClassIdentifier: 
+  partId: weapon.kinetic_repeater.s1
+  displayName: "\u52A8\u80FD\u901F\u5C04\u70AE S1"
+  prefab: {fileID: 6313399298333308045, guid: 49c7b494836ec8344a049d5ccb38c68f, type: 3}
+  thumbnail: {fileID: 21300000, guid: c16fab3401fe7384fa7b0e10b0e10bc0, type: 3}
+  category: 2
+  scaleMode: 1
+  placementMode: 0
+  baseMass: 9
+  baseThrust: 0
+  minimumScale: 0.6
+  maximumScale: 1.5
+  fixedScale: 0.72
+  defaultMaterialId: paint.deep_space_blue
+  exhaustColor: {r: 0, g: 1, b: 1, a: 1}
+  weapon:
+    damageChannel: 0
+    fireMode: 0
+    mountSize: 1
+    mountMode: 0
+    gimbalConeDegrees: 18
+    gimbalTrackingDegreesPerSecond: 120
+    defaultFireGroup: 1
+    roundsPerSecond: 8
+    damage: 7
+    projectileSpeed: 520
+    range: 1800
+    spreadDegrees: 0.38
+    ammunitionCapacity: 300
+    capacitorCost: 0
+    heatPerShot: 0.038
+    heatDissipation: 0.24
+    recoilImpulse: 0.48
+    impactImpulse: 5

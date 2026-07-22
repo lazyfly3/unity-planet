@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45571e99e48460845bae7ccc18281763, type: 3}
+  m_Name: thruster_small
+  m_EditorClassIdentifier: 
+  partId: thruster.small
+  displayName: "\u5C0F\u578B\u63A8\u8FDB\u5668"
+  prefab: {fileID: 8995194329786909976, guid: 05f767a03883d3d4e9ba1906f21de5cf, type: 3}
+  thumbnail: {fileID: 21300000, guid: fe700b3a8b036d543a166bbf91de7864, type: 3}
+  baseMass: 2
+  baseThrust: 40
+  minimumScale: 0.6
+  maximumScale: 1.5
+  exhaustColor: {r: 0.05, g: 0.9, b: 1, a: 1}

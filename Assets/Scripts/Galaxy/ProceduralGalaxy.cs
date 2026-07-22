@@ -5,7 +5,8 @@ using UnityEngine;
 public enum GalaxyMode
 {
     LegacyFinite = 0,
-    InfiniteProcedural = 1
+    InfiniteProcedural = 1,
+    Interstellar3DProcedural = 2
 }
 
 public enum GalaxyShipFacing
@@ -33,7 +34,7 @@ public struct GalaxyCoordinate : IEquatable<GalaxyCoordinate>
     public GalaxyCoordinate Offset(int deltaX, int deltaY)
     {
 return new GalaxyCoordinate(SaturatingAdd(x, deltaX), SaturatingAdd(y, deltaY));
-    
+
 }
 
     public bool Equals(GalaxyCoordinate other) => x == other.x && y == other.y;
@@ -91,12 +92,14 @@ public sealed class GalaxyGeneratedResourceRecord
 [Serializable]
 public sealed class GalaxyGeneratedPlanetRecord
 {
-    public int formatVersion = 2;
+    public int formatVersion = 4;
     public int generatorVersion;
     public string planetId;
     public string displayName;
     public long coordinateX;
     public long coordinateY;
+    public long coordinateZ;
+    public bool usesInterstellarCoordinate;
     public int seed;
     public PlanetClimate climate;
     public Color mapColor;
@@ -107,6 +110,7 @@ public sealed class GalaxyGeneratedPlanetRecord
     public List<GalaxyGeneratedResourceRecord> resources = new List<GalaxyGeneratedResourceRecord>();
     public PlanetRiverSettings rivers;
     public PlanetWeatherSettings weather;
+    public PlanetCelestialProfile celestial;
 }
 
 public sealed class ProceduralGalaxyGenerator
@@ -163,7 +167,18 @@ if (coordinate == GalaxyCoordinate.Zero)
 if (!HasPlanet(coordinate))
             return null;
 
-        var random = new StableRandom(HashCoordinate(worldSeed, coordinate, 0xA0761D6478BD642FUL));
+        GalaxyPlanetDefinition definition = GeneratePlanetFromStableHash(
+            HashCoordinate(worldSeed, coordinate, 0xA0761D6478BD642FUL),
+            EncodePlanetId(coordinate),
+            coordinate == GalaxyCoordinate.Zero);
+        definition.coordinate = coordinate;
+        return definition;
+
+}
+
+    public GalaxyPlanetDefinition GeneratePlanetFromStableHash(ulong stableHash, string planetId, bool isOrigin)
+    {
+        var random = new StableRandom(stableHash);
         float temperature = random.Value();
         float moisture = random.Value();
         float geology = random.Value();
@@ -179,12 +194,11 @@ if (!HasPlanet(coordinate))
         rockColor.a = 1f;
 
         int seed = random.NextNonZeroInt();
-        string planetId = EncodePlanetId(coordinate);
+        PlanetCelestialProfile celestial = CreateCelestialProfile(ref random, atmosphere);
         var definition = new GalaxyPlanetDefinition
         {
             planetId = planetId,
-            displayName = CreateName(ref random, coordinate),
-            coordinate = coordinate,
+            displayName = CreateName(ref random, isOrigin),
             isProcedural = true,
             seed = seed,
             climate = PlanetClimateClassifier.Classify(temperature, moisture, geology, crystal),
@@ -195,8 +209,11 @@ if (!HasPlanet(coordinate))
             tintMapIcon = true,
             iconResourcePath = IconPaths[Mathf.Clamp((int)(hue * IconPaths.Length), 0, IconPaths.Length - 1)],
             terrain = CreateTerrain(ref random, temperature, moisture, geology),
-            rivers = CreateRivers(ref random, moisture, atmosphere, mapColor),
-            weather = CreateWeather(ref random, temperature, moisture, geology, atmosphere, crystal)
+            // Interstellar PCG planets deliberately omit generated rivers. Existing
+            // frozen definitions still load their original river data unchanged.
+            rivers = CreateDisabledRivers(),
+            weather = CreateWeather(ref random, temperature, moisture, geology, atmosphere, crystal),
+            celestial = celestial
         };
         definition.resourceSpawnSettings = CreateResources(ref random, geology, crystal);
         definition.spawnHarvestableResources = definition.resourceSpawnSettings.Count > 0;
@@ -210,6 +227,37 @@ if (!HasPlanet(coordinate))
         long offsetX = (long)(hash & 1UL) + 1L;
         long offsetY = (long)((hash >> 1) & 1UL) + 1L;
         return new GalaxyCoordinate(macroX * MacroCellSize + offsetX, macroY * MacroCellSize + offsetY);
+    }
+
+    static PlanetRiverSettings CreateDisabledRivers()
+    {
+        return new PlanetRiverSettings
+        {
+            enabled = false,
+            riverCount = 0
+        };
+    }
+
+    static PlanetCelestialProfile CreateCelestialProfile(ref StableRandom random, float atmosphere)
+    {
+        float gravity = Mathf.Lerp(3.5f, 8.5f, random.Value());
+        Vector3 axis = new Vector3(
+            random.Value() * 2f - 1f,
+            Mathf.Lerp(0.35f, 1f, random.Value()),
+            random.Value() * 2f - 1f).normalized;
+        bool hasAtmosphere = atmosphere > 0.16f;
+        var profile = new PlanetCelestialProfile
+        {
+            radius = PlanetCelestialProfile.CompatibleRadius,
+            surfaceGravity = gravity,
+            rotationAxis = axis,
+            rotationPeriod = Mathf.Lerp(90f, 240f, random.Value()),
+            atmosphereSurfaceDensity = hasAtmosphere ? Mathf.Lerp(0.18f, 1.2f, atmosphere) : 0f,
+            atmosphereScaleHeight = hasAtmosphere ? Mathf.Lerp(3f, 6f, random.Value()) : 1f,
+            atmosphereTopAltitude = hasAtmosphere ? Mathf.Lerp(16f, 28f, atmosphere) : 0f
+        };
+        profile.ClampValues();
+        return profile;
     }
 
     List<HarvestableResourceSpawnSettings> CreateResources(ref StableRandom random, float geology, float crystal)
@@ -257,39 +305,6 @@ if (!HasPlanet(coordinate))
             caveScale = Mathf.Lerp(0.035f, 0.11f, random.Value()),
             caveThreshold = Mathf.Lerp(0.79f, 0.56f, geology),
             caveSurfaceClearance = Mathf.Lerp(5f, 1.2f, geology)
-        };
-    }
-
-    static PlanetRiverSettings CreateRivers(ref StableRandom random, float moisture, float atmosphere, Color baseColor)
-    {
-        bool enabled = moisture > 0.38f && atmosphere > 0.25f;
-        float abundance = Mathf.InverseLerp(0.38f, 1f, moisture) * atmosphere;
-        Color shallow = Color.Lerp(baseColor, new Color(0.05f, 0.72f, 0.86f, 0.58f), 0.72f);
-        shallow.a = 0.58f;
-        Color deep = Color.Lerp(baseColor, new Color(0.005f, 0.08f, 0.28f, 0.84f), 0.82f);
-        deep.a = 0.84f;
-        return new PlanetRiverSettings
-        {
-            enabled = enabled,
-            riverCount = enabled ? Mathf.Clamp(Mathf.RoundToInt(Mathf.Lerp(2f, 8f, abundance)), 2, 8) : 0,
-            nodesPerRiver = random.Range(40, 65),
-            minWidth = Mathf.Lerp(1.8f, 3.5f, abundance),
-            maxWidth = Mathf.Lerp(3.5f, 7f, abundance),
-            minDepth = Mathf.Lerp(0.7f, 1.4f, abundance),
-            maxDepth = Mathf.Lerp(1.4f, 2.8f, abundance),
-            flowSpeed = Mathf.Lerp(0.8f, 1.9f, random.Value()),
-            lakeRadius = Mathf.Lerp(5f, 11f, abundance),
-            lakeDepth = Mathf.Lerp(1.5f, 3.5f, abundance),
-            localRerouteRadius = 16,
-            seedOffset = random.NextNonZeroInt(),
-            shallowColor = shallow,
-            deepColor = deep,
-            foamStrength = Mathf.Lerp(0.4f, 0.85f, abundance),
-            simulationStep = 0.04f,
-            sourceFlowRate = Mathf.Lerp(1f, 6f, abundance),
-            manningRoughness = Mathf.Lerp(0.05f, 0.025f, abundance),
-            minimumWaterDepth = 0.03f,
-            maxSubstepsPerFixedUpdate = 4
         };
     }
 
@@ -355,11 +370,11 @@ if (!HasPlanet(coordinate))
         };
     }
 
-    static string CreateName(ref StableRandom random, GalaxyCoordinate coordinate)
+    static string CreateName(ref StableRandom random, bool isOrigin)
     {
         string prefix = NameStarts[random.Range(0, NameStarts.Length)];
         string suffix = NameEnds[random.Range(0, NameEnds.Length)];
-        return coordinate == GalaxyCoordinate.Zero ? "Aster" : prefix + suffix;
+        return isOrigin ? "Aster" : prefix + suffix;
     }
 
     public static string EncodePlanetId(GalaxyCoordinate coordinate)

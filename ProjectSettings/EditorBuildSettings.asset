@@ -9,6 +9,15 @@ EditorBuildSettings:
     path: Assets/Scenes/StartMenu.unity
     guid: a0e415b58fb88d547b861ab8ffa7ddd7
   - enabled: 1
+    path: Assets/Scenes/SpacecraftWorkshop.unity
+    guid: 2b2e1ed52e815a647a004f6dc732c913
+  - enabled: 1
+    path: Assets/Scenes/InterstellarFlight.unity
+    guid: 950fe3ffb1cbcb54aa8f0f9590be48bb
+  - enabled: 1
+    path: Assets/Scenes/PlanetApproach.unity
+    guid: 5cf3791f66eec9b4692bbcc265b4334c
+  - enabled: 1
     path: Assets/Scenes/star.unity
     guid: 87663e17598222641b3726c1cf44314d
   - enabled: 1

@@ -36,6 +36,7 @@ public sealed class PlanetRiverSystem : MonoBehaviour
     float weatherRainfallRate;
 
     public bool IsEnabled => settings != null && settings.enabled && snapshot != null;
+    public bool GenerationEnabled => settings != null && settings.enabled && settings.riverCount > 0;
     public int ConfigurationHash => settings != null ? settings.CalculateHash() : 0;
     public GalaxyRiverSaveData Snapshot => snapshot;
     public float TotalWaterVolume => totalWaterVolume;

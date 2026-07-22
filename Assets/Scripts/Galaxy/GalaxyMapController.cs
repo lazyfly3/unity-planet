@@ -17,6 +17,7 @@ public sealed class GalaxyMapController : MonoBehaviour
     Text actionText;
     Vector2Int heldMoveDirection;
     float nextMoveTime;
+    int visitedSelectionIndex;
 
     void Awake()
     {
@@ -41,6 +42,12 @@ public sealed class GalaxyMapController : MonoBehaviour
         if (travelManager == null)
             return;
 
+        if (travelManager.IsInterstellarGalaxy)
+        {
+            HandleVisitedPlanetInput();
+            return;
+        }
+
         HandleMovementInput();
 
         if (Input.GetKeyDown(KeyCode.F))
@@ -49,6 +56,30 @@ public sealed class GalaxyMapController : MonoBehaviour
             if (planet != null)
                 travelManager.EnterPlanet(planet);
         }
+    }
+
+    void HandleVisitedPlanetInput()
+    {
+        int count = travelManager.VisitedPlanets.Count;
+        if (count == 0)
+            return;
+
+        int direction = 0;
+        if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)
+            || Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
+            direction = -1;
+        else if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow)
+            || Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
+            direction = 1;
+
+        if (direction != 0)
+        {
+            visitedSelectionIndex = (visitedSelectionIndex + direction + count) % count;
+            RefreshShipPosition();
+        }
+
+        if (Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.Return))
+            travelManager.FastTravelToVisitedPlanet(travelManager.VisitedPlanets[visitedSelectionIndex].planetId);
     }
 
     void HandleMovementInput()
@@ -113,11 +144,15 @@ public sealed class GalaxyMapController : MonoBehaviour
         Stretch(veil.rectTransform);
         veil.color = new Color(0.01f, 0.025f, 0.055f, 0.32f);
 
-        Text title = CreateText("Title", veil.transform, "DEEP SPACE NAVIGATION", font, 34, TextAnchor.MiddleCenter);
+        string titleValue = travelManager.IsInterstellarGalaxy ? "VISITED WORLDS" : "DEEP SPACE NAVIGATION";
+        Text title = CreateText("Title", veil.transform, titleValue, font, 34, TextAnchor.MiddleCenter);
         SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(900f, 62f), new Vector2(0f, -48f));
         title.color = new Color(0.75f, 0.91f, 1f);
 
-        Text controls = CreateText("Controls", veil.transform, "WASD  MOVE ONE SECTOR     F  ENTER PLANET", font, 19, TextAnchor.MiddleCenter);
+        string controlsValue = travelManager.IsInterstellarGalaxy
+            ? "W/S  SELECT WORLD     F / ENTER  FAST TRAVEL"
+            : "WASD  MOVE ONE SECTOR     F  ENTER PLANET";
+        Text controls = CreateText("Controls", veil.transform, controlsValue, font, 19, TextAnchor.MiddleCenter);
         SetRect(controls.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(900f, 38f), new Vector2(0f, -92f));
         controls.color = new Color(0.45f, 0.7f, 0.82f);
 
@@ -199,6 +234,12 @@ public sealed class GalaxyMapController : MonoBehaviour
         if (shipIcon == null)
             return;
 
+        if (travelManager.IsInterstellarGalaxy)
+        {
+            RefreshVisitedPlanetList();
+            return;
+        }
+
         GalaxyCoordinate position = travelManager.ShipCoordinate;
         int shipColumn = travelManager.IsInfiniteGalaxy ? 6 : (int)position.x;
         int shipRow = travelManager.IsInfiniteGalaxy ? 4 : (int)position.y;
@@ -242,6 +283,51 @@ public sealed class GalaxyMapController : MonoBehaviour
             ? $"SECTOR  {coordinateText}   //   EMPTY SPACE"
             : $"SECTOR  {coordinateText}   //   {planet.displayName.ToUpperInvariant()}";
         actionText.text = planet == null ? string.Empty : "PRESS F TO ENTER ORBIT";
+    }
+
+    void RefreshVisitedPlanetList()
+    {
+        int capacity = travelManager.GridColumns * travelManager.GridRows;
+        int count = Mathf.Min(travelManager.VisitedPlanets.Count, capacity);
+        visitedSelectionIndex = count == 0 ? 0 : Mathf.Clamp(visitedSelectionIndex, 0, count - 1);
+
+        for (int x = 0; x < travelManager.GridColumns; x++)
+        for (int y = 0; y < travelManager.GridRows; y++)
+        {
+            planetIcons[x, y].gameObject.SetActive(false);
+            cells[x, y].color = new Color(0.04f, 0.11f, 0.18f, 0.3f);
+        }
+
+        shipIcon.gameObject.SetActive(false);
+        for (int index = 0; index < count; index++)
+        {
+            int column = index % travelManager.GridColumns;
+            int row = travelManager.GridRows - 1 - index / travelManager.GridColumns;
+            VisitedPlanetRecord visited = travelManager.VisitedPlanets[index];
+            GalaxyPlanetDefinition definition = travelManager.GetPlanetAt(visited.Coordinate);
+            Image icon = planetIcons[column, row];
+            icon.gameObject.SetActive(true);
+            icon.name = visited.displayName;
+            icon.sprite = definition == null ? null : Resources.Load<Sprite>(definition.iconResourcePath);
+            icon.color = definition == null ? new Color(0.35f, 0.75f, 0.95f) : definition.mapColor;
+            planetLabels[column, row].text = string.IsNullOrWhiteSpace(visited.displayName)
+                ? visited.planetId.ToUpperInvariant()
+                : visited.displayName.ToUpperInvariant();
+            cells[column, row].color = index == visitedSelectionIndex
+                ? new Color(0.08f, 0.42f, 0.54f, 0.9f)
+                : new Color(0.04f, 0.15f, 0.23f, 0.62f);
+        }
+
+        if (count == 0)
+        {
+            locationText.text = "NO LANDED WORLDS";
+            actionText.text = "LAND ON A PLANET TO ADD IT TO THIS LIST";
+            return;
+        }
+
+        VisitedPlanetRecord selected = travelManager.VisitedPlanets[visitedSelectionIndex];
+        locationText.text = $"{selected.displayName.ToUpperInvariant()}   //   {selected.Coordinate}";
+        actionText.text = "PRESS F OR ENTER TO FAST TRAVEL";
     }
 
     static string FormatCoordinate(long value) => value >= 0L ? $"+{value}" : value.ToString();

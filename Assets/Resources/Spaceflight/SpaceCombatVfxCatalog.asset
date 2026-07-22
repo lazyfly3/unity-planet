@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c20fb4687a0b594298b24e07a99c56d, type: 3}
+  m_Name: SpaceCombatVfxCatalog
+  m_EditorClassIdentifier: 
+  weapons:
+  - damageChannel: 0
+    muzzlePrefab: {fileID: 100002, guid: 0e4058e433eefd84daceef628b41d17b, type: 3}
+    projectilePrefab: {fileID: 100000, guid: dad65925df464a64985ee2ef54c46de9, type: 3}
+    impactPrefab: {fileID: 100000, guid: 78137ee2097a6f2468a9b6b1f07cd713, type: 3}
+    fireAudio: {fileID: 8300000, guid: 14ba2f7d17b7a434f851c648484e0806, type: 3}
+    impactAudio: {fileID: 0}
+    muzzleScale: 1.4
+    projectileScale: {x: 0.85, y: 0.85, z: 3.2}
+    impactScale: 1.35
+    muzzleLifetime: 0.22
+  - damageChannel: 1
+    muzzlePrefab: {fileID: 100002, guid: 0193a223b1a2f4a4fb1e7fecea3ac974, type: 3}
+    projectilePrefab: {fileID: 100000, guid: 1cbda689bb465ea49b41a3db35577a6d, type: 3}
+    impactPrefab: {fileID: 100004, guid: 5c29cdc4a3e0fd147ade7cd90140990b, type: 3}
+    fireAudio: {fileID: 8300000, guid: cc1180ee178a70e4db502919244f6755, type: 3}
+    impactAudio: {fileID: 0}
+    muzzleScale: 1.65
+    projectileScale: {x: 1.1, y: 1.1, z: 2.6}
+    impactScale: 1.6
+    muzzleLifetime: 0.3
+  asteroidDestructionPrefab: {fileID: 100002, guid: 2f47b5cc2c5d54c40b29b62ba825671a, type: 3}
+  shipDestructionPrefab: {fileID: 100002, guid: b5b0d6af765a3b042a37f67fb0b5d5e0, type: 3}

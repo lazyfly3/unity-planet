@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7d5097404570fe47a547343b2238334, type: 3}
+  m_Name: hull_spindle
+  m_EditorClassIdentifier: 
+  hullId: hull.spindle
+  displayName: "\u4FA6\u5BDF\u578B\xB7\u68AD\u5F62"
+  description: "\u8D28\u91CF\u66F4\u8F7B\u3001\u52A0\u901F\u66F4\u5FEB\uFF0C\u524D\u540E\u5B89\u88C5\u7A7A\u95F4\u66F4\u957F\u3002"
+  modelPrefab: {fileID: 919132149155446097, guid: 540d8de11f4d90140ace262a01b80dfc, type: 3}
+  thumbnail: {fileID: 21300000, guid: cbfaf3c3af60b3a4fac43f3f38ed799f, type: 3}
+  collisionMesh: {fileID: 4300000, guid: cf75508cce770ef4cbc0b953982e7d16, type: 2}
+  baseMass: 80
+  dimensions: {x: 2.2, y: 1.8, z: 7.5}
+  flightProfile:
+    rcsAcceleration: {x: 10, y: 10, z: 6}
+    maximumAngularSpeed: {x: 95, y: 85, z: 125}
+    maximumAngularAcceleration: {x: 240, y: 240, z: 240}
+    velocityResponse: 3.2
+    angularRateResponse: 7
+    defaultSpeedLimit: 150
+    minimumSpeedLimit: 20
+    maximumSpeedLimit: 340
+    boostMultiplier: 1.5
+    boostCapacitySeconds: 4
+    boostRegenerationPerSecond: 0.65

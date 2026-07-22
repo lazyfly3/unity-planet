@@ -139,10 +139,18 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         List<HarvestableResourceSpawnSettings> planetResourceSpawnSettings,
         List<PlanetSurfacePropSpawnSettings> planetSurfacePropSettings,
         PlanetRiverSettings planetRiverSettings,
-        GalaxyRiverSaveData savedRiverData)
+        GalaxyRiverSaveData savedRiverData,
+        PlanetCelestialProfile celestialProfile)
     {
 generationComplete = false;
         seed = planetSeed;
+        PlanetCelestialProfile physicsProfile = celestialProfile ?? PlanetCelestialProfile.CreateCompatibleDefault();
+        physicsProfile.ClampValues();
+        planetRadius = physicsProfile.radius;
+        surfaceGravity = physicsProfile.surfaceGravity;
+        PendingPlanetLandingContext landing = PendingPlanetLandingContext.Peek();
+        if (landing != null && landing.landingDirection.sqrMagnitude > 0.001f)
+            spawnDirectionLocal = landing.landingDirection.normalized;
         modifiedChunkCache.Clear();
         savedMeshCache.Clear();
         harvestedResourceIds.Clear();
@@ -508,8 +516,12 @@ if (riverSystem == null)
         {
             // Let the newly loaded scene render before expensive terrain work begins.
             yield return null;
-            loadingUI?.SetProgress(0.03f, "正在生成河网与湖泊");
-            riverSystem?.PrepareHydrology();
+            bool riversEnabled = riverSystem != null && riverSystem.GenerationEnabled;
+            loadingUI?.SetProgress(
+                0.03f,
+                riversEnabled ? "正在恢复河网与湖泊" : "正在准备星球地形");
+            if (riversEnabled)
+                riverSystem?.PrepareHydrology();
             yield return null;
             yield return GenerateEntirePlanetIncremental();
         }
@@ -523,7 +535,8 @@ if (riverSystem == null)
         loadingUI?.SetProgress(0.96f, "正在部署资源与玩家基地");
         yield return null;
         PlacePlayerAtSpawn();
-        riverSystem?.BuildWaterSurface();
+        if (riverSystem != null && riverSystem.GenerationEnabled)
+            riverSystem?.BuildWaterSurface();
         if (surfaceDecorationSystem != null)
             yield return surfaceDecorationSystem.GenerateIncremental(4f);
         else

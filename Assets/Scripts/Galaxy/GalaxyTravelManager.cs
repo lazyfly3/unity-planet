@@ -14,7 +14,11 @@ public sealed class GalaxyPlanetDefinition
     [System.NonSerialized]
     public GalaxyCoordinate coordinate;
     [System.NonSerialized]
+    public InterstellarCoordinate coordinate3D;
+    [System.NonSerialized]
     public bool isProcedural;
+    [System.NonSerialized]
+    public bool isInterstellar;
     public int seed;
     [Header(nameof(PlanetClimate))]
     public PlanetClimate climate = PlanetClimate.Barren;
@@ -33,6 +37,8 @@ public sealed class GalaxyPlanetDefinition
     public PlanetRiverSettings rivers = new PlanetRiverSettings();
     [Header("Weather")]
     public PlanetWeatherSettings weather = new PlanetWeatherSettings();
+    [Header("Celestial Physics")]
+    public PlanetCelestialProfile celestial = new PlanetCelestialProfile();
 }
 
 [DefaultExecutionOrder(-1000)]
@@ -46,6 +52,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     [Header("Scenes")]
     [SerializeField] string surfaceSceneName = "star";
     [SerializeField] string mapSceneName = "GalaxyMap";
+    [SerializeField] string interstellarSceneName = "InterstellarFlight";
+    [SerializeField] string approachSceneName = "PlanetApproach";
 
     [Header("Galaxy Grid")]
     [SerializeField, Min(1)] int gridColumns = 12;
@@ -60,6 +68,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     Vector2Int shipGridPosition;
     GalaxyCoordinate shipCoordinate;
     GalaxyCoordinate currentPlanetCoordinate;
+    InterstellarCoordinate shipCoordinate3D;
+    InterstellarCoordinate currentPlanetCoordinate3D;
     GalaxyShipFacing shipFacing = GalaxyShipFacing.Up;
     bool transitionInProgress;
     List<InventorySlot> inventorySnapshot;
@@ -67,26 +77,44 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     GalaxySaveSlotMetadata activeSlotMetadata;
     readonly Dictionary<GalaxyCoordinate, GalaxyPlanetDefinition> proceduralPlanetCache = new Dictionary<GalaxyCoordinate, GalaxyPlanetDefinition>();
     readonly Queue<GalaxyCoordinate> proceduralCacheOrder = new Queue<GalaxyCoordinate>();
+    readonly Dictionary<InterstellarCoordinate, GalaxyPlanetDefinition> interstellarPlanetCache = new Dictionary<InterstellarCoordinate, GalaxyPlanetDefinition>();
+    readonly Queue<InterstellarCoordinate> interstellarCacheOrder = new Queue<InterstellarCoordinate>();
     readonly List<GalaxyResourceCatalogEntry> runtimeResourceCatalog = new List<GalaxyResourceCatalogEntry>();
     readonly HashSet<string> frozenPlanetIds = new HashSet<string>();
     ProceduralGalaxyGenerator proceduralGenerator;
+    ProceduralInterstellarGenerator interstellarGenerator;
 
     public static GalaxyTravelManager Instance => instance;
     public IReadOnlyList<GalaxyPlanetDefinition> Planets => planets;
-    public GalaxyPlanetDefinition CurrentPlanet => IsInfiniteGalaxy
-        ? GetPlanetAt(currentPlanetCoordinate)
-        : GetPlanet(currentPlanetId);
+    public GalaxyPlanetDefinition CurrentPlanet => IsInterstellarGalaxy
+        ? GetPlanetAt(currentPlanetCoordinate3D)
+        : IsInfiniteGalaxy ? GetPlanetAt(currentPlanetCoordinate) : GetPlanet(currentPlanetId);
     public Vector2Int ShipGridPosition => shipGridPosition;
     public GalaxyCoordinate ShipCoordinate => IsInfiniteGalaxy
         ? shipCoordinate
         : new GalaxyCoordinate(shipGridPosition.x, shipGridPosition.y);
     public bool IsInfiniteGalaxy => activeSlotMetadata != null
         && activeSlotMetadata.galaxyMode == GalaxyMode.InfiniteProcedural;
+    public bool IsInterstellarGalaxy => activeSlotMetadata != null
+        && activeSlotMetadata.galaxyMode == GalaxyMode.Interstellar3DProcedural;
+    public InterstellarCoordinate ShipCoordinate3D => shipCoordinate3D;
+    public InterstellarCoordinate CurrentPlanetCoordinate3D => currentPlanetCoordinate3D;
+    public int WorldSeed => activeSlotMetadata != null ? activeSlotMetadata.worldSeed : galaxyLayoutSeed;
+    public DoubleVector3 SavedSpacePosition => activeSlotMetadata == null
+        ? DoubleVector3.Zero
+        : new DoubleVector3(activeSlotMetadata.spacePositionX, activeSlotMetadata.spacePositionY, activeSlotMetadata.spacePositionZ);
+    public float SpacecraftHullIntegrity => activeSlotMetadata != null
+        ? Mathf.Clamp(activeSlotMetadata.spacecraftHullIntegrity, 0f, 100f)
+        : 100f;
     public GalaxyShipFacing ShipFacing => shipFacing;
     public int GridColumns => gridColumns;
     public int GridRows => gridRows;
     public double WeatherTimeSeconds => activeSlotMetadata != null ? activeSlotMetadata.weatherTimeSeconds : 0d;
     public PlanetDecorationCatalog DecorationCatalog => decorationCatalog;
+    public IReadOnlyList<VisitedPlanetRecord> VisitedPlanets => activeSlotMetadata != null
+        && activeSlotMetadata.visitedPlanets != null
+            ? activeSlotMetadata.visitedPlanets
+            : System.Array.Empty<VisitedPlanetRecord>();
 
     void Awake()
     {
@@ -111,7 +139,26 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         BuildRuntimeResourceCatalog();
         IndexFrozenPlanetDefinitions();
         ApplyWorldSeed(activeSlotMetadata.worldSeed);
-        if (IsInfiniteGalaxy)
+        if (IsInterstellarGalaxy)
+        {
+            interstellarGenerator = new ProceduralInterstellarGenerator(activeSlotMetadata.worldSeed, runtimeResourceCatalog);
+            currentPlanetCoordinate3D = new InterstellarCoordinate(
+                activeSlotMetadata.currentPlanetCoordinateX,
+                activeSlotMetadata.currentPlanetCoordinateY,
+                activeSlotMetadata.currentPlanetCoordinateZ);
+            VisitedPlanetRecord visitedCurrent = FindVisitedPlanet(currentPlanetCoordinate3D);
+            string currentCoordinateId = visitedCurrent != null
+                ? visitedCurrent.planetId
+                : ProceduralInterstellarGenerator.EncodePlanetId(currentPlanetCoordinate3D);
+            if (visitedCurrent == null && !frozenPlanetIds.Contains(currentCoordinateId)
+                && !interstellarGenerator.HasPlanet(currentPlanetCoordinate3D))
+                currentPlanetCoordinate3D = InterstellarCoordinate.Zero;
+            visitedCurrent = FindVisitedPlanet(currentPlanetCoordinate3D);
+            currentPlanetId = visitedCurrent != null
+                ? visitedCurrent.planetId
+                : ProceduralInterstellarGenerator.EncodePlanetId(currentPlanetCoordinate3D);
+        }
+        else if (IsInfiniteGalaxy)
         {
             proceduralGenerator = new ProceduralGalaxyGenerator(activeSlotMetadata.worldSeed, runtimeResourceCatalog);
             currentPlanetCoordinate = new GalaxyCoordinate(
@@ -166,15 +213,20 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
     public void OpenGalaxyMap(VoxelQuadSphereWorld world)
     {
-if (transitionInProgress || world == null)
+        if (transitionInProgress || (world == null && !IsInterstellarGalaxy))
             return;
 
-        SavePlanet(world);
-        CaptureInventory();
+        if (world != null)
+        {
+            SavePlanet(world);
+            CaptureInventory();
+        }
         GalaxyPlanetDefinition current = CurrentPlanet;
         if (current != null)
         {
-            if (IsInfiniteGalaxy)
+            if (IsInterstellarGalaxy)
+                shipCoordinate3D = current.coordinate3D;
+            else if (IsInfiniteGalaxy)
                 shipCoordinate = current.coordinate;
             else
                 shipGridPosition = current.gridPosition;
@@ -185,6 +237,27 @@ if (transitionInProgress || world == null)
         SceneManager.LoadScene(mapSceneName, LoadSceneMode.Single);
     
 }
+
+    public void OpenInterstellarFlight(VoxelQuadSphereWorld world)
+    {
+        if (transitionInProgress || world == null || !IsInterstellarGalaxy)
+            return;
+
+        SavePlanet(world);
+        CaptureInventory();
+        GalaxyPlanetDefinition current = CurrentPlanet;
+        if (current != null)
+        {
+            shipCoordinate3D = current.coordinate3D;
+            DoubleVector3 planetPosition = GetInterstellarPlanetPosition(current.coordinate3D);
+            activeSlotMetadata.spacePositionX = planetPosition.x;
+            activeSlotMetadata.spacePositionY = planetPosition.y + 180d;
+            activeSlotMetadata.spacePositionZ = planetPosition.z + 900d;
+        }
+        SaveActiveSlotMetadata();
+        transitionInProgress = true;
+        SceneManager.LoadScene(interstellarSceneName, LoadSceneMode.Single);
+    }
 
     public void MoveShip(Vector2Int delta)
     {
@@ -265,6 +338,38 @@ if (!IsInfiniteGalaxy)
     
 }
 
+    public GalaxyPlanetDefinition GetPlanetAt(InterstellarCoordinate coordinate)
+    {
+        if (!IsInterstellarGalaxy)
+            return null;
+        if (interstellarPlanetCache.TryGetValue(coordinate, out GalaxyPlanetDefinition cached))
+            return cached;
+
+        VisitedPlanetRecord visited = FindVisitedPlanet(coordinate);
+        string planetId = visited != null
+            ? visited.planetId
+            : ProceduralInterstellarGenerator.EncodePlanetId(coordinate);
+        GalaxyPlanetDefinition planet = frozenPlanetIds.Contains(planetId)
+            ? LoadFrozenPlanetDefinition(coordinate)
+            : null;
+        if (planet == null)
+        {
+            if (interstellarGenerator == null || !interstellarGenerator.HasPlanet(coordinate))
+                return null;
+            planet = interstellarGenerator.GeneratePlanet(coordinate);
+        }
+        if (planet != null)
+            CacheProceduralPlanet(coordinate, planet);
+        return planet;
+    }
+
+    public DoubleVector3 GetInterstellarPlanetPosition(InterstellarCoordinate coordinate)
+    {
+        return interstellarGenerator != null
+            ? interstellarGenerator.GetPlanetUniversePosition(coordinate)
+            : DoubleVector3.Zero;
+    }
+
     public GalaxyPlanetDefinition GetPlanetAt(Vector2Int gridPosition)
     {
 foreach (GalaxyPlanetDefinition planet in planets)
@@ -282,7 +387,21 @@ foreach (GalaxyPlanetDefinition planet in planets)
 if (transitionInProgress || planet == null)
             return;
 
-        if (IsInfiniteGalaxy)
+        if (IsInterstellarGalaxy)
+        {
+            try
+            {
+                FreezePlanetDefinition(planet);
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogError($"GalaxyTravelManager: could not freeze interstellar planet definition. {exception.Message}", this);
+                return;
+            }
+            currentPlanetCoordinate3D = planet.coordinate3D;
+            shipCoordinate3D = planet.coordinate3D;
+        }
+        else if (IsInfiniteGalaxy)
         {
             try
             {
@@ -307,10 +426,111 @@ if (transitionInProgress || planet == null)
     
 }
 
+    public void BeginPlanetApproach(
+        GalaxyPlanetDefinition planet,
+        Vector3 relativePosition,
+        Vector3 inertialVelocity,
+        Quaternion shipRotation)
+    {
+        if (transitionInProgress || !IsInterstellarGalaxy || planet == null)
+            return;
+
+        try
+        {
+            FreezePlanetDefinition(planet);
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogError($"GalaxyTravelManager: could not freeze approach target. {exception.Message}", this);
+            return;
+        }
+
+        currentPlanetCoordinate3D = planet.coordinate3D;
+        currentPlanetId = planet.planetId;
+        PlanetApproachContext.Set(planet, relativePosition, inertialVelocity, shipRotation, SpacecraftHullIntegrity);
+        SaveActiveSlotMetadata();
+        transitionInProgress = true;
+        SceneManager.LoadScene(approachSceneName, LoadSceneMode.Single);
+    }
+
+    public void CompletePlanetLanding(PendingPlanetLandingContext context)
+    {
+        if (transitionInProgress || !IsInterstellarGalaxy || context == null || string.IsNullOrWhiteSpace(context.planetId))
+            return;
+
+        currentPlanetId = context.planetId;
+        currentPlanetCoordinate3D = context.coordinate;
+        shipCoordinate3D = context.coordinate;
+        AddOrUpdateVisitedPlanet(context);
+        PendingPlanetLandingContext.Set(context);
+        SaveActiveSlotMetadata();
+        transitionInProgress = true;
+        SceneManager.LoadScene(surfaceSceneName, LoadSceneMode.Single);
+    }
+
+    public void FastTravelToVisitedPlanet(string planetId)
+    {
+        if (transitionInProgress || !IsInterstellarGalaxy || string.IsNullOrWhiteSpace(planetId))
+            return;
+        VisitedPlanetRecord visited = FindVisitedPlanet(planetId);
+        if (visited == null)
+            return;
+        currentPlanetId = visited.planetId;
+        currentPlanetCoordinate3D = visited.Coordinate;
+        shipCoordinate3D = visited.Coordinate;
+        PendingPlanetLandingContext.Set(new PendingPlanetLandingContext
+        {
+            planetId = visited.planetId,
+            coordinate = visited.Coordinate,
+            landingDirection = visited.lastLandingDirection.sqrMagnitude > 0.001f
+                ? visited.lastLandingDirection.normalized
+                : Vector3.up,
+            playerLocalPosition = visited.lastPlayerLocalPosition,
+            hullIntegrity = SpacecraftHullIntegrity
+        });
+        SaveActiveSlotMetadata();
+        transitionInProgress = true;
+        SceneManager.LoadScene(surfaceSceneName, LoadSceneMode.Single);
+    }
+
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         transitionInProgress = false;
         ConfigureSurfaceScene(scene);
+    }
+
+    public void UpdateInterstellarFlightState(
+        InterstellarCoordinate shipSector,
+        DoubleVector3 universePosition,
+        float hullIntegrity)
+    {
+        if (!IsInterstellarGalaxy || activeSlotMetadata == null)
+            return;
+        shipCoordinate3D = shipSector;
+        activeSlotMetadata.spacePositionX = universePosition.x;
+        activeSlotMetadata.spacePositionY = universePosition.y;
+        activeSlotMetadata.spacePositionZ = universePosition.z;
+        activeSlotMetadata.spacecraftHullIntegrity = Mathf.Clamp(hullIntegrity, 0f, 100f);
+    }
+
+    public void FlushInterstellarFlightState()
+    {
+        SaveActiveSlotMetadata();
+    }
+
+    public void RecoverFromSpacecraftDestruction()
+    {
+        if (transitionInProgress || !IsInterstellarGalaxy)
+            return;
+        activeSlotMetadata.spacecraftHullIntegrity = 50f;
+        shipCoordinate3D = currentPlanetCoordinate3D;
+        DoubleVector3 planetPosition = GetInterstellarPlanetPosition(currentPlanetCoordinate3D);
+        activeSlotMetadata.spacePositionX = planetPosition.x;
+        activeSlotMetadata.spacePositionY = planetPosition.y + 180d;
+        activeSlotMetadata.spacePositionZ = planetPosition.z + 900d;
+        SaveActiveSlotMetadata();
+        transitionInProgress = true;
+        SceneManager.LoadScene(surfaceSceneName, LoadSceneMode.Single);
     }
 
     public void ReturnToMainMenu(string startMenuSceneName)
@@ -342,7 +562,7 @@ if (transitionInProgress)
         if (world == null || planet == null)
             return;
 
-        if (IsInfiniteGalaxy)
+        if (IsInfiniteGalaxy || IsInterstellarGalaxy)
         {
             try
             {
@@ -369,7 +589,15 @@ if (transitionInProgress)
             planet.resourceSpawnSettings,
             surfacePropPlan,
             planet.rivers,
-            save != null ? save.riverData : null);
+            save != null ? save.riverData : null,
+            planet.celestial ?? PlanetCelestialProfile.CreateCompatibleDefault());
+        PendingPlanetLandingContext landing = PendingPlanetLandingContext.Consume();
+        if (landing != null && IsInterstellarGalaxy)
+        {
+            SurfaceLandedSpacecraftRestorer restorer = world.GetComponent<SurfaceLandedSpacecraftRestorer>()
+                ?? world.gameObject.AddComponent<SurfaceLandedSpacecraftRestorer>();
+            restorer.Initialize(world, landing);
+        }
         PlanetWeatherSystem weatherSystem = FindObjectOfType<PlanetWeatherSystem>();
         weatherSystem?.Configure(world, planet.weather, planet.seed, planet.planetId);
         RestoreBuildings(world, save);
@@ -1010,6 +1238,13 @@ if (transitionInProgress)
         gridColumns = Mathf.Max(1, gridColumns);
         gridRows = Mathf.Max(1, gridRows);
 
+        if (IsInterstellarGalaxy)
+        {
+            currentPlanetId = ProceduralInterstellarGenerator.EncodePlanetId(currentPlanetCoordinate3D);
+            shipCoordinate3D = currentPlanetCoordinate3D;
+            return;
+        }
+
         if (IsInfiniteGalaxy)
         {
             currentPlanetId = ProceduralGalaxyGenerator.EncodePlanetId(currentPlanetCoordinate);
@@ -1236,14 +1471,14 @@ if (transitionInProgress)
 
     string GetPlanetSavePath(string planetId)
     {
-        return IsInfiniteGalaxy
+        return IsInfiniteGalaxy || IsInterstellarGalaxy
             ? Path.Combine(GetSaveDirectory(), planetId, "world.planet.gz")
             : Path.Combine(GetSaveDirectory(), planetId + ".planet.gz");
     }
 
     string GetLegacyPlanetSavePath(string planetId)
     {
-        if (IsInfiniteGalaxy)
+        if (IsInfiniteGalaxy || IsInterstellarGalaxy)
             return Path.Combine(GetSaveDirectory(), planetId, "world.json");
         return Path.Combine(GetSaveDirectory(), planetId + ".json");
     }
@@ -1279,6 +1514,15 @@ if (transitionInProgress)
 
     void RestoreShipPositionFromMetadata()
     {
+        if (IsInterstellarGalaxy)
+        {
+            shipCoordinate3D = new InterstellarCoordinate(
+                activeSlotMetadata.shipCoordinateX,
+                activeSlotMetadata.shipCoordinateY,
+                activeSlotMetadata.shipCoordinateZ);
+            return;
+        }
+
         if (IsInfiniteGalaxy)
         {
             shipCoordinate = new GalaxyCoordinate(
@@ -1301,7 +1545,17 @@ if (transitionInProgress)
             return;
         activeSlotMetadata.currentPlanetId = currentPlanetId;
         activeSlotMetadata.shipFacing = shipFacing;
-        if (IsInfiniteGalaxy)
+        if (IsInterstellarGalaxy)
+        {
+            activeSlotMetadata.shipCoordinateX = shipCoordinate3D.x;
+            activeSlotMetadata.shipCoordinateY = shipCoordinate3D.y;
+            activeSlotMetadata.shipCoordinateZ = shipCoordinate3D.z;
+            activeSlotMetadata.currentPlanetCoordinateX = currentPlanetCoordinate3D.x;
+            activeSlotMetadata.currentPlanetCoordinateY = currentPlanetCoordinate3D.y;
+            activeSlotMetadata.currentPlanetCoordinateZ = currentPlanetCoordinate3D.z;
+            activeSlotMetadata.galaxyGeneratorVersion = ProceduralInterstellarGenerator.CurrentVersion;
+        }
+        else if (IsInfiniteGalaxy)
         {
             activeSlotMetadata.shipCoordinateX = shipCoordinate.x;
             activeSlotMetadata.shipCoordinateY = shipCoordinate.y;
@@ -1466,15 +1720,17 @@ if (transitionInProgress)
     void IndexFrozenPlanetDefinitions()
     {
         frozenPlanetIds.Clear();
-        if (!IsInfiniteGalaxy)
+        if (!IsInfiniteGalaxy && !IsInterstellarGalaxy)
             return;
 
         string root = GetSaveDirectory();
         if (!Directory.Exists(root))
             return;
-        foreach (string directory in Directory.GetDirectories(root, "p_*", SearchOption.TopDirectoryOnly))
+        foreach (string directory in Directory.GetDirectories(root, "*_*", SearchOption.TopDirectoryOnly))
         {
-            if (File.Exists(Path.Combine(directory, "definition.json")))
+            string id = Path.GetFileName(directory);
+            if ((id.StartsWith("p_", System.StringComparison.Ordinal) || id.StartsWith("q_", System.StringComparison.Ordinal))
+                && File.Exists(Path.Combine(directory, "definition.json")))
                 frozenPlanetIds.Add(Path.GetFileName(directory));
         }
     }
@@ -1502,19 +1758,80 @@ if (transitionInProgress)
         }
     }
 
+    void CacheProceduralPlanet(InterstellarCoordinate coordinate, GalaxyPlanetDefinition planet)
+    {
+        interstellarPlanetCache[coordinate] = planet;
+        interstellarCacheOrder.Enqueue(coordinate);
+        while (interstellarPlanetCache.Count > 256 && interstellarCacheOrder.Count > 0)
+        {
+            InterstellarCoordinate expired = interstellarCacheOrder.Dequeue();
+            if (expired != currentPlanetCoordinate3D)
+                interstellarPlanetCache.Remove(expired);
+        }
+    }
+
+    VisitedPlanetRecord FindVisitedPlanet(InterstellarCoordinate coordinate)
+    {
+        if (activeSlotMetadata == null || activeSlotMetadata.visitedPlanets == null)
+            return null;
+        foreach (VisitedPlanetRecord visited in activeSlotMetadata.visitedPlanets)
+            if (visited != null && visited.Coordinate == coordinate)
+                return visited;
+        return null;
+    }
+
+    VisitedPlanetRecord FindVisitedPlanet(string planetId)
+    {
+        if (activeSlotMetadata == null || activeSlotMetadata.visitedPlanets == null)
+            return null;
+        foreach (VisitedPlanetRecord visited in activeSlotMetadata.visitedPlanets)
+            if (visited != null && visited.planetId == planetId)
+                return visited;
+        return null;
+    }
+
+    void AddOrUpdateVisitedPlanet(PendingPlanetLandingContext context)
+    {
+        var records = new List<VisitedPlanetRecord>(activeSlotMetadata.visitedPlanets
+            ?? System.Array.Empty<VisitedPlanetRecord>());
+        VisitedPlanetRecord record = records.Find(item => item != null && item.planetId == context.planetId);
+        if (record == null)
+        {
+            record = new VisitedPlanetRecord { planetId = context.planetId };
+            records.Add(record);
+        }
+        GalaxyPlanetDefinition planet = GetPlanetAt(context.coordinate);
+        record.displayName = planet != null ? planet.displayName : context.planetId;
+        record.coordinateX = context.coordinate.x;
+        record.coordinateY = context.coordinate.y;
+        record.coordinateZ = context.coordinate.z;
+        record.lastLandingDirection = context.landingDirection.sqrMagnitude > 0.001f
+            ? context.landingDirection.normalized
+            : Vector3.up;
+        record.lastPlayerLocalPosition = context.playerLocalPosition;
+        record.lastVisitedUtcTicks = System.DateTime.UtcNow.Ticks;
+        activeSlotMetadata.visitedPlanets = records.ToArray();
+    }
+
     void FreezePlanetDefinition(GalaxyPlanetDefinition planet)
     {
-        if (!IsInfiniteGalaxy || planet == null || !planet.isProcedural)
+        if ((!IsInfiniteGalaxy && !IsInterstellarGalaxy) || planet == null || !planet.isProcedural)
             return;
 
         string path = GetPlanetDefinitionPath(planet.planetId);
+        if (File.Exists(path) && frozenPlanetIds.Contains(planet.planetId))
+            return;
         var record = new GalaxyGeneratedPlanetRecord
         {
-            generatorVersion = ProceduralGalaxyGenerator.CurrentVersion,
+            generatorVersion = IsInterstellarGalaxy
+                ? ProceduralInterstellarGenerator.CurrentVersion
+                : ProceduralGalaxyGenerator.CurrentVersion,
             planetId = planet.planetId,
             displayName = planet.displayName,
-            coordinateX = planet.coordinate.x,
-            coordinateY = planet.coordinate.y,
+            coordinateX = planet.isInterstellar ? planet.coordinate3D.x : planet.coordinate.x,
+            coordinateY = planet.isInterstellar ? planet.coordinate3D.y : planet.coordinate.y,
+            coordinateZ = planet.coordinate3D.z,
+            usesInterstellarCoordinate = planet.isInterstellar,
             seed = planet.seed,
             climate = planet.climate,
             mapColor = planet.mapColor,
@@ -1523,7 +1840,8 @@ if (transitionInProgress)
             iconResourcePath = planet.iconResourcePath,
             terrain = planet.terrain,
             rivers = planet.rivers,
-            weather = planet.weather
+            weather = planet.weather,
+            celestial = planet.celestial ?? PlanetCelestialProfile.CreateCompatibleDefault()
         };
 
         if (planet.resourceSpawnSettings != null)
@@ -1568,7 +1886,8 @@ if (transitionInProgress)
         try
         {
             GalaxyGeneratedPlanetRecord record = JsonUtility.FromJson<GalaxyGeneratedPlanetRecord>(File.ReadAllText(path));
-            if (record == null || record.formatVersion != 2 || record.planetId != planetId
+            if (record == null || (record.formatVersion != 2 && record.formatVersion != 3)
+                || record.usesInterstellarCoordinate || record.planetId != planetId
                 || record.coordinateX != coordinate.x || record.coordinateY != coordinate.y)
                 throw new InvalidDataException("Invalid procedural planet definition.");
 
@@ -1589,6 +1908,7 @@ if (transitionInProgress)
                 terrain = record.terrain ?? new PlanetTerrainSettings(),
                 rivers = record.rivers ?? new PlanetRiverSettings(),
                 weather = record.weather ?? new PlanetWeatherSettings(),
+                celestial = record.celestial ?? PlanetCelestialProfile.CreateCompatibleDefault(),
                 resourceSpawnSettings = new List<HarvestableResourceSpawnSettings>()
             };
 
@@ -1619,6 +1939,82 @@ if (transitionInProgress)
         catch (System.Exception exception)
         {
             Debug.LogError($"GalaxyTravelManager: could not load planet definition '{planetId}'. {exception.Message}", this);
+            return null;
+        }
+    }
+
+
+    GalaxyPlanetDefinition LoadFrozenPlanetDefinition(InterstellarCoordinate coordinate)
+    {
+        VisitedPlanetRecord visited = FindVisitedPlanet(coordinate);
+        string planetId = visited != null
+            ? visited.planetId
+            : ProceduralInterstellarGenerator.EncodePlanetId(coordinate);
+        string path = GetPlanetDefinitionPath(planetId);
+        if (!File.Exists(path))
+            return null;
+
+        try
+        {
+            GalaxyGeneratedPlanetRecord record = JsonUtility.FromJson<GalaxyGeneratedPlanetRecord>(File.ReadAllText(path));
+            if (record == null)
+                throw new InvalidDataException("Missing interstellar planet definition.");
+            bool migratedLegacy = visited != null && !record.usesInterstellarCoordinate;
+            bool coordinateMatches = migratedLegacy
+                || (record.coordinateX == coordinate.x && record.coordinateY == coordinate.y && record.coordinateZ == coordinate.z);
+            if (record == null || record.formatVersion < 2 || record.formatVersion > 4
+                || record.planetId != planetId || !coordinateMatches)
+                throw new InvalidDataException("Invalid interstellar planet definition.");
+
+            var planet = new GalaxyPlanetDefinition
+            {
+                planetId = record.planetId,
+                displayName = record.displayName,
+                coordinate3D = coordinate,
+                isProcedural = true,
+                isInterstellar = true,
+                seed = record.seed,
+                climate = record.climate,
+                mapColor = record.mapColor,
+                surfaceColor = record.surfaceColor,
+                rockColor = record.rockColor,
+                hasExplicitPalette = true,
+                tintMapIcon = true,
+                iconResourcePath = record.iconResourcePath,
+                terrain = record.terrain ?? new PlanetTerrainSettings(),
+                rivers = record.rivers ?? new PlanetRiverSettings(),
+                weather = record.weather ?? new PlanetWeatherSettings(),
+                celestial = record.celestial ?? PlanetCelestialProfile.CreateCompatibleDefault(),
+                resourceSpawnSettings = new List<HarvestableResourceSpawnSettings>()
+            };
+
+            if (record.resources != null)
+            {
+                foreach (GalaxyGeneratedResourceRecord resource in record.resources)
+                {
+                    HarvestableResource prefab = ResolveCatalogPrefab(resource != null ? resource.catalogId : null);
+                    if (resource == null || prefab == null)
+                        continue;
+                    planet.resourceSpawnSettings.Add(new HarvestableResourceSpawnSettings
+                    {
+                        prefab = prefab,
+                        count = resource.count,
+                        seedOffset = resource.seedOffset,
+                        surfaceOffset = resource.surfaceOffset,
+                        minimumSpacing = resource.minimumSpacing,
+                        playerClearRadius = resource.playerClearRadius,
+                        placementAttempts = resource.placementAttempts,
+                        clockwiseRotationDegrees = resource.clockwiseRotationDegrees,
+                        randomizeYaw = resource.randomizeYaw
+                    });
+                }
+            }
+            planet.spawnHarvestableResources = planet.resourceSpawnSettings.Count > 0;
+            return planet;
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogError($"GalaxyTravelManager: could not load interstellar planet definition '{planetId}'. {exception.Message}", this);
             return null;
         }
     }
