@@ -20,6 +20,28 @@ namespace SpacecraftEditor
         Cooldown
     }
 
+    public enum InterstellarWarpState
+    {
+        Unlocked,
+        Locked,
+        Aligning,
+        Spooling,
+        Transit,
+        Exiting,
+        Cooldown
+    }
+
+    public enum InterstellarWarpCancelReason
+    {
+        None,
+        NoReticleTarget,
+        TargetLost,
+        Manual,
+        Damaged,
+        Misaligned,
+        ControlsDisabled
+    }
+
     [Serializable]
     public sealed class ShipFlightProfile
     {

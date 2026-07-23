@@ -64,7 +64,10 @@ public sealed class SpacecraftWeaponSystem : MonoBehaviour
         if (flightRuntime == null)
             flightRuntime = FindObjectOfType<InterstellarFlightRuntime>();
         if (flightRuntime != null)
+        {
             flightRuntime.OriginShifted += HandleOriginShift;
+            flightRuntime.UniverseRelocated += HandleUniverseRelocated;
+        }
         ownerCombatant = GetComponent<SpaceCombatant>();
         if (commandSourceComponent == null)
             commandSourceComponent = GetComponent<PlayerSpacecraftWeaponInput>();
@@ -566,7 +569,10 @@ public sealed class SpacecraftWeaponSystem : MonoBehaviour
     void OnDestroy()
     {
         if (flightRuntime != null)
+        {
             flightRuntime.OriginShifted -= HandleOriginShift;
+            flightRuntime.UniverseRelocated -= HandleUniverseRelocated;
+        }
         if (projectileMesh != null)
             Destroy(projectileMesh);
         if (kineticMaterial != null)
@@ -588,6 +594,27 @@ public sealed class SpacecraftWeaponSystem : MonoBehaviour
         }
         if (vfxPool != null)
             vfxPool.ShiftActiveEffects(shift);
+    }
+
+    void HandleUniverseRelocated(DoubleVector3 previousPosition, DoubleVector3 currentPosition)
+    {
+        ReleaseTransientCombatObjects();
+    }
+
+    public void ReleaseTransientCombatObjects()
+    {
+        if (projectiles != null)
+        {
+            for (int index = 0; index < projectiles.Length; index++)
+            {
+                if (projectiles[index] != null && projectiles[index].IsActive)
+                    projectiles[index].Release();
+            }
+        }
+        currentTarget = null;
+        aimDirections.Clear();
+        if (vfxPool != null)
+            vfxPool.ReleaseAllActiveEffects();
     }
 }
 

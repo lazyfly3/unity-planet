@@ -6,6 +6,7 @@ public sealed class SpacecraftLandingGearSystem : MonoBehaviour
     [SerializeField] Rigidbody shipBody;
     [SerializeField] LayerMask groundLayers = ~0;
     [SerializeField, Min(0.5f)] float castLength = 5f;
+    [SerializeField, Min(0.1f)] float penetrationRecoveryHeight = 2f;
     [SerializeField, Min(0f)] float springStrength = 36f;
     [SerializeField, Min(0f)] float damping = 8f;
     [SerializeField] Vector3[] localContactPoints =
@@ -46,7 +47,15 @@ public sealed class SpacecraftLandingGearSystem : MonoBehaviour
         foreach (Vector3 localPoint in localContactPoints)
         {
             Vector3 point = shipBody.transform.TransformPoint(localPoint);
-            int count = Physics.RaycastNonAlloc(point + up * 0.35f, -up, hits, castLength, groundLayers, QueryTriggerInteraction.Ignore);
+            Vector3 castOrigin = point + up * penetrationRecoveryHeight;
+            float maximumCastDistance = castLength + penetrationRecoveryHeight;
+            int count = Physics.RaycastNonAlloc(
+                castOrigin,
+                -up,
+                hits,
+                maximumCastDistance,
+                groundLayers,
+                QueryTriggerInteraction.Ignore);
             RaycastHit best = default;
             bool found = false;
             for (int i = 0; i < count; i++)
@@ -64,7 +73,8 @@ public sealed class SpacecraftLandingGearSystem : MonoBehaviour
 
             ContactCount++;
             normalSum += best.normal;
-            float compression = Mathf.Clamp01((castLength - best.distance) / castLength);
+            float distanceFromContactPoint = best.distance - penetrationRecoveryHeight;
+            float compression = Mathf.Clamp01((castLength - distanceFromContactPoint) / castLength);
             float normalSpeed = Vector3.Dot(shipBody.GetPointVelocity(point), best.normal);
             float acceleration = Mathf.Max(0f, compression * springStrength - normalSpeed * damping);
             shipBody.AddForceAtPosition(best.normal * acceleration, point, ForceMode.Acceleration);

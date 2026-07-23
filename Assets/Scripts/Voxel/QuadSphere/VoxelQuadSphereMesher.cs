@@ -1,9 +1,15 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using UnityEngine;
 
 public static class VoxelQuadSphereMesher
 {
+    public const int PaddedChunkSize = VoxelTypes.ChunkSize + 2;
+
+    static readonly ConcurrentBag<List<Vector3>> VectorListPool = new ConcurrentBag<List<Vector3>>();
+    static readonly ConcurrentBag<List<int>> IndexListPool = new ConcurrentBag<List<int>>();
+
     // 邻居方向（U/V/Depth）→ 本地立方体面索引
     static readonly int[] NeighborToUnitFace = { 0, 1, 4, 5, 3, 2 };
 
@@ -74,6 +80,200 @@ public static class VoxelQuadSphereMesher
         }
 
         return BuildCombinedMesh(chunkKey, dirtVertices, dirtTriangles, stoneVertices, stoneTriangles);}
+
+    public static VoxelQuadSphereMeshData BuildChunkMeshDataFromPaddedVoxels(
+        byte[] paddedVoxels,
+        QuadSphereChunkKey chunkKey,
+        int gridSize,
+        float planetRadius,
+        Vector3 planetCenter)
+    {
+        int paddedSize = PaddedChunkSize;
+        int requiredLength = paddedSize * paddedSize * paddedSize;
+        if (paddedVoxels == null || paddedVoxels.Length != requiredLength)
+            throw new ArgumentException("Padded voxel data has an invalid size.", nameof(paddedVoxels));
+
+        List<Vector3> dirtVertices = RentVectorList(2048);
+        List<int> dirtTriangles = RentIndexList(3072);
+        List<Vector3> stoneVertices = RentVectorList(2048);
+        List<int> stoneTriangles = RentIndexList(3072);
+        var corners = new Vector3[8];
+        bool ownershipTransferred = false;
+
+        try
+        {
+            int originU = chunkKey.ChunkU * VoxelTypes.ChunkSize;
+            int originV = chunkKey.ChunkV * VoxelTypes.ChunkSize;
+            int originDepth = chunkKey.ChunkDepth * VoxelTypes.ChunkSize;
+
+            for (int z = 0; z < VoxelTypes.ChunkSize; z++)
+            {
+                for (int y = 0; y < VoxelTypes.ChunkSize; y++)
+                {
+                    for (int x = 0; x < VoxelTypes.ChunkSize; x++)
+                    {
+                        byte voxel = GetPaddedVoxel(paddedVoxels, x + 1, y + 1, z + 1, paddedSize);
+                        if (!VoxelTypes.IsSolid(voxel))
+                            continue;
+
+                        List<Vector3> vertices = voxel == VoxelTypes.Stone ? stoneVertices : dirtVertices;
+                        List<int> triangles = voxel == VoxelTypes.Stone ? stoneTriangles : dirtTriangles;
+                        FillCellCorners(
+                            corners,
+                            chunkKey.Face,
+                            originU + x,
+                            originV + y,
+                            originDepth + z,
+                            gridSize,
+                            planetRadius,
+                            planetCenter);
+
+                        for (int neighborFace = 0; neighborFace < 6; neighborFace++)
+                        {
+                            Vector3Int offset = NeighborFaceOffset(neighborFace);
+                            byte neighbor = GetPaddedVoxel(
+                                paddedVoxels,
+                                x + 1 + offset.x,
+                                y + 1 + offset.y,
+                                z + 1 + offset.z,
+                                paddedSize);
+                            if (VoxelTypes.IsSolid(neighbor))
+                                continue;
+
+                            AddFace(vertices, triangles, corners, NeighborToUnitFace[neighborFace]);
+                        }
+                    }
+                }
+            }
+
+            ownershipTransferred = true;
+            return BuildMeshData(dirtVertices, dirtTriangles, stoneVertices, stoneTriangles);
+        }
+        catch
+        {
+            if (!ownershipTransferred)
+            {
+                ReturnVectorList(dirtVertices);
+                ReturnIndexList(dirtTriangles);
+                ReturnVectorList(stoneVertices);
+                ReturnIndexList(stoneTriangles);
+            }
+            throw;
+        }
+    }
+
+    static byte GetPaddedVoxel(byte[] voxels, int x, int y, int z, int size)
+    {
+        return voxels[x + y * size + z * size * size];
+    }
+
+    static VoxelQuadSphereMeshData BuildMeshData(
+        List<Vector3> dirtVertices,
+        List<int> dirtTriangles,
+        List<Vector3> stoneVertices,
+        List<int> stoneTriangles)
+    {
+        int dirtCount = dirtVertices.Count;
+        int totalCount = dirtCount + stoneVertices.Count;
+        if (totalCount == 0)
+        {
+            ReturnVectorList(dirtVertices);
+            ReturnIndexList(dirtTriangles);
+            ReturnVectorList(stoneVertices);
+            ReturnIndexList(stoneTriangles);
+            return VoxelQuadSphereMeshData.Empty;
+        }
+
+        List<Vector3> vertices = RentVectorList(totalCount);
+        vertices.AddRange(dirtVertices);
+        vertices.AddRange(stoneVertices);
+        ReturnVectorList(dirtVertices);
+        ReturnVectorList(stoneVertices);
+
+        List<int>[] subMeshes;
+        if (stoneTriangles.Count == 0)
+        {
+            ReturnIndexList(stoneTriangles);
+            subMeshes = new[] { dirtTriangles };
+        }
+        else if (dirtCount == 0)
+        {
+            ReturnIndexList(dirtTriangles);
+            subMeshes = new[] { stoneTriangles };
+        }
+        else
+        {
+            for (int i = 0; i < stoneTriangles.Count; i++)
+                stoneTriangles[i] += dirtCount;
+            subMeshes = new[] { dirtTriangles, stoneTriangles };
+        }
+
+        List<Vector3> normals = RentVectorList(totalCount);
+        for (int i = 0; i < totalCount; i++)
+            normals.Add(Vector3.zero);
+        for (int subMesh = 0; subMesh < subMeshes.Length; subMesh++)
+        {
+            List<int> triangles = subMeshes[subMesh];
+            for (int i = 0; i + 2 < triangles.Count; i += 3)
+            {
+                int a = triangles[i];
+                int b = triangles[i + 1];
+                int c = triangles[i + 2];
+                Vector3 normal = Vector3.Cross(vertices[b] - vertices[a], vertices[c] - vertices[a]);
+                normals[a] += normal;
+                normals[b] += normal;
+                normals[c] += normal;
+            }
+        }
+        for (int i = 0; i < normals.Count; i++)
+            normals[i] = normals[i].sqrMagnitude > 0.000001f ? normals[i].normalized : Vector3.up;
+
+        return new VoxelQuadSphereMeshData(vertices, normals, subMeshes, ReleaseMeshData);
+    }
+
+    static List<Vector3> RentVectorList(int capacity)
+    {
+        if (!VectorListPool.TryTake(out List<Vector3> list))
+            return new List<Vector3>(capacity);
+        list.Clear();
+        if (list.Capacity < capacity)
+            list.Capacity = capacity;
+        return list;
+    }
+
+    static List<int> RentIndexList(int capacity)
+    {
+        if (!IndexListPool.TryTake(out List<int> list))
+            return new List<int>(capacity);
+        list.Clear();
+        if (list.Capacity < capacity)
+            list.Capacity = capacity;
+        return list;
+    }
+
+    static void ReleaseMeshData(VoxelQuadSphereMeshData data)
+    {
+        ReturnVectorList(data.Vertices);
+        ReturnVectorList(data.Normals);
+        for (int i = 0; i < data.SubMeshTriangles.Length; i++)
+            ReturnIndexList(data.SubMeshTriangles[i]);
+    }
+
+    static void ReturnVectorList(List<Vector3> list)
+    {
+        if (list == null)
+            return;
+        list.Clear();
+        VectorListPool.Add(list);
+    }
+
+    static void ReturnIndexList(List<int> list)
+    {
+        if (list == null)
+            return;
+        list.Clear();
+        IndexListPool.Add(list);
+    }
 
     static QuadSphereVoxelAddress GetNeighborAddress(
         QuadSphereVoxelAddress address,

@@ -120,21 +120,29 @@ public static class CreatureTorsoSplineGenerator
             ? Mathf.Clamp(genome.spineSegmentCount, 7, CreatureTorsoSpline.MaximumPointCount)
             : random.Range(4, 8);
         var spline = new CreatureTorsoSpline();
-        float curveX = random.Range(-0.32f, 0.32f) * genome.bodyWidth;
-        float curveY = random.Range(-0.28f, 0.4f) * genome.bodyHeight;
-        float wave = random.Range(-0.24f, 0.24f) * genome.bodyWidth;
-        float massCenter = random.Range(0.28f, 0.72f);
-        float waist = random.Range(0.08f, 0.38f);
-        float roll = random.Range(-24f, 24f);
+        bool v4Quadruped = genome.generatorVersion >= CreaturePhenotype.CurrentVersion
+            && genome.topology == CreatureTopology.Quadruped;
+        float curveX = random.Range(v4Quadruped ? -0.08f : -0.32f, v4Quadruped ? 0.08f : 0.32f)
+            * genome.bodyWidth;
+        float curveY = random.Range(v4Quadruped ? -0.08f : -0.28f, v4Quadruped ? 0.14f : 0.4f)
+            * genome.bodyHeight;
+        float wave = random.Range(v4Quadruped ? -0.05f : -0.24f, v4Quadruped ? 0.05f : 0.24f)
+            * genome.bodyWidth;
+        float massCenter = random.Range(v4Quadruped ? 0.38f : 0.28f, v4Quadruped ? 0.62f : 0.72f);
+        float waist = random.Range(v4Quadruped ? 0.06f : 0.08f, v4Quadruped ? 0.16f : 0.38f);
+        float roll = random.Range(v4Quadruped ? -5f : -24f, v4Quadruped ? 5f : 24f);
 
         for (int i = 0; i < count; i++)
         {
             float t = i / (float)(count - 1);
-            float endProfile = Mathf.Lerp(0.5f, 1f, Mathf.Sin(t * Mathf.PI));
+            float endProfile = Mathf.Lerp(v4Quadruped ? 0.72f : 0.5f, 1f, Mathf.Sin(t * Mathf.PI));
             float massProfile = Mathf.Exp(-Mathf.Pow((t - massCenter) / 0.28f, 2f));
             float waistProfile = 1f - waist * Mathf.Exp(-Mathf.Pow((t - 0.5f) / 0.16f, 2f));
-            float widthScale = Mathf.Clamp(endProfile * waistProfile + massProfile * 0.24f, 0.42f, 1.35f);
-            float heightScale = Mathf.Clamp(endProfile + massProfile * random.Range(0.08f, 0.3f), 0.42f, 1.35f);
+            float widthScale = Mathf.Clamp(endProfile * waistProfile
+                + massProfile * (v4Quadruped ? 0.18f : 0.24f), 0.42f, v4Quadruped ? 1.2f : 1.35f);
+            float heightScale = Mathf.Clamp(endProfile + massProfile * random.Range(
+                v4Quadruped ? 0.06f : 0.08f, v4Quadruped ? 0.16f : 0.3f),
+                0.42f, v4Quadruped ? 1.18f : 1.35f);
             float arch = Mathf.Sin(t * Mathf.PI);
             float sideWave = Mathf.Sin(t * Mathf.PI * 2f + random.Range(-0.3f, 0.3f));
 
@@ -142,13 +150,19 @@ public static class CreatureTorsoSplineGenerator
             {
                 localPosition = new Vector3(
                     curveX * arch + wave * sideWave,
-                    curveY * arch + random.Range(-0.04f, 0.04f) * genome.bodyHeight,
+                    curveY * arch + random.Range(v4Quadruped ? -0.015f : -0.04f,
+                        v4Quadruped ? 0.015f : 0.04f) * genome.bodyHeight,
                     Mathf.Lerp(-genome.bodyLength * 0.5f, genome.bodyLength * 0.5f, t)),
-                width = Mathf.Max(0.16f, genome.bodyWidth * widthScale * random.Range(0.9f, 1.1f)),
-                height = Mathf.Max(0.16f, genome.bodyHeight * heightScale * random.Range(0.9f, 1.1f)),
-                rollDegrees = Mathf.Lerp(-roll, roll, t) + random.Range(-8f, 8f),
+                width = Mathf.Max(0.16f, genome.bodyWidth * widthScale
+                    * random.Range(v4Quadruped ? 0.97f : 0.9f, v4Quadruped ? 1.03f : 1.1f)),
+                height = Mathf.Max(0.16f, genome.bodyHeight * heightScale
+                    * random.Range(v4Quadruped ? 0.97f : 0.9f, v4Quadruped ? 1.03f : 1.1f)),
+                rollDegrees = Mathf.Lerp(-roll, roll, t)
+                    + random.Range(v4Quadruped ? -2f : -8f, v4Quadruped ? 2f : 8f),
                 blendRadius = Mathf.Min(genome.bodyWidth, genome.bodyHeight) * random.Range(0.14f, 0.28f),
-                taper = Mathf.Clamp(endProfile, 0.35f, 1.3f)
+                taper = v4Quadruped
+                    ? Mathf.Lerp(0.86f, 1f, Mathf.Sin(t * Mathf.PI))
+                    : Mathf.Clamp(endProfile, 0.35f, 1.3f)
             });
         }
 

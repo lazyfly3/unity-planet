@@ -89,10 +89,14 @@ Shader "Voxel Planet/Bio Creature Skin"
             fixed3 baseColor = input.color.rgb * _Color.rgb * baseSample.rgb;
             output.Albedo = lerp(baseColor, baseColor * _PatternColor.rgb,
                 patternMask * _PatternStrength);
+            half skinGrain = sin(input.worldPos.x * 7.3 + input.worldPos.z * 3.1)
+                * sin(input.worldPos.y * 9.7 - input.worldPos.z * 5.9);
+            output.Albedo *= 1.0 + skinGrain * 0.028;
 
             fixed4 masks = tex2D(_MasksMap, input.uv_MasksMap);
             output.Metallic = lerp(_Metallic, masks.g, _MaskStrength);
             output.Smoothness = lerp(_Glossiness, masks.r, _MaskStrength);
+            output.Smoothness = saturate(output.Smoothness + skinGrain * 0.018);
             if (_UseTriplanar < 0.5)
             {
                 fixed3 normalSample = UnpackNormal(tex2D(_NormalMap, input.uv_NormalMap));

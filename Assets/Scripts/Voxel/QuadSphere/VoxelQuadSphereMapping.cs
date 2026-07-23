@@ -157,6 +157,22 @@ public static class VoxelQuadSphereMapping
             return d.y >= 0f ? QuadSphereFace.PosY : QuadSphereFace.NegY;
         return d.z >= 0f ? QuadSphereFace.PosZ : QuadSphereFace.NegZ;}
 
+    public static void DirectionToFaceCell(
+        Vector3 directionFromCenter,
+        int gridSize,
+        out QuadSphereFace face,
+        out int cellU,
+        out int cellV)
+    {
+        Vector3 direction = directionFromCenter.sqrMagnitude > 0.0001f
+            ? directionFromCenter.normalized
+            : Vector3.up;
+        face = GetDominantFace(direction);
+        Vector2 uv = DirectionToFaceUV(direction, face);
+        cellU = NormalizedToCell(uv.x, gridSize);
+        cellV = NormalizedToCell(uv.y, gridSize);
+    }
+
     public static QuadSphereVoxelAddress RemapAcrossFace(
         QuadSphereVoxelAddress address,
         int gridSize)

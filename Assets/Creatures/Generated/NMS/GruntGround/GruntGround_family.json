@@ -1,0 +1,4093 @@
+{
+  "pipelineVersion": 10,
+  "rngAlgorithm": "SplitMix64-v1",
+  "familyId": "GruntGround",
+  "variantIds": [
+    "GruntGround",
+    "GruntFloat"
+  ],
+  "skeletonHash": "32d65baa8d2afd49d85e5c9d3c7a8b353a354fc55d8668f4885d55c4cf507823",
+  "sourceScene": "D:\\blender\\creature\\NMSImport\\GruntRig\\Extracted\\models\\planets\\creatures\\gruntrig\\grunt.scene.mbin",
+  "locomotionType": "Ground",
+  "legCount": 2,
+  "descriptorGroups": [
+    {
+      "typeId": "_HEAD_",
+      "path": [],
+      "candidates": [
+        {
+          "id": "_HEAD_GRUNT",
+          "name": "_Head_Grunt",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt"
+          ],
+          "children": [
+            {
+              "typeId": "_GHACCS_",
+              "path": [
+                "_HEAD_",
+                "_Head_Grunt"
+              ],
+              "candidates": [
+                {
+                  "id": "_GHACCS_2",
+                  "name": "_GHAccs_2",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_2"
+                  ],
+                  "children": [
+                    {
+                      "typeId": "_GH2ACCS_",
+                      "path": [
+                        "_HEAD_",
+                        "_Head_Grunt",
+                        "_GHACCS_",
+                        "_GHAccs_2"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_GH2ACCS_E",
+                          "name": "_GH2Accs_E",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Grunt",
+                            "_GHACCS_",
+                            "_GHAccs_2",
+                            "_GH2ACCS_",
+                            "_GH2Accs_E"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_GH2ACCS_A",
+                          "name": "_GH2Accs_A",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Grunt",
+                            "_GHACCS_",
+                            "_GHAccs_2",
+                            "_GH2ACCS_",
+                            "_GH2Accs_A"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_GH2ACCS_B",
+                          "name": "_GH2Accs_B",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Grunt",
+                            "_GHACCS_",
+                            "_GHAccs_2",
+                            "_GH2ACCS_",
+                            "_GH2Accs_B"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_GH2ACCS_C",
+                          "name": "_GH2Accs_C",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Grunt",
+                            "_GHACCS_",
+                            "_GHAccs_2",
+                            "_GH2ACCS_",
+                            "_GH2Accs_C"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_GH2ACCS_D",
+                          "name": "_GH2Accs_D",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Grunt",
+                            "_GHACCS_",
+                            "_GHAccs_2",
+                            "_GH2ACCS_",
+                            "_GH2Accs_D"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "_GHACCS_1",
+                  "name": "_GHAccs_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_1"
+                  ],
+                  "children": [
+                    {
+                      "typeId": "_GH1ACCS_",
+                      "path": [
+                        "_HEAD_",
+                        "_Head_Grunt",
+                        "_GHACCS_",
+                        "_GHAccs_1"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_GH1ACCS_A",
+                          "name": "_GH1Accs_A",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Grunt",
+                            "_GHACCS_",
+                            "_GHAccs_1",
+                            "_GH1ACCS_",
+                            "_GH1Accs_A"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_GH1ACCS_B",
+                          "name": "_GH1Accs_B",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Grunt",
+                            "_GHACCS_",
+                            "_GHAccs_1",
+                            "_GH1ACCS_",
+                            "_GH1Accs_B"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_GH1ACCS_C",
+                          "name": "_GH1Accs_C",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Grunt",
+                            "_GHACCS_",
+                            "_GHAccs_1",
+                            "_GH1ACCS_",
+                            "_GH1Accs_C"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_GH1ACCS_D",
+                          "name": "_GH1Accs_D",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Grunt",
+                            "_GHACCS_",
+                            "_GHAccs_1",
+                            "_GH1ACCS_",
+                            "_GH1Accs_D"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_GH1ACCS_E",
+                          "name": "_GH1Accs_E",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Grunt",
+                            "_GHACCS_",
+                            "_GHAccs_1",
+                            "_GH1ACCS_",
+                            "_GH1Accs_E"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_GH1ACCS_F",
+                          "name": "_GH1Accs_F",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Grunt",
+                            "_GHACCS_",
+                            "_GHAccs_1",
+                            "_GH1ACCS_",
+                            "_GH1Accs_F"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_GH1ACCS_G",
+                          "name": "_GH1Accs_G",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Grunt",
+                            "_GHACCS_",
+                            "_GHAccs_1",
+                            "_GH1ACCS_",
+                            "_GH1Accs_G"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_HEAD_TURTLE",
+          "name": "_Head_Turtle",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle"
+          ],
+          "children": [
+            {
+              "typeId": "_ACC_",
+              "path": [
+                "_HEAD_",
+                "_Head_Turtle"
+              ],
+              "candidates": [
+                {
+                  "id": "_ACC_NONE",
+                  "name": "_Acc_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_none"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACC_5",
+                  "name": "_Acc_5",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_5"
+                  ],
+                  "children": [
+                    {
+                      "typeId": "_A_",
+                      "path": [
+                        "_HEAD_",
+                        "_Head_Turtle",
+                        "_ACC_",
+                        "_Acc_5"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_A_4",
+                          "name": "_A_4",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Turtle",
+                            "_ACC_",
+                            "_Acc_5",
+                            "_A_",
+                            "_A_4"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_A_3",
+                          "name": "_A_3",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Turtle",
+                            "_ACC_",
+                            "_Acc_5",
+                            "_A_",
+                            "_A_3"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_A_2",
+                          "name": "_A_2",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Turtle",
+                            "_ACC_",
+                            "_Acc_5",
+                            "_A_",
+                            "_A_2"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_A_1",
+                          "name": "_A_1",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Turtle",
+                            "_ACC_",
+                            "_Acc_5",
+                            "_A_",
+                            "_A_1"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_A_5",
+                          "name": "_A_5",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Turtle",
+                            "_ACC_",
+                            "_Acc_5",
+                            "_A_",
+                            "_A_5"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "_ACC_4",
+                  "name": "_Acc_4",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_4"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACC_3",
+                  "name": "_Acc_3",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_3"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACC_1",
+                  "name": "_Acc_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_1"
+                  ],
+                  "children": [
+                    {
+                      "typeId": "_ACC3_",
+                      "path": [
+                        "_HEAD_",
+                        "_Head_Turtle",
+                        "_ACC_",
+                        "_Acc_1"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_ACC3_1",
+                          "name": "_Acc3_1",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Turtle",
+                            "_ACC_",
+                            "_Acc_1",
+                            "_ACC3_",
+                            "_Acc3_1"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_ACC3_NONE",
+                          "name": "_Acc3_none",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Turtle",
+                            "_ACC_",
+                            "_Acc_1",
+                            "_ACC3_",
+                            "_Acc3_none"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "_ACC_2",
+                  "name": "_Acc_2",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_2"
+                  ],
+                  "children": [
+                    {
+                      "typeId": "_ACC2_",
+                      "path": [
+                        "_HEAD_",
+                        "_Head_Turtle",
+                        "_ACC_",
+                        "_Acc_2"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_ACC2_1",
+                          "name": "_Acc2_1",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Turtle",
+                            "_ACC_",
+                            "_Acc_2",
+                            "_ACC2_",
+                            "_Acc2_1"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_ACC2_NONE",
+                          "name": "_Acc2_none",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Turtle",
+                            "_ACC_",
+                            "_Acc_2",
+                            "_ACC2_",
+                            "_Acc2_none"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "typeId": "_ACB_",
+              "path": [
+                "_HEAD_",
+                "_Head_Turtle"
+              ],
+              "candidates": [
+                {
+                  "id": "_ACB_NONE",
+                  "name": "_AcB_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACB_",
+                    "_AcB_none"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACB_EARS3",
+                  "name": "_AcB_Ears3",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACB_",
+                    "_AcB_Ears3"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACB_EARS2",
+                  "name": "_AcB_Ears2",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACB_",
+                    "_AcB_Ears2"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACB_EARS",
+                  "name": "_AcB_Ears",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACB_",
+                    "_AcB_Ears"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_GHACCS_",
+      "path": [
+        "_HEAD_",
+        "_Head_Grunt"
+      ],
+      "candidates": [
+        {
+          "id": "_GHACCS_2",
+          "name": "_GHAccs_2",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_2"
+          ],
+          "children": [
+            {
+              "typeId": "_GH2ACCS_",
+              "path": [
+                "_HEAD_",
+                "_Head_Grunt",
+                "_GHACCS_",
+                "_GHAccs_2"
+              ],
+              "candidates": [
+                {
+                  "id": "_GH2ACCS_E",
+                  "name": "_GH2Accs_E",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_2",
+                    "_GH2ACCS_",
+                    "_GH2Accs_E"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_GH2ACCS_A",
+                  "name": "_GH2Accs_A",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_2",
+                    "_GH2ACCS_",
+                    "_GH2Accs_A"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_GH2ACCS_B",
+                  "name": "_GH2Accs_B",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_2",
+                    "_GH2ACCS_",
+                    "_GH2Accs_B"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_GH2ACCS_C",
+                  "name": "_GH2Accs_C",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_2",
+                    "_GH2ACCS_",
+                    "_GH2Accs_C"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_GH2ACCS_D",
+                  "name": "_GH2Accs_D",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_2",
+                    "_GH2ACCS_",
+                    "_GH2Accs_D"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_GHACCS_1",
+          "name": "_GHAccs_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_1"
+          ],
+          "children": [
+            {
+              "typeId": "_GH1ACCS_",
+              "path": [
+                "_HEAD_",
+                "_Head_Grunt",
+                "_GHACCS_",
+                "_GHAccs_1"
+              ],
+              "candidates": [
+                {
+                  "id": "_GH1ACCS_A",
+                  "name": "_GH1Accs_A",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_1",
+                    "_GH1ACCS_",
+                    "_GH1Accs_A"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_GH1ACCS_B",
+                  "name": "_GH1Accs_B",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_1",
+                    "_GH1ACCS_",
+                    "_GH1Accs_B"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_GH1ACCS_C",
+                  "name": "_GH1Accs_C",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_1",
+                    "_GH1ACCS_",
+                    "_GH1Accs_C"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_GH1ACCS_D",
+                  "name": "_GH1Accs_D",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_1",
+                    "_GH1ACCS_",
+                    "_GH1Accs_D"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_GH1ACCS_E",
+                  "name": "_GH1Accs_E",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_1",
+                    "_GH1ACCS_",
+                    "_GH1Accs_E"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_GH1ACCS_F",
+                  "name": "_GH1Accs_F",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_1",
+                    "_GH1ACCS_",
+                    "_GH1Accs_F"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_GH1ACCS_G",
+                  "name": "_GH1Accs_G",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Grunt",
+                    "_GHACCS_",
+                    "_GHAccs_1",
+                    "_GH1ACCS_",
+                    "_GH1Accs_G"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_GH2ACCS_",
+      "path": [
+        "_HEAD_",
+        "_Head_Grunt",
+        "_GHACCS_",
+        "_GHAccs_2"
+      ],
+      "candidates": [
+        {
+          "id": "_GH2ACCS_E",
+          "name": "_GH2Accs_E",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_2",
+            "_GH2ACCS_",
+            "_GH2Accs_E"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GH2ACCS_A",
+          "name": "_GH2Accs_A",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_2",
+            "_GH2ACCS_",
+            "_GH2Accs_A"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GH2ACCS_B",
+          "name": "_GH2Accs_B",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_2",
+            "_GH2ACCS_",
+            "_GH2Accs_B"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GH2ACCS_C",
+          "name": "_GH2Accs_C",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_2",
+            "_GH2ACCS_",
+            "_GH2Accs_C"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GH2ACCS_D",
+          "name": "_GH2Accs_D",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_2",
+            "_GH2ACCS_",
+            "_GH2Accs_D"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_GH1ACCS_",
+      "path": [
+        "_HEAD_",
+        "_Head_Grunt",
+        "_GHACCS_",
+        "_GHAccs_1"
+      ],
+      "candidates": [
+        {
+          "id": "_GH1ACCS_A",
+          "name": "_GH1Accs_A",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_1",
+            "_GH1ACCS_",
+            "_GH1Accs_A"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GH1ACCS_B",
+          "name": "_GH1Accs_B",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_1",
+            "_GH1ACCS_",
+            "_GH1Accs_B"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GH1ACCS_C",
+          "name": "_GH1Accs_C",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_1",
+            "_GH1ACCS_",
+            "_GH1Accs_C"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GH1ACCS_D",
+          "name": "_GH1Accs_D",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_1",
+            "_GH1ACCS_",
+            "_GH1Accs_D"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GH1ACCS_E",
+          "name": "_GH1Accs_E",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_1",
+            "_GH1ACCS_",
+            "_GH1Accs_E"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GH1ACCS_F",
+          "name": "_GH1Accs_F",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_1",
+            "_GH1ACCS_",
+            "_GH1Accs_F"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GH1ACCS_G",
+          "name": "_GH1Accs_G",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Grunt",
+            "_GHACCS_",
+            "_GHAccs_1",
+            "_GH1ACCS_",
+            "_GH1Accs_G"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_ACC_",
+      "path": [
+        "_HEAD_",
+        "_Head_Turtle"
+      ],
+      "candidates": [
+        {
+          "id": "_ACC_NONE",
+          "name": "_Acc_none",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_none"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACC_5",
+          "name": "_Acc_5",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_5"
+          ],
+          "children": [
+            {
+              "typeId": "_A_",
+              "path": [
+                "_HEAD_",
+                "_Head_Turtle",
+                "_ACC_",
+                "_Acc_5"
+              ],
+              "candidates": [
+                {
+                  "id": "_A_4",
+                  "name": "_A_4",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_5",
+                    "_A_",
+                    "_A_4"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_A_3",
+                  "name": "_A_3",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_5",
+                    "_A_",
+                    "_A_3"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_A_2",
+                  "name": "_A_2",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_5",
+                    "_A_",
+                    "_A_2"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_A_1",
+                  "name": "_A_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_5",
+                    "_A_",
+                    "_A_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_A_5",
+                  "name": "_A_5",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_5",
+                    "_A_",
+                    "_A_5"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_ACC_4",
+          "name": "_Acc_4",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_4"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACC_3",
+          "name": "_Acc_3",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_3"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACC_1",
+          "name": "_Acc_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_1"
+          ],
+          "children": [
+            {
+              "typeId": "_ACC3_",
+              "path": [
+                "_HEAD_",
+                "_Head_Turtle",
+                "_ACC_",
+                "_Acc_1"
+              ],
+              "candidates": [
+                {
+                  "id": "_ACC3_1",
+                  "name": "_Acc3_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_1",
+                    "_ACC3_",
+                    "_Acc3_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACC3_NONE",
+                  "name": "_Acc3_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_1",
+                    "_ACC3_",
+                    "_Acc3_none"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_ACC_2",
+          "name": "_Acc_2",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_2"
+          ],
+          "children": [
+            {
+              "typeId": "_ACC2_",
+              "path": [
+                "_HEAD_",
+                "_Head_Turtle",
+                "_ACC_",
+                "_Acc_2"
+              ],
+              "candidates": [
+                {
+                  "id": "_ACC2_1",
+                  "name": "_Acc2_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_2",
+                    "_ACC2_",
+                    "_Acc2_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACC2_NONE",
+                  "name": "_Acc2_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Turtle",
+                    "_ACC_",
+                    "_Acc_2",
+                    "_ACC2_",
+                    "_Acc2_none"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_A_",
+      "path": [
+        "_HEAD_",
+        "_Head_Turtle",
+        "_ACC_",
+        "_Acc_5"
+      ],
+      "candidates": [
+        {
+          "id": "_A_4",
+          "name": "_A_4",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_5",
+            "_A_",
+            "_A_4"
+          ],
+          "children": []
+        },
+        {
+          "id": "_A_3",
+          "name": "_A_3",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_5",
+            "_A_",
+            "_A_3"
+          ],
+          "children": []
+        },
+        {
+          "id": "_A_2",
+          "name": "_A_2",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_5",
+            "_A_",
+            "_A_2"
+          ],
+          "children": []
+        },
+        {
+          "id": "_A_1",
+          "name": "_A_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_5",
+            "_A_",
+            "_A_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_A_5",
+          "name": "_A_5",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_5",
+            "_A_",
+            "_A_5"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_ACC3_",
+      "path": [
+        "_HEAD_",
+        "_Head_Turtle",
+        "_ACC_",
+        "_Acc_1"
+      ],
+      "candidates": [
+        {
+          "id": "_ACC3_1",
+          "name": "_Acc3_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_1",
+            "_ACC3_",
+            "_Acc3_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACC3_NONE",
+          "name": "_Acc3_none",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_1",
+            "_ACC3_",
+            "_Acc3_none"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_ACC2_",
+      "path": [
+        "_HEAD_",
+        "_Head_Turtle",
+        "_ACC_",
+        "_Acc_2"
+      ],
+      "candidates": [
+        {
+          "id": "_ACC2_1",
+          "name": "_Acc2_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_2",
+            "_ACC2_",
+            "_Acc2_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACC2_NONE",
+          "name": "_Acc2_none",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACC_",
+            "_Acc_2",
+            "_ACC2_",
+            "_Acc2_none"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_ACB_",
+      "path": [
+        "_HEAD_",
+        "_Head_Turtle"
+      ],
+      "candidates": [
+        {
+          "id": "_ACB_NONE",
+          "name": "_AcB_none",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACB_",
+            "_AcB_none"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACB_EARS3",
+          "name": "_AcB_Ears3",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACB_",
+            "_AcB_Ears3"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACB_EARS2",
+          "name": "_AcB_Ears2",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACB_",
+            "_AcB_Ears2"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACB_EARS",
+          "name": "_AcB_Ears",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Turtle",
+            "_ACB_",
+            "_AcB_Ears"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_BODY_",
+      "path": [],
+      "candidates": [
+        {
+          "id": "_BODY_GRUNT",
+          "name": "_Body_Grunt",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Grunt"
+          ],
+          "children": []
+        },
+        {
+          "id": "_BODY_GRUNTFLOATXRARE",
+          "name": "_Body_GruntFloatxRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_GruntFloatxRARE"
+          ],
+          "children": [
+            {
+              "typeId": "_WING_",
+              "path": [
+                "_BODY_",
+                "_Body_GruntFloatxRARE"
+              ],
+              "candidates": [
+                {
+                  "id": "_WING_1",
+                  "name": "_Wing_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_GruntFloatxRARE",
+                    "_WING_",
+                    "_Wing_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_WING_2",
+                  "name": "_Wing_2",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_GruntFloatxRARE",
+                    "_WING_",
+                    "_Wing_2"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_WING_3",
+                  "name": "_Wing_3",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_GruntFloatxRARE",
+                    "_WING_",
+                    "_Wing_3"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_WING_4",
+                  "name": "_Wing_4",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_GruntFloatxRARE",
+                    "_WING_",
+                    "_Wing_4"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_WING_5",
+                  "name": "_Wing_5",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_GruntFloatxRARE",
+                    "_WING_",
+                    "_Wing_5"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_WING_6",
+                  "name": "_Wing_6",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_GruntFloatxRARE",
+                    "_WING_",
+                    "_Wing_6"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_WING_",
+      "path": [
+        "_BODY_",
+        "_Body_GruntFloatxRARE"
+      ],
+      "candidates": [
+        {
+          "id": "_WING_1",
+          "name": "_Wing_1",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_GruntFloatxRARE",
+            "_WING_",
+            "_Wing_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_WING_2",
+          "name": "_Wing_2",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_GruntFloatxRARE",
+            "_WING_",
+            "_Wing_2"
+          ],
+          "children": []
+        },
+        {
+          "id": "_WING_3",
+          "name": "_Wing_3",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_GruntFloatxRARE",
+            "_WING_",
+            "_Wing_3"
+          ],
+          "children": []
+        },
+        {
+          "id": "_WING_4",
+          "name": "_Wing_4",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_GruntFloatxRARE",
+            "_WING_",
+            "_Wing_4"
+          ],
+          "children": []
+        },
+        {
+          "id": "_WING_5",
+          "name": "_Wing_5",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_GruntFloatxRARE",
+            "_WING_",
+            "_Wing_5"
+          ],
+          "children": []
+        },
+        {
+          "id": "_WING_6",
+          "name": "_Wing_6",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_GruntFloatxRARE",
+            "_WING_",
+            "_Wing_6"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_MESH_",
+      "path": [],
+      "candidates": [
+        {
+          "id": "_MESH_GRUNT",
+          "name": "_Mesh_Grunt",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Grunt"
+          ],
+          "children": [
+            {
+              "typeId": "_BGH_",
+              "path": [
+                "_MESH_",
+                "_Mesh_Grunt"
+              ],
+              "candidates": [
+                {
+                  "id": "_BGH_CLAWSLONG",
+                  "name": "_BGH_ClawsLong",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Grunt",
+                    "_BGH_",
+                    "_BGH_ClawsLong"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_BGH_CLAWSSHORT",
+                  "name": "_BGH_ClawsShort",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Grunt",
+                    "_BGH_",
+                    "_BGH_ClawsShort"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_BGF_",
+              "path": [
+                "_MESH_",
+                "_Mesh_Grunt"
+              ],
+              "candidates": [
+                {
+                  "id": "_BGF_CLAWSLONG",
+                  "name": "_BGF_ClawsLong",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Grunt",
+                    "_BGF_",
+                    "_BGF_ClawsLong"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_BGF_CLAWSSHORT",
+                  "name": "_BGF_ClawsShort",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Grunt",
+                    "_BGF_",
+                    "_BGF_ClawsShort"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_BGM_",
+              "path": [
+                "_MESH_",
+                "_Mesh_Grunt"
+              ],
+              "candidates": [
+                {
+                  "id": "_BGM_SHELLXRARE",
+                  "name": "_BGM_ShellxRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Grunt",
+                    "_BGM_",
+                    "_BGM_ShellxRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_BGM_SHOULDERSPIKESXRARE",
+                  "name": "_BGM_ShoulderSpikesxRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Grunt",
+                    "_BGM_",
+                    "_BGM_ShoulderSpikesxRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_BGM_SHAWL",
+                  "name": "_BGM_Shawl",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Grunt",
+                    "_BGM_",
+                    "_BGM_Shawl"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_BGM_NONE",
+                  "name": "_BGM_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Grunt",
+                    "_BGM_",
+                    "_BGM_none"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_MESH_TURTLE",
+          "name": "_Mesh_Turtle",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Turtle"
+          ],
+          "children": [
+            {
+              "typeId": "_ACCB_",
+              "path": [
+                "_MESH_",
+                "_Mesh_Turtle"
+              ],
+              "candidates": [
+                {
+                  "id": "_ACCB_BLONGCLW",
+                  "name": "_AccB_BLongClw",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Turtle",
+                    "_ACCB_",
+                    "_AccB_BLongClw"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACCB_BFEATHERS",
+                  "name": "_AccB_BFeathers",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Turtle",
+                    "_ACCB_",
+                    "_AccB_BFeathers"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACCB_FEATHERS",
+                  "name": "_AccB_Feathers",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Turtle",
+                    "_ACCB_",
+                    "_AccB_Feathers"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACCB_NONE",
+                  "name": "_AccB_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Turtle",
+                    "_ACCB_",
+                    "_AccB_none"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_TBACC_",
+              "path": [
+                "_MESH_",
+                "_Mesh_Turtle"
+              ],
+              "candidates": [
+                {
+                  "id": "_TBACC_NONE",
+                  "name": "_TBAcc_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Turtle",
+                    "_TBACC_",
+                    "_TBAcc_none"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_TBACC_2",
+                  "name": "_TBAcc_2",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Turtle",
+                    "_TBACC_",
+                    "_TBAcc_2"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_TBACC_1",
+                  "name": "_TBAcc_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_MESH_",
+                    "_Mesh_Turtle",
+                    "_TBACC_",
+                    "_TBAcc_1"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_BGH_",
+      "path": [
+        "_MESH_",
+        "_Mesh_Grunt"
+      ],
+      "candidates": [
+        {
+          "id": "_BGH_CLAWSLONG",
+          "name": "_BGH_ClawsLong",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Grunt",
+            "_BGH_",
+            "_BGH_ClawsLong"
+          ],
+          "children": []
+        },
+        {
+          "id": "_BGH_CLAWSSHORT",
+          "name": "_BGH_ClawsShort",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Grunt",
+            "_BGH_",
+            "_BGH_ClawsShort"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_BGF_",
+      "path": [
+        "_MESH_",
+        "_Mesh_Grunt"
+      ],
+      "candidates": [
+        {
+          "id": "_BGF_CLAWSLONG",
+          "name": "_BGF_ClawsLong",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Grunt",
+            "_BGF_",
+            "_BGF_ClawsLong"
+          ],
+          "children": []
+        },
+        {
+          "id": "_BGF_CLAWSSHORT",
+          "name": "_BGF_ClawsShort",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Grunt",
+            "_BGF_",
+            "_BGF_ClawsShort"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_BGM_",
+      "path": [
+        "_MESH_",
+        "_Mesh_Grunt"
+      ],
+      "candidates": [
+        {
+          "id": "_BGM_SHELLXRARE",
+          "name": "_BGM_ShellxRARE",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Grunt",
+            "_BGM_",
+            "_BGM_ShellxRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_BGM_SHOULDERSPIKESXRARE",
+          "name": "_BGM_ShoulderSpikesxRARE",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Grunt",
+            "_BGM_",
+            "_BGM_ShoulderSpikesxRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_BGM_SHAWL",
+          "name": "_BGM_Shawl",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Grunt",
+            "_BGM_",
+            "_BGM_Shawl"
+          ],
+          "children": []
+        },
+        {
+          "id": "_BGM_NONE",
+          "name": "_BGM_none",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Grunt",
+            "_BGM_",
+            "_BGM_none"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_ACCB_",
+      "path": [
+        "_MESH_",
+        "_Mesh_Turtle"
+      ],
+      "candidates": [
+        {
+          "id": "_ACCB_BLONGCLW",
+          "name": "_AccB_BLongClw",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Turtle",
+            "_ACCB_",
+            "_AccB_BLongClw"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACCB_BFEATHERS",
+          "name": "_AccB_BFeathers",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Turtle",
+            "_ACCB_",
+            "_AccB_BFeathers"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACCB_FEATHERS",
+          "name": "_AccB_Feathers",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Turtle",
+            "_ACCB_",
+            "_AccB_Feathers"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACCB_NONE",
+          "name": "_AccB_none",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Turtle",
+            "_ACCB_",
+            "_AccB_none"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_TBACC_",
+      "path": [
+        "_MESH_",
+        "_Mesh_Turtle"
+      ],
+      "candidates": [
+        {
+          "id": "_TBACC_NONE",
+          "name": "_TBAcc_none",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Turtle",
+            "_TBACC_",
+            "_TBAcc_none"
+          ],
+          "children": []
+        },
+        {
+          "id": "_TBACC_2",
+          "name": "_TBAcc_2",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Turtle",
+            "_TBACC_",
+            "_TBAcc_2"
+          ],
+          "children": []
+        },
+        {
+          "id": "_TBACC_1",
+          "name": "_TBAcc_1",
+          "chance": 0.0,
+          "path": [
+            "_MESH_",
+            "_Mesh_Turtle",
+            "_TBACC_",
+            "_TBAcc_1"
+          ],
+          "children": []
+        }
+      ]
+    }
+  ],
+  "availableActions": {
+    "idle": {
+      "name": "GruntGround_IDLE_InvBind",
+      "source": "D:\\blender\\creature\\NMSImport\\GruntRig\\Extracted\\models\\planets\\creatures\\gruntrig\\anim\\gruntidle.anim.mbin",
+      "frames": 371,
+      "maximumScaleDelta": 0.0,
+      "animatedScaleFrozenAtFirstFrame": true
+    },
+    "walk": {
+      "name": "GruntGround_WALK_InvBind",
+      "source": "D:\\blender\\creature\\NMSImport\\GruntRig\\Extracted\\models\\planets\\creatures\\gruntrig\\anim\\gruntwalk.anim.mbin",
+      "frames": 65,
+      "maximumScaleDelta": 0.0,
+      "animatedScaleFrozenAtFirstFrame": true
+    },
+    "run": {
+      "name": "GruntGround_RUN_InvBind",
+      "source": "D:\\blender\\creature\\NMSImport\\GruntRig\\Extracted\\models\\planets\\creatures\\gruntrig\\anim\\gruntrun.anim.mbin",
+      "frames": 33,
+      "maximumScaleDelta": 0.0,
+      "animatedScaleFrozenAtFirstFrame": true
+    }
+  },
+  "validationInput": {
+    "pipelineVersion": 10,
+    "animationTransformPolicy": "freeze_first_frame_and_lock_load_bearing_pose_v2",
+    "loadBearingChains": [
+      [
+        "RLegJNT",
+        "RKneeJNT",
+        "RFootJNT"
+      ],
+      [
+        "LLegJNT",
+        "LKneeJNT",
+        "LFootJNT"
+      ]
+    ],
+    "animationTransformCorrectionScope": "loadBearing",
+    "actions": {
+      "idle": {
+        "source": "D:\\blender\\creature\\NMSImport\\GruntRig\\Extracted\\models\\planets\\creatures\\gruntrig\\anim\\gruntidle.anim.mbin",
+        "frames": 371
+      },
+      "run": {
+        "source": "D:\\blender\\creature\\NMSImport\\GruntRig\\Extracted\\models\\planets\\creatures\\gruntrig\\anim\\gruntrun.anim.mbin",
+        "frames": 33
+      },
+      "walk": {
+        "source": "D:\\blender\\creature\\NMSImport\\GruntRig\\Extracted\\models\\planets\\creatures\\gruntrig\\anim\\gruntwalk.anim.mbin",
+        "frames": 65
+      }
+    }
+  },
+  "modules": [
+    {
+      "name": "_A_1",
+      "objects": [
+        "_A_1"
+      ],
+      "materials": [
+        "Beak_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_A_1": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.1175006854631808,
+          "maximumEdgeStretch": 1.2999135145974232,
+          "maximumTriangleAreaStretch": 1.4190684302421812,
+          "maximumNormalizedEdgeDelta": 0.0168343267006467,
+          "maximumNormalizedTriangleAreaDelta": 0.00038109205932735084,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_A_2",
+      "objects": [
+        "_A_2"
+      ],
+      "materials": [
+        "Beak_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_A_2": {
+          "restPoseMaximumVertexError": 5.960464477539063e-08,
+          "maximumBoundsRatio": 1.0607573124615088,
+          "maximumEdgeStretch": 1.196305271943257,
+          "maximumTriangleAreaStretch": 1.319980323401656,
+          "maximumNormalizedEdgeDelta": 0.011503790913614594,
+          "maximumNormalizedTriangleAreaDelta": 0.00037486890239375015,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_A_3",
+      "objects": [
+        "_A_3"
+      ],
+      "materials": [
+        "Beak_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_A_3: significant edge stretch reached 9.563x"
+      ],
+      "meshValidation": {
+        "_A_3": {
+          "restPoseMaximumVertexError": 5.960464477539063e-08,
+          "maximumBoundsRatio": 1.0546176427653362,
+          "maximumEdgeStretch": 9.56335131951677,
+          "maximumTriangleAreaStretch": 10.17851655598385,
+          "maximumNormalizedEdgeDelta": 0.22100483731467813,
+          "maximumNormalizedTriangleAreaDelta": 0.00724199796072832,
+          "maximumSignificantEdgeStretch": 9.56335131951677,
+          "maximumSignificantTriangleAreaStretch": 8.57933668534439,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 9.563x"
+          ],
+          "passed": false
+        }
+      }
+    },
+    {
+      "name": "_A_4",
+      "objects": [
+        "_A_4"
+      ],
+      "materials": [
+        "Beak_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_A_4: significant edge stretch reached 7.159x"
+      ],
+      "meshValidation": {
+        "_A_4": {
+          "restPoseMaximumVertexError": 1.1920930376163512e-07,
+          "maximumBoundsRatio": 1.0956982083668916,
+          "maximumEdgeStretch": 7.159259453110951,
+          "maximumTriangleAreaStretch": 7.272012885409445,
+          "maximumNormalizedEdgeDelta": 0.10034538679669057,
+          "maximumNormalizedTriangleAreaDelta": 0.0022931670171910936,
+          "maximumSignificantEdgeStretch": 7.159259453110951,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 7.159x"
+          ],
+          "passed": false
+        }
+      }
+    },
+    {
+      "name": "_A_5",
+      "objects": [
+        "_A_5"
+      ],
+      "materials": [
+        "Beak_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_A_5: significant edge stretch reached 12.430x"
+      ],
+      "meshValidation": {
+        "_A_5": {
+          "restPoseMaximumVertexError": 5.960464477539232e-08,
+          "maximumBoundsRatio": 1.0800858275022402,
+          "maximumEdgeStretch": 12.429649048069583,
+          "maximumTriangleAreaStretch": 18.371965515747846,
+          "maximumNormalizedEdgeDelta": 0.2607935046655348,
+          "maximumNormalizedTriangleAreaDelta": 0.00807617987399208,
+          "maximumSignificantEdgeStretch": 12.429649048069583,
+          "maximumSignificantTriangleAreaStretch": 17.73589356856839,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 12.430x"
+          ],
+          "passed": false
+        }
+      }
+    },
+    {
+      "name": "_AcB_Ears",
+      "objects": [
+        "_AcB_Ears",
+        "SUB1_AcB_Ears"
+      ],
+      "materials": [
+        "GruntEars_Mat",
+        "GruntHeadAccs_GruntHairMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_AcB_Ears": {
+          "restPoseMaximumVertexError": 2.457562461863554e-07,
+          "maximumBoundsRatio": 1.1151249859269332,
+          "maximumEdgeStretch": 1.2714006555191193,
+          "maximumTriangleAreaStretch": 1.2597061715865028,
+          "maximumNormalizedEdgeDelta": 0.059311083316288406,
+          "maximumNormalizedTriangleAreaDelta": 0.0054212106870872925,
+          "maximumSignificantEdgeStretch": 0.7133662253271675,
+          "maximumSignificantTriangleAreaStretch": 0.7544406267500017,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 21,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "SUB1_AcB_Ears": {
+          "restPoseMaximumVertexError": 2.4405627480386493e-07,
+          "maximumBoundsRatio": 1.0819010349709663,
+          "maximumEdgeStretch": 1.4617324363902438,
+          "maximumTriangleAreaStretch": 1.3884312647501276,
+          "maximumNormalizedEdgeDelta": 0.026701414599738967,
+          "maximumNormalizedTriangleAreaDelta": 0.0008794087968686059,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 1,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_AcB_Ears2",
+      "objects": [
+        "_AcB_Ears2"
+      ],
+      "materials": [
+        "GruntEar_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_AcB_Ears2": {
+          "restPoseMaximumVertexError": 2.457562461863554e-07,
+          "maximumBoundsRatio": 1.0778732067211958,
+          "maximumEdgeStretch": 1.3297595428228526,
+          "maximumTriangleAreaStretch": 1.388523879475518,
+          "maximumNormalizedEdgeDelta": 0.014208069176707205,
+          "maximumNormalizedTriangleAreaDelta": 0.0003699241836274031,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 1,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_AcB_Ears3",
+      "objects": [
+        "_AcB_Ears3"
+      ],
+      "materials": [
+        "GruntEar_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_AcB_Ears3": {
+          "restPoseMaximumVertexError": 2.4366502762764747e-07,
+          "maximumBoundsRatio": 1.0848662544056524,
+          "maximumEdgeStretch": 1.913428487561597,
+          "maximumTriangleAreaStretch": 1.9279178084140511,
+          "maximumNormalizedEdgeDelta": 0.01739909966995022,
+          "maximumNormalizedTriangleAreaDelta": 0.0005109755001973304,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 11,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_AcB_none",
+      "objects": [
+        "_AcB_none"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_Acc2_1",
+      "objects": [
+        "_Acc2_1"
+      ],
+      "materials": [
+        "FacePlates_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Acc2_1": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.0294802421589657,
+          "maximumEdgeStretch": 1.0001231943527054,
+          "maximumTriangleAreaStretch": 1.0002341597826443,
+          "maximumNormalizedEdgeDelta": 1.2704963016774275e-05,
+          "maximumNormalizedTriangleAreaDelta": 1.1753284834524436e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Acc2_none",
+      "objects": [
+        "_Acc2_none"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_Acc3_1",
+      "objects": [
+        "_Acc3_1"
+      ],
+      "materials": [
+        "FacePlates_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Acc3_1": {
+          "restPoseMaximumVertexError": 6.664001874625056e-08,
+          "maximumBoundsRatio": 1.0455446573417557,
+          "maximumEdgeStretch": 1.0001228530658954,
+          "maximumTriangleAreaStretch": 1.0002380741752097,
+          "maximumNormalizedEdgeDelta": 1.218498935364572e-05,
+          "maximumNormalizedTriangleAreaDelta": 2.2648932818454607e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Acc3_none",
+      "objects": [
+        "_Acc3_none"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_AccB_BFeathers",
+      "objects": [
+        "_AccB_BFeathers"
+      ],
+      "materials": [
+        "Feathers_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_AccB_BFeathers": {
+          "restPoseMaximumVertexError": 1.2013700229374393e-07,
+          "maximumBoundsRatio": 1.1660684903199199,
+          "maximumEdgeStretch": 1.333039976940265,
+          "maximumTriangleAreaStretch": 1.3687981136817136,
+          "maximumNormalizedEdgeDelta": 0.027331210802303996,
+          "maximumNormalizedTriangleAreaDelta": 0.0005996289781153782,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 32,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_AccB_BLongClw",
+      "objects": [
+        "_AccB_BLongClw"
+      ],
+      "materials": [
+        "GruntClaws_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_AccB_BLongClw": {
+          "restPoseMaximumVertexError": 7.459888009168501e-08,
+          "maximumBoundsRatio": 1.3910968333564284,
+          "maximumEdgeStretch": 1.0487846289838936,
+          "maximumTriangleAreaStretch": 1.0447450626458594,
+          "maximumNormalizedEdgeDelta": 0.010327345002174295,
+          "maximumNormalizedTriangleAreaDelta": 0.00010756042807348274,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 14,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_AccB_Feathers",
+      "objects": [
+        "_AccB_Feathers"
+      ],
+      "materials": [
+        "Feathers_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_AccB_Feathers": {
+          "restPoseMaximumVertexError": 7.634573255449234e-08,
+          "maximumBoundsRatio": 1.1940074814427375,
+          "maximumEdgeStretch": 1.121093490944341,
+          "maximumTriangleAreaStretch": 1.1535098241507729,
+          "maximumNormalizedEdgeDelta": 0.014091964010014637,
+          "maximumNormalizedTriangleAreaDelta": 0.0003443501018622638,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 47,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_AccB_none",
+      "objects": [
+        "_AccB_none"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_Acc_1",
+      "objects": [
+        "_Acc_1"
+      ],
+      "materials": [
+        "FacePlates_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Acc_1": {
+          "restPoseMaximumVertexError": 1.3657139822709083e-07,
+          "maximumBoundsRatio": 1.030903764925158,
+          "maximumEdgeStretch": 1.1699412811015408,
+          "maximumTriangleAreaStretch": 1.1709331708543347,
+          "maximumNormalizedEdgeDelta": 0.006527596999396968,
+          "maximumNormalizedTriangleAreaDelta": 0.0001388655458621548,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Acc_2",
+      "objects": [
+        "_Acc_2"
+      ],
+      "materials": [
+        "FacePlates_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Acc_2": {
+          "restPoseMaximumVertexError": 1.3657139822709083e-07,
+          "maximumBoundsRatio": 1.064092231371893,
+          "maximumEdgeStretch": 1.216294735982458,
+          "maximumTriangleAreaStretch": 1.2302980267944983,
+          "maximumNormalizedEdgeDelta": 0.01006848673358037,
+          "maximumNormalizedTriangleAreaDelta": 0.000249808150964762,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Acc_3",
+      "objects": [
+        "_Acc_3"
+      ],
+      "materials": [
+        "Feathers_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Acc_3": {
+          "restPoseMaximumVertexError": 1.3075715880680267e-07,
+          "maximumBoundsRatio": 1.1633363807008907,
+          "maximumEdgeStretch": 1.0001219450068053,
+          "maximumTriangleAreaStretch": 1.0001578151119401,
+          "maximumNormalizedEdgeDelta": 0.007755973792375245,
+          "maximumNormalizedTriangleAreaDelta": 0.00039489326352176333,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Acc_4",
+      "objects": [
+        "_Acc_4"
+      ],
+      "materials": [
+        "Feathers_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Acc_4": {
+          "restPoseMaximumVertexError": 1.3374777936202467e-07,
+          "maximumBoundsRatio": 1.0342642010698528,
+          "maximumEdgeStretch": 1.0418628470416373,
+          "maximumTriangleAreaStretch": 1.0137308941113965,
+          "maximumNormalizedEdgeDelta": 0.006377000937749628,
+          "maximumNormalizedTriangleAreaDelta": 0.0002542231148540577,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Acc_5",
+      "objects": [
+        "_Acc_5"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_Acc_none",
+      "objects": [
+        "_Acc_none"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_BGF_ClawsLong",
+      "objects": [
+        "_BGF_ClawsLong"
+      ],
+      "materials": [
+        "GruntClaws_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_BGF_ClawsLong": {
+          "restPoseMaximumVertexError": 3.071953082714815e-08,
+          "maximumBoundsRatio": 1.9566757262408243,
+          "maximumEdgeStretch": 1.0001294005727615,
+          "maximumTriangleAreaStretch": 1.0002451775658414,
+          "maximumNormalizedEdgeDelta": 1.0174927725265722e-05,
+          "maximumNormalizedTriangleAreaDelta": 4.119419059365542e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_BGF_ClawsShort",
+      "objects": [
+        "_BGF_ClawsShort"
+      ],
+      "materials": [
+        "GruntClaws_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_BGF_ClawsShort": {
+          "restPoseMaximumVertexError": 1.6660004785864006e-08,
+          "maximumBoundsRatio": 1.9525815658331545,
+          "maximumEdgeStretch": 1.0001261656474911,
+          "maximumTriangleAreaStretch": 1.0002475364842371,
+          "maximumNormalizedEdgeDelta": 5.243649394777781e-06,
+          "maximumNormalizedTriangleAreaDelta": 1.1249623856435062e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_BGH_ClawsLong",
+      "objects": [
+        "_BGH_ClawsLong"
+      ],
+      "materials": [
+        "GruntClaws_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_BGH_ClawsLong": {
+          "restPoseMaximumVertexError": 6.828569911354542e-08,
+          "maximumBoundsRatio": 1.2650488308002266,
+          "maximumEdgeStretch": 1.170207890888584,
+          "maximumTriangleAreaStretch": 1.178400389386734,
+          "maximumNormalizedEdgeDelta": 0.00230920501860333,
+          "maximumNormalizedTriangleAreaDelta": 2.1471396995106326e-05,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 25,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_BGH_ClawsShort",
+      "objects": [
+        "_BGH_ClawsShort"
+      ],
+      "materials": [
+        "GruntClaws_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_BGH_ClawsShort": {
+          "restPoseMaximumVertexError": 6.828569911354542e-08,
+          "maximumBoundsRatio": 1.2419119209912362,
+          "maximumEdgeStretch": 1.0001276375428694,
+          "maximumTriangleAreaStretch": 1.0002476799481594,
+          "maximumNormalizedEdgeDelta": 4.5384777082382906e-06,
+          "maximumNormalizedTriangleAreaDelta": 7.473293368297378e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 370,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_BGM_Shawl",
+      "objects": [
+        "_BGM_Shawl"
+      ],
+      "materials": [
+        "GruntBodyAccs_ShawlMat1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_BGM_Shawl": {
+          "restPoseMaximumVertexError": 1.2013700229374393e-07,
+          "maximumBoundsRatio": 1.050244991579652,
+          "maximumEdgeStretch": 2.8405350570135686,
+          "maximumTriangleAreaStretch": 2.4500860859496405,
+          "maximumNormalizedEdgeDelta": 0.028919906554397065,
+          "maximumNormalizedTriangleAreaDelta": 0.00047715292108149303,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 32,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_BGM_ShellxRARE",
+      "objects": [
+        "_BGM_ShellxRARE"
+      ],
+      "materials": [
+        "GruntBodyAccs_TurtleShell_mat1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_BGM_ShellxRARE: significant edge stretch reached 14.222x"
+      ],
+      "meshValidation": {
+        "_BGM_ShellxRARE": {
+          "restPoseMaximumVertexError": 6.143906154658885e-08,
+          "maximumBoundsRatio": 1.1674661165906928,
+          "maximumEdgeStretch": 14.222313072400741,
+          "maximumTriangleAreaStretch": 67.3493259496324,
+          "maximumNormalizedEdgeDelta": 0.28977250385326414,
+          "maximumNormalizedTriangleAreaDelta": 0.010397263647025489,
+          "maximumSignificantEdgeStretch": 14.222313072400741,
+          "maximumSignificantTriangleAreaStretch": 10.469065636582275,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 14.222x"
+          ],
+          "passed": false
+        }
+      }
+    },
+    {
+      "name": "_BGM_ShoulderSpikesxRARE",
+      "objects": [
+        "_BGM_ShoulderSpikesxRARE"
+      ],
+      "materials": [
+        "GruntBodyAccs_RhinoMat1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_BGM_ShoulderSpikesxRARE": {
+          "restPoseMaximumVertexError": 1.2128666487410446e-07,
+          "maximumBoundsRatio": 1.1141211523266097,
+          "maximumEdgeStretch": 4.212699173779872,
+          "maximumTriangleAreaStretch": 8.0196258839874,
+          "maximumNormalizedEdgeDelta": 0.019174726200524527,
+          "maximumNormalizedTriangleAreaDelta": 0.0003326699525912344,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_BGM_none",
+      "objects": [
+        "_BGM_none"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_Body_Grunt",
+      "objects": [
+        "_Body_Grunt"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_Body_GruntFloatxRARE",
+      "objects": [
+        "_Body_GruntFloatxRARE"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_GH1Accs_A",
+      "objects": [
+        "_GH1Accs_A"
+      ],
+      "materials": [
+        "GruntHeadAccs_TuskAntler_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_GH1Accs_A": {
+          "restPoseMaximumVertexError": 6.664001874625056e-08,
+          "maximumBoundsRatio": 1.0313793339173891,
+          "maximumEdgeStretch": 1.0001374371470027,
+          "maximumTriangleAreaStretch": 1.000260160602395,
+          "maximumNormalizedEdgeDelta": 7.020975207274266e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.848717844348942e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_GH1Accs_B",
+      "objects": [
+        "_GH1Accs_B"
+      ],
+      "materials": [
+        "GruntHeadAccs_phong12"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_GH1Accs_B": {
+          "restPoseMaximumVertexError": 3.332000937312528e-08,
+          "maximumBoundsRatio": 1.0234682048737385,
+          "maximumEdgeStretch": 1.0001314495622426,
+          "maximumTriangleAreaStretch": 1.000255567372692,
+          "maximumNormalizedEdgeDelta": 1.0385081568951705e-05,
+          "maximumNormalizedTriangleAreaDelta": 5.200777266821201e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_GH1Accs_C",
+      "objects": [
+        "_GH1Accs_C"
+      ],
+      "materials": [
+        "RexBoneHorn_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_GH1Accs_C": {
+          "restPoseMaximumVertexError": 8.429369702178807e-08,
+          "maximumBoundsRatio": 1.0346721333262086,
+          "maximumEdgeStretch": 1.000123789013669,
+          "maximumTriangleAreaStretch": 1.000241912966477,
+          "maximumNormalizedEdgeDelta": 1.0293202199020766e-05,
+          "maximumNormalizedTriangleAreaDelta": 3.577161591566906e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_GH1Accs_D",
+      "objects": [
+        "_GH1Accs_D",
+        "SUB1_GH1Accs_D"
+      ],
+      "materials": [
+        "GruntHeadAccs_Accs_2exp_GruntHairMat",
+        "RexEars_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_GH1Accs_D": {
+          "restPoseMaximumVertexError": 1.228781230931777e-07,
+          "maximumBoundsRatio": 1.0289883476848691,
+          "maximumEdgeStretch": 1.172661276541096,
+          "maximumTriangleAreaStretch": 1.1129342879397537,
+          "maximumNormalizedEdgeDelta": 0.07665725416561155,
+          "maximumNormalizedTriangleAreaDelta": 0.008381171592620407,
+          "maximumSignificantEdgeStretch": 0.6743730872802004,
+          "maximumSignificantTriangleAreaStretch": 0.6977209422282995,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 21,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "SUB1_GH1Accs_D": {
+          "restPoseMaximumVertexError": 2.457562461863554e-07,
+          "maximumBoundsRatio": 1.1277478476367684,
+          "maximumEdgeStretch": 1.661152968523283,
+          "maximumTriangleAreaStretch": 1.6144362677439084,
+          "maximumNormalizedEdgeDelta": 0.023160318854417723,
+          "maximumNormalizedTriangleAreaDelta": 0.000846188748168653,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 306,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_GH1Accs_E",
+      "objects": [
+        "_GH1Accs_E",
+        "SUB1_GH1Accs_E"
+      ],
+      "materials": [
+        "GruntEars_Mat",
+        "GruntHeadAccs_GruntHairMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_GH1Accs_E": {
+          "restPoseMaximumVertexError": 2.457562461863554e-07,
+          "maximumBoundsRatio": 1.1029894671040734,
+          "maximumEdgeStretch": 1.1350261401681323,
+          "maximumTriangleAreaStretch": 1.1899031340946729,
+          "maximumNormalizedEdgeDelta": 0.026239377292171562,
+          "maximumNormalizedTriangleAreaDelta": 0.0016515865198497735,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 1,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "SUB1_GH1Accs_E": {
+          "restPoseMaximumVertexError": 2.4446108841163454e-07,
+          "maximumBoundsRatio": 1.1176499165166598,
+          "maximumEdgeStretch": 1.3884201087784476,
+          "maximumTriangleAreaStretch": 1.2938309986979675,
+          "maximumNormalizedEdgeDelta": 0.017570079021802274,
+          "maximumNormalizedTriangleAreaDelta": 0.0005047428650338359,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 1,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_GH1Accs_F",
+      "objects": [
+        "_GH1Accs_F"
+      ],
+      "materials": [
+        "GruntEar_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_GH1Accs_F": {
+          "restPoseMaximumVertexError": 2.459837844326512e-07,
+          "maximumBoundsRatio": 1.0867756008691316,
+          "maximumEdgeStretch": 1.3238281475443907,
+          "maximumTriangleAreaStretch": 1.3727987756147335,
+          "maximumNormalizedEdgeDelta": 0.01292851030209598,
+          "maximumNormalizedTriangleAreaDelta": 0.0003605416102942351,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 11,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_GH1Accs_G",
+      "objects": [
+        "_GH1Accs_G"
+      ],
+      "materials": [
+        "GruntEar_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_GH1Accs_G": {
+          "restPoseMaximumVertexError": 2.4405627480386493e-07,
+          "maximumBoundsRatio": 1.0871774188712577,
+          "maximumEdgeStretch": 1.2721560061189148,
+          "maximumTriangleAreaStretch": 1.2806402683938047,
+          "maximumNormalizedEdgeDelta": 0.01748494344461758,
+          "maximumNormalizedTriangleAreaDelta": 0.0008061403054438149,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 1,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_GH2Accs_A",
+      "objects": [
+        "_GH2Accs_A"
+      ],
+      "materials": [
+        "GruntHeadAccs_RhinoMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_GH2Accs_A": {
+          "restPoseMaximumVertexError": 5.960464587989712e-08,
+          "maximumBoundsRatio": 1.0173121354407049,
+          "maximumEdgeStretch": 9.970664126835798,
+          "maximumTriangleAreaStretch": 10.060705675878374,
+          "maximumNormalizedEdgeDelta": 0.044923428855898805,
+          "maximumNormalizedTriangleAreaDelta": 0.0007087191510651625,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_GH2Accs_B",
+      "objects": [
+        "_GH2Accs_B"
+      ],
+      "materials": [
+        "MoseNose_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_GH2Accs_B": {
+          "restPoseMaximumVertexError": 1.2293457984924316e-07,
+          "maximumBoundsRatio": 1.02854247410225,
+          "maximumEdgeStretch": 3.4943763350816694,
+          "maximumTriangleAreaStretch": 4.561093171212377,
+          "maximumNormalizedEdgeDelta": 0.03852039390153537,
+          "maximumNormalizedTriangleAreaDelta": 0.0006549265264377564,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 290,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_GH2Accs_C",
+      "objects": [
+        "_GH2Accs_C"
+      ],
+      "materials": [
+        "GruntHeadAccs_Acc_HeadTendrills1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_GH2Accs_C": {
+          "restPoseMaximumVertexError": 1.2287812354714484e-07,
+          "maximumBoundsRatio": 1.0626979858480738,
+          "maximumEdgeStretch": 1.0001581514625035,
+          "maximumTriangleAreaStretch": 1.0002475443801444,
+          "maximumNormalizedEdgeDelta": 1.342215786538426e-05,
+          "maximumNormalizedTriangleAreaDelta": 5.248495672994535e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_GH2Accs_D",
+      "objects": [
+        "_GH2Accs_D"
+      ],
+      "materials": [
+        "GruntHeadAccs_Acc_LongSpine"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_GH2Accs_D": {
+          "restPoseMaximumVertexError": 1.2013700229374393e-07,
+          "maximumBoundsRatio": 1.0168476425195963,
+          "maximumEdgeStretch": 1.0002941547446378,
+          "maximumTriangleAreaStretch": 1.0003152458367155,
+          "maximumNormalizedEdgeDelta": 3.7733329859938827e-06,
+          "maximumNormalizedTriangleAreaDelta": 5.051141579735301e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_GH2Accs_E",
+      "objects": [
+        "_GH2Accs_E"
+      ],
+      "materials": [
+        "Beak_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_GH2Accs_E": {
+          "restPoseMaximumVertexError": 1.2013700229374393e-07,
+          "maximumBoundsRatio": 1.0522893162323481,
+          "maximumEdgeStretch": 1.3551137324626794,
+          "maximumTriangleAreaStretch": 1.3337515767574541,
+          "maximumNormalizedEdgeDelta": 0.011926524953636131,
+          "maximumNormalizedTriangleAreaDelta": 0.00039567731499473867,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_GHAccs_1",
+      "objects": [
+        "_GHAccs_1"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_GHAccs_2",
+      "objects": [
+        "_GHAccs_2"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_Head_Grunt",
+      "objects": [
+        "_Head_Grunt",
+        "GTopTeeth",
+        "GBottomTeeth",
+        "GruntEyes"
+      ],
+      "materials": [
+        "CatTongue_mat",
+        "GruntEye_mat",
+        "GruntHead_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Head_Grunt": {
+          "restPoseMaximumVertexError": 1.2377834115800373e-07,
+          "maximumBoundsRatio": 1.023131751811806,
+          "maximumEdgeStretch": 27.68560783208882,
+          "maximumTriangleAreaStretch": 280.3609232958786,
+          "maximumNormalizedEdgeDelta": 0.03917902790270652,
+          "maximumNormalizedTriangleAreaDelta": 0.0004813285555817599,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "GTopTeeth": {
+          "restPoseMaximumVertexError": 2.9802322387695312e-08,
+          "maximumBoundsRatio": 1.03926612315298,
+          "maximumEdgeStretch": 1.0001583960387133,
+          "maximumTriangleAreaStretch": 1.000284224510182,
+          "maximumNormalizedEdgeDelta": 1.1759900361309252e-05,
+          "maximumNormalizedTriangleAreaDelta": 7.584450550120098e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "GBottomTeeth": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.044032480288782,
+          "maximumEdgeStretch": 1.0002383683684413,
+          "maximumTriangleAreaStretch": 1.0004794238489365,
+          "maximumNormalizedEdgeDelta": 2.1671397752118236e-05,
+          "maximumNormalizedTriangleAreaDelta": 1.8558312821935445e-06,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 8,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "GruntEyes": {
+          "restPoseMaximumVertexError": 1.2036781326982014e-07,
+          "maximumBoundsRatio": 1.029750979138373,
+          "maximumEdgeStretch": 1.0001265186743313,
+          "maximumTriangleAreaStretch": 1.0002431827092735,
+          "maximumNormalizedEdgeDelta": 5.531876564249182e-06,
+          "maximumNormalizedTriangleAreaDelta": 1.1585065234249018e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Head_Turtle",
+      "objects": [
+        "_Head_Turtle",
+        "TTongue",
+        "TurtleEyes",
+        "_Acc_Shape1",
+        "_Acc_2Shape"
+      ],
+      "materials": [
+        "CatTongue_mat",
+        "FacePlates_mat",
+        "GruntEye_mat",
+        "TurtleGruntHead_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Head_Turtle": {
+          "restPoseMaximumVertexError": 1.2731557704981462e-07,
+          "maximumBoundsRatio": 1.0398221994777674,
+          "maximumEdgeStretch": 3.160950200938854,
+          "maximumTriangleAreaStretch": 2.7621579767721505,
+          "maximumNormalizedEdgeDelta": 0.02718952383043045,
+          "maximumNormalizedTriangleAreaDelta": 0.0005859927767442869,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 15,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "TTongue": {
+          "restPoseMaximumVertexError": 2.9802322387695312e-08,
+          "maximumBoundsRatio": 1.0216296572112427,
+          "maximumEdgeStretch": 1.0001224863706348,
+          "maximumTriangleAreaStretch": 1.0002442829069522,
+          "maximumNormalizedEdgeDelta": 2.3753747768856632e-05,
+          "maximumNormalizedTriangleAreaDelta": 2.239826010505855e-06,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "TurtleEyes": {
+          "restPoseMaximumVertexError": 5.3726900748371916e-08,
+          "maximumBoundsRatio": 1.0349487761182885,
+          "maximumEdgeStretch": 1.0001252420282623,
+          "maximumTriangleAreaStretch": 1.0002417210863612,
+          "maximumNormalizedEdgeDelta": 8.168193690438432e-06,
+          "maximumNormalizedTriangleAreaDelta": 2.5747898441566603e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "_Acc_Shape1": {
+          "restPoseMaximumVertexError": 1.3657139822709083e-07,
+          "maximumBoundsRatio": 1.030903764925158,
+          "maximumEdgeStretch": 1.1699412811015408,
+          "maximumTriangleAreaStretch": 1.1709331708543347,
+          "maximumNormalizedEdgeDelta": 0.006527596999396968,
+          "maximumNormalizedTriangleAreaDelta": 0.0001388655458621548,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "_Acc_2Shape": {
+          "restPoseMaximumVertexError": 1.3657139822709083e-07,
+          "maximumBoundsRatio": 1.064092231371893,
+          "maximumEdgeStretch": 1.216294735982458,
+          "maximumTriangleAreaStretch": 1.2302980267944983,
+          "maximumNormalizedEdgeDelta": 0.01006848673358037,
+          "maximumNormalizedTriangleAreaDelta": 0.000249808150964762,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 145,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Mesh_Grunt",
+      "objects": [
+        "_Mesh_Grunt",
+        "PETACC_grunt"
+      ],
+      "materials": [
+        "GruntMat",
+        "PetHarnessMat2"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_Mesh_Grunt: significant edge stretch reached 10.697x"
+      ],
+      "meshValidation": {
+        "_Mesh_Grunt": {
+          "restPoseMaximumVertexError": 1.2013700229374393e-07,
+          "maximumBoundsRatio": 1.0604209386291437,
+          "maximumEdgeStretch": 14.38587381271986,
+          "maximumTriangleAreaStretch": 11.481748610702205,
+          "maximumNormalizedEdgeDelta": 0.057661874374693875,
+          "maximumNormalizedTriangleAreaDelta": 0.0008252794216254941,
+          "maximumSignificantEdgeStretch": 10.697390942591005,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 32,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 10.697x"
+          ],
+          "passed": false
+        },
+        "PETACC_grunt": {
+          "restPoseMaximumVertexError": 6.828569911354542e-08,
+          "maximumBoundsRatio": 1.1310837304653054,
+          "maximumEdgeStretch": 4.970467322063873,
+          "maximumTriangleAreaStretch": 7.360005943634201,
+          "maximumNormalizedEdgeDelta": 0.03830744274284849,
+          "maximumNormalizedTriangleAreaDelta": 0.0005791465410422663,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Mesh_Turtle",
+      "objects": [
+        "_Mesh_Turtle",
+        "leftclaw",
+        "RightClaw",
+        "_TBAcc_Shape2",
+        "_TBAcc_1Shape"
+      ],
+      "materials": [
+        "BackShell_mat",
+        "BodyTurtle_TurtleShell_mat",
+        "BodyTurtle_TurtleVariant_TurtleGrunt_Mat",
+        "TurtleBody_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Mesh_Turtle": {
+          "restPoseMaximumVertexError": 1.228781230931777e-07,
+          "maximumBoundsRatio": 1.0756403254705296,
+          "maximumEdgeStretch": 9.093087014938838,
+          "maximumTriangleAreaStretch": 9.384565019930232,
+          "maximumNormalizedEdgeDelta": 0.03947291946799226,
+          "maximumNormalizedTriangleAreaDelta": 0.0011420807417690762,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 32,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "leftclaw": {
+          "restPoseMaximumVertexError": 1.4901161193847656e-08,
+          "maximumBoundsRatio": 1.0107968579018507,
+          "maximumEdgeStretch": 1.0001457526402906,
+          "maximumTriangleAreaStretch": 1.0002466837960997,
+          "maximumNormalizedEdgeDelta": 8.611736792943198e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.300767818235632e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "RightClaw": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0029985828383083,
+          "maximumEdgeStretch": 1.000130600641362,
+          "maximumTriangleAreaStretch": 1.0002507130947003,
+          "maximumNormalizedEdgeDelta": 6.562600459572633e-06,
+          "maximumNormalizedTriangleAreaDelta": 1.6467198529788966e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "_TBAcc_Shape2": {
+          "restPoseMaximumVertexError": 4.2146848510894035e-08,
+          "maximumBoundsRatio": 1.0608368465207756,
+          "maximumEdgeStretch": 4.997267646069839,
+          "maximumTriangleAreaStretch": 6.723665359807743,
+          "maximumNormalizedEdgeDelta": 0.17006081289777444,
+          "maximumNormalizedTriangleAreaDelta": 0.015837766528323676,
+          "maximumSignificantEdgeStretch": 4.997267646069839,
+          "maximumSignificantTriangleAreaStretch": 6.723665359807743,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 15,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "_TBAcc_1Shape": {
+          "restPoseMaximumVertexError": 4.2146848510894035e-08,
+          "maximumBoundsRatio": 1.0444147503414507,
+          "maximumEdgeStretch": 2.9803565780546326,
+          "maximumTriangleAreaStretch": 2.6398951030787745,
+          "maximumNormalizedEdgeDelta": 0.0652332087731681,
+          "maximumNormalizedTriangleAreaDelta": 0.0028429532716195065,
+          "maximumSignificantEdgeStretch": 2.9803565780546326,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 15,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_TBAcc_1",
+      "objects": [
+        "_TBAcc_1",
+        "PETACC_turtleShell1"
+      ],
+      "materials": [
+        "BodyTurtle_TurtleShell_mat",
+        "PetHarnessMat2"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_TBAcc_1": {
+          "restPoseMaximumVertexError": 4.2146848510894035e-08,
+          "maximumBoundsRatio": 1.0444147503414507,
+          "maximumEdgeStretch": 2.9803565780546326,
+          "maximumTriangleAreaStretch": 2.6398951030787745,
+          "maximumNormalizedEdgeDelta": 0.0652332087731681,
+          "maximumNormalizedTriangleAreaDelta": 0.0028429532716195065,
+          "maximumSignificantEdgeStretch": 2.9803565780546326,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 15,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "PETACC_turtleShell1": {
+          "restPoseMaximumVertexError": 6.143906154658885e-08,
+          "maximumBoundsRatio": 1.0966342163703393,
+          "maximumEdgeStretch": 3.775484930490908,
+          "maximumTriangleAreaStretch": 4.105829749780426,
+          "maximumNormalizedEdgeDelta": 0.03790412435150565,
+          "maximumNormalizedTriangleAreaDelta": 0.00035898316077978266,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 32,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_TBAcc_2",
+      "objects": [
+        "_TBAcc_2",
+        "PETACC_turtleShell2"
+      ],
+      "materials": [
+        "BackShell_mat",
+        "PetHarnessMat2"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_TBAcc_2": {
+          "restPoseMaximumVertexError": 4.2146848510894035e-08,
+          "maximumBoundsRatio": 1.0608368465207756,
+          "maximumEdgeStretch": 4.997267646069839,
+          "maximumTriangleAreaStretch": 6.723665359807743,
+          "maximumNormalizedEdgeDelta": 0.17006081289777444,
+          "maximumNormalizedTriangleAreaDelta": 0.015837766528323676,
+          "maximumSignificantEdgeStretch": 4.997267646069839,
+          "maximumSignificantTriangleAreaStretch": 6.723665359807743,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 15,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "PETACC_turtleShell2": {
+          "restPoseMaximumVertexError": 6.143906154658885e-08,
+          "maximumBoundsRatio": 1.0966342163703393,
+          "maximumEdgeStretch": 3.775484930490908,
+          "maximumTriangleAreaStretch": 4.105829749780426,
+          "maximumNormalizedEdgeDelta": 0.03790412435150565,
+          "maximumNormalizedTriangleAreaDelta": 0.00035898316077978266,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 32,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_TBAcc_none",
+      "objects": [
+        "_TBAcc_none",
+        "PETACC_turtlenone"
+      ],
+      "materials": [
+        "PetHarnessMat2"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "PETACC_turtlenone": {
+          "restPoseMaximumVertexError": 6.705522537231445e-08,
+          "maximumBoundsRatio": 1.1287304213985399,
+          "maximumEdgeStretch": 4.105832260537407,
+          "maximumTriangleAreaStretch": 4.105829749780426,
+          "maximumNormalizedEdgeDelta": 0.04673015065495378,
+          "maximumNormalizedTriangleAreaDelta": 0.0005217289698283236,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 32,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Wing_1",
+      "objects": [
+        "_Wing_1"
+      ],
+      "materials": [
+        "GruntWings_Wings1_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Wing_1": {
+          "restPoseMaximumVertexError": 1.6858739404357614e-07,
+          "maximumBoundsRatio": 1.0215941019680737,
+          "maximumEdgeStretch": 1.0001239436485028,
+          "maximumTriangleAreaStretch": 1.0002436746044763,
+          "maximumNormalizedEdgeDelta": 1.0264196301770912e-05,
+          "maximumNormalizedTriangleAreaDelta": 2.4898741790671484e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Wing_2",
+      "objects": [
+        "_Wing_2"
+      ],
+      "materials": [
+        "GruntWings_Wings1_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Wing_2": {
+          "restPoseMaximumVertexError": 1.6858739404357614e-07,
+          "maximumBoundsRatio": 1.0172967886610416,
+          "maximumEdgeStretch": 1.0001308113401075,
+          "maximumTriangleAreaStretch": 1.000246025978541,
+          "maximumNormalizedEdgeDelta": 6.73987560261633e-06,
+          "maximumNormalizedTriangleAreaDelta": 1.8592051826540942e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Wing_3",
+      "objects": [
+        "_Wing_3"
+      ],
+      "materials": [
+        "GruntWings_Wings1_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Wing_3": {
+          "restPoseMaximumVertexError": 1.6858739404357614e-07,
+          "maximumBoundsRatio": 1.0200395696853408,
+          "maximumEdgeStretch": 1.0001299476279017,
+          "maximumTriangleAreaStretch": 1.0002515699041161,
+          "maximumNormalizedEdgeDelta": 1.199490793157644e-05,
+          "maximumNormalizedTriangleAreaDelta": 3.1548646240434643e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Wing_4",
+      "objects": [
+        "_Wing_4"
+      ],
+      "materials": [
+        "GruntWings_Wings2_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Wing_4": {
+          "restPoseMaximumVertexError": 1.6858739404357614e-07,
+          "maximumBoundsRatio": 1.0191283744631165,
+          "maximumEdgeStretch": 1.000127529233413,
+          "maximumTriangleAreaStretch": 1.0002446591245409,
+          "maximumNormalizedEdgeDelta": 1.0826305611845163e-05,
+          "maximumNormalizedTriangleAreaDelta": 6.047950270060116e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Wing_5",
+      "objects": [
+        "_Wing_5"
+      ],
+      "materials": [
+        "GruntWings_Wings2_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Wing_5": {
+          "restPoseMaximumVertexError": 1.6858739404357614e-07,
+          "maximumBoundsRatio": 1.0148659542069,
+          "maximumEdgeStretch": 1.0001257740002898,
+          "maximumTriangleAreaStretch": 1.0002472040448667,
+          "maximumNormalizedEdgeDelta": 8.15873549985242e-06,
+          "maximumNormalizedTriangleAreaDelta": 1.73486418062385e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Wing_6",
+      "objects": [
+        "_Wing_6"
+      ],
+      "materials": [
+        "GruntWings_Wings2_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Wing_6": {
+          "restPoseMaximumVertexError": 1.6858739404357614e-07,
+          "maximumBoundsRatio": 1.0167540887760658,
+          "maximumEdgeStretch": 1.0001381832592973,
+          "maximumTriangleAreaStretch": 1.0002612299913272,
+          "maximumNormalizedEdgeDelta": 9.7664796462225e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.8915099145288004e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 31,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    }
+  ],
+  "excludedMeshObjects": [],
+  "baselineSeed": 0,
+  "baselineChoices": [
+    {
+      "typeId": "_HEAD_",
+      "id": "_HEAD_GRUNT",
+      "name": "_Head_Grunt",
+      "path": [
+        "_HEAD_",
+        "_Head_Grunt"
+      ]
+    },
+    {
+      "typeId": "_GHACCS_",
+      "id": "_GHACCS_1",
+      "name": "_GHAccs_1",
+      "path": [
+        "_HEAD_",
+        "_Head_Grunt",
+        "_GHACCS_",
+        "_GHAccs_1"
+      ]
+    },
+    {
+      "typeId": "_GH1ACCS_",
+      "id": "_GH1ACCS_A",
+      "name": "_GH1Accs_A",
+      "path": [
+        "_HEAD_",
+        "_Head_Grunt",
+        "_GHACCS_",
+        "_GHAccs_1",
+        "_GH1ACCS_",
+        "_GH1Accs_A"
+      ]
+    },
+    {
+      "typeId": "_BODY_",
+      "id": "_BODY_GRUNT",
+      "name": "_Body_Grunt",
+      "path": [
+        "_BODY_",
+        "_Body_Grunt"
+      ]
+    },
+    {
+      "typeId": "_MESH_",
+      "id": "_MESH_TURTLE",
+      "name": "_Mesh_Turtle",
+      "path": [
+        "_MESH_",
+        "_Mesh_Turtle"
+      ]
+    },
+    {
+      "typeId": "_ACCB_",
+      "id": "_ACCB_FEATHERS",
+      "name": "_AccB_Feathers",
+      "path": [
+        "_MESH_",
+        "_Mesh_Turtle",
+        "_ACCB_",
+        "_AccB_Feathers"
+      ]
+    },
+    {
+      "typeId": "_TBACC_",
+      "id": "_TBACC_NONE",
+      "name": "_TBAcc_none",
+      "path": [
+        "_MESH_",
+        "_Mesh_Turtle",
+        "_TBACC_",
+        "_TBAcc_none"
+      ]
+    }
+  ],
+  "showcaseSignatureCount": 8,
+  "limitedDiversity": false
+}

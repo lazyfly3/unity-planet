@@ -25,6 +25,9 @@ public sealed class GalaxyPlanetSaveData
     public GalaxySurfacePropSaveEntry[] surfaceProps;
     public GalaxyBuildingSaveEntry[] buildings;
     public GalaxyRiverSaveData riverData;
+    public PlanetSurfaceGenerationMode surfaceGenerationMode = PlanetSurfaceGenerationMode.LegacyFullSphere;
+    public float planetReferenceRadius = PlanetCelestialProfile.CompatibleRadius;
+    public float voxelOuterRadius = PlanetCelestialProfile.CompatibleRadius;
 }
 
 [Serializable]

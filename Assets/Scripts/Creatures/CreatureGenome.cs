@@ -9,6 +9,21 @@ public enum CreatureTopology
     Serpentine
 }
 
+public enum CreatureLocomotionArchetype
+{
+    CursorialCanid,
+    GraviportalElephant,
+    CursorialUngulate,
+    HexapodTripod
+}
+
+public static class CreatureGenerationVersions
+{
+    public const int LegacyV3 = 3;
+    public const int ImplicitV4 = 4;
+    public const int AnatomicalV5 = 5;
+}
+
 [Serializable]
 public sealed class CreatureGenome
 {
@@ -18,6 +33,7 @@ public sealed class CreatureGenome
     public CreatureBodyGraph bodyGraph;
     public CreatureTorsoSpline torsoSpline;
     public CreatureTopology topology;
+    public CreatureLocomotionArchetype locomotionArchetype;
     public int bodyStyle;
     public int legPairCount;
     public int spineSegmentCount;
@@ -53,4 +69,5 @@ public sealed class CreatureGenome
     public float serpentineTailTaper;
     public Color primaryColor;
     public Color secondaryColor;
+    public CreatureV5EditableParameters v5Parameters;
 }

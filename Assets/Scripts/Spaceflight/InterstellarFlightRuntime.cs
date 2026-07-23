@@ -16,6 +16,7 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
     bool initialized;
 
     public event Action<Vector3> OriginShifted;
+    public event Action<DoubleVector3, DoubleVector3> UniverseRelocated;
     public Rigidbody ShipBody => shipBody;
     public DoubleVector3 UniverseOrigin => universeOrigin;
     public DoubleVector3 ShipUniversePosition => universeOrigin + new DoubleVector3(
@@ -102,6 +103,28 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         Physics.SyncTransforms();
         OriginShifted?.Invoke(localShift);
         shipBody.interpolation = interpolation;
+    }
+
+    public void WarpToUniversePosition(
+        DoubleVector3 destination,
+        Vector3 exitVelocity,
+        Quaternion exitRotation)
+    {
+        if (!initialized || shipBody == null)
+            return;
+
+        DoubleVector3 previousPosition = ShipUniversePosition;
+        RigidbodyInterpolation interpolation = shipBody.interpolation;
+        shipBody.interpolation = RigidbodyInterpolation.None;
+        universeOrigin = destination;
+        shipBody.position = Vector3.zero;
+        shipBody.rotation = exitRotation;
+        shipBody.velocity = exitVelocity;
+        shipBody.angularVelocity = Vector3.zero;
+        Physics.SyncTransforms();
+        UniverseRelocated?.Invoke(previousPosition, destination);
+        shipBody.interpolation = interpolation;
+        SaveState(true);
     }
 
     public void SaveState(bool flushToDisk)

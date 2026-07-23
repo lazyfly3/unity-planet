@@ -18,7 +18,9 @@ public enum CreatureBodyNodeType
     Tentacle,
     Horn,
     BackPlate,
-    Sensor
+    Sensor,
+    Muzzle,
+    DistalLeg
 }
 
 public enum CreatureBodySide

@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: AntelopeSafeLocomotion
+  m_Controller: {fileID: 9100000, guid: ea3755f850293154c88d386ff330f56c, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: 99db02215ac864d44a66d813fb0af9d1, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: be97c73a1a733554c8744bcf3cb06817, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: cc6b6b90f9fc87d469746836647e4a69, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: be97c73a1a733554c8744bcf3cb06817, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 33c89b3c6abea1947bdba76668218398, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: be97c73a1a733554c8744bcf3cb06817, type: 2}

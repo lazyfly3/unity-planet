@@ -1,0 +1,4425 @@
+{
+  "pipelineVersion": 10,
+  "rngAlgorithm": "SplitMix64-v1",
+  "familyId": "CowHexapod",
+  "variantIds": [
+    "CowHexapod"
+  ],
+  "skeletonHash": "b658e50dbb918ab256ee53525d5bf0da36ac3976291c4c014d8913b74573939f",
+  "sourceScene": "D:\\blender\\creature\\NMSImport\\CowRig\\Extracted\\models\\planets\\creatures\\cowrig\\sixleggedcow.scene.mbin",
+  "locomotionType": "Hexapod",
+  "legCount": 6,
+  "descriptorGroups": [
+    {
+      "typeId": "_HEAD_",
+      "path": [],
+      "candidates": [
+        {
+          "id": "_HEAD_ALIENBIRD",
+          "name": "_Head_AlienBird",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_AlienBird"
+          ],
+          "children": [
+            {
+              "typeId": "_HABACC_",
+              "path": [
+                "_HEAD_",
+                "_Head_AlienBird"
+              ],
+              "candidates": [
+                {
+                  "id": "_HABACC_1",
+                  "name": "_HABAcc_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_AlienBird",
+                    "_HABACC_",
+                    "_HABAcc_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HABACC_2",
+                  "name": "_HABAcc_2",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_AlienBird",
+                    "_HABACC_",
+                    "_HABAcc_2"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HABACC_3",
+                  "name": "_HABAcc_3",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_AlienBird",
+                    "_HABACC_",
+                    "_HABAcc_3"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HABACC_BLANK",
+                  "name": "_HABAcc_Blank",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_AlienBird",
+                    "_HABACC_",
+                    "_HABAcc_Blank"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_HEAD_BUG",
+          "name": "_Head_Bug",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Bug"
+          ],
+          "children": [
+            {
+              "typeId": "_HBUGACC_",
+              "path": [
+                "_HEAD_",
+                "_Head_Bug"
+              ],
+              "candidates": [
+                {
+                  "id": "_HBUGACC_2",
+                  "name": "_HBugAcc_2",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Bug",
+                    "_HBUGACC_",
+                    "_HBugAcc_2"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HBUGACC_1",
+                  "name": "_HBugAcc_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Bug",
+                    "_HBUGACC_",
+                    "_HBugAcc_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HBUGACC_BLANK",
+                  "name": "_HBugAcc_Blank",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Bug",
+                    "_HBUGACC_",
+                    "_HBugAcc_Blank"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_HEAD_COW",
+          "name": "_Head_Cow",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Cow"
+          ],
+          "children": [
+            {
+              "typeId": "_HCE_",
+              "path": [
+                "_HEAD_",
+                "_Head_Cow"
+              ],
+              "candidates": [
+                {
+                  "id": "_HCE_BLANK",
+                  "name": "_HCE_Blank",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Cow",
+                    "_HCE_",
+                    "_HCE_Blank"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCE_COWEARS",
+                  "name": "_HCE_CowEars",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Cow",
+                    "_HCE_",
+                    "_HCE_CowEars"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_HCH_",
+              "path": [
+                "_HEAD_",
+                "_Head_Cow"
+              ],
+              "candidates": [
+                {
+                  "id": "_HCH_BLANK",
+                  "name": "_HCH_Blank",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Cow",
+                    "_HCH_",
+                    "_HCH_Blank"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCH_LORISHORN",
+                  "name": "_HCH_LorisHorn",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Cow",
+                    "_HCH_",
+                    "_HCH_LorisHorn"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCH_COWHORN",
+                  "name": "_HCH_CowHorn",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Cow",
+                    "_HCH_",
+                    "_HCH_CowHorn"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCH_ANTHORN",
+                  "name": "_HCH_AntHorn",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Cow",
+                    "_HCH_",
+                    "_HCH_AntHorn"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCH_NOSEBONE",
+                  "name": "_HCH_NoseBone",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Cow",
+                    "_HCH_",
+                    "_HCH_NoseBone"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCH_HEADBONE",
+                  "name": "_HCH_HeadBone",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Cow",
+                    "_HCH_",
+                    "_HCH_HeadBone"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCH_HEADPLATE",
+                  "name": "_HCH_HeadPlate",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Cow",
+                    "_HCH_",
+                    "_HCH_HeadPlate"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCH_MULTIHORN",
+                  "name": "_HCH_MultiHorn",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Cow",
+                    "_HCH_",
+                    "_HCH_MultiHorn"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_HEAD_COWSKEW",
+          "name": "_Head_CowSkew",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_CowSkew"
+          ],
+          "children": [
+            {
+              "typeId": "_HCSE_",
+              "path": [
+                "_HEAD_",
+                "_Head_CowSkew"
+              ],
+              "candidates": [
+                {
+                  "id": "_HCSE_COWEARS",
+                  "name": "_HCSE_CowEars",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_CowSkew",
+                    "_HCSE_",
+                    "_HCSE_CowEars"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCSE_BLANK",
+                  "name": "_HCSE_Blank",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_CowSkew",
+                    "_HCSE_",
+                    "_HCSE_Blank"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_HCSH_",
+              "path": [
+                "_HEAD_",
+                "_Head_CowSkew"
+              ],
+              "candidates": [
+                {
+                  "id": "_HCSH_HEADACC",
+                  "name": "_HCSH_HeadAcc",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_CowSkew",
+                    "_HCSH_",
+                    "_HCSH_HeadAcc"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCSH_HEADBONE",
+                  "name": "_HCSH_HeadBone",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_CowSkew",
+                    "_HCSH_",
+                    "_HCSH_HeadBone"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCSH_ANTHORN",
+                  "name": "_HCSH_AntHorn",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_CowSkew",
+                    "_HCSH_",
+                    "_HCSH_AntHorn"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCSH_LORISHORN",
+                  "name": "_HCSH_LorisHorn",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_CowSkew",
+                    "_HCSH_",
+                    "_HCSH_LorisHorn"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCSH_COWHORN",
+                  "name": "_HCSH_CowHorn",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_CowSkew",
+                    "_HCSH_",
+                    "_HCSH_CowHorn"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HCSH_BLANK",
+                  "name": "_HCSH_Blank",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_CowSkew",
+                    "_HCSH_",
+                    "_HCSH_Blank"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_HEAD_LORIS",
+          "name": "_Head_Loris",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Loris"
+          ],
+          "children": [
+            {
+              "typeId": "_HLH_",
+              "path": [
+                "_HEAD_",
+                "_Head_Loris"
+              ],
+              "candidates": [
+                {
+                  "id": "_HLH_BLANK",
+                  "name": "_HLH_Blank",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Loris",
+                    "_HLH_",
+                    "_HLH_Blank"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HLH_LORISHORN",
+                  "name": "_HLH_LorisHorn",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Loris",
+                    "_HLH_",
+                    "_HLH_LorisHorn"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HLH_COWHORN",
+                  "name": "_HLH_CowHorn",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Loris",
+                    "_HLH_",
+                    "_HLH_CowHorn"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HLH_ANTHORN",
+                  "name": "_HLH_AntHorn",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Loris",
+                    "_HLH_",
+                    "_HLH_AntHorn"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HLH_HEADPLATE",
+                  "name": "_HLH_HeadPlate",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Loris",
+                    "_HLH_",
+                    "_HLH_HeadPlate"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HLH_NOSEBONE",
+                  "name": "_HLH_NoseBone",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Loris",
+                    "_HLH_",
+                    "_HLH_NoseBone"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HLH_MULTIHORN3",
+                  "name": "_HLH_MultiHorn3",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Loris",
+                    "_HLH_",
+                    "_HLH_MultiHorn3"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_HLE_",
+              "path": [
+                "_HEAD_",
+                "_Head_Loris"
+              ],
+              "candidates": [
+                {
+                  "id": "_HLE_BLANK",
+                  "name": "_HLE_Blank",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Loris",
+                    "_HLE_",
+                    "_HLE_Blank"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_HLE_1",
+                  "name": "_HLE_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Loris",
+                    "_HLE_",
+                    "_HLE_1"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_HEAD_REX",
+          "name": "_Head_Rex",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Rex"
+          ],
+          "children": [
+            {
+              "typeId": "_HREXACC_",
+              "path": [
+                "_HEAD_",
+                "_Head_Rex"
+              ],
+              "candidates": [
+                {
+                  "id": "_HREXACC_1",
+                  "name": "_HRexAcc_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Rex",
+                    "_HREXACC_",
+                    "_HRexAcc_1"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_HABACC_",
+      "path": [
+        "_HEAD_",
+        "_Head_AlienBird"
+      ],
+      "candidates": [
+        {
+          "id": "_HABACC_1",
+          "name": "_HABAcc_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_AlienBird",
+            "_HABACC_",
+            "_HABAcc_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HABACC_2",
+          "name": "_HABAcc_2",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_AlienBird",
+            "_HABACC_",
+            "_HABAcc_2"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HABACC_3",
+          "name": "_HABAcc_3",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_AlienBird",
+            "_HABACC_",
+            "_HABAcc_3"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HABACC_BLANK",
+          "name": "_HABAcc_Blank",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_AlienBird",
+            "_HABACC_",
+            "_HABAcc_Blank"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_HBUGACC_",
+      "path": [
+        "_HEAD_",
+        "_Head_Bug"
+      ],
+      "candidates": [
+        {
+          "id": "_HBUGACC_2",
+          "name": "_HBugAcc_2",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Bug",
+            "_HBUGACC_",
+            "_HBugAcc_2"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HBUGACC_1",
+          "name": "_HBugAcc_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Bug",
+            "_HBUGACC_",
+            "_HBugAcc_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HBUGACC_BLANK",
+          "name": "_HBugAcc_Blank",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Bug",
+            "_HBUGACC_",
+            "_HBugAcc_Blank"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_HCE_",
+      "path": [
+        "_HEAD_",
+        "_Head_Cow"
+      ],
+      "candidates": [
+        {
+          "id": "_HCE_BLANK",
+          "name": "_HCE_Blank",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Cow",
+            "_HCE_",
+            "_HCE_Blank"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCE_COWEARS",
+          "name": "_HCE_CowEars",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Cow",
+            "_HCE_",
+            "_HCE_CowEars"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_HCH_",
+      "path": [
+        "_HEAD_",
+        "_Head_Cow"
+      ],
+      "candidates": [
+        {
+          "id": "_HCH_BLANK",
+          "name": "_HCH_Blank",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Cow",
+            "_HCH_",
+            "_HCH_Blank"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCH_LORISHORN",
+          "name": "_HCH_LorisHorn",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Cow",
+            "_HCH_",
+            "_HCH_LorisHorn"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCH_COWHORN",
+          "name": "_HCH_CowHorn",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Cow",
+            "_HCH_",
+            "_HCH_CowHorn"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCH_ANTHORN",
+          "name": "_HCH_AntHorn",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Cow",
+            "_HCH_",
+            "_HCH_AntHorn"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCH_NOSEBONE",
+          "name": "_HCH_NoseBone",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Cow",
+            "_HCH_",
+            "_HCH_NoseBone"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCH_HEADBONE",
+          "name": "_HCH_HeadBone",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Cow",
+            "_HCH_",
+            "_HCH_HeadBone"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCH_HEADPLATE",
+          "name": "_HCH_HeadPlate",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Cow",
+            "_HCH_",
+            "_HCH_HeadPlate"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCH_MULTIHORN",
+          "name": "_HCH_MultiHorn",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Cow",
+            "_HCH_",
+            "_HCH_MultiHorn"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_HCSE_",
+      "path": [
+        "_HEAD_",
+        "_Head_CowSkew"
+      ],
+      "candidates": [
+        {
+          "id": "_HCSE_COWEARS",
+          "name": "_HCSE_CowEars",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_CowSkew",
+            "_HCSE_",
+            "_HCSE_CowEars"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCSE_BLANK",
+          "name": "_HCSE_Blank",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_CowSkew",
+            "_HCSE_",
+            "_HCSE_Blank"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_HCSH_",
+      "path": [
+        "_HEAD_",
+        "_Head_CowSkew"
+      ],
+      "candidates": [
+        {
+          "id": "_HCSH_HEADACC",
+          "name": "_HCSH_HeadAcc",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_CowSkew",
+            "_HCSH_",
+            "_HCSH_HeadAcc"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCSH_HEADBONE",
+          "name": "_HCSH_HeadBone",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_CowSkew",
+            "_HCSH_",
+            "_HCSH_HeadBone"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCSH_ANTHORN",
+          "name": "_HCSH_AntHorn",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_CowSkew",
+            "_HCSH_",
+            "_HCSH_AntHorn"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCSH_LORISHORN",
+          "name": "_HCSH_LorisHorn",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_CowSkew",
+            "_HCSH_",
+            "_HCSH_LorisHorn"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCSH_COWHORN",
+          "name": "_HCSH_CowHorn",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_CowSkew",
+            "_HCSH_",
+            "_HCSH_CowHorn"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HCSH_BLANK",
+          "name": "_HCSH_Blank",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_CowSkew",
+            "_HCSH_",
+            "_HCSH_Blank"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_HLH_",
+      "path": [
+        "_HEAD_",
+        "_Head_Loris"
+      ],
+      "candidates": [
+        {
+          "id": "_HLH_BLANK",
+          "name": "_HLH_Blank",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Loris",
+            "_HLH_",
+            "_HLH_Blank"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HLH_LORISHORN",
+          "name": "_HLH_LorisHorn",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Loris",
+            "_HLH_",
+            "_HLH_LorisHorn"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HLH_COWHORN",
+          "name": "_HLH_CowHorn",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Loris",
+            "_HLH_",
+            "_HLH_CowHorn"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HLH_ANTHORN",
+          "name": "_HLH_AntHorn",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Loris",
+            "_HLH_",
+            "_HLH_AntHorn"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HLH_HEADPLATE",
+          "name": "_HLH_HeadPlate",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Loris",
+            "_HLH_",
+            "_HLH_HeadPlate"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HLH_NOSEBONE",
+          "name": "_HLH_NoseBone",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Loris",
+            "_HLH_",
+            "_HLH_NoseBone"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HLH_MULTIHORN3",
+          "name": "_HLH_MultiHorn3",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Loris",
+            "_HLH_",
+            "_HLH_MultiHorn3"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_HLE_",
+      "path": [
+        "_HEAD_",
+        "_Head_Loris"
+      ],
+      "candidates": [
+        {
+          "id": "_HLE_BLANK",
+          "name": "_HLE_Blank",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Loris",
+            "_HLE_",
+            "_HLE_Blank"
+          ],
+          "children": []
+        },
+        {
+          "id": "_HLE_1",
+          "name": "_HLE_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Loris",
+            "_HLE_",
+            "_HLE_1"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_HREXACC_",
+      "path": [
+        "_HEAD_",
+        "_Head_Rex"
+      ],
+      "candidates": [
+        {
+          "id": "_HREXACC_1",
+          "name": "_HRexAcc_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Rex",
+            "_HREXACC_",
+            "_HRexAcc_1"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_BODY_",
+      "path": [],
+      "candidates": [
+        {
+          "id": "_BODY_6LEGCOW1",
+          "name": "_Body_6LegCow1",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1"
+          ],
+          "children": [
+            {
+              "typeId": "_B6CA_",
+              "path": [
+                "_BODY_",
+                "_Body_6LegCow1"
+              ],
+              "candidates": [
+                {
+                  "id": "_B6CA_LUMP",
+                  "name": "_B6CA_Lump",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegCow1",
+                    "_B6CA_",
+                    "_B6CA_Lump"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_B6CA_BACKFIN",
+                  "name": "_B6CA_BackFin",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegCow1",
+                    "_B6CA_",
+                    "_B6CA_BackFin"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_B6CA_TURTSHELL",
+                  "name": "_B6CA_TurtShell",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegCow1",
+                    "_B6CA_",
+                    "_B6CA_TurtShell"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_B6CA_STEGSPIKES",
+                  "name": "_B6CA_StegSpikes",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegCow1",
+                    "_B6CA_",
+                    "_B6CA_StegSpikes"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_B6CA_BACKSPINES",
+                  "name": "_B6CA_BackSpines",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegCow1",
+                    "_B6CA_",
+                    "_B6CA_BackSpines"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_B6CA_ROCKS",
+                  "name": "_B6CA_Rocks",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegCow1",
+                    "_B6CA_",
+                    "_B6CA_Rocks"
+                  ],
+                  "children": [
+                    {
+                      "typeId": "_EXT_",
+                      "path": [
+                        "_BODY_",
+                        "_Body_6LegCow1",
+                        "_B6CA_",
+                        "_B6CA_Rocks"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_EXT_MINE6",
+                          "name": "_Ext_Mine6",
+                          "chance": 0.0,
+                          "path": [
+                            "_BODY_",
+                            "_Body_6LegCow1",
+                            "_B6CA_",
+                            "_B6CA_Rocks",
+                            "_EXT_",
+                            "_Ext_Mine6"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_EXT_BLANKYO6",
+                          "name": "_Ext_BlankYo6",
+                          "chance": 0.0,
+                          "path": [
+                            "_BODY_",
+                            "_Body_6LegCow1",
+                            "_B6CA_",
+                            "_B6CA_Rocks",
+                            "_EXT_",
+                            "_Ext_BlankYo6"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "_B6CA_COWHUMP",
+                  "name": "_B6CA_CowHump",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegCow1",
+                    "_B6CA_",
+                    "_B6CA_CowHump"
+                  ],
+                  "children": [
+                    {
+                      "typeId": "_EXT_",
+                      "path": [
+                        "_BODY_",
+                        "_Body_6LegCow1",
+                        "_B6CA_",
+                        "_B6CA_CowHump"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_EXT_BACKSPINES6",
+                          "name": "_Ext_BackSpines6",
+                          "chance": 0.0,
+                          "path": [
+                            "_BODY_",
+                            "_Body_6LegCow1",
+                            "_B6CA_",
+                            "_B6CA_CowHump",
+                            "_EXT_",
+                            "_Ext_BackSpines6"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_EXT_BLANKYO36",
+                          "name": "_Ext_BlankYo36",
+                          "chance": 0.0,
+                          "path": [
+                            "_BODY_",
+                            "_Body_6LegCow1",
+                            "_B6CA_",
+                            "_B6CA_CowHump",
+                            "_EXT_",
+                            "_Ext_BlankYo36"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "_B6CA_BLANK1",
+                  "name": "_B6CA_Blank1",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegCow1",
+                    "_B6CA_",
+                    "_B6CA_Blank1"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_BODY_6LEGROCK1",
+          "name": "_Body_6LegRock1",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegRock1"
+          ],
+          "children": [
+            {
+              "typeId": "_B6RA_",
+              "path": [
+                "_BODY_",
+                "_Body_6LegRock1"
+              ],
+              "candidates": [
+                {
+                  "id": "_B6RA_BLANK2",
+                  "name": "_B6RA_Blank2",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegRock1",
+                    "_B6RA_",
+                    "_B6RA_Blank2"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_B6RA_ROCKS1",
+                  "name": "_B6RA_Rocks1",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegRock1",
+                    "_B6RA_",
+                    "_B6RA_Rocks1"
+                  ],
+                  "children": [
+                    {
+                      "typeId": "_EXT_",
+                      "path": [
+                        "_BODY_",
+                        "_Body_6LegRock1",
+                        "_B6RA_",
+                        "_B6RA_Rocks1"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_EXT_MINE226",
+                          "name": "_Ext_Mine226",
+                          "chance": 0.0,
+                          "path": [
+                            "_BODY_",
+                            "_Body_6LegRock1",
+                            "_B6RA_",
+                            "_B6RA_Rocks1",
+                            "_EXT_",
+                            "_Ext_Mine226"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_EXT_BLANKYO226",
+                          "name": "_Ext_BlankYo226",
+                          "chance": 0.0,
+                          "path": [
+                            "_BODY_",
+                            "_Body_6LegRock1",
+                            "_B6RA_",
+                            "_B6RA_Rocks1",
+                            "_EXT_",
+                            "_Ext_BlankYo226"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "_B6RA_ARMSPINES",
+                  "name": "_B6RA_ArmSpines",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegRock1",
+                    "_B6RA_",
+                    "_B6RA_ArmSpines"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_B6RA_BACKSPINES",
+                  "name": "_B6RA_BackSpines",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegRock1",
+                    "_B6RA_",
+                    "_B6RA_BackSpines"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_B6RA_STEGSPIKES",
+                  "name": "_B6RA_StegSpikes",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegRock1",
+                    "_B6RA_",
+                    "_B6RA_StegSpikes"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_B6RA_TURTSHELL",
+                  "name": "_B6RA_TurtShell",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegRock1",
+                    "_B6RA_",
+                    "_B6RA_TurtShell"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_B6RA_BACKFIN",
+                  "name": "_B6RA_BackFin",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegRock1",
+                    "_B6RA_",
+                    "_B6RA_BackFin"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_B6RA_LUMP1",
+                  "name": "_B6RA_Lump1",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegRock1",
+                    "_B6RA_",
+                    "_B6RA_Lump1"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_B6CA_",
+      "path": [
+        "_BODY_",
+        "_Body_6LegCow1"
+      ],
+      "candidates": [
+        {
+          "id": "_B6CA_LUMP",
+          "name": "_B6CA_Lump",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1",
+            "_B6CA_",
+            "_B6CA_Lump"
+          ],
+          "children": []
+        },
+        {
+          "id": "_B6CA_BACKFIN",
+          "name": "_B6CA_BackFin",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1",
+            "_B6CA_",
+            "_B6CA_BackFin"
+          ],
+          "children": []
+        },
+        {
+          "id": "_B6CA_TURTSHELL",
+          "name": "_B6CA_TurtShell",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1",
+            "_B6CA_",
+            "_B6CA_TurtShell"
+          ],
+          "children": []
+        },
+        {
+          "id": "_B6CA_STEGSPIKES",
+          "name": "_B6CA_StegSpikes",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1",
+            "_B6CA_",
+            "_B6CA_StegSpikes"
+          ],
+          "children": []
+        },
+        {
+          "id": "_B6CA_BACKSPINES",
+          "name": "_B6CA_BackSpines",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1",
+            "_B6CA_",
+            "_B6CA_BackSpines"
+          ],
+          "children": []
+        },
+        {
+          "id": "_B6CA_ROCKS",
+          "name": "_B6CA_Rocks",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1",
+            "_B6CA_",
+            "_B6CA_Rocks"
+          ],
+          "children": [
+            {
+              "typeId": "_EXT_",
+              "path": [
+                "_BODY_",
+                "_Body_6LegCow1",
+                "_B6CA_",
+                "_B6CA_Rocks"
+              ],
+              "candidates": [
+                {
+                  "id": "_EXT_MINE6",
+                  "name": "_Ext_Mine6",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegCow1",
+                    "_B6CA_",
+                    "_B6CA_Rocks",
+                    "_EXT_",
+                    "_Ext_Mine6"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_EXT_BLANKYO6",
+                  "name": "_Ext_BlankYo6",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegCow1",
+                    "_B6CA_",
+                    "_B6CA_Rocks",
+                    "_EXT_",
+                    "_Ext_BlankYo6"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_B6CA_COWHUMP",
+          "name": "_B6CA_CowHump",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1",
+            "_B6CA_",
+            "_B6CA_CowHump"
+          ],
+          "children": [
+            {
+              "typeId": "_EXT_",
+              "path": [
+                "_BODY_",
+                "_Body_6LegCow1",
+                "_B6CA_",
+                "_B6CA_CowHump"
+              ],
+              "candidates": [
+                {
+                  "id": "_EXT_BACKSPINES6",
+                  "name": "_Ext_BackSpines6",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegCow1",
+                    "_B6CA_",
+                    "_B6CA_CowHump",
+                    "_EXT_",
+                    "_Ext_BackSpines6"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_EXT_BLANKYO36",
+                  "name": "_Ext_BlankYo36",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegCow1",
+                    "_B6CA_",
+                    "_B6CA_CowHump",
+                    "_EXT_",
+                    "_Ext_BlankYo36"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_B6CA_BLANK1",
+          "name": "_B6CA_Blank1",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1",
+            "_B6CA_",
+            "_B6CA_Blank1"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_EXT_",
+      "path": [
+        "_BODY_",
+        "_Body_6LegCow1",
+        "_B6CA_",
+        "_B6CA_Rocks"
+      ],
+      "candidates": [
+        {
+          "id": "_EXT_MINE6",
+          "name": "_Ext_Mine6",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1",
+            "_B6CA_",
+            "_B6CA_Rocks",
+            "_EXT_",
+            "_Ext_Mine6"
+          ],
+          "children": []
+        },
+        {
+          "id": "_EXT_BLANKYO6",
+          "name": "_Ext_BlankYo6",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1",
+            "_B6CA_",
+            "_B6CA_Rocks",
+            "_EXT_",
+            "_Ext_BlankYo6"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_EXT_",
+      "path": [
+        "_BODY_",
+        "_Body_6LegCow1",
+        "_B6CA_",
+        "_B6CA_CowHump"
+      ],
+      "candidates": [
+        {
+          "id": "_EXT_BACKSPINES6",
+          "name": "_Ext_BackSpines6",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1",
+            "_B6CA_",
+            "_B6CA_CowHump",
+            "_EXT_",
+            "_Ext_BackSpines6"
+          ],
+          "children": []
+        },
+        {
+          "id": "_EXT_BLANKYO36",
+          "name": "_Ext_BlankYo36",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegCow1",
+            "_B6CA_",
+            "_B6CA_CowHump",
+            "_EXT_",
+            "_Ext_BlankYo36"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_B6RA_",
+      "path": [
+        "_BODY_",
+        "_Body_6LegRock1"
+      ],
+      "candidates": [
+        {
+          "id": "_B6RA_BLANK2",
+          "name": "_B6RA_Blank2",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegRock1",
+            "_B6RA_",
+            "_B6RA_Blank2"
+          ],
+          "children": []
+        },
+        {
+          "id": "_B6RA_ROCKS1",
+          "name": "_B6RA_Rocks1",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegRock1",
+            "_B6RA_",
+            "_B6RA_Rocks1"
+          ],
+          "children": [
+            {
+              "typeId": "_EXT_",
+              "path": [
+                "_BODY_",
+                "_Body_6LegRock1",
+                "_B6RA_",
+                "_B6RA_Rocks1"
+              ],
+              "candidates": [
+                {
+                  "id": "_EXT_MINE226",
+                  "name": "_Ext_Mine226",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegRock1",
+                    "_B6RA_",
+                    "_B6RA_Rocks1",
+                    "_EXT_",
+                    "_Ext_Mine226"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_EXT_BLANKYO226",
+                  "name": "_Ext_BlankYo226",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_6LegRock1",
+                    "_B6RA_",
+                    "_B6RA_Rocks1",
+                    "_EXT_",
+                    "_Ext_BlankYo226"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_B6RA_ARMSPINES",
+          "name": "_B6RA_ArmSpines",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegRock1",
+            "_B6RA_",
+            "_B6RA_ArmSpines"
+          ],
+          "children": []
+        },
+        {
+          "id": "_B6RA_BACKSPINES",
+          "name": "_B6RA_BackSpines",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegRock1",
+            "_B6RA_",
+            "_B6RA_BackSpines"
+          ],
+          "children": []
+        },
+        {
+          "id": "_B6RA_STEGSPIKES",
+          "name": "_B6RA_StegSpikes",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegRock1",
+            "_B6RA_",
+            "_B6RA_StegSpikes"
+          ],
+          "children": []
+        },
+        {
+          "id": "_B6RA_TURTSHELL",
+          "name": "_B6RA_TurtShell",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegRock1",
+            "_B6RA_",
+            "_B6RA_TurtShell"
+          ],
+          "children": []
+        },
+        {
+          "id": "_B6RA_BACKFIN",
+          "name": "_B6RA_BackFin",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegRock1",
+            "_B6RA_",
+            "_B6RA_BackFin"
+          ],
+          "children": []
+        },
+        {
+          "id": "_B6RA_LUMP1",
+          "name": "_B6RA_Lump1",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegRock1",
+            "_B6RA_",
+            "_B6RA_Lump1"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_EXT_",
+      "path": [
+        "_BODY_",
+        "_Body_6LegRock1",
+        "_B6RA_",
+        "_B6RA_Rocks1"
+      ],
+      "candidates": [
+        {
+          "id": "_EXT_MINE226",
+          "name": "_Ext_Mine226",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegRock1",
+            "_B6RA_",
+            "_B6RA_Rocks1",
+            "_EXT_",
+            "_Ext_Mine226"
+          ],
+          "children": []
+        },
+        {
+          "id": "_EXT_BLANKYO226",
+          "name": "_Ext_BlankYo226",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_6LegRock1",
+            "_B6RA_",
+            "_B6RA_Rocks1",
+            "_EXT_",
+            "_Ext_BlankYo226"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_TAIL_",
+      "path": [],
+      "candidates": [
+        {
+          "id": "_TAIL_ALIEN1",
+          "name": "_Tail_Alien1",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_Alien1"
+          ],
+          "children": [
+            {
+              "typeId": "_TAACC_",
+              "path": [
+                "_TAIL_",
+                "_Tail_Alien1"
+              ],
+              "candidates": [
+                {
+                  "id": "_TAACC_0",
+                  "name": "_TAacc_0",
+                  "chance": 0.0,
+                  "path": [
+                    "_TAIL_",
+                    "_Tail_Alien1",
+                    "_TAACC_",
+                    "_TAacc_0"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_TAACC_1",
+                  "name": "_TAacc_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_TAIL_",
+                    "_Tail_Alien1",
+                    "_TAACC_",
+                    "_TAacc_1"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_TAIL_COW1",
+          "name": "_Tail_Cow1",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_Cow1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_TAIL_TURTLE1",
+          "name": "_Tail_Turtle1",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_Turtle1"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_TAACC_",
+      "path": [
+        "_TAIL_",
+        "_Tail_Alien1"
+      ],
+      "candidates": [
+        {
+          "id": "_TAACC_0",
+          "name": "_TAacc_0",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_Alien1",
+            "_TAACC_",
+            "_TAacc_0"
+          ],
+          "children": []
+        },
+        {
+          "id": "_TAACC_1",
+          "name": "_TAacc_1",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_Alien1",
+            "_TAACC_",
+            "_TAacc_1"
+          ],
+          "children": []
+        }
+      ]
+    }
+  ],
+  "availableActions": {
+    "idle": {
+      "name": "CowHexapod_IDLE_InvBind",
+      "source": "D:\\blender\\creature\\NMSImport\\CowRig\\Extracted\\models\\planets\\creatures\\cowrig\\anims\\sixleggedcowidle.anim.mbin",
+      "frames": 100,
+      "maximumScaleDelta": 0.0,
+      "animatedScaleFrozenAtFirstFrame": true
+    },
+    "walk": {
+      "name": "CowHexapod_WALK_InvBind",
+      "source": "D:\\blender\\creature\\NMSImport\\CowRig\\Extracted\\models\\planets\\creatures\\cowrig\\anims\\sixleggedcowwalk.anim.mbin",
+      "frames": 65,
+      "maximumScaleDelta": 0.0,
+      "animatedScaleFrozenAtFirstFrame": true
+    },
+    "run": {
+      "name": "CowHexapod_RUN_InvBind",
+      "source": "D:\\blender\\creature\\NMSImport\\CowRig\\Extracted\\models\\planets\\creatures\\cowrig\\anims\\sixleggedcowrun.anim.mbin",
+      "frames": 41,
+      "maximumScaleDelta": 0.0,
+      "animatedScaleFrozenAtFirstFrame": true
+    }
+  },
+  "validationInput": {
+    "pipelineVersion": 10,
+    "animationTransformPolicy": "freeze_first_frame_and_lock_load_bearing_pose_v2",
+    "loadBearingChains": [
+      [
+        "LFShoulderJNT",
+        "LFElbowJNT",
+        "LFWristJNT",
+        "LFFootJNT"
+      ],
+      [
+        "RFShoulderJNT",
+        "RFElbowJNT",
+        "RFWristJNT",
+        "RFFootJNT"
+      ],
+      [
+        "LMHipJNT",
+        "LMKneeJNT",
+        "LMAnkleJNT",
+        "LMFootJNT"
+      ],
+      [
+        "RMHipJNT",
+        "RMKneeJNT",
+        "RMAnkleJNT",
+        "RMFootJNT"
+      ],
+      [
+        "LBHipJNT",
+        "LBKneeJNT",
+        "LBAnkleJNT",
+        "LBFootJNT"
+      ],
+      [
+        "RBHipJNT",
+        "RBKneeJNT",
+        "RBAnkleJNT",
+        "RBFootJNT"
+      ]
+    ],
+    "animationTransformCorrectionScope": "allWeighted",
+    "actions": {
+      "idle": {
+        "source": "D:\\blender\\creature\\NMSImport\\CowRig\\Extracted\\models\\planets\\creatures\\cowrig\\anims\\sixleggedcowidle.anim.mbin",
+        "frames": 100
+      },
+      "run": {
+        "source": "D:\\blender\\creature\\NMSImport\\CowRig\\Extracted\\models\\planets\\creatures\\cowrig\\anims\\sixleggedcowrun.anim.mbin",
+        "frames": 41
+      },
+      "walk": {
+        "source": "D:\\blender\\creature\\NMSImport\\CowRig\\Extracted\\models\\planets\\creatures\\cowrig\\anims\\sixleggedcowwalk.anim.mbin",
+        "frames": 65
+      }
+    }
+  },
+  "modules": [
+    {
+      "name": "_B6CA_BackFin",
+      "objects": [
+        "_B6CA_BackFin"
+      ],
+      "materials": [
+        "phong22"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6CA_BackFin": {
+          "restPoseMaximumVertexError": 2.426948720169351e-07,
+          "maximumBoundsRatio": 1.0871044895756998,
+          "maximumEdgeStretch": 2.0408398136724344,
+          "maximumTriangleAreaStretch": 2.24866882451665,
+          "maximumNormalizedEdgeDelta": 0.06321694387460743,
+          "maximumNormalizedTriangleAreaDelta": 0.0048762593935801225,
+          "maximumSignificantEdgeStretch": 2.0408398136724344,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 21,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6CA_BackSpines",
+      "objects": [
+        "_B6CA_BackSpines"
+      ],
+      "materials": [
+        "DragonSpine_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6CA_BackSpines": {
+          "restPoseMaximumVertexError": 2.54658403407225e-07,
+          "maximumBoundsRatio": 1.1372993919059902,
+          "maximumEdgeStretch": 6.613522408344785,
+          "maximumTriangleAreaStretch": 5.702036406259847,
+          "maximumNormalizedEdgeDelta": 0.12549037501033594,
+          "maximumNormalizedTriangleAreaDelta": 0.003312268204108723,
+          "maximumSignificantEdgeStretch": 3.2585528478189913,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 21,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6CA_Blank1",
+      "objects": [
+        "_B6CA_Blank1"
+      ],
+      "materials": [
+        "lambert1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6CA_Blank1": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0,
+          "maximumEdgeStretch": 1.0,
+          "maximumTriangleAreaStretch": 1.0,
+          "maximumNormalizedEdgeDelta": 0.0,
+          "maximumNormalizedTriangleAreaDelta": 0.0,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6CA_CowHump",
+      "objects": [
+        "_B6CA_CowHump"
+      ],
+      "materials": [
+        "CowBody_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6CA_CowHump": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.0828290949221175,
+          "maximumEdgeStretch": 1.3352952002826037,
+          "maximumTriangleAreaStretch": 1.3549474585672643,
+          "maximumNormalizedEdgeDelta": 0.03383787284690884,
+          "maximumNormalizedTriangleAreaDelta": 0.0020356414530476857,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 24,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6CA_Lump",
+      "objects": [
+        "_B6CA_Lump"
+      ],
+      "materials": [
+        "LargeLump_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6CA_Lump": {
+          "restPoseMaximumVertexError": 2.4755668231600746e-07,
+          "maximumBoundsRatio": 1.0535100643217137,
+          "maximumEdgeStretch": 3.010489514629621,
+          "maximumTriangleAreaStretch": 3.158543126292854,
+          "maximumNormalizedEdgeDelta": 0.04283059382473621,
+          "maximumNormalizedTriangleAreaDelta": 0.0013202258710843379,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 21,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6CA_Rocks",
+      "objects": [
+        "_B6CA_Rocks"
+      ],
+      "materials": [
+        "phong1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6CA_Rocks": {
+          "restPoseMaximumVertexError": 2.403894931808364e-07,
+          "maximumBoundsRatio": 1.0302808630918627,
+          "maximumEdgeStretch": 3.796014174251556,
+          "maximumTriangleAreaStretch": 12.710063789679639,
+          "maximumNormalizedEdgeDelta": 0.10951101204851821,
+          "maximumNormalizedTriangleAreaDelta": 0.006361414983384677,
+          "maximumSignificantEdgeStretch": 3.796014174251556,
+          "maximumSignificantTriangleAreaStretch": 7.471830422177773,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 12,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6CA_StegSpikes",
+      "objects": [
+        "_B6CA_StegSpikes"
+      ],
+      "materials": [
+        "BackSpineMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6CA_StegSpikes": {
+          "restPoseMaximumVertexError": 2.5288109106536417e-07,
+          "maximumBoundsRatio": 1.075127012865347,
+          "maximumEdgeStretch": 3.7484903771583813,
+          "maximumTriangleAreaStretch": 3.7202867946646343,
+          "maximumNormalizedEdgeDelta": 0.05506528147108017,
+          "maximumNormalizedTriangleAreaDelta": 0.0035424926713539615,
+          "maximumSignificantEdgeStretch": 1.2162779034864282,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 24,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6CA_TurtShell",
+      "objects": [
+        "_B6CA_TurtShell"
+      ],
+      "materials": [
+        "TurtleShell_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6CA_TurtShell": {
+          "restPoseMaximumVertexError": 2.6749555872404934e-07,
+          "maximumBoundsRatio": 1.0519781625077942,
+          "maximumEdgeStretch": 2.4391420545821263,
+          "maximumTriangleAreaStretch": 2.4233900037328793,
+          "maximumNormalizedEdgeDelta": 0.1363526164570964,
+          "maximumNormalizedTriangleAreaDelta": 0.005158813228626387,
+          "maximumSignificantEdgeStretch": 2.4391420545821263,
+          "maximumSignificantTriangleAreaStretch": 2.2155083601197827,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 21,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6RA_ArmSpines",
+      "objects": [
+        "_B6RA_ArmSpines"
+      ],
+      "materials": [
+        "DragonSpine_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6RA_ArmSpines": {
+          "restPoseMaximumVertexError": 2.2302015940987714e-07,
+          "maximumBoundsRatio": 1.4746745017736878,
+          "maximumEdgeStretch": 4.991599390403027,
+          "maximumTriangleAreaStretch": 3.972242218960626,
+          "maximumNormalizedEdgeDelta": 0.11477575360850881,
+          "maximumNormalizedTriangleAreaDelta": 0.0030115850279423717,
+          "maximumSignificantEdgeStretch": 4.2417562019663695,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 19,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6RA_BackFin",
+      "objects": [
+        "_B6RA_BackFin"
+      ],
+      "materials": [
+        "phong22"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6RA_BackFin": {
+          "restPoseMaximumVertexError": 2.682209014892578e-07,
+          "maximumBoundsRatio": 1.1497082485943775,
+          "maximumEdgeStretch": 2.9145972383567234,
+          "maximumTriangleAreaStretch": 2.9729422916880983,
+          "maximumNormalizedEdgeDelta": 0.10467584249469884,
+          "maximumNormalizedTriangleAreaDelta": 0.003034818711427284,
+          "maximumSignificantEdgeStretch": 2.9145972383567234,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 23,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6RA_BackSpines",
+      "objects": [
+        "_B6RA_BackSpines"
+      ],
+      "materials": [
+        "DragonSpine_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6RA_BackSpines": {
+          "restPoseMaximumVertexError": 2.6749555872404934e-07,
+          "maximumBoundsRatio": 1.092075658045853,
+          "maximumEdgeStretch": 2.41535015833829,
+          "maximumTriangleAreaStretch": 2.604348575448939,
+          "maximumNormalizedEdgeDelta": 0.09075169209265835,
+          "maximumNormalizedTriangleAreaDelta": 0.0022625824152959486,
+          "maximumSignificantEdgeStretch": 2.0230714426051044,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 23,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6RA_Blank2",
+      "objects": [
+        "_B6RA_Blank2"
+      ],
+      "materials": [
+        "lambert1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6RA_Blank2": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0,
+          "maximumEdgeStretch": 1.0,
+          "maximumTriangleAreaStretch": 1.0,
+          "maximumNormalizedEdgeDelta": 0.0,
+          "maximumNormalizedTriangleAreaDelta": 0.0,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6RA_Lump1",
+      "objects": [
+        "_B6RA_Lump1"
+      ],
+      "materials": [
+        "LargeLump_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6RA_Lump1": {
+          "restPoseMaximumVertexError": 2.5463126054791027e-07,
+          "maximumBoundsRatio": 1.08306017091635,
+          "maximumEdgeStretch": 3.865798176248482,
+          "maximumTriangleAreaStretch": 3.7613881764401036,
+          "maximumNormalizedEdgeDelta": 0.11256946978684503,
+          "maximumNormalizedTriangleAreaDelta": 0.0028473853914319524,
+          "maximumSignificantEdgeStretch": 3.865798176248482,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 24,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6RA_Rocks1",
+      "objects": [
+        "_B6RA_Rocks1"
+      ],
+      "materials": [
+        "AccsExp_1_phong1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6RA_Rocks1": {
+          "restPoseMaximumVertexError": 2.682209014892578e-07,
+          "maximumBoundsRatio": 1.0374170827434042,
+          "maximumEdgeStretch": 3.104648195004404,
+          "maximumTriangleAreaStretch": 3.5558686498328878,
+          "maximumNormalizedEdgeDelta": 0.0382181243537539,
+          "maximumNormalizedTriangleAreaDelta": 0.0009487318142159534,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 23,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6RA_StegSpikes",
+      "objects": [
+        "_B6RA_StegSpikes"
+      ],
+      "materials": [
+        "BackSpineMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6RA_StegSpikes": {
+          "restPoseMaximumVertexError": 2.7314279645418166e-07,
+          "maximumBoundsRatio": 1.10221708196555,
+          "maximumEdgeStretch": 2.064241957144374,
+          "maximumTriangleAreaStretch": 2.074328860748673,
+          "maximumNormalizedEdgeDelta": 0.047292272868735725,
+          "maximumNormalizedTriangleAreaDelta": 0.003034382644787399,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 24,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_B6RA_TurtShell",
+      "objects": [
+        "_B6RA_TurtShell"
+      ],
+      "materials": [
+        "TurtleShell_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_B6RA_TurtShell": {
+          "restPoseMaximumVertexError": 2.6749555872404934e-07,
+          "maximumBoundsRatio": 1.0549812026138892,
+          "maximumEdgeStretch": 2.156211201121841,
+          "maximumTriangleAreaStretch": 2.185622236077182,
+          "maximumNormalizedEdgeDelta": 0.10994882586219788,
+          "maximumNormalizedTriangleAreaDelta": 0.004532764938105097,
+          "maximumSignificantEdgeStretch": 2.156211201121841,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 21,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Body_6LegCow1",
+      "objects": [
+        "_Body_6LegCow1",
+        "_B6CA_RocksShape",
+        "_B6CA_CowHumpShape",
+        "PETACC_cow"
+      ],
+      "materials": [
+        "CowBody_Mat",
+        "PetHarnessMat",
+        "phong1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_Body_6LegCow1: significant edge stretch reached 13.131x"
+      ],
+      "meshValidation": {
+        "_Body_6LegCow1": {
+          "restPoseMaximumVertexError": 2.7314279645418166e-07,
+          "maximumBoundsRatio": 1.0837490452052,
+          "maximumEdgeStretch": 13.131134390130729,
+          "maximumTriangleAreaStretch": 14.268599774345684,
+          "maximumNormalizedEdgeDelta": 0.13859294526793917,
+          "maximumNormalizedTriangleAreaDelta": 0.0042722479584540885,
+          "maximumSignificantEdgeStretch": 13.131134390130729,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 5,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 13.131x"
+          ],
+          "passed": false
+        },
+        "_B6CA_RocksShape": {
+          "restPoseMaximumVertexError": 2.403894931808364e-07,
+          "maximumBoundsRatio": 1.0302808630918627,
+          "maximumEdgeStretch": 3.796014174251556,
+          "maximumTriangleAreaStretch": 12.710063789679639,
+          "maximumNormalizedEdgeDelta": 0.10951101204851821,
+          "maximumNormalizedTriangleAreaDelta": 0.006361414983384677,
+          "maximumSignificantEdgeStretch": 3.796014174251556,
+          "maximumSignificantTriangleAreaStretch": 7.471830422177773,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 12,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "_B6CA_CowHumpShape": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.0828290949221175,
+          "maximumEdgeStretch": 1.3352952002826037,
+          "maximumTriangleAreaStretch": 1.3549474585672643,
+          "maximumNormalizedEdgeDelta": 0.03383787284690884,
+          "maximumNormalizedTriangleAreaDelta": 0.0020356414530476857,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 24,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "PETACC_cow": {
+          "restPoseMaximumVertexError": 2.457562461863554e-07,
+          "maximumBoundsRatio": 1.016864297916092,
+          "maximumEdgeStretch": 1.3570431012742845,
+          "maximumTriangleAreaStretch": 1.4047932025872087,
+          "maximumNormalizedEdgeDelta": 0.011513426366895545,
+          "maximumNormalizedTriangleAreaDelta": 0.00014056870794688342,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 5,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Body_6LegRock1",
+      "objects": [
+        "_Body_6LegRock1",
+        "_B6RA_Rocks1Shape"
+      ],
+      "materials": [
+        "AccsExp_1_phong1",
+        "phong23"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Body_6LegRock1": {
+          "restPoseMaximumVertexError": 2.7314279645418166e-07,
+          "maximumBoundsRatio": 1.062256378278441,
+          "maximumEdgeStretch": 5.062695713686614,
+          "maximumTriangleAreaStretch": 5.475107318232446,
+          "maximumNormalizedEdgeDelta": 0.13927197105751932,
+          "maximumNormalizedTriangleAreaDelta": 0.0020334379908983893,
+          "maximumSignificantEdgeStretch": 5.062695713686614,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 5,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "_B6RA_Rocks1Shape": {
+          "restPoseMaximumVertexError": 2.682209014892578e-07,
+          "maximumBoundsRatio": 1.0374170827434042,
+          "maximumEdgeStretch": 3.104648195004404,
+          "maximumTriangleAreaStretch": 3.5558686498328878,
+          "maximumNormalizedEdgeDelta": 0.0382181243537539,
+          "maximumNormalizedTriangleAreaDelta": 0.0009487318142159534,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 23,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Ext_BackSpines6",
+      "objects": [
+        "_Ext_BackSpines6"
+      ],
+      "materials": [
+        "DragonSpine_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Ext_BackSpines6": {
+          "restPoseMaximumVertexError": 2.6679425343563973e-07,
+          "maximumBoundsRatio": 1.1063907579779262,
+          "maximumEdgeStretch": 6.711506247774272,
+          "maximumTriangleAreaStretch": 5.895641598136309,
+          "maximumNormalizedEdgeDelta": 0.11966877750771365,
+          "maximumNormalizedTriangleAreaDelta": 0.002919528489525841,
+          "maximumSignificantEdgeStretch": 3.1759219643466476,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 21,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Ext_BlankYo226",
+      "objects": [
+        "_Ext_BlankYo226"
+      ],
+      "materials": [
+        "lambert1_Skinned"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Ext_BlankYo226": {
+          "restPoseMaximumVertexError": 1.1930020435293358e-07,
+          "maximumBoundsRatio": 1.222674822353615,
+          "maximumEdgeStretch": 1.2944099067924224,
+          "maximumTriangleAreaStretch": 1.4098557367027154,
+          "maximumNormalizedEdgeDelta": 0.21590443735701154,
+          "maximumNormalizedTriangleAreaDelta": 0.06526534721327289,
+          "maximumSignificantEdgeStretch": 1.2944099067924224,
+          "maximumSignificantTriangleAreaStretch": 1.4098557367027154,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 3,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Ext_BlankYo36",
+      "objects": [
+        "_Ext_BlankYo36"
+      ],
+      "materials": [
+        "lambert1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Ext_BlankYo36": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0,
+          "maximumEdgeStretch": 1.0,
+          "maximumTriangleAreaStretch": 1.0,
+          "maximumNormalizedEdgeDelta": 0.0,
+          "maximumNormalizedTriangleAreaDelta": 0.0,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Ext_BlankYo6",
+      "objects": [
+        "_Ext_BlankYo6"
+      ],
+      "materials": [
+        "lambert1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Ext_BlankYo6": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0,
+          "maximumEdgeStretch": 1.0,
+          "maximumTriangleAreaStretch": 1.0,
+          "maximumNormalizedEdgeDelta": 0.0,
+          "maximumNormalizedTriangleAreaDelta": 0.0,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Ext_Mine226",
+      "objects": [
+        "_Ext_Mine226"
+      ],
+      "materials": [
+        "AccsExp_1_MineralMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Ext_Mine226": {
+          "restPoseMaximumVertexError": 2.666641796853137e-07,
+          "maximumBoundsRatio": 1.1295315982816512,
+          "maximumEdgeStretch": 2.5644773258312354,
+          "maximumTriangleAreaStretch": 2.5623618774362207,
+          "maximumNormalizedEdgeDelta": 0.04092736790974567,
+          "maximumNormalizedTriangleAreaDelta": 0.000598325222152515,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 19,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Ext_Mine6",
+      "objects": [
+        "_Ext_Mine6"
+      ],
+      "materials": [
+        "MineralMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Ext_Mine6": {
+          "restPoseMaximumVertexError": 2.4586915969848633e-07,
+          "maximumBoundsRatio": 1.097825883798485,
+          "maximumEdgeStretch": 1.5178979081697013,
+          "maximumTriangleAreaStretch": 1.5157985919073762,
+          "maximumNormalizedEdgeDelta": 0.008090056639332873,
+          "maximumNormalizedTriangleAreaDelta": 0.000309975618079339,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 24,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HABAcc_1",
+      "objects": [
+        "_HABAcc_1"
+      ],
+      "materials": [
+        "Beak_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HABAcc_1": {
+          "restPoseMaximumVertexError": 4.2981520598697533e-07,
+          "maximumBoundsRatio": 1.0157772567485528,
+          "maximumEdgeStretch": 1.3524161248588784,
+          "maximumTriangleAreaStretch": 1.4766019197925093,
+          "maximumNormalizedEdgeDelta": 0.01272683669653414,
+          "maximumNormalizedTriangleAreaDelta": 0.0004233650430864686,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 43,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HABAcc_2",
+      "objects": [
+        "_HABAcc_2"
+      ],
+      "materials": [
+        "BirdHeadBone_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HABAcc_2": {
+          "restPoseMaximumVertexError": 3.5762786865234375e-07,
+          "maximumBoundsRatio": 1.0012209155595664,
+          "maximumEdgeStretch": 1.0492954662455882,
+          "maximumTriangleAreaStretch": 1.0499469684467484,
+          "maximumNormalizedEdgeDelta": 0.0022360640349658465,
+          "maximumNormalizedTriangleAreaDelta": 2.374317645227208e-05,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 3,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HABAcc_3",
+      "objects": [
+        "_HABAcc_3",
+        "AlienBirdEyes"
+      ],
+      "materials": [
+        "CowHeads_Heads_Eye_Mat",
+        "HammerHead_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HABAcc_3": {
+          "restPoseMaximumVertexError": 3.384893146634265e-07,
+          "maximumBoundsRatio": 1.01220503418767,
+          "maximumEdgeStretch": 1.0902233154039496,
+          "maximumTriangleAreaStretch": 1.1224827032293596,
+          "maximumNormalizedEdgeDelta": 0.0035114251953340427,
+          "maximumNormalizedTriangleAreaDelta": 0.00010661927921380693,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 3,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "AlienBirdEyes": {
+          "restPoseMaximumVertexError": 2.384185791015625e-07,
+          "maximumBoundsRatio": 1.0036237721052894,
+          "maximumEdgeStretch": 1.0325673676650762,
+          "maximumTriangleAreaStretch": 1.031936600302511,
+          "maximumNormalizedEdgeDelta": 0.00043721155215135135,
+          "maximumNormalizedTriangleAreaDelta": 1.6102199591037763e-06,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 21,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HABAcc_Blank",
+      "objects": [
+        "_HABAcc_Blank"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_HBugAcc_1",
+      "objects": [
+        "_HBugAcc_1"
+      ],
+      "materials": [
+        "BugAccs_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HBugAcc_1": {
+          "restPoseMaximumVertexError": 5.333283593706274e-07,
+          "maximumBoundsRatio": 1.010191516131917,
+          "maximumEdgeStretch": 1.758922472709359,
+          "maximumTriangleAreaStretch": 1.957125355596243,
+          "maximumNormalizedEdgeDelta": 0.015173468470268537,
+          "maximumNormalizedTriangleAreaDelta": 0.00024052506091077656,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 8,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HBugAcc_2",
+      "objects": [
+        "_HBugAcc_2",
+        "SUB1_HBugAcc_2"
+      ],
+      "materials": [
+        "BugEyes_Mat",
+        "CowHeads_Heads_Eye_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HBugAcc_2": {
+          "restPoseMaximumVertexError": 3.384893146634265e-07,
+          "maximumBoundsRatio": 1.0206804516218084,
+          "maximumEdgeStretch": 1.1319356314024913,
+          "maximumTriangleAreaStretch": 1.2068225704812265,
+          "maximumNormalizedEdgeDelta": 0.002170555310476684,
+          "maximumNormalizedTriangleAreaDelta": 4.117410136191861e-05,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "SUB1_HBugAcc_2": {
+          "restPoseMaximumVertexError": 3.384893146634265e-07,
+          "maximumBoundsRatio": 1.020618603053435,
+          "maximumEdgeStretch": 1.0656220436782586,
+          "maximumTriangleAreaStretch": 1.07917826274757,
+          "maximumNormalizedEdgeDelta": 0.00247775003697412,
+          "maximumNormalizedTriangleAreaDelta": 2.4357484951409404e-05,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 8,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HBugAcc_Blank",
+      "objects": [
+        "_HBugAcc_Blank"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_HCE_Blank",
+      "objects": [
+        "_HCE_Blank"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_HCE_CowEars",
+      "objects": [
+        "_HCE_CowEars"
+      ],
+      "materials": [
+        "CowEar_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCE_CowEars": {
+          "restPoseMaximumVertexError": 2.6656007498500226e-07,
+          "maximumBoundsRatio": 1.0200654202246828,
+          "maximumEdgeStretch": 1.1964820563285101,
+          "maximumTriangleAreaStretch": 1.1895308522322003,
+          "maximumNormalizedEdgeDelta": 0.0072750394976403305,
+          "maximumNormalizedTriangleAreaDelta": 0.00012149129341026269,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 43,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HCH_AntHorn",
+      "objects": [
+        "_HCH_AntHorn"
+      ],
+      "materials": [
+        "CowHeads_HornsMat1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCH_AntHorn": {
+          "restPoseMaximumVertexError": 4.915124923727108e-07,
+          "maximumBoundsRatio": 1.0226540742258152,
+          "maximumEdgeStretch": 1.0030315094681528,
+          "maximumTriangleAreaStretch": 1.0046562224167548,
+          "maximumNormalizedEdgeDelta": 0.0001272402379980158,
+          "maximumNormalizedTriangleAreaDelta": 3.7895378121917905e-06,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 9,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HCH_Blank",
+      "objects": [
+        "_HCH_Blank"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_HCH_CowHorn",
+      "objects": [
+        "_HCH_CowHorn"
+      ],
+      "materials": [
+        "CowHeads_phong21"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCH_CowHorn": {
+          "restPoseMaximumVertexError": 4.915124923727108e-07,
+          "maximumBoundsRatio": 1.01969610644004,
+          "maximumEdgeStretch": 1.4890375756138299,
+          "maximumTriangleAreaStretch": 1.4832752140063472,
+          "maximumNormalizedEdgeDelta": 0.06602775083021808,
+          "maximumNormalizedTriangleAreaDelta": 0.0014845175681163366,
+          "maximumSignificantEdgeStretch": 0.49592324963244466,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 16,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HCH_HeadBone",
+      "objects": [
+        "_HCH_HeadBone"
+      ],
+      "materials": [
+        "HeadBone_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCH_HeadBone": {
+          "restPoseMaximumVertexError": 5.333283593706274e-07,
+          "maximumBoundsRatio": 1.0198052642280786,
+          "maximumEdgeStretch": 1.621810686115409,
+          "maximumTriangleAreaStretch": 1.6581451239135703,
+          "maximumNormalizedEdgeDelta": 0.013363395991625934,
+          "maximumNormalizedTriangleAreaDelta": 0.0006555101443160535,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 6,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HCH_HeadPlate",
+      "objects": [
+        "_HCH_HeadPlate"
+      ],
+      "materials": [
+        "HeadBone_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCH_HeadPlate": {
+          "restPoseMaximumVertexError": 4.915133747113826e-07,
+          "maximumBoundsRatio": 1.0184176038955493,
+          "maximumEdgeStretch": 1.3136644279714667,
+          "maximumTriangleAreaStretch": 1.3183718065755532,
+          "maximumNormalizedEdgeDelta": 0.014876781494012187,
+          "maximumNormalizedTriangleAreaDelta": 0.00039792948302882505,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 22,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HCH_LorisHorn",
+      "objects": [
+        "_HCH_LorisHorn"
+      ],
+      "materials": [
+        "CowHeads_phong20"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCH_LorisHorn": {
+          "restPoseMaximumVertexError": 4.915124923727108e-07,
+          "maximumBoundsRatio": 1.0183285152712394,
+          "maximumEdgeStretch": 1.000533488381295,
+          "maximumTriangleAreaStretch": 1.0007694173172934,
+          "maximumNormalizedEdgeDelta": 6.664061042867489e-05,
+          "maximumNormalizedTriangleAreaDelta": 2.6249016821638645e-06,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 16,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HCH_MultiHorn",
+      "objects": [
+        "_HCH_MultiHorn"
+      ],
+      "materials": [
+        "KingHeadPlate_Acc"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_HCH_MultiHorn: significant edge stretch reached 12.312x"
+      ],
+      "meshValidation": {
+        "_HCH_MultiHorn": {
+          "restPoseMaximumVertexError": 3.375038997204937e-07,
+          "maximumBoundsRatio": 1.0158399340721693,
+          "maximumEdgeStretch": 14.761549415393374,
+          "maximumTriangleAreaStretch": 13.9105708955501,
+          "maximumNormalizedEdgeDelta": 0.06649360517741316,
+          "maximumNormalizedTriangleAreaDelta": 0.0003838471405477081,
+          "maximumSignificantEdgeStretch": 12.311662306784205,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 23,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 12.312x"
+          ],
+          "passed": false
+        }
+      }
+    },
+    {
+      "name": "_HCH_NoseBone",
+      "objects": [
+        "_HCH_NoseBone"
+      ],
+      "materials": [
+        "RexNoseBone_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCH_NoseBone": {
+          "restPoseMaximumVertexError": 5.364418029785156e-07,
+          "maximumBoundsRatio": 1.0102889657038086,
+          "maximumEdgeStretch": 1.0830780457523417,
+          "maximumTriangleAreaStretch": 1.0811699863783262,
+          "maximumNormalizedEdgeDelta": 0.002250374788523078,
+          "maximumNormalizedTriangleAreaDelta": 6.868965413785085e-05,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 6,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HCSE_Blank",
+      "objects": [
+        "_HCSE_Blank"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_HCSE_CowEars",
+      "objects": [
+        "_HCSE_CowEars"
+      ],
+      "materials": [
+        "CowEar_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCSE_CowEars": {
+          "restPoseMaximumVertexError": 2.9200193199910854e-07,
+          "maximumBoundsRatio": 1.0265123890944008,
+          "maximumEdgeStretch": 1.327047955125703,
+          "maximumTriangleAreaStretch": 1.3251982859599971,
+          "maximumNormalizedEdgeDelta": 0.0072750394976403305,
+          "maximumNormalizedTriangleAreaDelta": 0.00012149129341026269,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 17,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HCSH_AntHorn",
+      "objects": [
+        "_HCSH_AntHorn"
+      ],
+      "materials": [
+        "CowHeads_HornsMat1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCSH_AntHorn": {
+          "restPoseMaximumVertexError": 4.915124923727108e-07,
+          "maximumBoundsRatio": 1.0228441385744567,
+          "maximumEdgeStretch": 1.0538759600194527,
+          "maximumTriangleAreaStretch": 1.083073427412464,
+          "maximumNormalizedEdgeDelta": 0.007689905101126467,
+          "maximumNormalizedTriangleAreaDelta": 0.00037793375202445454,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 17,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HCSH_Blank",
+      "objects": [
+        "_HCSH_Blank"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_HCSH_CowHorn",
+      "objects": [
+        "_HCSH_CowHorn"
+      ],
+      "materials": [
+        "CowHeads_phong21"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCSH_CowHorn": {
+          "restPoseMaximumVertexError": 4.915124923727108e-07,
+          "maximumBoundsRatio": 1.0175418810258614,
+          "maximumEdgeStretch": 1.080950234736853,
+          "maximumTriangleAreaStretch": 1.0830454556806253,
+          "maximumNormalizedEdgeDelta": 0.013664743808507018,
+          "maximumNormalizedTriangleAreaDelta": 0.00035310833751630346,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 16,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HCSH_HeadAcc",
+      "objects": [
+        "_HCSH_HeadAcc"
+      ],
+      "materials": [
+        "KingHeadPlate_Acc"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCSH_HeadAcc": {
+          "restPoseMaximumVertexError": 6.76978629326853e-07,
+          "maximumBoundsRatio": 1.0,
+          "maximumEdgeStretch": 1.1710540977921273,
+          "maximumTriangleAreaStretch": 1.2636828558304047,
+          "maximumNormalizedEdgeDelta": 0.02437251426364991,
+          "maximumNormalizedTriangleAreaDelta": 0.0002297954110804195,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 12,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HCSH_HeadBone",
+      "objects": [
+        "_HCSH_HeadBone"
+      ],
+      "materials": [
+        "RexNoseBone_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCSH_HeadBone": {
+          "restPoseMaximumVertexError": 6.76978629326853e-07,
+          "maximumBoundsRatio": 1.0036196388897443,
+          "maximumEdgeStretch": 1.0000844726739242,
+          "maximumTriangleAreaStretch": 1.0000932729417311,
+          "maximumNormalizedEdgeDelta": 1.2776135135973055e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.438600527085224e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 21,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HCSH_LorisHorn",
+      "objects": [
+        "_HCSH_LorisHorn"
+      ],
+      "materials": [
+        "CowHeads_phong20"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HCSH_LorisHorn": {
+          "restPoseMaximumVertexError": 4.915124923727108e-07,
+          "maximumBoundsRatio": 1.0121794652607377,
+          "maximumEdgeStretch": 1.023420002801924,
+          "maximumTriangleAreaStretch": 1.0238285244887726,
+          "maximumNormalizedEdgeDelta": 0.0008328622868470672,
+          "maximumNormalizedTriangleAreaDelta": 2.6110864274120044e-05,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 17,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HLE_1",
+      "objects": [
+        "_HLE_1"
+      ],
+      "materials": [
+        "CowEar_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HLE_1": {
+          "restPoseMaximumVertexError": 3.4240261593687705e-07,
+          "maximumBoundsRatio": 1.0276090295250857,
+          "maximumEdgeStretch": 1.579835724234778,
+          "maximumTriangleAreaStretch": 1.6413052998768638,
+          "maximumNormalizedEdgeDelta": 0.007261550180321107,
+          "maximumNormalizedTriangleAreaDelta": 0.00014490797000462846,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 17,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HLE_Blank",
+      "objects": [
+        "_HLE_Blank"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_HLH_AntHorn",
+      "objects": [
+        "_HLH_AntHorn"
+      ],
+      "materials": [
+        "CowHeads_HornsMat1"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HLH_AntHorn": {
+          "restPoseMaximumVertexError": 4.915124923727108e-07,
+          "maximumBoundsRatio": 1.0226761323527453,
+          "maximumEdgeStretch": 1.0000576643655428,
+          "maximumTriangleAreaStretch": 1.0000543157235324,
+          "maximumNormalizedEdgeDelta": 4.752984910980738e-07,
+          "maximumNormalizedTriangleAreaDelta": 1.3554495010487122e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 64,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HLH_Blank",
+      "objects": [
+        "_HLH_Blank"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_HLH_CowHorn",
+      "objects": [
+        "_HLH_CowHorn"
+      ],
+      "materials": [
+        "CowHeads_phong21"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HLH_CowHorn": {
+          "restPoseMaximumVertexError": 4.915124923727108e-07,
+          "maximumBoundsRatio": 1.0200460328460763,
+          "maximumEdgeStretch": 1.0001663362036457,
+          "maximumTriangleAreaStretch": 1.0001742214989076,
+          "maximumNormalizedEdgeDelta": 7.867879555960857e-07,
+          "maximumNormalizedTriangleAreaDelta": 2.9606907633029833e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 36,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HLH_HeadPlate",
+      "objects": [
+        "_HLH_HeadPlate"
+      ],
+      "materials": [
+        "HeadBone_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HLH_HeadPlate": {
+          "restPoseMaximumVertexError": 6.745141922090218e-07,
+          "maximumBoundsRatio": 1.0076264384211382,
+          "maximumEdgeStretch": 2.552341918194244,
+          "maximumTriangleAreaStretch": 2.3801042026419488,
+          "maximumNormalizedEdgeDelta": 0.007461555493239827,
+          "maximumNormalizedTriangleAreaDelta": 0.0001611550582063549,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 38,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HLH_LorisHorn",
+      "objects": [
+        "_HLH_LorisHorn"
+      ],
+      "materials": [
+        "CowHeads_phong20"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HLH_LorisHorn": {
+          "restPoseMaximumVertexError": 4.915124923727108e-07,
+          "maximumBoundsRatio": 1.0086087850230365,
+          "maximumEdgeStretch": 1.0000813947654164,
+          "maximumTriangleAreaStretch": 1.0000788338338749,
+          "maximumNormalizedEdgeDelta": 5.623969697323731e-07,
+          "maximumNormalizedTriangleAreaDelta": 1.4484139411103393e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 13,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HLH_MultiHorn3",
+      "objects": [
+        "_HLH_MultiHorn3"
+      ],
+      "materials": [
+        "KingHeadPlate_Acc"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HLH_MultiHorn3": {
+          "restPoseMaximumVertexError": 3.4240261593687705e-07,
+          "maximumBoundsRatio": 1.0034667424161285,
+          "maximumEdgeStretch": 2.3307302787405195,
+          "maximumTriangleAreaStretch": 2.324468978543586,
+          "maximumNormalizedEdgeDelta": 0.02262145443628687,
+          "maximumNormalizedTriangleAreaDelta": 0.00018553015414638575,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 7,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HLH_NoseBone",
+      "objects": [
+        "_HLH_NoseBone"
+      ],
+      "materials": [
+        "RexNoseBone_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HLH_NoseBone": {
+          "restPoseMaximumVertexError": 5.364418029785156e-07,
+          "maximumBoundsRatio": 1.014165670378494,
+          "maximumEdgeStretch": 1.1770473241813542,
+          "maximumTriangleAreaStretch": 1.1786416476426902,
+          "maximumNormalizedEdgeDelta": 0.00848755626717718,
+          "maximumNormalizedTriangleAreaDelta": 0.00015921485657883444,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 7,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_HRexAcc_1",
+      "objects": [
+        "_HRexAcc_1"
+      ],
+      "materials": [
+        "Tusk_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_HRexAcc_1": {
+          "restPoseMaximumVertexError": 2.7314279645418166e-07,
+          "maximumBoundsRatio": 1.011543941746769,
+          "maximumEdgeStretch": 1.0000891912739232,
+          "maximumTriangleAreaStretch": 1.0002617798369056,
+          "maximumNormalizedEdgeDelta": 5.565378532308601e-07,
+          "maximumNormalizedTriangleAreaDelta": 1.8759852973956788e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 38,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Head_AlienBird",
+      "objects": [
+        "_Head_AlienBird",
+        "_HABAcc_3Shape"
+      ],
+      "materials": [
+        "CowHeads_Heads_BirdHead_Mat",
+        "HammerHead_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Head_AlienBird": {
+          "restPoseMaximumVertexError": 4.770699320310986e-07,
+          "maximumBoundsRatio": 1.0033816882049675,
+          "maximumEdgeStretch": 2.7015284929085936,
+          "maximumTriangleAreaStretch": 3.1573032612984835,
+          "maximumNormalizedEdgeDelta": 0.024200265863423477,
+          "maximumNormalizedTriangleAreaDelta": 0.001233149108572162,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 4,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "_HABAcc_3Shape": {
+          "restPoseMaximumVertexError": 3.384893146634265e-07,
+          "maximumBoundsRatio": 1.01220503418767,
+          "maximumEdgeStretch": 1.0902233154039496,
+          "maximumTriangleAreaStretch": 1.1224827032293596,
+          "maximumNormalizedEdgeDelta": 0.0035114251953340427,
+          "maximumNormalizedTriangleAreaDelta": 0.00010661927921380693,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 3,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Head_Bug",
+      "objects": [
+        "_Head_Bug"
+      ],
+      "materials": [
+        "CowHeads_Heads_HeadBug_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Head_Bug": {
+          "restPoseMaximumVertexError": 3.5762786865234375e-07,
+          "maximumBoundsRatio": 1.0199141596587529,
+          "maximumEdgeStretch": 3.3523182398195694,
+          "maximumTriangleAreaStretch": 3.4767599406016685,
+          "maximumNormalizedEdgeDelta": 0.032426522403019534,
+          "maximumNormalizedTriangleAreaDelta": 0.0008758141539164804,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 12,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Head_Cow",
+      "objects": [
+        "_Head_Cow",
+        "CowEyes",
+        "CowTongue",
+        "CowBTeeth",
+        "CowTTeeth"
+      ],
+      "materials": [
+        "CatTongue_mat",
+        "CowHead_Mat",
+        "CowHeads_Heads_EyeMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Head_Cow": {
+          "restPoseMaximumVertexError": 4.770699320310986e-07,
+          "maximumBoundsRatio": 1.0378871806347243,
+          "maximumEdgeStretch": 2.4211353900558206,
+          "maximumTriangleAreaStretch": 2.8022238364012932,
+          "maximumNormalizedEdgeDelta": 0.03897417851787709,
+          "maximumNormalizedTriangleAreaDelta": 0.0016678187246835874,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "CowEyes": {
+          "restPoseMaximumVertexError": 4.770699320310986e-07,
+          "maximumBoundsRatio": 1.0077056788736536,
+          "maximumEdgeStretch": 1.0001716968681986,
+          "maximumTriangleAreaStretch": 1.000215957637644,
+          "maximumNormalizedEdgeDelta": 1.8031022959086536e-06,
+          "maximumNormalizedTriangleAreaDelta": 2.767123326175878e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 7,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "CowTongue": {
+          "restPoseMaximumVertexError": 2.666641796853137e-07,
+          "maximumBoundsRatio": 1.0047308713582823,
+          "maximumEdgeStretch": 1.0002426399670996,
+          "maximumTriangleAreaStretch": 1.0002353358132428,
+          "maximumNormalizedEdgeDelta": 2.0626958138569476e-06,
+          "maximumNormalizedTriangleAreaDelta": 1.4651242530255598e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 3,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "CowBTeeth": {
+          "restPoseMaximumVertexError": 2.666641796853137e-07,
+          "maximumBoundsRatio": 1.0126048596333193,
+          "maximumEdgeStretch": 1.000051534499725,
+          "maximumTriangleAreaStretch": 1.0000516338914776,
+          "maximumNormalizedEdgeDelta": 3.054602817929696e-06,
+          "maximumNormalizedTriangleAreaDelta": 6.114191717500818e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 47,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "CowTTeeth": {
+          "restPoseMaximumVertexError": 3.3717607430444117e-07,
+          "maximumBoundsRatio": 1.0304962857474815,
+          "maximumEdgeStretch": 1.0000412189929215,
+          "maximumTriangleAreaStretch": 1.0000480913457443,
+          "maximumNormalizedEdgeDelta": 2.2470072888161412e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.4642854303797304e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 38,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Head_CowSkew",
+      "objects": [
+        "_Head_CowSkew",
+        "CowTTeeth1",
+        "CowBTeeth1",
+        "CowTongue1",
+        "EyesCowSkew"
+      ],
+      "materials": [
+        "CatTongue_mat",
+        "CowHead_Mat",
+        "CowHeads_Heads_EyeMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Head_CowSkew": {
+          "restPoseMaximumVertexError": 4.770699320310986e-07,
+          "maximumBoundsRatio": 1.0344028628928206,
+          "maximumEdgeStretch": 3.1238483673092396,
+          "maximumTriangleAreaStretch": 3.122933968559367,
+          "maximumNormalizedEdgeDelta": 0.028216075869050956,
+          "maximumNormalizedTriangleAreaDelta": 0.0011896328792110362,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 28,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "CowTTeeth1": {
+          "restPoseMaximumVertexError": 3.37175511584981e-07,
+          "maximumBoundsRatio": 1.0234952341319357,
+          "maximumEdgeStretch": 1.000033769392535,
+          "maximumTriangleAreaStretch": 1.0000396729683396,
+          "maximumNormalizedEdgeDelta": 1.7651795247676358e-06,
+          "maximumNormalizedTriangleAreaDelta": 2.518770278112104e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 22,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "CowBTeeth1": {
+          "restPoseMaximumVertexError": 2.666641796853137e-07,
+          "maximumBoundsRatio": 1.0173862341461417,
+          "maximumEdgeStretch": 1.0000363837085369,
+          "maximumTriangleAreaStretch": 1.0000417039857477,
+          "maximumNormalizedEdgeDelta": 2.823571983212535e-06,
+          "maximumNormalizedTriangleAreaDelta": 4.107371555493115e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 2,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "CowTongue1": {
+          "restPoseMaximumVertexError": 2.666641796853137e-07,
+          "maximumBoundsRatio": 1.00179469832102,
+          "maximumEdgeStretch": 1.0001160877428275,
+          "maximumTriangleAreaStretch": 1.0001312424427486,
+          "maximumNormalizedEdgeDelta": 2.209908951432243e-06,
+          "maximumNormalizedTriangleAreaDelta": 1.2295821208780035e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 22,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "EyesCowSkew": {
+          "restPoseMaximumVertexError": 4.770699320310986e-07,
+          "maximumBoundsRatio": 1.0078152476088054,
+          "maximumEdgeStretch": 1.000167275865396,
+          "maximumTriangleAreaStretch": 1.000195183642852,
+          "maximumNormalizedEdgeDelta": 1.6161248892728772e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.0936760743594763e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 31,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Head_Loris",
+      "objects": [
+        "_Head_Loris",
+        "LorisEyes",
+        "LorisTeeth",
+        "LorisTongue"
+      ],
+      "materials": [
+        "CatTongue_mat",
+        "CowHeads_Heads_EyeMat",
+        "CowHeads_Heads_LorisHeadMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Head_Loris": {
+          "restPoseMaximumVertexError": 4.770699320310986e-07,
+          "maximumBoundsRatio": 1.0417082385809155,
+          "maximumEdgeStretch": 2.2713429095314033,
+          "maximumTriangleAreaStretch": 2.24637359576162,
+          "maximumNormalizedEdgeDelta": 0.05238033598805714,
+          "maximumNormalizedTriangleAreaDelta": 0.001915833583433752,
+          "maximumSignificantEdgeStretch": 0.11717704308757991,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 43,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "LorisEyes": {
+          "restPoseMaximumVertexError": 4.773607396972581e-07,
+          "maximumBoundsRatio": 1.0123858929420482,
+          "maximumEdgeStretch": 1.0002160486720297,
+          "maximumTriangleAreaStretch": 1.00033397861427,
+          "maximumNormalizedEdgeDelta": 1.6349284978828562e-06,
+          "maximumNormalizedTriangleAreaDelta": 2.6430512204196883e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 19,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "LorisTeeth": {
+          "restPoseMaximumVertexError": 3.3717607430444117e-07,
+          "maximumBoundsRatio": 1.1643530691838149,
+          "maximumEdgeStretch": 1.0000844827306437,
+          "maximumTriangleAreaStretch": 1.000084485042887,
+          "maximumNormalizedEdgeDelta": 2.6151536558187387e-06,
+          "maximumNormalizedTriangleAreaDelta": 2.7490978755666956e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 34,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "LorisTongue": {
+          "restPoseMaximumVertexError": 2.666641796853137e-07,
+          "maximumBoundsRatio": 1.001481417548946,
+          "maximumEdgeStretch": 1.0002574606755077,
+          "maximumTriangleAreaStretch": 1.0002760317896906,
+          "maximumNormalizedEdgeDelta": 2.5361366862842224e-06,
+          "maximumNormalizedTriangleAreaDelta": 2.0534313886436442e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 3,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Head_Rex",
+      "objects": [
+        "_Head_Rex",
+        "RexTongue",
+        "RexTopTeeth",
+        "RexBottomTeeth",
+        "RexEyes"
+      ],
+      "materials": [
+        "CatTongue_mat",
+        "CowHeads_Heads_EyeMat",
+        "RexHead_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Head_Rex": {
+          "restPoseMaximumVertexError": 4.770699320310986e-07,
+          "maximumBoundsRatio": 1.0146532270394388,
+          "maximumEdgeStretch": 6.15864875760689,
+          "maximumTriangleAreaStretch": 6.194319354321708,
+          "maximumNormalizedEdgeDelta": 0.04122328557863888,
+          "maximumNormalizedTriangleAreaDelta": 0.000821274412754505,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 28,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "RexTongue": {
+          "restPoseMaximumVertexError": 3.375038997204937e-07,
+          "maximumBoundsRatio": 1.0046723436598974,
+          "maximumEdgeStretch": 1.0,
+          "maximumTriangleAreaStretch": 1.0,
+          "maximumNormalizedEdgeDelta": 0.004635105133921073,
+          "maximumNormalizedTriangleAreaDelta": 0.000291134095891817,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "RexTopTeeth": {
+          "restPoseMaximumVertexError": 3.3717607430444117e-07,
+          "maximumBoundsRatio": 1.0105224828857855,
+          "maximumEdgeStretch": 1.0000826728241368,
+          "maximumTriangleAreaStretch": 1.000093912430318,
+          "maximumNormalizedEdgeDelta": 1.047048486863567e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.5872363898609556e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 33,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "RexBottomTeeth": {
+          "restPoseMaximumVertexError": 2.669762502188819e-07,
+          "maximumBoundsRatio": 1.0132308253418074,
+          "maximumEdgeStretch": 1.0001037314020422,
+          "maximumTriangleAreaStretch": 1.000121475676293,
+          "maximumNormalizedEdgeDelta": 1.10127099985224e-06,
+          "maximumNormalizedTriangleAreaDelta": 2.4750027666680818e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 19,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "RexEyes": {
+          "restPoseMaximumVertexError": 4.770699320310986e-07,
+          "maximumBoundsRatio": 1.0079275767504872,
+          "maximumEdgeStretch": 1.0001469570437933,
+          "maximumTriangleAreaStretch": 1.000155872161845,
+          "maximumNormalizedEdgeDelta": 1.7508635877665233e-06,
+          "maximumNormalizedTriangleAreaDelta": 2.8614045556641292e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 77,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_TAacc_0",
+      "objects": [
+        "_TAacc_0"
+      ],
+      "materials": [
+        "lambert1_Skinned"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_TAacc_0": {
+          "restPoseMaximumVertexError": 1.1926748300777466e-07,
+          "maximumBoundsRatio": 1.1227335555541718,
+          "maximumEdgeStretch": 1.000010548646863,
+          "maximumTriangleAreaStretch": 1.0000133781459968,
+          "maximumNormalizedEdgeDelta": 8.416242142956186e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.3934807653034413e-06,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 26,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_TAacc_1",
+      "objects": [
+        "_TAacc_1"
+      ],
+      "materials": [
+        "AlienTail_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_TAacc_1: significant edge stretch reached 6.081x"
+      ],
+      "meshValidation": {
+        "_TAacc_1": {
+          "restPoseMaximumVertexError": 4.76837158203125e-07,
+          "maximumBoundsRatio": 1.106772619058243,
+          "maximumEdgeStretch": 6.081233997952847,
+          "maximumTriangleAreaStretch": 10.56917227947351,
+          "maximumNormalizedEdgeDelta": 0.055738381542894594,
+          "maximumNormalizedTriangleAreaDelta": 0.0008565464860356705,
+          "maximumSignificantEdgeStretch": 6.081233997952847,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 26,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 6.081x"
+          ],
+          "passed": false
+        }
+      }
+    },
+    {
+      "name": "_Tail_Alien1",
+      "objects": [
+        "_Tail_Alien1"
+      ],
+      "materials": [
+        "AlienTail_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Tail_Alien1": {
+          "restPoseMaximumVertexError": 4.768380676969594e-07,
+          "maximumBoundsRatio": 1.0812116202497892,
+          "maximumEdgeStretch": 3.6477731244722134,
+          "maximumTriangleAreaStretch": 4.9750636434341695,
+          "maximumNormalizedEdgeDelta": 0.1400791707269193,
+          "maximumNormalizedTriangleAreaDelta": 0.00396328812092472,
+          "maximumSignificantEdgeStretch": 3.6477731244722134,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 3,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Tail_Cow1",
+      "objects": [
+        "_Tail_Cow1"
+      ],
+      "materials": [
+        "CowTail_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Tail_Cow1": {
+          "restPoseMaximumVertexError": 3.579381748874281e-07,
+          "maximumBoundsRatio": 1.028758282921088,
+          "maximumEdgeStretch": 1.6650150051073216,
+          "maximumTriangleAreaStretch": 1.7512286937872046,
+          "maximumNormalizedEdgeDelta": 0.015082329355140353,
+          "maximumNormalizedTriangleAreaDelta": 0.0002679695105873001,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 17,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Tail_Turtle1",
+      "objects": [
+        "_Tail_Turtle1"
+      ],
+      "materials": [
+        "phong16"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_Tail_Turtle1: significant edge stretch reached 6.991x"
+      ],
+      "meshValidation": {
+        "_Tail_Turtle1": {
+          "restPoseMaximumVertexError": 3.375038997204937e-07,
+          "maximumBoundsRatio": 1.101280638534127,
+          "maximumEdgeStretch": 6.990925406944084,
+          "maximumTriangleAreaStretch": 15.496125208042244,
+          "maximumNormalizedEdgeDelta": 0.22320750368347592,
+          "maximumNormalizedTriangleAreaDelta": 0.022261978491272257,
+          "maximumSignificantEdgeStretch": 6.990925406944084,
+          "maximumSignificantTriangleAreaStretch": 15.496125208042244,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 3,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 6.991x"
+          ],
+          "passed": false
+        }
+      }
+    }
+  ],
+  "excludedMeshObjects": [
+    "petacc_rock"
+  ],
+  "baselineSeed": 0,
+  "baselineChoices": [
+    {
+      "typeId": "_HEAD_",
+      "id": "_HEAD_COW",
+      "name": "_Head_Cow",
+      "path": [
+        "_HEAD_",
+        "_Head_Cow"
+      ]
+    },
+    {
+      "typeId": "_HCE_",
+      "id": "_HCE_COWEARS",
+      "name": "_HCE_CowEars",
+      "path": [
+        "_HEAD_",
+        "_Head_Cow",
+        "_HCE_",
+        "_HCE_CowEars"
+      ]
+    },
+    {
+      "typeId": "_HCH_",
+      "id": "_HCH_BLANK",
+      "name": "_HCH_Blank",
+      "path": [
+        "_HEAD_",
+        "_Head_Cow",
+        "_HCH_",
+        "_HCH_Blank"
+      ]
+    },
+    {
+      "typeId": "_BODY_",
+      "id": "_BODY_6LEGROCK1",
+      "name": "_Body_6LegRock1",
+      "path": [
+        "_BODY_",
+        "_Body_6LegRock1"
+      ]
+    },
+    {
+      "typeId": "_B6RA_",
+      "id": "_B6RA_BACKFIN",
+      "name": "_B6RA_BackFin",
+      "path": [
+        "_BODY_",
+        "_Body_6LegRock1",
+        "_B6RA_",
+        "_B6RA_BackFin"
+      ]
+    },
+    {
+      "typeId": "_TAIL_",
+      "id": "_TAIL_ALIEN1",
+      "name": "_Tail_Alien1",
+      "path": [
+        "_TAIL_",
+        "_Tail_Alien1"
+      ]
+    },
+    {
+      "typeId": "_TAACC_",
+      "id": "_TAACC_0",
+      "name": "_TAacc_0",
+      "path": [
+        "_TAIL_",
+        "_Tail_Alien1",
+        "_TAACC_",
+        "_TAacc_0"
+      ]
+    }
+  ],
+  "showcaseSignatureCount": 8,
+  "limitedDiversity": false
+}

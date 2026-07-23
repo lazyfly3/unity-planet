@@ -1,0 +1,266 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51c2f5f83ec62f444ad2111650f3a41c, type: 3}
+  m_Name: StriderGroundFamily
+  m_EditorClassIdentifier: 
+  familyId: StriderGround
+  skeletonHash: 6ec5a95910df2c61ad4cf32edf8b1874baaa15ef1adf0f0d96722d1e42256a45
+  locomotionType: Ground
+  surfaceMode: 0
+  variantIds:
+  - Strider
+  selectionWeight: 1
+  legCount: 2
+  allowRareModules: 0
+  excludedModulePrefixes: []
+  runtimePrefab: {fileID: 316801467885414206, guid: aa714cc70a5433a47ae23e189bf25a48, type: 3}
+  animatorController: {fileID: 9100000, guid: faf65977b0376284aa1db0a882a42b30, type: 2}
+  familyManifest: {fileID: 4900000, guid: ec9a9d4069c8fe54a8500e31a56f3aa5, type: 3}
+  moduleBindings:
+  - moduleId: _AccBack_0
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_AccBack_0
+  - moduleId: _AccBack_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_AccBack_1
+  - moduleId: _Acc_Arm2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Acc_Arm2xRARE
+  - moduleId: _Acc_none
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Acc_none
+  - moduleId: _BBAcc_1xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BBAcc_1xRARE
+  - moduleId: _BBAcc_3xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BBAcc_3xRARE
+  - moduleId: _BBAcc_4xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BBAcc_4xRARE
+  - moduleId: _BBArm_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BBArm_1
+  - moduleId: _BBArm_none
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BBArm_none
+  - moduleId: _Body_Bug
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Body_Bug
+  - moduleId: _Body_Strider
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Body_Strider
+  - moduleId: _Body_Strider2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Body_Strider2
+  - moduleId: _BugArm_0
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BugArm_0
+  - moduleId: _FHAcc_0
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FHAcc_0
+  - moduleId: _FHAcc_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FHAcc_2
+  - moduleId: _FHAcc_2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FHAcc_2xRARE
+  - moduleId: _FHAcc_3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FHAcc_3
+  - moduleId: _FHAcc_3xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FHAcc_3xRARE
+  - moduleId: _FHAcc_4
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FHAcc_4
+  - moduleId: _FHAcc_5xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FHAcc_5xRARE
+  - moduleId: _FHAcc_7xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FHAcc_7xRARE
+  - moduleId: _FillC_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FillC_1
+  - moduleId: _FillC_none
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FillC_none
+  - moduleId: _FillE2_none
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FillE2_none
+  - moduleId: _FillE_none
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FillE_none
+  - moduleId: _FinC_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FinC_1
+  - moduleId: _Fin_none
+    rendererPaths:
+    - ImportSpace/CanonicalRig/PETACC_finNone
+    - ImportSpace/CanonicalRig/_Fin_none
+  - moduleId: _FishEyes_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FishEyes_1
+  - moduleId: _Head_Bug
+    rendererPaths:
+    - ImportSpace/CanonicalRig/Antenna
+    - ImportSpace/CanonicalRig/BugArm_1
+    - ImportSpace/CanonicalRig/BugArm_2
+    - ImportSpace/CanonicalRig/BugEyes
+    - ImportSpace/CanonicalRig/BugEyes1
+    - ImportSpace/CanonicalRig/BugLids
+    - ImportSpace/CanonicalRig/PETACC_Bug
+    - ImportSpace/CanonicalRig/_Head_Bug
+  - moduleId: _Head_Fish
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Head_Fish
+  - moduleId: _Head_Strider
+    rendererPaths:
+    - ImportSpace/CanonicalRig/PETACC_Strider
+    - ImportSpace/CanonicalRig/StriderTeeth
+    - ImportSpace/CanonicalRig/_Head_Strider
+  - moduleId: _Head_Strider2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/Eyes
+    - ImportSpace/CanonicalRig/PETACC_Strider2
+    - ImportSpace/CanonicalRig/StriderBot
+    - ImportSpace/CanonicalRig/StriderTop
+    - ImportSpace/CanonicalRig/_Head_Strider2
+  - moduleId: _Mouth_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Mouth_1
+  - moduleId: _Neck_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Neck_1
+  - moduleId: _S1Acc_2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_S1Acc_2xRARE
+  - moduleId: _S1Acc_3xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_S1Acc_3xRARE
+  - moduleId: _S1Acc_4
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_S1Acc_4
+  - moduleId: _S1Acc_5
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_S1Acc_5
+  - moduleId: _S1Acc_6xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_S1Acc_6xRARE
+  - moduleId: _S1Acc_7xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_S1Acc_7xRARE
+  - moduleId: _SBAcc_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SBAcc_1
+  - moduleId: _SBAcc_2xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SBAcc_2xRARE
+  - moduleId: _SBAcc_4xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SBAcc_4xRARE
+  - moduleId: _SBAcc_5xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SBAcc_5xRARE
+  - moduleId: _SBAcc_6
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SBAcc_6
+  - moduleId: _SBAcc_7xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SBAcc_7xRARE
+  - moduleId: _SBAcc_8xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SBAcc_8xRARE
+  - moduleId: _SH1Acc_0
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SH1Acc_0
+  - moduleId: _SH1Acc_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SH1Acc_1
+  - moduleId: _SH1Acc_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SH1Acc_2
+  - moduleId: _SH1Acc_3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SH1Acc_3
+  - moduleId: _SH1Acc_4xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SH1Acc_4xRARE
+  - moduleId: _SH2Acc_1xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SH2Acc_1xRARE
+  - moduleId: _SH2Acc_none
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SH2Acc_none
+  - moduleId: _SHAcc_0
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SHAcc_0
+  - moduleId: _SHAcc_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SHAcc_1
+  - moduleId: _SHAcc_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SHAcc_2
+  - moduleId: _SHAcc_3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SHAcc_3
+  - moduleId: _SHAcc_4
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SHAcc_4
+  - moduleId: _SHAcc_5xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_SHAcc_5xRARE
+  - moduleId: _Tail_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Tail_1
+  - moduleId: _Tail_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Tail_2
+  - moduleId: _Tail_4
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Tail_4
+  - moduleId: _Tail_5
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Tail_5
+  - moduleId: _Tail_6
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FinC_1Shape
+    - ImportSpace/CanonicalRig/_Tail_6
+  - moduleId: _Tail_7xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Tail_7xRARE
+  - moduleId: _Tails_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Tails_1
+  loadBearingChains:
+  - id: Leg1
+    bones:
+    - RHipJNT
+    - RKneeJNT
+    - RDoubleKneeJNT
+    - RAnkleJNT
+    - RBigToeJNT
+  - id: Leg2
+    bones:
+    - LHipJNT
+    - LKneeJNT
+    - LDoubleKneeJNT
+    - LAnkleJNT
+    - LBigToeJNT
+  walkSpeed: 1.5
+  surfaceRootOffset: 0.15085436
+  hoverClearance: 0
+  localForwardAxis: {x: 0, y: 0, z: -1}
+  idleState: Idle
+  walkState: Walk
+  runState: Run

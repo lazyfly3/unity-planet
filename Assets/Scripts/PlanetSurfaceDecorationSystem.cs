@@ -110,7 +110,9 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
             int maximumAttempts = item.count * item.placementAttempts;
             for (int attempt = 0; attempt < maximumAttempts && spawnedCount < item.count; attempt++)
             {
-                Vector3 direction = GetCandidateDirection(item, clusterCenters, random);
+                Vector3 direction = world.IsStreamingLargePlanet
+                    ? world.GetStreamingSurfaceDirection(random)
+                    : GetCandidateDirection(item, clusterCenters, random);
                 if (!world.TryFindPlanetSurface(direction, out RaycastHit surfaceHit))
                 {
                     AddRejection(nameof(surfaceHit), world.GetPlanetCenterWorld() + direction * world.PlanetRadius);

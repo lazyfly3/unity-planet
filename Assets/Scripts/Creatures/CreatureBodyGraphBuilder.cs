@@ -9,16 +9,20 @@ public static class CreatureBodyGraphBuilder
     public static CreatureDesignLanguage GenerateDesignLanguage(CreatureGenome genome)
     {
 var random = new GraphRandom(genome.seed, 0x51ED270Bu);
+        bool v4Quadruped = genome.generatorVersion >= CreaturePhenotype.CurrentVersion
+            && genome.topology == CreatureTopology.Quadruped;
         return new CreatureDesignLanguage
         {
-            massDistribution = random.Range(-1f, 1f),
-            bodyCurve = random.Range(-0.45f, 0.65f),
-            taper = random.Range(0.25f, 0.85f),
-            limbAngularStyle = random.Range(0f, 1f),
-            headBodyRatio = random.Range(0.55f, 1.5f),
-            ornamentDensity = random.Range(0f, 1f),
-            asymmetry = random.Range(0f, 0.18f),
-            patternFrequency = random.Range(0.8f, 4.5f),
+            massDistribution = v4Quadruped ? random.Range(-0.42f, 0.42f) : random.Range(-1f, 1f),
+            bodyCurve = v4Quadruped ? random.Range(-0.14f, 0.2f) : random.Range(-0.45f, 0.65f),
+            taper = v4Quadruped ? random.Range(0.34f, 0.62f) : random.Range(0.25f, 0.85f),
+            limbAngularStyle = v4Quadruped ? random.Range(0.12f, 0.58f) : random.Range(0f, 1f),
+            headBodyRatio = v4Quadruped ? random.Range(0.82f, 1.12f) : random.Range(0.55f, 1.5f),
+            ornamentDensity = v4Quadruped
+                    ? random.Range(0f, 0.28f)
+                    : random.Range(0f, 1f),
+            asymmetry = v4Quadruped ? random.Range(0f, 0.06f) : random.Range(0f, 0.18f),
+            patternFrequency = v4Quadruped ? random.Range(0.7f, 2.1f) : random.Range(0.8f, 4.5f),
             primaryColor = genome.primaryColor,
             secondaryColor = genome.secondaryColor,
             bellyColor = Color.Lerp(genome.primaryColor, Color.white, random.Range(0.25f, 0.6f)),
@@ -43,6 +47,8 @@ for (int attempt = 0; attempt < 16; attempt++)
     static CreatureBodyGraph BuildAttempt(CreatureGenome genome, ref GraphRandom random)
     {
         bool serpentine = genome.topology == CreatureTopology.Serpentine;
+        bool v4Quadruped = genome.generatorVersion >= CreaturePhenotype.CurrentVersion
+            && genome.topology == CreatureTopology.Quadruped;
         var graph = new CreatureBodyGraph
         {
             generatorVersion = GeneratorVersion,
@@ -51,10 +57,10 @@ for (int attempt = 0; attempt < 16; attempt++)
                 ? genome.torsoSpline.points.Count
                 : (serpentine ? Mathf.Clamp(genome.spineSegmentCount, 9, 16) : random.Range(2, 9)),
             supportLegPairCount = genome.legPairCount,
-            armPairCount = serpentine ? 0 : random.Range(0, 3),
-            headCount = !serpentine && random.Value() < 0.12f ? 2 : 1,
-            tailCount = serpentine ? 1 : random.Range(0, 3),
-            tentacleCount = random.Value() < 0.58f ? random.Range(0, 5) : 0
+            armPairCount = serpentine || v4Quadruped ? 0 : random.Range(0, 3),
+            headCount = v4Quadruped ? 1 : (!serpentine && random.Value() < 0.12f ? 2 : 1),
+            tailCount = serpentine || v4Quadruped ? 1 : random.Range(0, 3),
+            tentacleCount = v4Quadruped ? 0 : (random.Value() < 0.58f ? random.Range(0, 5) : 0)
         };
 
         int[] spineNodes = BuildSpine(genome, graph);
@@ -130,7 +136,10 @@ for (int attempt = 0; attempt < 16; attempt++)
 
     static void BuildHeads(CreatureGenome genome, CreatureBodyGraph graph, int parent, ref GraphRandom random)
     {
-        for (int i = 0; i < graph.headCount && graph.nodes.Count + 2 <= MaximumNodes; i++)
+        bool v4Quadruped = genome.generatorVersion >= CreaturePhenotype.CurrentVersion
+            && genome.topology == CreatureTopology.Quadruped;
+        int nodesPerHead = v4Quadruped ? 3 : 2;
+        for (int i = 0; i < graph.headCount && graph.nodes.Count + nodesPerHead <= MaximumNodes; i++)
         {
             float side = graph.headCount == 1 ? 0f : (i == 0 ? -1f : 1f);
             int symmetry = graph.headCount == 1 ? 0 : 100;
@@ -142,38 +151,61 @@ for (int attempt = 0; attempt < 16; attempt++)
                 socket = CreatureSocketType.Front,
                 symmetryGroup = symmetry,
                 localPosition = new Vector3(side * genome.bodyWidth * 0.28f,
-                    genome.bodyHeight * random.Range(0.08f, 0.32f),
-                    Mathf.Max(0.1f, genome.neckLength * 0.35f)),
+                    genome.bodyHeight * random.Range(0.1f, 0.22f),
+                    Mathf.Max(0.1f, genome.neckLength * 0.22f)),
                 localEulerAngles = new Vector3(0f, side * random.Range(5f, 22f), 0f),
-                size = new Vector3(genome.headWidth * 0.42f, genome.headHeight * 0.42f,
+                size = new Vector3(genome.headWidth * 0.56f, genome.headHeight * 0.52f,
                     Mathf.Max(0.15f, genome.neckLength)),
-                radius = Mathf.Max(0.12f, genome.headWidth * 0.22f)
+                radius = Mathf.Max(0.12f, genome.headWidth * 0.28f)
             });
-            AddNode(graph, new CreatureBodyNode
+            int head = AddNode(graph, new CreatureBodyNode
             {
                 parentIndex = neck,
                 type = CreatureBodyNodeType.Head,
                 side = side < 0f ? CreatureBodySide.Left : side > 0f ? CreatureBodySide.Right : CreatureBodySide.Center,
                 socket = CreatureSocketType.Front,
                 symmetryGroup = symmetry,
-                localPosition = new Vector3(0f, genome.neckLength * 0.35f,
-                    genome.neckLength * 0.62f + genome.headLength * 0.38f),
+                localPosition = new Vector3(0f, genome.neckLength * 0.2f,
+                    genome.neckLength * 0.48f + genome.headLength * 0.3f),
                 size = new Vector3(genome.headWidth, genome.headHeight, genome.headLength)
                     * genome.designLanguage.headBodyRatio,
                 radius = Mathf.Max(0.15f, genome.headWidth * 0.45f),
                 animationPhase = i * 0.5f
             });
+            if (v4Quadruped)
+            {
+                AddNode(graph, new CreatureBodyNode
+                {
+                    parentIndex = head,
+                    type = CreatureBodyNodeType.Muzzle,
+                    side = CreatureBodySide.Center,
+                    socket = CreatureSocketType.Front,
+                    symmetryGroup = symmetry,
+                    localPosition = new Vector3(
+                        0f, -genome.headHeight * 0.08f, genome.headLength * 0.38f),
+                    size = new Vector3(
+                        genome.headWidth * 0.68f,
+                        genome.headHeight * 0.5f,
+                        genome.headLength * 0.72f),
+                    radius = Mathf.Max(0.11f, genome.headWidth * 0.27f)
+                });
+            }
         }
     }
 
     static void BuildSupportLegs(CreatureGenome genome, CreatureBodyGraph graph, int[] spine, ref GraphRandom random)
     {
-        for (int pair = 0; pair < graph.supportLegPairCount && graph.nodes.Count + 6 <= MaximumNodes; pair++)
+        bool elephant = genome.locomotionArchetype == CreatureLocomotionArchetype.GraviportalElephant;
+        bool ungulate = genome.locomotionArchetype == CreatureLocomotionArchetype.CursorialUngulate;
+        for (int pair = 0; pair < graph.supportLegPairCount && graph.nodes.Count + 8 <= MaximumNodes; pair++)
         {
             float t = graph.supportLegPairCount == 1 ? 0.48f : pair / (float)(graph.supportLegPairCount - 1);
             t = Mathf.Lerp(0.72f, 0.26f, t);
             int parent = spine[Mathf.RoundToInt(t * (spine.Length - 1))];
             float length = Mathf.Lerp(genome.frontLegLength, genome.rearLegLength, 1f - t);
+            float upperLength = length * (elephant ? 0.46f : (ungulate ? 0.34f : 0.40f));
+            float lowerLength = length * (elephant ? 0.42f : (ungulate ? 0.31f : 0.36f));
+            float distalLength = Mathf.Max(0.08f, length - upperLength - lowerLength);
             for (int sideIndex = 0; sideIndex < 2; sideIndex++)
             {
                 float side = sideIndex == 0 ? -1f : 1f;
@@ -190,8 +222,10 @@ for (int attempt = 0; attempt < 16; attempt++)
                     localPosition = new Vector3(side * genome.bodyWidth * genome.legSpread,
                         -genome.bodyHeight * 0.24f, 0f),
                     localEulerAngles = new Vector3(0f, 0f, side * genome.designLanguage.limbAngularStyle * 12f),
-                    size = new Vector3(genome.legThickness, length * 0.52f, genome.legThickness),
-                    radius = genome.legThickness
+                    size = new Vector3(
+                        genome.legThickness * (ungulate ? 1.08f : 1f), upperLength,
+                        genome.legThickness * (ungulate ? 1.08f : 1f)),
+                    radius = genome.legThickness * (ungulate ? 1.08f : 1f)
                 });
                 int lower = AddNode(graph, new CreatureBodyNode
                 {
@@ -202,22 +236,43 @@ for (int attempt = 0; attempt < 16; attempt++)
                     chainIndex = pair,
                     gaitGroup = (pair + sideIndex) & 1,
                     longitudinalPosition = t,
-                    localPosition = Vector3.down * length * 0.52f,
-                    size = new Vector3(genome.legThickness * 0.82f, length * 0.48f, genome.legThickness * 0.82f),
-                    radius = genome.legThickness * 0.82f
+                    localPosition = Vector3.down * upperLength,
+                    size = new Vector3(
+                        genome.legThickness * (ungulate ? 0.88f : 0.82f), lowerLength,
+                        genome.legThickness * (ungulate ? 0.88f : 0.82f)),
+                    radius = genome.legThickness * (ungulate ? 0.88f : 0.82f)
+                });
+                int distal = AddNode(graph, new CreatureBodyNode
+                {
+                    parentIndex = lower,
+                    type = CreatureBodyNodeType.DistalLeg,
+                    side = side < 0f ? CreatureBodySide.Left : CreatureBodySide.Right,
+                    symmetryGroup = 200 + pair,
+                    chainIndex = pair,
+                    gaitGroup = (pair + sideIndex) & 1,
+                    longitudinalPosition = t,
+                    localPosition = Vector3.down * lowerLength,
+                    size = new Vector3(
+                        genome.legThickness * (elephant ? 0.88f : (ungulate ? 0.78f : 0.84f)),
+                        distalLength,
+                        genome.legThickness * (elephant ? 0.88f : (ungulate ? 0.78f : 0.84f))),
+                    radius = genome.legThickness * (elephant ? 0.88f : (ungulate ? 0.78f : 0.84f))
                 });
                 AddNode(graph, new CreatureBodyNode
                 {
-                    parentIndex = lower,
+                    parentIndex = distal,
                     type = CreatureBodyNodeType.Foot,
                     side = side < 0f ? CreatureBodySide.Left : CreatureBodySide.Right,
                     symmetryGroup = 200 + pair,
                     chainIndex = pair,
                     gaitGroup = (pair + sideIndex) & 1,
                     longitudinalPosition = t,
-                    localPosition = Vector3.down * length * 0.48f,
-                    size = new Vector3(genome.footScale, genome.footScale * 0.3f, genome.footScale * 1.35f),
-                    radius = genome.footScale * 0.45f
+                    localPosition = Vector3.down * distalLength,
+                    size = new Vector3(
+                        genome.footScale * (elephant ? 1.42f : (ungulate ? 0.92f : 1.18f)),
+                        genome.footScale * (elephant ? 0.52f : (ungulate ? 0.74f : 0.46f)),
+                        genome.footScale * (elephant ? 1.38f : (ungulate ? 1.38f : 1.62f))),
+                    radius = genome.footScale * 0.5f
                 });
             }
         }

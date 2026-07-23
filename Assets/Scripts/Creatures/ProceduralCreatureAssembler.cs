@@ -13,6 +13,25 @@ public static class ProceduralCreatureAssembler
         Quaternion worldRotation)
     {
 EnsureGraph(genome);
+        if (CreatureV5PhenotypeBuilder.Supports(genome))
+        {
+            try
+            {
+                return BuildV5(genome, parent, gravitySource, sharedMaterial,
+                    groundLayers, worldPosition, worldRotation);
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogError($"Creature V5 generation failed for seed {genome.seed}; falling back to V4. {exception}");
+                genome.generatorVersion = CreatureGenerationVersions.ImplicitV4;
+                if (genome.bodyGraph != null)
+                    genome.bodyGraph.generatorVersion = CreatureGenerationVersions.ImplicitV4;
+            }
+        }
+        if (genome.generatorVersion >= CreaturePhenotype.CurrentVersion
+            && genome.topology == CreatureTopology.Quadruped)
+            return BuildV4(genome, parent, gravitySource, sharedMaterial, groundLayers, worldPosition, worldRotation);
+
         var root = new GameObject($"Creature_{genome.topology}_{genome.seed}");
         root.transform.SetParent(parent, false);
         root.transform.SetPositionAndRotation(worldPosition, worldRotation);
@@ -90,9 +109,201 @@ EnsureGraph(genome);
     
 }
 
+    static GameObject BuildV4(
+        CreatureGenome genome,
+        Transform parent,
+        SphericalGravitySource gravitySource,
+        Material sharedMaterial,
+        LayerMask groundLayers,
+        Vector3 worldPosition,
+        Quaternion worldRotation)
+    {
+        float buildStarted = Time.realtimeSinceStartup;
+        CreaturePhenotype phenotype = CreaturePhenotypeBuilder.Build(genome);
+        phenotype.ApplyToGraph(genome.bodyGraph);
+
+        var root = new GameObject($"CreatureV4_{genome.seed}");
+        root.transform.SetParent(parent, false);
+        root.transform.SetPositionAndRotation(worldPosition, worldRotation);
+
+        var body = root.AddComponent<Rigidbody>();
+        body.mass = phenotype.mass;
+        body.useGravity = false;
+        body.interpolation = RigidbodyInterpolation.Interpolate;
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        body.constraints = RigidbodyConstraints.FreezeRotation;
+
+        var capsule = root.AddComponent<CapsuleCollider>();
+        ConfigureCollider(genome, capsule);
+        PhysicMaterial generatedPhysicsMaterial = CreatePhysicsMaterial(genome);
+        if (generatedPhysicsMaterial != null)
+            capsule.sharedMaterial = generatedPhysicsMaterial;
+        CreatureRig rig = BuildRig(genome, root.transform);
+        RebuildTorsoColliders(genome, rig, root.transform, capsule, generatedPhysicsMaterial);
+
+        CreatureBodyMeshQuality[] qualities =
+        {
+            CreatureBodyMeshQuality.Final,
+            CreatureBodyMeshQuality.Lod1,
+            CreatureBodyMeshQuality.Lod2
+        };
+        var renderers = new SkinnedMeshRenderer[qualities.Length];
+        var meshes = new Mesh[qualities.Length];
+        CreatureImplicitMeshData previewData = CreatureImplicitBodyMesher.Build(
+            phenotype, CreatureBodyMeshQuality.Lod1);
+        meshes[0] = CreatureSkinnedMeshBuilder.BuildUnifiedV4(
+            genome, phenotype, rig, root.transform, previewData, CreatureBodyMeshQuality.Final);
+        meshes[1] = UnityEngine.Object.Instantiate(meshes[0]);
+        meshes[1].name = $"CreatureV4_Lod1_Preview_{genome.seed}";
+        meshes[2] = UnityEngine.Object.Instantiate(meshes[0]);
+        meshes[2].name = $"CreatureV4_Lod2_Preview_{genome.seed}";
+        for (int i = 0; i < qualities.Length; i++)
+            renderers[i] = CreateV4Renderer(root.transform, rig, sharedMaterial, meshes[i], phenotype, qualities[i]);
+        Mesh detailMesh = CreatureSkinnedMeshBuilder.BuildHardDetailsV4(genome, rig, root.transform);
+        SkinnedMeshRenderer detailRenderer = CreateV4Renderer(
+            root.transform, rig, sharedMaterial, detailMesh, phenotype, CreatureBodyMeshQuality.Final);
+        detailRenderer.gameObject.name = "SkinnedDetails";
+
+        var lodGroup = root.AddComponent<LODGroup>();
+        lodGroup.SetLODs(new[]
+        {
+            new LOD(0.48f, new Renderer[] { renderers[0], detailRenderer }),
+            new LOD(0.18f, new Renderer[] { renderers[1] }),
+            new LOD(0.035f, new Renderer[] { renderers[2] })
+        });
+        lodGroup.RecalculateBounds();
+
+        var meshOwner = root.AddComponent<GeneratedCreatureMeshOwner>();
+        meshOwner.Configure(meshes[0], generatedPhysicsMaterial);
+        meshOwner.AddMesh(meshes[1]);
+        meshOwner.AddMesh(meshes[2]);
+        meshOwner.AddMesh(detailMesh);
+
+        var controller = root.AddComponent<CreatureProceduralController>();
+        controller.Configure(gravitySource, body, capsule, genome, phenotype, rig, groundLayers);
+        var telemetry = root.AddComponent<CreatureProceduralTelemetryHud>();
+        telemetry.Configure(controller, genome, (Time.realtimeSinceStartup - buildStarted) * 1000f);
+
+        var torsoRuntime = root.AddComponent<CreatureTorsoRuntime>();
+        torsoRuntime.ConfigureV4(
+            genome, phenotype, rig, renderers, detailRenderer,
+            meshOwner, body, capsule, controller, lodGroup, generatedPhysicsMaterial);
+        torsoRuntime.RebuildAsync(CreatureBodyMeshQuality.Final);
+        return root;
+    }
+
+    static GameObject BuildV5(
+        CreatureGenome genome,
+        Transform parent,
+        SphericalGravitySource gravitySource,
+        Material sharedMaterial,
+        LayerMask groundLayers,
+        Vector3 worldPosition,
+        Quaternion worldRotation)
+    {
+        float buildStarted = Time.realtimeSinceStartup;
+        CreatureV5Phenotype phenotype = CreatureV5PhenotypeBuilder.Build(genome);
+        CreatureV5MeshData[] data =
+        {
+            CreatureV5MeshGenerator.Build(phenotype, CreatureBodyMeshQuality.Final),
+            CreatureV5MeshGenerator.Build(phenotype, CreatureBodyMeshQuality.Lod1),
+            CreatureV5MeshGenerator.Build(phenotype, CreatureBodyMeshQuality.Lod2)
+        };
+
+        var root = new GameObject($"CreatureV5_{genome.seed}");
+        root.transform.SetParent(parent, false);
+        root.transform.SetPositionAndRotation(worldPosition, worldRotation);
+
+        var body = root.AddComponent<Rigidbody>();
+        body.mass = phenotype.motion.mass;
+        body.useGravity = false;
+        body.interpolation = RigidbodyInterpolation.Interpolate;
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        body.constraints = RigidbodyConstraints.FreezeRotation;
+
+        var capsule = root.AddComponent<CapsuleCollider>();
+        ConfigureCollider(genome, capsule);
+        PhysicMaterial generatedPhysicsMaterial = CreatePhysicsMaterial(genome);
+        if (generatedPhysicsMaterial != null)
+            capsule.sharedMaterial = generatedPhysicsMaterial;
+
+        CreatureRig rig = BuildRig(genome, root.transform);
+        RebuildTorsoColliders(genome, rig, root.transform, capsule, generatedPhysicsMaterial);
+        var renderers = new SkinnedMeshRenderer[data.Length];
+        var meshes = new Mesh[data.Length];
+        CreatureBodyMeshQuality[] qualities =
+        {
+            CreatureBodyMeshQuality.Final,
+            CreatureBodyMeshQuality.Lod1,
+            CreatureBodyMeshQuality.Lod2
+        };
+        for (int i = 0; i < data.Length; i++)
+        {
+            meshes[i] = CreatureV5MeshFactory.Create(data[i], rig, root.transform, genome.seed);
+            renderers[i] = CreateV4Renderer(
+                root.transform, rig, sharedMaterial, meshes[i], phenotype.motion, qualities[i]);
+            renderers[i].gameObject.name = $"SkinnedBodyV5_{qualities[i]}";
+        }
+
+        Mesh detailMesh = CreatureSkinnedMeshBuilder.BuildHardDetailsV4(genome, rig, root.transform);
+        SkinnedMeshRenderer detailRenderer = CreateV4Renderer(
+            root.transform, rig, sharedMaterial, detailMesh, phenotype.motion, CreatureBodyMeshQuality.Final);
+        detailRenderer.gameObject.name = "SkinnedDetails";
+
+        var lodGroup = root.AddComponent<LODGroup>();
+        lodGroup.SetLODs(new[]
+        {
+            new LOD(0.48f, new Renderer[] { renderers[0], detailRenderer }),
+            new LOD(0.18f, new Renderer[] { renderers[1] }),
+            new LOD(0.035f, new Renderer[] { renderers[2] })
+        });
+        lodGroup.RecalculateBounds();
+
+        var meshOwner = root.AddComponent<GeneratedCreatureMeshOwner>();
+        meshOwner.Configure(meshes[0], generatedPhysicsMaterial);
+        meshOwner.AddMesh(meshes[1]);
+        meshOwner.AddMesh(meshes[2]);
+        meshOwner.AddMesh(detailMesh);
+
+        var controller = root.AddComponent<CreatureProceduralController>();
+        controller.Configure(gravitySource, body, capsule, genome, phenotype.motion, rig, groundLayers);
+        var telemetry = root.AddComponent<CreatureProceduralTelemetryHud>();
+        telemetry.Configure(controller, genome, (Time.realtimeSinceStartup - buildStarted) * 1000f);
+
+        var torsoRuntime = root.AddComponent<CreatureTorsoRuntime>();
+        torsoRuntime.ConfigureV5(
+            genome, phenotype, rig, renderers, detailRenderer,
+            meshOwner, body, capsule, controller, lodGroup, generatedPhysicsMaterial);
+        return root;
+    }
+
+    static SkinnedMeshRenderer CreateV4Renderer(
+        Transform root,
+        CreatureRig rig,
+        Material material,
+        Mesh mesh,
+        CreaturePhenotype phenotype,
+        CreatureBodyMeshQuality quality)
+    {
+        var skinObject = new GameObject($"SkinnedBody_{quality}");
+        skinObject.transform.SetParent(root, false);
+        var renderer = skinObject.AddComponent<SkinnedMeshRenderer>();
+        renderer.sharedMesh = mesh;
+        renderer.sharedMaterial = material;
+        renderer.rootBone = rig.body;
+        renderer.bones = rig.bones;
+        renderer.quality = SkinQuality.Bone4;
+        renderer.updateWhenOffscreen = false;
+        renderer.localBounds = phenotype.fieldBounds;
+        return renderer;
+    }
+
     public static float GetBodyClearance(CreatureGenome genome)
     {
 EnsureGraph(genome);
+        if (genome.generatorVersion >= CreaturePhenotype.CurrentVersion
+            && genome.topology == CreatureTopology.Quadruped)
+            return CreaturePhenotypeBuilder.Build(genome).bodyClearance;
         if (genome.topology == CreatureTopology.Serpentine)
             return Mathf.Max(0.45f, genome.bodyHeight * 0.42f) + 0.08f;
         if (TryGetSupportBounds(genome.bodyGraph, out float supportBottom, out _))
@@ -127,9 +338,12 @@ EnsureGraph(genome);
 
     static PhysicMaterial CreatePhysicsMaterial(CreatureGenome genome)
     {
-        if (genome.topology != CreatureTopology.Serpentine)
+        bool virtualContactLocomotion = genome.topology == CreatureTopology.Serpentine
+            || (genome.generatorVersion >= CreaturePhenotype.CurrentVersion
+                && genome.topology == CreatureTopology.Quadruped);
+        if (!virtualContactLocomotion)
             return null;
-        return new PhysicMaterial($"SerpentineContact_{genome.seed}")
+        return new PhysicMaterial($"CreatureVirtualContact_{genome.seed}")
         {
             dynamicFriction = 0f,
             staticFriction = 0f,
@@ -195,16 +409,19 @@ EnsureGraph(genome);
                 continue;
 
             int lowerIndex = FindChild(graph, i, CreatureBodyNodeType.LowerLeg);
-            int footIndex = lowerIndex >= 0 ? FindChild(graph, lowerIndex, CreatureBodyNodeType.Foot) : -1;
+            int distalIndex = lowerIndex >= 0 ? FindChild(graph, lowerIndex, CreatureBodyNodeType.DistalLeg) : -1;
+            int footParent = distalIndex >= 0 ? distalIndex : lowerIndex;
+            int footIndex = footParent >= 0 ? FindChild(graph, footParent, CreatureBodyNodeType.Foot) : -1;
             if (lowerIndex < 0 || footIndex < 0)
                 continue;
 
             float legLength = graph.nodes[lowerIndex].localPosition.magnitude
+                + (distalIndex >= 0 ? graph.nodes[distalIndex].localPosition.magnitude : 0f)
                 + graph.nodes[footIndex].localPosition.magnitude;
             float soleOffset = graph.nodes[footIndex].size.y * 0.5f;
             // Use the shortest effective support height so every leg can reach the ground.
             // Keeping the legs partially bent also leaves horizontal reach for each step.
-            float bentSupportHeight = legLength * 0.82f;
+            float bentSupportHeight = legLength * (distalIndex >= 0 ? 0.91f : 0.82f);
             supportBottom = Mathf.Max(supportBottom, position.y - bentSupportHeight - soleOffset);
         }
 
@@ -243,6 +460,41 @@ EnsureGraph(genome);
         return rig;
     }
 
+    public static void ApplyRigRestPose(CreatureRig rig)
+    {
+        if (rig == null || rig.graph == null || rig.nodeBones == null) return;
+        for (int i = 0; i < rig.nodeBones.Length; i++)
+        {
+            CreatureBodyNode node = rig.graph.nodes[i];
+            rig.nodeBones[i].localPosition = node.localPosition;
+            rig.nodeBones[i].localRotation = Quaternion.Euler(node.localEulerAngles);
+        }
+
+        if (rig.legs != null)
+        {
+            for (int i = 0; i < rig.legs.Length; i++)
+            {
+                CreatureLegRig leg = rig.legs[i];
+                leg.upperLength = Vector3.Distance(leg.upper.position, leg.lower.position);
+                if (leg.distal != null)
+                {
+                    leg.lowerLength = Vector3.Distance(leg.lower.position, leg.distal.position);
+                    leg.distalLength = Vector3.Distance(leg.distal.position, leg.foot.position);
+                }
+                else
+                {
+                    leg.lowerLength = Vector3.Distance(leg.lower.position, leg.foot.position);
+                    leg.distalLength = 0f;
+                }
+                leg.initialized = false;
+            }
+        }
+        if (rig.secondaryBones == null) return;
+        for (int i = 0; i < rig.secondaryBones.Length; i++)
+            if (rig.secondaryBones[i].bone != null)
+                rig.secondaryBones[i].restRotation = rig.secondaryBones[i].bone.localRotation;
+    }
+
     static void PopulateSemanticRig(CreatureRig rig, List<Transform> bones)
     {
         var spineBones = new List<Transform>();
@@ -250,6 +502,7 @@ EnsureGraph(genome);
         var legs = new List<CreatureLegRig>();
         var upperIndices = new List<int>();
         var lowerIndices = new List<int>();
+        var distalIndices = new List<int>();
         var footIndices = new List<int>();
         var secondary = new List<CreatureSecondaryRig>();
         int firstHead = -1;
@@ -267,7 +520,7 @@ EnsureGraph(genome);
             if (node.type == CreatureBodyNodeType.Head && firstHead < 0)
                 firstHead = i;
             if (node.type == CreatureBodyNodeType.UpperLeg)
-                TryBuildLegRig(rig, i, legs, upperIndices, lowerIndices, footIndices);
+                TryBuildLegRig(rig, i, legs, upperIndices, lowerIndices, distalIndices, footIndices);
             if (IsSecondary(node.type))
             {
                 secondary.Add(new CreatureSecondaryRig
@@ -295,6 +548,7 @@ EnsureGraph(genome);
         rig.legs = legs.ToArray();
         rig.upperLegIndices = upperIndices.ToArray();
         rig.lowerLegIndices = lowerIndices.ToArray();
+        rig.distalLegIndices = distalIndices.ToArray();
         rig.footIndices = footIndices.ToArray();
         rig.secondaryBones = secondary.ToArray();
 
@@ -324,10 +578,13 @@ EnsureGraph(genome);
         ICollection<CreatureLegRig> legs,
         ICollection<int> upperIndices,
         ICollection<int> lowerIndices,
+        ICollection<int> distalIndices,
         ICollection<int> footIndices)
     {
         int lowerNode = FindChild(rig.graph, upperNode, CreatureBodyNodeType.LowerLeg);
-        int footNode = lowerNode >= 0 ? FindChild(rig.graph, lowerNode, CreatureBodyNodeType.Foot) : -1;
+        int distalNode = lowerNode >= 0 ? FindChild(rig.graph, lowerNode, CreatureBodyNodeType.DistalLeg) : -1;
+        int footParent = distalNode >= 0 ? distalNode : lowerNode;
+        int footNode = footParent >= 0 ? FindChild(rig.graph, footParent, CreatureBodyNodeType.Foot) : -1;
         if (lowerNode < 0 || footNode < 0)
             return;
         CreatureBodyNode upper = rig.graph.nodes[upperNode];
@@ -337,9 +594,13 @@ EnsureGraph(genome);
             side = upper.side,
             upper = rig.nodeBones[upperNode],
             lower = rig.nodeBones[lowerNode],
+            distal = distalNode >= 0 ? rig.nodeBones[distalNode] : null,
             foot = rig.nodeBones[footNode],
             upperLength = lower.localPosition.magnitude,
-            lowerLength = rig.graph.nodes[footNode].localPosition.magnitude,
+            lowerLength = distalNode >= 0
+                ? rig.graph.nodes[distalNode].localPosition.magnitude
+                : rig.graph.nodes[footNode].localPosition.magnitude,
+            distalLength = distalNode >= 0 ? rig.graph.nodes[footNode].localPosition.magnitude : 0f,
             footSoleOffset = Mathf.Max(0.01f, rig.graph.nodes[footNode].size.y * 0.5f),
             phaseOffset = upper.gaitGroup * 0.5f,
             gaitGroup = upper.gaitGroup,
@@ -347,6 +608,7 @@ EnsureGraph(genome);
         });
         upperIndices.Add(rig.nodeBoneIndices[upperNode]);
         lowerIndices.Add(rig.nodeBoneIndices[lowerNode]);
+        if (distalNode >= 0) distalIndices.Add(rig.nodeBoneIndices[distalNode]);
         footIndices.Add(rig.nodeBoneIndices[footNode]);
     }
 
@@ -465,6 +727,17 @@ generatedMesh = mesh;
     public void AddMesh(Mesh mesh)
     {
         if (mesh != null && !additionalMeshes.Contains(mesh)) additionalMeshes.Add(mesh);
+    }
+
+    public void ReplaceAdditionalMesh(int index, Mesh mesh)
+    {
+        if (index < 0 || mesh == null) return;
+        while (additionalMeshes.Count <= index) additionalMeshes.Add(null);
+        Mesh previous = additionalMeshes[index];
+        additionalMeshes[index] = mesh;
+        if (previous == null || previous == mesh) return;
+        if (Application.isPlaying) Destroy(previous);
+        else DestroyImmediate(previous);
     }
 
     void OnDestroy()

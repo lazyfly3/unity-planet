@@ -6,27 +6,51 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public sealed class InterstellarCruiseController : MonoBehaviour
 {
+    const double DefaultExitDistance = 14000d;
+    const float DefaultExitSpeed = 120f;
+
     [SerializeField] Rigidbody shipBody;
     [SerializeField] InterstellarNavigationSystem navigation;
+    [SerializeField] InterstellarFlightRuntime flightRuntime;
     [SerializeField] SpacecraftIfcsMotor ifcsMotor;
     [SerializeField] KeyboardMouseFlightInput flightInput;
     [SerializeField] SpacecraftDamageReceiver damageReceiver;
-    [SerializeField, Min(0.1f)] float spoolDuration = 1.15f;
-    [SerializeField, Min(1f)] float cruiseAcceleration = 240f;
-    [SerializeField, Min(10f)] float maximumCruiseSpeed = 4200f;
-    [SerializeField, Min(1f)] float finalApproachSpeed = 180f;
-    [SerializeField, Range(0f, 30f)] float activationAngle = 7f;
-    [SerializeField, Range(1f, 45f)] float abortAngle = 10f;
+    [SerializeField] SpacecraftWeaponSystem weaponSystem;
+    [SerializeField, Range(1f, 20f)] float reticleLockAngle = 10f;
+    [SerializeField, Range(0.5f, 10f)] float alignmentAngle = 3f;
+    [SerializeField, Range(1f, 30f)] float abortAngle = 10f;
+    [SerializeField, Min(0.1f)] float spoolDuration = 1.5f;
+    [SerializeField, Min(0.2f)] float transitDuration = 1.2f;
+    [SerializeField, Min(0f)] float exitDuration = 0.28f;
     [SerializeField, Min(0f)] float cooldownDuration = 1.2f;
+    [SerializeField, Min(1000f)] float exitDistance = (float)DefaultExitDistance;
+    [SerializeField, Min(1f)] float exitSpeed = DefaultExitSpeed;
+    [SerializeField, Min(1000f)] float automaticWarpMinimumDistance = 20000f;
+    [SerializeField, Min(10f)] float automaticApproachMaximumSpeed = 220f;
 
-    InterstellarCruiseState state;
+    InterstellarWarpState warpState = InterstellarWarpState.Unlocked;
+    InterstellarWarpCancelReason cancelReason;
     float stateTime;
+    float alignmentError;
     bool controlsEnabled = true;
+    bool relocated;
+    bool automaticLandingRequested;
 
-    public InterstellarCruiseState State => state;
-    public bool IsActive => state != InterstellarCruiseState.Inactive
-        && state != InterstellarCruiseState.Cooldown;
-    public float MaximumCruiseSpeed => maximumCruiseSpeed;
+    public InterstellarWarpState WarpState => warpState;
+    public InterstellarWarpCancelReason CancelReason => cancelReason;
+    public float AlignmentError => alignmentError;
+    public float WarpProgress => CalculateProgress();
+    public float ExitDistance => exitDistance;
+    public float ExitSpeed => exitSpeed;
+    public float WarpVisualIntensity => CalculateVisualIntensity();
+    public bool AutomaticLandingRequested => automaticLandingRequested;
+    public bool IsActive => warpState == InterstellarWarpState.Aligning
+        || warpState == InterstellarWarpState.Spooling
+        || warpState == InterstellarWarpState.Transit
+        || warpState == InterstellarWarpState.Exiting;
+    public float MaximumCruiseSpeed => exitSpeed;
+    public InterstellarCruiseState State => MapLegacyState(warpState);
+
     public bool ControlsEnabled
     {
         get => controlsEnabled;
@@ -34,13 +58,12 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         {
             controlsEnabled = value;
             if (!value)
-                Abort();
+                CancelWarp(InterstellarWarpCancelReason.ControlsDisabled);
         }
     }
 
     void Awake()
     {
-        finalApproachSpeed = Mathf.Min(finalApproachSpeed, 35f);
         ResolveReferences();
     }
 
@@ -53,17 +76,33 @@ public sealed class InterstellarCruiseController : MonoBehaviour
 
     void Update()
     {
-        if (!controlsEnabled || flightInput == null)
-            return;
-        if (!flightInput.ConsumeCruisePressed())
+        SynchronizeLockState();
+        if (controlsEnabled && Input.GetKeyDown(KeyCode.L))
+            ToggleAutomaticLanding();
+        if (!controlsEnabled || flightInput == null || !flightInput.ConsumeCruisePressed())
             return;
 
-        if (IsActive)
+        if (warpState == InterstellarWarpState.Aligning || warpState == InterstellarWarpState.Spooling)
         {
-            Abort();
+            SetAutomaticLandingRequested(false);
+            CancelWarp(InterstellarWarpCancelReason.Manual);
             return;
         }
-        TryBeginCruise();
+        if (warpState == InterstellarWarpState.Transit || warpState == InterstellarWarpState.Exiting
+            || warpState == InterstellarWarpState.Cooldown)
+            return;
+
+        if (warpState == InterstellarWarpState.Unlocked)
+        {
+            cancelReason = InterstellarWarpCancelReason.None;
+            if (navigation != null && navigation.TryLockReticleTarget(Camera.main, reticleLockAngle))
+                SetWarpState(InterstellarWarpState.Locked);
+            else
+                cancelReason = InterstellarWarpCancelReason.NoReticleTarget;
+            return;
+        }
+
+        BeginAlignment();
     }
 
     void FixedUpdate()
@@ -72,106 +111,288 @@ public sealed class InterstellarCruiseController : MonoBehaviour
             return;
 
         stateTime += Time.fixedDeltaTime;
-        switch (state)
+        switch (warpState)
         {
-            case InterstellarCruiseState.Inactive:
-                return;
-            case InterstellarCruiseState.Spooling:
-                if (stateTime >= spoolDuration)
-                    SetState(InterstellarCruiseState.Accelerating);
-                return;
-            case InterstellarCruiseState.Accelerating:
-            case InterstellarCruiseState.Cruising:
-            case InterstellarCruiseState.Decelerating:
-                ApplyCruisePhysics();
-                return;
-            case InterstellarCruiseState.Cooldown:
+            case InterstellarWarpState.Aligning:
+                UpdateAlignment(false);
+                break;
+            case InterstellarWarpState.Spooling:
+                UpdateAlignment(true);
+                break;
+            case InterstellarWarpState.Transit:
+                UpdateTransit();
+                break;
+            case InterstellarWarpState.Exiting:
+                if (stateTime >= exitDuration)
+                    SetWarpState(InterstellarWarpState.Cooldown);
+                break;
+            case InterstellarWarpState.Cooldown:
                 if (stateTime >= cooldownDuration)
-                    SetState(InterstellarCruiseState.Inactive);
-                return;
+                    SetWarpState(navigation != null && navigation.HasLockedTarget
+                        ? InterstellarWarpState.Locked
+                        : InterstellarWarpState.Unlocked);
+                break;
         }
+
+        if (automaticLandingRequested && warpState == InterstellarWarpState.Locked)
+            ApplyAutomaticApproach();
     }
 
-    void ApplyCruisePhysics()
+    void ToggleAutomaticLanding()
     {
-        if (navigation == null || !navigation.HasTarget)
+        if (automaticLandingRequested)
         {
-            Abort();
+            CancelAutomaticLanding();
+            return;
+        }
+
+        BeginAutomaticLanding();
+    }
+
+    public bool BeginAutomaticLanding()
+    {
+        if (navigation == null)
+            return false;
+        if (!navigation.HasLockedTarget
+            && !navigation.TryLockReticleTarget(Camera.main, reticleLockAngle)
+            && !navigation.LockNextTarget())
+        {
+            cancelReason = InterstellarWarpCancelReason.NoReticleTarget;
+            return false;
+        }
+
+        SetAutomaticLandingRequested(true);
+        SynchronizeLockState();
+        if (warpState == InterstellarWarpState.Locked
+            && navigation.TargetDistance > automaticWarpMinimumDistance)
+            BeginAlignment();
+        return true;
+    }
+
+    public void CancelAutomaticLanding()
+    {
+        SetAutomaticLandingRequested(false);
+        if (warpState == InterstellarWarpState.Aligning || warpState == InterstellarWarpState.Spooling)
+            CancelWarp(InterstellarWarpCancelReason.Manual);
+    }
+
+    void ApplyAutomaticApproach()
+    {
+        if (navigation == null || !navigation.HasLockedTarget || ifcsMotor == null)
+        {
+            SetAutomaticLandingRequested(false);
+            return;
+        }
+
+        double remainingDistance = navigation.TargetDistance - navigation.SelectedApproachBoundaryDistance;
+        if (remainingDistance > automaticWarpMinimumDistance)
+        {
+            BeginAlignment();
             return;
         }
 
         Vector3 direction = navigation.DirectionToTarget;
-        if (direction.sqrMagnitude < 0.001f)
-        {
-            Abort();
+        if (direction.sqrMagnitude < 0.0001f)
             return;
-        }
         direction.Normalize();
-        float angle = Vector3.Angle(transform.forward, direction);
-        if (angle > abortAngle)
-        {
-            Abort();
-            return;
-        }
+        float targetSpeed = Mathf.Clamp(
+            (float)remainingDistance * 0.065f + 28f,
+            28f,
+            automaticApproachMaximumSpeed);
+        Vector3 up = Vector3.ProjectOnPlane(transform.up, direction);
+        if (up.sqrMagnitude < 0.0001f)
+            up = Vector3.ProjectOnPlane(Vector3.up, direction);
+        if (up.sqrMagnitude < 0.0001f)
+            up = Vector3.right;
 
-        float forwardSpeed = Vector3.Dot(shipBody.velocity, direction);
-        float stoppingDistance = Mathf.Max(0f,
-            (forwardSpeed * forwardSpeed - finalApproachSpeed * finalApproachSpeed)
-            / (2f * Mathf.Max(1f, cruiseAcceleration)));
-        bool shouldBrake = navigation.TargetDistance <= stoppingDistance + 900f;
-
-        if (shouldBrake && state != InterstellarCruiseState.Decelerating)
-            SetState(InterstellarCruiseState.Decelerating);
-        else if (!shouldBrake && state == InterstellarCruiseState.Accelerating
-                 && forwardSpeed >= maximumCruiseSpeed * 0.98f)
-            SetState(InterstellarCruiseState.Cruising);
-
-        float acceleration = 0f;
-        if (state == InterstellarCruiseState.Accelerating)
-            acceleration = forwardSpeed < maximumCruiseSpeed ? cruiseAcceleration : 0f;
-        else if (state == InterstellarCruiseState.Cruising)
-            acceleration = Mathf.Clamp((maximumCruiseSpeed - forwardSpeed) * 0.8f, -cruiseAcceleration, cruiseAcceleration);
-        else if (state == InterstellarCruiseState.Decelerating)
-        {
-            Vector3 relativeVelocity = shipBody.velocity - direction * finalApproachSpeed;
-            if (relativeVelocity.magnitude <= 3f || forwardSpeed <= finalApproachSpeed)
-            {
-                SetState(InterstellarCruiseState.Cooldown);
-                return;
-            }
-            shipBody.AddForce(-relativeVelocity.normalized * cruiseAcceleration, ForceMode.Acceleration);
-            return;
-        }
-
-        if (Mathf.Abs(acceleration) > 0.001f)
-            shipBody.AddForce(direction * acceleration, ForceMode.Acceleration);
+        ifcsMotor.LinearControlEnabled = true;
+        ifcsMotor.SetExternalWorldVelocityTarget(direction * targetSpeed);
+        ifcsMotor.SetExternalWorldAttitudeTarget(Quaternion.LookRotation(direction, up.normalized));
+        if (weaponSystem != null)
+            weaponSystem.ControlsEnabled = false;
     }
 
-    void TryBeginCruise()
+    void SetAutomaticLandingRequested(bool requested)
     {
-        if (state == InterstellarCruiseState.Cooldown || navigation == null || !navigation.HasTarget)
+        automaticLandingRequested = requested;
+        navigation?.RequestAutomaticLanding(requested);
+        if (requested)
             return;
-        Vector3 direction = navigation.DirectionToTarget;
-        if (direction.sqrMagnitude < 0.001f
-            || Vector3.Angle(transform.forward, direction) > activationAngle)
+        if (ifcsMotor != null && !IsActive)
+        {
+            ifcsMotor.ClearExternalTargets();
+            ifcsMotor.ResetControllerState();
+        }
+        if (weaponSystem != null && !IsActive)
+            weaponSystem.ControlsEnabled = controlsEnabled;
+    }
+
+    void SynchronizeLockState()
+    {
+        if (IsActive || warpState == InterstellarWarpState.Cooldown)
             return;
-        SetState(InterstellarCruiseState.Spooling);
+        bool hasTarget = navigation != null && navigation.HasLockedTarget;
+        if (hasTarget && warpState == InterstellarWarpState.Unlocked)
+            SetWarpState(InterstellarWarpState.Locked);
+        else if (!hasTarget && warpState == InterstellarWarpState.Locked)
+            SetWarpState(InterstellarWarpState.Unlocked);
+    }
+
+    void BeginAlignment()
+    {
+        if (navigation == null || !navigation.HasLockedTarget)
+        {
+            cancelReason = InterstellarWarpCancelReason.TargetLost;
+            SetWarpState(InterstellarWarpState.Unlocked);
+            return;
+        }
+        cancelReason = InterstellarWarpCancelReason.None;
+        SetWarpState(InterstellarWarpState.Aligning);
+    }
+
+    void UpdateAlignment(bool spooling)
+    {
+        Vector3 direction = navigation == null ? Vector3.zero : navigation.DirectionToTarget;
+        if (direction.sqrMagnitude < 0.0001f || !navigation.HasLockedTarget)
+        {
+            CancelWarp(InterstellarWarpCancelReason.TargetLost);
+            return;
+        }
+
+        direction.Normalize();
+        alignmentError = Vector3.Angle(transform.forward, direction);
+        if (spooling && alignmentError > abortAngle)
+        {
+            CancelWarp(InterstellarWarpCancelReason.Misaligned);
+            return;
+        }
+
+        Vector3 up = Vector3.ProjectOnPlane(transform.up, direction);
+        if (up.sqrMagnitude < 0.0001f)
+            up = Vector3.ProjectOnPlane(Vector3.up, direction);
+        if (up.sqrMagnitude < 0.0001f)
+            up = Vector3.right;
+        if (ifcsMotor != null)
+        {
+            ifcsMotor.LinearControlEnabled = true;
+            ifcsMotor.SetExternalWorldVelocityTarget(Vector3.zero);
+            ifcsMotor.SetExternalWorldAttitudeTarget(Quaternion.LookRotation(direction, up.normalized));
+        }
+
+        if (!spooling && alignmentError <= alignmentAngle)
+            SetWarpState(InterstellarWarpState.Spooling);
+        else if (spooling && stateTime >= spoolDuration)
+            BeginTransit();
+    }
+
+    void BeginTransit()
+    {
+        if (navigation == null || !navigation.HasLockedTarget || flightRuntime == null)
+        {
+            CancelWarp(InterstellarWarpCancelReason.TargetLost);
+            return;
+        }
+        flightRuntime.SaveState(true);
+        relocated = false;
+        SetWarpState(InterstellarWarpState.Transit);
+    }
+
+    void UpdateTransit()
+    {
+        if (!relocated && stateTime >= transitDuration * 0.55f)
+        {
+            PerformRelocation();
+            relocated = true;
+        }
+        if (stateTime >= transitDuration)
+            SetWarpState(InterstellarWarpState.Exiting);
+    }
+
+    void PerformRelocation()
+    {
+        if (flightRuntime == null || navigation == null || !navigation.HasLockedTarget)
+            return;
+        DoubleVector3 origin = flightRuntime.ShipUniversePosition;
+        DoubleVector3 target = navigation.LockedUniversePosition;
+        Vector3 direction = CalculateTravelDirection(origin, target);
+        if (direction.sqrMagnitude < 0.0001f)
+            direction = transform.forward;
+        PlanetCelestialProfile celestial = navigation.LockedPlanet?.celestial
+            ?? PlanetCelestialProfile.CreateLargeDefault();
+        double corridorDistance = CalculateEntryCorridorDistance(celestial);
+        DoubleVector3 destination = CalculateWarpDestination(origin, target, corridorDistance);
+        Vector3 up = Vector3.ProjectOnPlane(transform.up, direction);
+        if (up.sqrMagnitude < 0.0001f)
+            up = Vector3.up;
+        Quaternion rotation = Quaternion.LookRotation(direction, up.normalized);
+        flightRuntime.WarpToUniversePosition(destination, direction * exitSpeed, rotation);
+        if (ifcsMotor != null)
+            ifcsMotor.ResetControllerState();
     }
 
     public void Abort()
     {
-        if (state == InterstellarCruiseState.Inactive)
-            return;
-        SetState(InterstellarCruiseState.Cooldown);
+        CancelWarp(InterstellarWarpCancelReason.Manual);
     }
 
-    void SetState(InterstellarCruiseState next)
+    void CancelWarp(InterstellarWarpCancelReason reason)
     {
-        state = next;
+        if (warpState == InterstellarWarpState.Transit || warpState == InterstellarWarpState.Exiting)
+            return;
+        cancelReason = reason;
+        SetWarpState(navigation != null && navigation.HasLockedTarget
+            ? InterstellarWarpState.Locked
+            : InterstellarWarpState.Unlocked);
+    }
+
+    void SetWarpState(InterstellarWarpState next)
+    {
+        warpState = next;
         stateTime = 0f;
+        bool suppressCombat = next == InterstellarWarpState.Aligning
+            || next == InterstellarWarpState.Spooling
+            || next == InterstellarWarpState.Transit
+            || next == InterstellarWarpState.Exiting;
+        if (weaponSystem != null)
+            weaponSystem.ControlsEnabled = controlsEnabled && !suppressCombat;
         if (ifcsMotor != null)
-            ifcsMotor.LinearControlEnabled = next == InterstellarCruiseState.Inactive
-                || next == InterstellarCruiseState.Cooldown;
+        {
+            ifcsMotor.LinearControlEnabled = next != InterstellarWarpState.Transit
+                && next != InterstellarWarpState.Exiting;
+            if (!suppressCombat)
+            {
+                ifcsMotor.ClearExternalTargets();
+                ifcsMotor.ResetControllerState();
+            }
+        }
+    }
+
+    float CalculateProgress()
+    {
+        switch (warpState)
+        {
+            case InterstellarWarpState.Aligning:
+                return Mathf.Clamp01(1f - alignmentError / Mathf.Max(0.1f, abortAngle));
+            case InterstellarWarpState.Spooling:
+                return Mathf.Clamp01(stateTime / spoolDuration);
+            case InterstellarWarpState.Transit:
+                return Mathf.Clamp01(stateTime / transitDuration);
+            case InterstellarWarpState.Exiting:
+                return 1f;
+            default:
+                return 0f;
+        }
+    }
+
+    float CalculateVisualIntensity()
+    {
+        if (warpState == InterstellarWarpState.Spooling)
+            return Mathf.Lerp(0.08f, 0.35f, CalculateProgress());
+        if (warpState == InterstellarWarpState.Transit)
+            return Mathf.Sin(Mathf.Clamp01(stateTime / transitDuration) * Mathf.PI);
+        if (warpState == InterstellarWarpState.Exiting)
+            return 1f - Mathf.Clamp01(stateTime / Mathf.Max(0.01f, exitDuration));
+        return 0f;
     }
 
     void ResolveReferences()
@@ -180,25 +401,92 @@ public sealed class InterstellarCruiseController : MonoBehaviour
             shipBody = GetComponent<Rigidbody>();
         if (navigation == null)
             navigation = FindObjectOfType<InterstellarNavigationSystem>();
+        if (flightRuntime == null)
+            flightRuntime = FindObjectOfType<InterstellarFlightRuntime>();
         if (ifcsMotor == null)
             ifcsMotor = GetComponent<SpacecraftIfcsMotor>();
         if (flightInput == null)
             flightInput = GetComponent<KeyboardMouseFlightInput>();
         if (damageReceiver == null)
             damageReceiver = GetComponent<SpacecraftDamageReceiver>();
+        if (weaponSystem == null)
+            weaponSystem = GetComponent<SpacecraftWeaponSystem>();
     }
 
     void HandleDamaged(float integrity, float maximumIntegrity, SpaceDamageInfo damage)
     {
-        Abort();
+        if (warpState == InterstellarWarpState.Aligning || warpState == InterstellarWarpState.Spooling)
+        {
+            SetAutomaticLandingRequested(false);
+            CancelWarp(InterstellarWarpCancelReason.Damaged);
+        }
     }
 
     void OnDisable()
     {
         if (damageReceiver != null)
             damageReceiver.Damaged -= HandleDamaged;
-        state = InterstellarCruiseState.Inactive;
+        warpState = navigation != null && navigation.HasLockedTarget
+            ? InterstellarWarpState.Locked
+            : InterstellarWarpState.Unlocked;
         if (ifcsMotor != null)
+        {
             ifcsMotor.LinearControlEnabled = true;
+            ifcsMotor.ClearExternalTargets();
+        }
+        if (weaponSystem != null)
+            weaponSystem.ControlsEnabled = controlsEnabled;
+        SetAutomaticLandingRequested(false);
+    }
+
+    public static Vector3 CalculateTravelDirection(DoubleVector3 origin, DoubleVector3 target)
+    {
+        double x = target.x - origin.x;
+        double y = target.y - origin.y;
+        double z = target.z - origin.z;
+        double magnitude = System.Math.Sqrt(x * x + y * y + z * z);
+        return magnitude <= 0.000001d
+            ? Vector3.zero
+            : new Vector3((float)(x / magnitude), (float)(y / magnitude), (float)(z / magnitude));
+    }
+
+    public static DoubleVector3 CalculateWarpDestination(
+        DoubleVector3 origin,
+        DoubleVector3 target,
+        double targetExitDistance)
+    {
+        Vector3 direction = CalculateTravelDirection(origin, target);
+        return target - new DoubleVector3(
+            direction.x * targetExitDistance,
+            direction.y * targetExitDistance,
+            direction.z * targetExitDistance);
+    }
+
+    public static double CalculateEntryCorridorDistance(PlanetCelestialProfile profile)
+    {
+        profile = profile != null ? profile.Clone() : PlanetCelestialProfile.CreateLargeDefault();
+        float terrainTop = profile.radius + profile.maximumTerrainElevation;
+        float atmosphereEntry = profile.HasAtmosphere
+            ? profile.radius + profile.atmosphereTopAltitude + 180f
+            : terrainTop + 620f;
+        return Mathf.Max(terrainTop + 520f, atmosphereEntry);
+    }
+
+    static InterstellarCruiseState MapLegacyState(InterstellarWarpState value)
+    {
+        switch (value)
+        {
+            case InterstellarWarpState.Aligning:
+            case InterstellarWarpState.Spooling:
+                return InterstellarCruiseState.Spooling;
+            case InterstellarWarpState.Transit:
+                return InterstellarCruiseState.Cruising;
+            case InterstellarWarpState.Exiting:
+                return InterstellarCruiseState.Decelerating;
+            case InterstellarWarpState.Cooldown:
+                return InterstellarCruiseState.Cooldown;
+            default:
+                return InterstellarCruiseState.Inactive;
+        }
     }
 }

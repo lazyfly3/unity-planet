@@ -45,7 +45,7 @@ public sealed class GalaxyPlanetDefinition
 public sealed class GalaxyTravelManager : MonoBehaviour
 {
     const int PlanetSaveMagic = 0x504C4E54;
-    const int PlanetSaveVersion = 10;
+    const int PlanetSaveVersion = 11;
 
     static GalaxyTravelManager instance;
 
@@ -84,7 +84,15 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     ProceduralGalaxyGenerator proceduralGenerator;
     ProceduralInterstellarGenerator interstellarGenerator;
 
-    public static GalaxyTravelManager Instance => instance;
+    public static GalaxyTravelManager Instance
+    {
+        get
+        {
+            if (instance == null)
+                instance = FindObjectOfType<GalaxyTravelManager>();
+            return instance;
+        }
+    }
     public IReadOnlyList<GalaxyPlanetDefinition> Planets => planets;
     public GalaxyPlanetDefinition CurrentPlanet => IsInterstellarGalaxy
         ? GetPlanetAt(currentPlanetCoordinate3D)
@@ -110,6 +118,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     public int GridColumns => gridColumns;
     public int GridRows => gridRows;
     public double WeatherTimeSeconds => activeSlotMetadata != null ? activeSlotMetadata.weatherTimeSeconds : 0d;
+    public double UniverseTimeSeconds => activeSlotMetadata != null ? activeSlotMetadata.universeTimeSeconds : 0d;
     public PlanetDecorationCatalog DecorationCatalog => decorationCatalog;
     public IReadOnlyList<VisitedPlanetRecord> VisitedPlanets => activeSlotMetadata != null
         && activeSlotMetadata.visitedPlanets != null
@@ -185,7 +194,10 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     void OnDestroy()
     {
         if (instance == this)
+        {
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            instance = null;
+        }
     }
 
     void Start()
@@ -196,7 +208,10 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     void Update()
     {
         if (activeSlotMetadata != null && Time.deltaTime > 0f)
+        {
             activeSlotMetadata.weatherTimeSeconds += Time.deltaTime;
+            activeSlotMetadata.universeTimeSeconds += Time.deltaTime;
+        }
     }
 
     void OnApplicationQuit()
@@ -250,9 +265,15 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         {
             shipCoordinate3D = current.coordinate3D;
             DoubleVector3 planetPosition = GetInterstellarPlanetPosition(current.coordinate3D);
-            activeSlotMetadata.spacePositionX = planetPosition.x;
-            activeSlotMetadata.spacePositionY = planetPosition.y + 180d;
-            activeSlotMetadata.spacePositionZ = planetPosition.z + 900d;
+            PlanetCelestialProfile celestial = current.celestial ?? PlanetCelestialProfile.CreateCompatibleDefault();
+            celestial.ClampValues();
+            Vector3 departureDirection = GetLastLandingDirection(current.planetId);
+            double departureDistance = celestial.surfaceGenerationMode == PlanetSurfaceGenerationMode.StreamingLargeSphere
+                ? celestial.radius + 12000d
+                : celestial.radius + 900d;
+            activeSlotMetadata.spacePositionX = planetPosition.x + departureDirection.x * departureDistance;
+            activeSlotMetadata.spacePositionY = planetPosition.y + departureDirection.y * departureDistance;
+            activeSlotMetadata.spacePositionZ = planetPosition.z + departureDirection.z * departureDistance;
         }
         SaveActiveSlotMetadata();
         transitionInProgress = true;
@@ -342,6 +363,7 @@ if (!IsInfiniteGalaxy)
     {
         if (!IsInterstellarGalaxy)
             return null;
+        EnsureInterstellarGenerator();
         if (interstellarPlanetCache.TryGetValue(coordinate, out GalaxyPlanetDefinition cached))
             return cached;
 
@@ -365,9 +387,20 @@ if (!IsInfiniteGalaxy)
 
     public DoubleVector3 GetInterstellarPlanetPosition(InterstellarCoordinate coordinate)
     {
+        EnsureInterstellarGenerator();
         return interstellarGenerator != null
             ? interstellarGenerator.GetPlanetUniversePosition(coordinate)
             : DoubleVector3.Zero;
+    }
+
+    void EnsureInterstellarGenerator()
+    {
+        if (!IsInterstellarGalaxy || interstellarGenerator != null || activeSlotMetadata == null)
+            return;
+
+        interstellarGenerator = new ProceduralInterstellarGenerator(
+            activeSlotMetadata.worldSeed,
+            runtimeResourceCatalog);
     }
 
     public GalaxyPlanetDefinition GetPlanetAt(Vector2Int gridPosition)
@@ -430,7 +463,8 @@ if (transitionInProgress || planet == null)
         GalaxyPlanetDefinition planet,
         Vector3 relativePosition,
         Vector3 inertialVelocity,
-        Quaternion shipRotation)
+        Quaternion shipRotation,
+        bool automaticLanding = false)
     {
         if (transitionInProgress || !IsInterstellarGalaxy || planet == null)
             return;
@@ -447,7 +481,13 @@ if (transitionInProgress || planet == null)
 
         currentPlanetCoordinate3D = planet.coordinate3D;
         currentPlanetId = planet.planetId;
-        PlanetApproachContext.Set(planet, relativePosition, inertialVelocity, shipRotation, SpacecraftHullIntegrity);
+        PlanetApproachContext.Set(
+            planet,
+            relativePosition,
+            inertialVelocity,
+            shipRotation,
+            SpacecraftHullIntegrity,
+            automaticLanding);
         SaveActiveSlotMetadata();
         transitionInProgress = true;
         SceneManager.LoadScene(approachSceneName, LoadSceneMode.Single);
@@ -525,9 +565,17 @@ if (transitionInProgress || planet == null)
         activeSlotMetadata.spacecraftHullIntegrity = 50f;
         shipCoordinate3D = currentPlanetCoordinate3D;
         DoubleVector3 planetPosition = GetInterstellarPlanetPosition(currentPlanetCoordinate3D);
+        GalaxyPlanetDefinition current = CurrentPlanet;
+        PlanetCelestialProfile celestial = current != null && current.celestial != null
+            ? current.celestial
+            : PlanetCelestialProfile.CreateCompatibleDefault();
+        celestial.ClampValues();
+        double recoveryDistance = celestial.surfaceGenerationMode == PlanetSurfaceGenerationMode.StreamingLargeSphere
+            ? celestial.radius + 12000d
+            : celestial.radius + 900d;
         activeSlotMetadata.spacePositionX = planetPosition.x;
-        activeSlotMetadata.spacePositionY = planetPosition.y + 180d;
-        activeSlotMetadata.spacePositionZ = planetPosition.z + 900d;
+        activeSlotMetadata.spacePositionY = planetPosition.y;
+        activeSlotMetadata.spacePositionZ = planetPosition.z + recoveryDistance;
         SaveActiveSlotMetadata();
         transitionInProgress = true;
         SceneManager.LoadScene(surfaceSceneName, LoadSceneMode.Single);
@@ -591,6 +639,12 @@ if (transitionInProgress)
             planet.rivers,
             save != null ? save.riverData : null,
             planet.celestial ?? PlanetCelestialProfile.CreateCompatibleDefault());
+        PlanetSurfaceDayNightController dayNight = world.GetComponent<PlanetSurfaceDayNightController>()
+            ?? world.gameObject.AddComponent<PlanetSurfaceDayNightController>();
+        dayNight.Configure(world, planet.celestial ?? PlanetCelestialProfile.CreateCompatibleDefault());
+        PlanetSurfaceFarLodController farLod = world.GetComponent<PlanetSurfaceFarLodController>()
+            ?? world.gameObject.AddComponent<PlanetSurfaceFarLodController>();
+        farLod.Configure(world, planet);
         PendingPlanetLandingContext landing = PendingPlanetLandingContext.Consume();
         if (landing != null && IsInterstellarGalaxy)
         {
@@ -616,19 +670,21 @@ if (transitionInProgress)
         if (planet == null)
             return;
 
-        List<QuadSphereChunkSaveEntry> chunks = world.GetCompleteChunkSnapshots();
+        List<QuadSphereChunkSaveEntry> chunks = world.IsStreamingLargePlanet
+            ? world.GetModifiedChunkSnapshots()
+            : world.GetCompleteChunkSnapshots();
         GalaxyPlanetSaveData data = new GalaxyPlanetSaveData
         {
             formatVersion = PlanetSaveVersion,
             planetId = planet.planetId,
             seed = planet.seed,
-            hasFullVoxelSnapshot = chunks.Count == world.ExpectedChunkCount,
+            hasFullVoxelSnapshot = !world.IsStreamingLargePlanet && chunks.Count == world.ExpectedChunkCount,
             faceGridSize = world.FaceGridSize,
             maxDepth = world.MaxDepth,
             chunkSize = VoxelTypes.ChunkSize,
             terrainConfigurationHash = world.TerrainConfigurationHash,
             terrainSettings = world.TerrainSettingsSnapshot,
-            hasFullMeshSnapshot = world.HasCompleteMeshSnapshot,
+            hasFullMeshSnapshot = !world.IsStreamingLargePlanet && world.HasCompleteMeshSnapshot,
             chunks = chunks.ToArray(),
             harvestedResourceIds = world.GetHarvestedResourceIds(),
             hasFullResourceSnapshot = true,
@@ -639,7 +695,12 @@ if (transitionInProgress)
             surfacePropConfigurationHash = world.SurfacePropConfigurationHash,
             surfaceProps = world.GetSurfacePropSnapshots(),
             buildings = CaptureBuildings(world),
-            riverData = world.RiverSystem != null ? world.RiverSystem.Snapshot : null
+            riverData = world.RiverSystem != null ? world.RiverSystem.Snapshot : null,
+            surfaceGenerationMode = world.IsStreamingLargePlanet
+                ? PlanetSurfaceGenerationMode.StreamingLargeSphere
+                : PlanetSurfaceGenerationMode.LegacyFullSphere,
+            planetReferenceRadius = world.PlanetRadius,
+            voxelOuterRadius = world.VoxelOuterRadius
         };
 
         string savePath = GetPlanetSavePath(planet.planetId);
@@ -680,13 +741,24 @@ if (transitionInProgress)
         try
         {
             GalaxyPlanetSaveData legacy = JsonUtility.FromJson<GalaxyPlanetSaveData>(File.ReadAllText(legacyPath));
-            return legacy != null && legacy.formatVersion == PlanetSaveVersion ? legacy : null;
+            return legacy != null && (legacy.formatVersion == 10 || legacy.formatVersion == PlanetSaveVersion)
+                ? legacy
+                : null;
         }
         catch (System.Exception exception)
         {
             Debug.LogError($"GalaxyTravelManager: could not load planet '{planetId}'. {exception.Message}");
             return null;
         }
+    }
+
+    public bool TryLoadPlanetSurfaceSnapshot(string planetId, out GalaxyPlanetSaveData save)
+    {
+        save = null;
+        if (string.IsNullOrWhiteSpace(planetId))
+            return false;
+        save = LoadPlanet(planetId);
+        return save != null;
     }
 
     static void WritePlanetBinary(string path, GalaxyPlanetSaveData data)
@@ -831,6 +903,10 @@ if (transitionInProgress)
                 writer.Write(prop.minimumSpacing);
                 writer.Write(prop.harvestable);
             }
+
+            writer.Write((int)data.surfaceGenerationMode);
+            writer.Write(data.planetReferenceRadius);
+            writer.Write(data.voxelOuterRadius);
         }
 
         if (File.Exists(path))
@@ -849,7 +925,7 @@ if (transitionInProgress)
                 throw new InvalidDataException("Invalid planet save signature.");
 
             int version = reader.ReadInt32();
-            if (version != PlanetSaveVersion)
+            if (version != 10 && version != PlanetSaveVersion)
                 throw new InvalidDataException($"Unsupported planet save version {version}.");
 
             GalaxyPlanetSaveData data = new GalaxyPlanetSaveData
@@ -1019,6 +1095,19 @@ if (transitionInProgress)
                     minimumSpacing = reader.ReadSingle(),
                     harvestable = reader.ReadBoolean()
                 };
+            }
+
+            if (version >= 11)
+            {
+                data.surfaceGenerationMode = (PlanetSurfaceGenerationMode)reader.ReadInt32();
+                data.planetReferenceRadius = reader.ReadSingle();
+                data.voxelOuterRadius = reader.ReadSingle();
+            }
+            else
+            {
+                data.surfaceGenerationMode = PlanetSurfaceGenerationMode.LegacyFullSphere;
+                data.planetReferenceRadius = PlanetCelestialProfile.CompatibleRadius;
+                data.voxelOuterRadius = PlanetCelestialProfile.CompatibleRadius;
             }
 
             return data;
@@ -1790,6 +1879,14 @@ if (transitionInProgress)
         return null;
     }
 
+    Vector3 GetLastLandingDirection(string planetId)
+    {
+        VisitedPlanetRecord visited = FindVisitedPlanet(planetId);
+        return visited != null && visited.lastLandingDirection.sqrMagnitude > 0.001f
+            ? visited.lastLandingDirection.normalized
+            : Vector3.forward;
+    }
+
     void AddOrUpdateVisitedPlanet(PendingPlanetLandingContext context)
     {
         var records = new List<VisitedPlanetRecord>(activeSlotMetadata.visitedPlanets
@@ -1962,7 +2059,7 @@ if (transitionInProgress)
             bool migratedLegacy = visited != null && !record.usesInterstellarCoordinate;
             bool coordinateMatches = migratedLegacy
                 || (record.coordinateX == coordinate.x && record.coordinateY == coordinate.y && record.coordinateZ == coordinate.z);
-            if (record == null || record.formatVersion < 2 || record.formatVersion > 4
+            if (record == null || record.formatVersion < 2 || record.formatVersion > 5
                 || record.planetId != planetId || !coordinateMatches)
                 throw new InvalidDataException("Invalid interstellar planet definition.");
 

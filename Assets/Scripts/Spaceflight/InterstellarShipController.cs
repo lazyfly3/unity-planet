@@ -47,6 +47,18 @@ public sealed class InterstellarShipController : MonoBehaviour
     public InterstellarCruiseState CruiseState => cruiseController == null
         ? InterstellarCruiseState.Inactive
         : cruiseController.State;
+    public InterstellarWarpState WarpState => cruiseController == null
+        ? InterstellarWarpState.Unlocked
+        : cruiseController.WarpState;
+    public InterstellarWarpCancelReason WarpCancelReason => cruiseController == null
+        ? InterstellarWarpCancelReason.None
+        : cruiseController.CancelReason;
+    public float WarpProgress => cruiseController == null ? 0f : cruiseController.WarpProgress;
+    public float WarpAlignmentError => cruiseController == null ? 0f : cruiseController.AlignmentError;
+    public float WarpVisualIntensity => cruiseController == null ? 0f : cruiseController.WarpVisualIntensity;
+    public float WarpExitDistance => cruiseController == null ? 0f : cruiseController.ExitDistance;
+    public bool AutomaticLandingActive => cruiseController != null
+        && cruiseController.AutomaticLandingRequested;
     public float Speed => shipBody == null ? 0f : shipBody.velocity.magnitude;
     public bool StabilizationEnabled => ifcsMotor == null
         || ifcsMotor.AssistMode != SpacecraftAssistMode.Decoupled;
@@ -58,6 +70,7 @@ public sealed class InterstellarShipController : MonoBehaviour
     public Rigidbody ShipBody => shipBody;
     public ShipAssembly Assembly => assembly;
     public SpacecraftWeaponSystem WeaponSystem => weaponSystem;
+    public InterstellarCruiseController CruiseController => cruiseController;
 
     void Awake()
     {

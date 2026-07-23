@@ -122,6 +122,42 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &23962612
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 23962613}
+  m_Layer: 0
+  m_Name: PlanetLightLayer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &23962613
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 23962612}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1621993066}
+  m_Father: {fileID: 771673050}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &114571647
 GameObject:
   m_ObjectHideFlags: 0
@@ -149,8 +185,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1e3512979931344428c6abd42d1dbc90, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   encountersEnabled: 1
   pirateShipPrefab: {fileID: 6015423107657650506, guid: 75ee03af76b57064688f1285c9a8c858, type: 3}
   flightRuntime: {fileID: 449002357}
@@ -234,8 +270,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ea3de91aeac073c44a85dfec21770718, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.08, g: 0.82, b: 1, a: 0.96}
   m_RaycastTarget: 0
@@ -296,8 +332,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_EffectColor: {r: 0, g: 0, b: 0, a: 0.5}
   m_EffectDistance: {x: 1, y: -1}
   m_UseGraphicAlpha: 1
@@ -311,8 +347,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.68, g: 0.93, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -342,6 +378,101 @@ CanvasRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 247074785}
+  m_CullTransparentMesh: 1
+--- !u!1 &260253996
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 260253997}
+  - component: {fileID: 260254000}
+  - component: {fileID: 260253999}
+  - component: {fileID: 260253998}
+  m_Layer: 0
+  m_Name: PlanetLightLabel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &260253997
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 260253996}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1621993066}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: -34}
+  m_SizeDelta: {x: 300, y: 40}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &260253998
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 260253996}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  m_EffectColor: {r: 0, g: 0.08, b: 0.12, a: 0.95}
+  m_EffectDistance: {x: 1.5, y: -1.5}
+  m_UseGraphicAlpha: 1
+--- !u!114 &260253999
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 260253996}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.65, g: 0.92, b: 1, a: 0.96}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 12800000, guid: 4dc8aa084416d904b8623eecd3e80018, type: 3}
+    m_FontSize: 15
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 10
+    m_MaxSize: 40
+    m_Alignment: 1
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text:
+--- !u!222 &260254000
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 260253996}
   m_CullTransparentMesh: 1
 --- !u!1 &283669325
 GameObject:
@@ -390,8 +521,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.45, g: 0.92, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -485,8 +616,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.12, g: 0.92, b: 1, a: 0.95}
   m_RaycastTarget: 0
@@ -516,6 +647,67 @@ CanvasRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 289906836}
+  m_CullTransparentMesh: 1
+--- !u!1 &397484220
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 397484221}
+  - component: {fileID: 397484223}
+  - component: {fileID: 397484222}
+  m_Layer: 0
+  m_Name: WarpOverlay
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &397484221
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 397484220}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 771673050}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &397484222
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 397484220}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c755bb1efad6c345a2781e8da8c510a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+--- !u!222 &397484223
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 397484220}
   m_CullTransparentMesh: 1
 --- !u!1 &443896325
 GameObject:
@@ -754,8 +946,9 @@ MonoBehaviour:
   runtime: {fileID: 0}
   proxyRoot: {fileID: 0}
   scanRadiusSectors: 8
-  maximumVisiblePlanets: 7
+  maximumVisiblePlanets: 16
   planetVisualRadius: 280
+  nearProxyDistance: 30000
   approachDistance: 720
   maximumEntrySpeed: 260
 --- !u!114 &449002357
@@ -852,16 +1045,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   shipBody: {fileID: 0}
   navigation: {fileID: 0}
+  flightRuntime: {fileID: 0}
   ifcsMotor: {fileID: 0}
   flightInput: {fileID: 0}
   damageReceiver: {fileID: 0}
-  spoolDuration: 1.15
-  cruiseAcceleration: 240
-  maximumCruiseSpeed: 4200
-  finalApproachSpeed: 180
-  activationAngle: 7
+  weaponSystem: {fileID: 0}
+  reticleLockAngle: 10
+  alignmentAngle: 3
   abortAngle: 10
+  spoolDuration: 1.5
+  transitDuration: 1.2
+  exitDuration: 0.28
   cooldownDuration: 1.2
+  exitDistance: 14000
+  exitSpeed: 120
 --- !u!114 &449002368
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -886,6 +1083,954 @@ MonoBehaviour:
   crosshairLaunchClearance: 2
   damageMultiplier: 1
   controlsEnabled: 1
+--- !u!1 &454491676
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 454491678}
+  - component: {fileID: 454491677}
+  m_Layer: 0
+  m_Name: GalaxyTravelManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &454491677
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 454491676}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b57c5fd218924920937840f2e6678c7d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  surfaceSceneName: star
+  mapSceneName: GalaxyMap
+  interstellarSceneName: InterstellarFlight
+  approachSceneName: PlanetApproach
+  gridColumns: 12
+  gridRows: 8
+  galaxyLayoutSeed: 7319
+  planetEdgePadding: 1
+  planets:
+  - planetId: origin
+    displayName: Aster
+    seed: 12345
+    climate: 0
+    mapColor: {r: 0.85, g: 0.53, b: 0.24, a: 1}
+    surfaceColor: {r: 1, g: 1, b: 1, a: 1}
+    rockColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+    hasExplicitPalette: 0
+    tintMapIcon: 0
+    iconResourcePath: Galaxy/planet_amber
+    terrain:
+      continentScale: 0.022
+      continentHeight: 7
+      detailScale: 0.075
+      detailHeight: 3
+      ridgeHeight: 2
+      surfaceLayerDepth: 1
+      stoneDepth: 4
+      generateCaves: 1
+      caveScale: 0.06
+      caveThreshold: 0.66
+      caveSurfaceClearance: 3
+    spawnHarvestableResources: 1
+    resourceSpawnSettings:
+    - prefab: {fileID: 6235272971013597112, guid: 2e4fc1545d886cc4d8b263ae5608a21f, type: 3}
+      count: 0
+      seedOffset: 0
+      surfaceOffset: 0
+      minimumSpacing: 0
+      playerClearRadius: 0
+      placementAttempts: 0
+      clockwiseRotationDegrees: 0
+      randomizeYaw: 0
+    rivers:
+      physicsVersion: 1
+      enabled: 0
+      riverCount: 0
+      nodesPerRiver: 48
+      minWidth: 2
+      maxWidth: 4
+      minDepth: 0.8
+      maxDepth: 1.5
+      flowSpeed: 1.5
+      lakeRadius: 6
+      lakeDepth: 2
+      localRerouteRadius: 16
+      seedOffset: 44021
+      shallowColor: {r: 0.08, g: 0.72, b: 0.68, a: 0.58}
+      deepColor: {r: 0.01, g: 0.18, b: 0.3, a: 0.82}
+      foamStrength: 0.65
+      simulationStep: 0.05
+      sourceFlowRate: 1.2
+      manningRoughness: 0.035
+      minimumWaterDepth: 0.03
+      evaporationRate: 0
+      maxSubstepsPerFixedUpdate: 4
+    weather:
+      enabled: 1
+      seedOffset: 91573
+      transitionDuration: 20
+      presets:
+      - type: 0
+        displayName: "\u6674\u6717"
+        weight: 4.5
+        minimumDuration: 240
+        maximumDuration: 420
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 2
+        precipitation: 0
+        fogDensity: 0
+        cloudCoverage: 0
+        lightMultiplier: 1
+        wetness: 0
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 0
+        lightning: 0
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+      - type: 2
+        displayName: "\u8584\u5C18"
+        weight: 3.5
+        minimumDuration: 180
+        maximumDuration: 360
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 6
+        precipitation: 0
+        fogDensity: 0.009
+        cloudCoverage: 0.25
+        lightMultiplier: 0.82
+        wetness: 0
+        dustCoverage: 0.25
+        crystalCoverage: 0
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 900
+        lightning: 0
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.9, g: 0.43, b: 0.16, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+      - type: 3
+        displayName: "\u9668\u5C18\u98CE"
+        weight: 2
+        minimumDuration: 80
+        maximumDuration: 190
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 13
+        precipitation: 0
+        fogDensity: 0.028
+        cloudCoverage: 0.55
+        lightMultiplier: 0.58
+        wetness: 0
+        dustCoverage: 0.65
+        crystalCoverage: 0
+        tractionMultiplier: 0.8
+        riverRainfallRate: 0
+        particleCount: 2800
+        lightning: 0
+        fogColor: {r: 0.42, g: 0.2, b: 0.09, a: 1}
+        particleColor: {r: 0.9, g: 0.43, b: 0.16, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+    celestial:
+      surfaceGenerationMode: 0
+      radius: 100
+      surfaceGravity: 9.8
+      gravitationalParameter: 98000
+      rotationAxis: {x: 0, y: 1, z: 0}
+      rotationPeriod: 180
+      atmosphereSurfaceDensity: 0.8
+      atmosphereScaleHeight: 4.5
+      atmosphereTopAltitude: 20
+      maximumTerrainElevation: 12
+      editableDepth: 64
+      rotationEpochSeconds: 0
+      atmosphereVisual:
+        kind: 2
+        horizonColor: {r: 0.24, g: 0.58, b: 1, a: 1}
+        zenithColor: {r: 0.035, g: 0.14, b: 0.32, a: 1}
+        sunsetColor: {r: 1, g: 0.32, b: 0.08, a: 1}
+        scatteringStrength: 0.8
+        cloudCoverage: 0.45
+        cloudRotationMultiplier: 1.08
+  - planetId: verdant
+    displayName: Viridia
+    seed: 24680
+    climate: 1
+    mapColor: {r: 0.3, g: 0.82, b: 0.5, a: 1}
+    surfaceColor: {r: 1, g: 1, b: 1, a: 1}
+    rockColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+    hasExplicitPalette: 0
+    tintMapIcon: 0
+    iconResourcePath: Galaxy/planet_green
+    terrain:
+      continentScale: 0.012
+      continentHeight: 10
+      detailScale: 0.045
+      detailHeight: 1.5
+      ridgeHeight: 0.5
+      surfaceLayerDepth: 1.5
+      stoneDepth: 5
+      generateCaves: 1
+      caveScale: 0.045
+      caveThreshold: 0.72
+      caveSurfaceClearance: 4
+    spawnHarvestableResources: 1
+    resourceSpawnSettings: []
+    rivers:
+      physicsVersion: 1
+      enabled: 1
+      riverCount: 4
+      nodesPerRiver: 48
+      minWidth: 2
+      maxWidth: 4
+      minDepth: 0.8
+      maxDepth: 1.5
+      flowSpeed: 1.5
+      lakeRadius: 6
+      lakeDepth: 2
+      localRerouteRadius: 16
+      seedOffset: 44021
+      shallowColor: {r: 0.06, g: 0.76, b: 0.63, a: 0.58}
+      deepColor: {r: 0.005, g: 0.19, b: 0.23, a: 0.82}
+      foamStrength: 0.65
+      simulationStep: 0.05
+      sourceFlowRate: 1.2
+      manningRoughness: 0.035
+      minimumWaterDepth: 0.03
+      evaporationRate: 0
+      maxSubstepsPerFixedUpdate: 4
+    weather:
+      enabled: 1
+      seedOffset: 91573
+      transitionDuration: 20
+      presets:
+      - type: 0
+        displayName: "\u6674\u6717"
+        weight: 3
+        minimumDuration: 240
+        maximumDuration: 420
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 2
+        precipitation: 0
+        fogDensity: 0
+        cloudCoverage: 0
+        lightMultiplier: 1
+        wetness: 0
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 0
+        lightning: 0
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+      - type: 1
+        displayName: "\u9634\u5929"
+        weight: 2
+        minimumDuration: 180
+        maximumDuration: 360
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 4
+        precipitation: 0
+        fogDensity: 0.006
+        cloudCoverage: 0.75
+        lightMultiplier: 0.72
+        wetness: 0
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 0
+        lightning: 0
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+      - type: 4
+        displayName: "\u6E29\u5E26\u964D\u96E8"
+        weight: 3
+        minimumDuration: 180
+        maximumDuration: 360
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 6
+        precipitation: 0.65
+        fogDensity: 0.012
+        cloudCoverage: 0.88
+        lightMultiplier: 0.62
+        wetness: 0.65
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 0.85
+        riverRainfallRate: 1.8
+        particleCount: 1800
+        lightning: 0
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+      - type: 5
+        displayName: "\u96F7\u66B4"
+        weight: 1
+        minimumDuration: 60
+        maximumDuration: 180
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 12
+        precipitation: 1
+        fogDensity: 0.025
+        cloudCoverage: 1
+        lightMultiplier: 0.38
+        wetness: 1
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 0.72
+        riverRainfallRate: 4.2
+        particleCount: 3200
+        lightning: 1
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+      - type: 6
+        displayName: "\u6668\u96FE"
+        weight: 1
+        minimumDuration: 120
+        maximumDuration: 240
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 1.5
+        precipitation: 0
+        fogDensity: 0.035
+        cloudCoverage: 0.45
+        lightMultiplier: 0.68
+        wetness: 0
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 0
+        lightning: 0
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+    celestial:
+      surfaceGenerationMode: 0
+      radius: 100
+      surfaceGravity: 9.8
+      gravitationalParameter: 98000
+      rotationAxis: {x: 0, y: 1, z: 0}
+      rotationPeriod: 180
+      atmosphereSurfaceDensity: 0.8
+      atmosphereScaleHeight: 4.5
+      atmosphereTopAltitude: 20
+      maximumTerrainElevation: 12
+      editableDepth: 64
+      rotationEpochSeconds: 0
+      atmosphereVisual:
+        kind: 2
+        horizonColor: {r: 0.24, g: 0.58, b: 1, a: 1}
+        zenithColor: {r: 0.035, g: 0.14, b: 0.32, a: 1}
+        sunsetColor: {r: 1, g: 0.32, b: 0.08, a: 1}
+        scatteringStrength: 0.8
+        cloudCoverage: 0.45
+        cloudRotationMultiplier: 1.08
+  - planetId: crimson
+    displayName: Cinder
+    seed: 97531
+    climate: 5
+    mapColor: {r: 0.9, g: 0.3, b: 0.2, a: 1}
+    surfaceColor: {r: 1, g: 1, b: 1, a: 1}
+    rockColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+    hasExplicitPalette: 0
+    tintMapIcon: 0
+    iconResourcePath: Galaxy/planet_red
+    terrain:
+      continentScale: 0.025
+      continentHeight: 9
+      detailScale: 0.085
+      detailHeight: 4.5
+      ridgeHeight: 7
+      surfaceLayerDepth: 0.6
+      stoneDepth: 2.5
+      generateCaves: 1
+      caveScale: 0.075
+      caveThreshold: 0.59
+      caveSurfaceClearance: 2
+    spawnHarvestableResources: 1
+    resourceSpawnSettings: []
+    rivers:
+      physicsVersion: 1
+      enabled: 0
+      riverCount: 0
+      nodesPerRiver: 48
+      minWidth: 2
+      maxWidth: 4
+      minDepth: 0.8
+      maxDepth: 1.5
+      flowSpeed: 1.5
+      lakeRadius: 6
+      lakeDepth: 2
+      localRerouteRadius: 16
+      seedOffset: 44021
+      shallowColor: {r: 0.08, g: 0.72, b: 0.68, a: 0.58}
+      deepColor: {r: 0.01, g: 0.18, b: 0.3, a: 0.82}
+      foamStrength: 0.65
+      simulationStep: 0.05
+      sourceFlowRate: 1.2
+      manningRoughness: 0.035
+      minimumWaterDepth: 0.03
+      evaporationRate: 0
+      maxSubstepsPerFixedUpdate: 4
+    weather:
+      enabled: 1
+      seedOffset: 91573
+      transitionDuration: 20
+      presets:
+      - type: 0
+        displayName: "\u707C\u70ED\u6674\u7A7A"
+        weight: 3
+        minimumDuration: 240
+        maximumDuration: 420
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 3
+        precipitation: 0
+        fogDensity: 0
+        cloudCoverage: 0
+        lightMultiplier: 1
+        wetness: 0
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 0
+        lightning: 0
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+      - type: 7
+        displayName: "\u706B\u5C71\u7070"
+        weight: 2.5
+        minimumDuration: 150
+        maximumDuration: 300
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 7
+        precipitation: 0
+        fogDensity: 0.018
+        cloudCoverage: 0.65
+        lightMultiplier: 0.6
+        wetness: 0
+        dustCoverage: 0.45
+        crystalCoverage: 0
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 1600
+        lightning: 0
+        fogColor: {r: 0.42, g: 0.2, b: 0.09, a: 1}
+        particleColor: {r: 0.25, g: 0.2, b: 0.18, a: 1}
+        ambientTint: {r: 0.75, g: 0.42, b: 0.25, a: 1}
+      - type: 8
+        displayName: "\u8D64\u7802\u98CE\u66B4"
+        weight: 3.5
+        minimumDuration: 90
+        maximumDuration: 210
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 16
+        precipitation: 0
+        fogDensity: 0.045
+        cloudCoverage: 0.85
+        lightMultiplier: 0.4
+        wetness: 0
+        dustCoverage: 0.85
+        crystalCoverage: 0
+        tractionMultiplier: 0.7
+        riverRainfallRate: 0
+        particleCount: 3600
+        lightning: 0
+        fogColor: {r: 0.42, g: 0.2, b: 0.09, a: 1}
+        particleColor: {r: 0.9, g: 0.43, b: 0.16, a: 1}
+        ambientTint: {r: 0.75, g: 0.42, b: 0.25, a: 1}
+      - type: 9
+        displayName: "\u5E72\u96F7\u66B4"
+        weight: 1
+        minimumDuration: 60
+        maximumDuration: 150
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 14
+        precipitation: 0
+        fogDensity: 0.018
+        cloudCoverage: 0.92
+        lightMultiplier: 0.45
+        wetness: 0
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 800
+        lightning: 1
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+    celestial:
+      surfaceGenerationMode: 0
+      radius: 100
+      surfaceGravity: 9.8
+      gravitationalParameter: 98000
+      rotationAxis: {x: 0, y: 1, z: 0}
+      rotationPeriod: 180
+      atmosphereSurfaceDensity: 0.8
+      atmosphereScaleHeight: 4.5
+      atmosphereTopAltitude: 20
+      maximumTerrainElevation: 12
+      editableDepth: 64
+      rotationEpochSeconds: 0
+      atmosphereVisual:
+        kind: 2
+        horizonColor: {r: 0.24, g: 0.58, b: 1, a: 1}
+        zenithColor: {r: 0.035, g: 0.14, b: 0.32, a: 1}
+        sunsetColor: {r: 1, g: 0.32, b: 0.08, a: 1}
+        scatteringStrength: 0.8
+        cloudCoverage: 0.45
+        cloudRotationMultiplier: 1.08
+  - planetId: azure
+    displayName: Pelagos
+    seed: 48127
+    climate: 3
+    mapColor: {r: 0.25, g: 0.65, b: 0.95, a: 1}
+    surfaceColor: {r: 1, g: 1, b: 1, a: 1}
+    rockColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+    hasExplicitPalette: 0
+    tintMapIcon: 0
+    iconResourcePath: Galaxy/planet_blue
+    terrain:
+      continentScale: 0.01
+      continentHeight: 6
+      detailScale: 0.035
+      detailHeight: 0.8
+      ridgeHeight: 0.2
+      surfaceLayerDepth: 2
+      stoneDepth: 6
+      generateCaves: 1
+      caveScale: 0.035
+      caveThreshold: 0.78
+      caveSurfaceClearance: 5
+    spawnHarvestableResources: 1
+    resourceSpawnSettings: []
+    rivers:
+      physicsVersion: 1
+      enabled: 1
+      riverCount: 7
+      nodesPerRiver: 56
+      minWidth: 3
+      maxWidth: 6
+      minDepth: 1.2
+      maxDepth: 2.2
+      flowSpeed: 1.1
+      lakeRadius: 9
+      lakeDepth: 3
+      localRerouteRadius: 16
+      seedOffset: 44021
+      shallowColor: {r: 0.04, g: 0.55, b: 0.88, a: 0.58}
+      deepColor: {r: 0.005, g: 0.08, b: 0.32, a: 0.84}
+      foamStrength: 0.65
+      simulationStep: 0.05
+      sourceFlowRate: 1.2
+      manningRoughness: 0.035
+      minimumWaterDepth: 0.03
+      evaporationRate: 0
+      maxSubstepsPerFixedUpdate: 4
+    weather:
+      enabled: 1
+      seedOffset: 91573
+      transitionDuration: 20
+      presets:
+      - type: 1
+        displayName: "\u6D77\u6D0B\u9634\u4E91"
+        weight: 2
+        minimumDuration: 180
+        maximumDuration: 360
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 5
+        precipitation: 0
+        fogDensity: 0.008
+        cloudCoverage: 0.8
+        lightMultiplier: 0.72
+        wetness: 0
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 0
+        lightning: 0
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+      - type: 10
+        displayName: "\u5F3A\u964D\u96E8"
+        weight: 3.5
+        minimumDuration: 150
+        maximumDuration: 330
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 9
+        precipitation: 1
+        fogDensity: 0.02
+        cloudCoverage: 0.95
+        lightMultiplier: 0.52
+        wetness: 1
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 0.75
+        riverRainfallRate: 4.5
+        particleCount: 3000
+        lightning: 0
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+      - type: 11
+        displayName: "\u6D77\u6D0B\u98CE\u66B4"
+        weight: 3
+        minimumDuration: 70
+        maximumDuration: 180
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 18
+        precipitation: 1
+        fogDensity: 0.035
+        cloudCoverage: 1
+        lightMultiplier: 0.32
+        wetness: 1
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 0.62
+        riverRainfallRate: 8
+        particleCount: 4400
+        lightning: 1
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+      - type: 12
+        displayName: "\u6D77\u96FE"
+        weight: 1.5
+        minimumDuration: 120
+        maximumDuration: 260
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 3
+        precipitation: 0
+        fogDensity: 0.05
+        cloudCoverage: 0.7
+        lightMultiplier: 0.58
+        wetness: 0
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 0
+        lightning: 0
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+    celestial:
+      surfaceGenerationMode: 0
+      radius: 100
+      surfaceGravity: 9.8
+      gravitationalParameter: 98000
+      rotationAxis: {x: 0, y: 1, z: 0}
+      rotationPeriod: 180
+      atmosphereSurfaceDensity: 0.8
+      atmosphereScaleHeight: 4.5
+      atmosphereTopAltitude: 20
+      maximumTerrainElevation: 12
+      editableDepth: 64
+      rotationEpochSeconds: 0
+      atmosphereVisual:
+        kind: 2
+        horizonColor: {r: 0.24, g: 0.58, b: 1, a: 1}
+        zenithColor: {r: 0.035, g: 0.14, b: 0.32, a: 1}
+        sunsetColor: {r: 1, g: 0.32, b: 0.08, a: 1}
+        scatteringStrength: 0.8
+        cloudCoverage: 0.45
+        cloudRotationMultiplier: 1.08
+  - planetId: violet
+    displayName: Nyx
+    seed: 86420
+    climate: 6
+    mapColor: {r: 0.65, g: 0.35, b: 0.9, a: 1}
+    surfaceColor: {r: 1, g: 1, b: 1, a: 1}
+    rockColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+    hasExplicitPalette: 0
+    tintMapIcon: 0
+    iconResourcePath: Galaxy/planet_violet
+    terrain:
+      continentScale: 0.03
+      continentHeight: 6
+      detailScale: 0.11
+      detailHeight: 5.5
+      ridgeHeight: 6
+      surfaceLayerDepth: 0.7
+      stoneDepth: 3
+      generateCaves: 1
+      caveScale: 0.095
+      caveThreshold: 0.57
+      caveSurfaceClearance: 1.5
+    spawnHarvestableResources: 1
+    resourceSpawnSettings: []
+    rivers:
+      physicsVersion: 1
+      enabled: 0
+      riverCount: 0
+      nodesPerRiver: 48
+      minWidth: 2
+      maxWidth: 4
+      minDepth: 0.8
+      maxDepth: 1.5
+      flowSpeed: 1.5
+      lakeRadius: 6
+      lakeDepth: 2
+      localRerouteRadius: 16
+      seedOffset: 44021
+      shallowColor: {r: 0.08, g: 0.72, b: 0.68, a: 0.58}
+      deepColor: {r: 0.01, g: 0.18, b: 0.3, a: 0.82}
+      foamStrength: 0.65
+      simulationStep: 0.05
+      sourceFlowRate: 1.2
+      manningRoughness: 0.035
+      minimumWaterDepth: 0.03
+      evaporationRate: 0
+      maxSubstepsPerFixedUpdate: 4
+    weather:
+      enabled: 1
+      seedOffset: 91573
+      transitionDuration: 20
+      presets:
+      - type: 0
+        displayName: "\u5BC2\u9759\u661F\u7A7A"
+        weight: 3
+        minimumDuration: 240
+        maximumDuration: 420
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 2
+        precipitation: 0
+        fogDensity: 0
+        cloudCoverage: 0
+        lightMultiplier: 1
+        wetness: 0
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 0
+        lightning: 0
+        fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 1, g: 1, b: 1, a: 1}
+      - type: 13
+        displayName: "\u7D2B\u6676\u5C18"
+        weight: 3.5
+        minimumDuration: 150
+        maximumDuration: 330
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 8
+        precipitation: 0
+        fogDensity: 0.014
+        cloudCoverage: 0.55
+        lightMultiplier: 0.72
+        wetness: 0
+        dustCoverage: 0
+        crystalCoverage: 0.7
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 2200
+        lightning: 0
+        fogColor: {r: 0.22, g: 0.08, b: 0.34, a: 1}
+        particleColor: {r: 0.78, g: 0.3, b: 1, a: 1}
+        ambientTint: {r: 0.55, g: 0.3, b: 0.8, a: 1}
+      - type: 14
+        displayName: "\u79BB\u5B50\u98CE\u66B4"
+        weight: 2.5
+        minimumDuration: 70
+        maximumDuration: 180
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 15
+        precipitation: 0
+        fogDensity: 0.025
+        cloudCoverage: 1
+        lightMultiplier: 0.45
+        wetness: 0
+        dustCoverage: 0
+        crystalCoverage: 0.4
+        tractionMultiplier: 0.78
+        riverRainfallRate: 0
+        particleCount: 3600
+        lightning: 1
+        fogColor: {r: 0.22, g: 0.08, b: 0.34, a: 1}
+        particleColor: {r: 0.78, g: 0.3, b: 1, a: 1}
+        ambientTint: {r: 0.55, g: 0.3, b: 0.8, a: 1}
+      - type: 15
+        displayName: "\u7D2B\u96FE"
+        weight: 1
+        minimumDuration: 120
+        maximumDuration: 260
+        minimumIntensity: 0.55
+        maximumIntensity: 1
+        windSpeed: 2
+        precipitation: 0
+        fogDensity: 0.048
+        cloudCoverage: 0.5
+        lightMultiplier: 0.55
+        wetness: 0
+        dustCoverage: 0
+        crystalCoverage: 0
+        tractionMultiplier: 1
+        riverRainfallRate: 0
+        particleCount: 0
+        lightning: 0
+        fogColor: {r: 0.22, g: 0.08, b: 0.34, a: 1}
+        particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
+        ambientTint: {r: 0.55, g: 0.3, b: 0.8, a: 1}
+    celestial:
+      surfaceGenerationMode: 0
+      radius: 100
+      surfaceGravity: 9.8
+      gravitationalParameter: 98000
+      rotationAxis: {x: 0, y: 1, z: 0}
+      rotationPeriod: 180
+      atmosphereSurfaceDensity: 0.8
+      atmosphereScaleHeight: 4.5
+      atmosphereTopAltitude: 20
+      maximumTerrainElevation: 12
+      editableDepth: 64
+      rotationEpochSeconds: 0
+      atmosphereVisual:
+        kind: 2
+        horizonColor: {r: 0.24, g: 0.58, b: 1, a: 1}
+        zenithColor: {r: 0.035, g: 0.14, b: 0.32, a: 1}
+        sunsetColor: {r: 1, g: 0.32, b: 0.08, a: 1}
+        scatteringStrength: 0.8
+        cloudCoverage: 0.45
+        cloudRotationMultiplier: 1.08
+  resourceCatalog: []
+  decorationCatalog: {fileID: 11400000, guid: bfc1507753c20c54f89990af172b4bb7, type: 2}
+--- !u!4 &454491678
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 454491676}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &549185984
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 549185985}
+  - component: {fileID: 549185987}
+  - component: {fileID: 549185986}
+  m_Layer: 0
+  m_Name: PlanetSelectionRing
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &549185985
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 549185984}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1621993066}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 52, y: 52}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &549185986
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 549185984}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.3, g: 0.75, b: 1, a: 0.75}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 12800000, guid: 4dc8aa084416d904b8623eecd3e80018, type: 3}
+    m_FontSize: 26
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 10
+    m_MaxSize: 40
+    m_Alignment: 4
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text: "\u25CB"
+--- !u!222 &549185987
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 549185984}
+  m_CullTransparentMesh: 1
 --- !u!1 &584408482
 GameObject:
   m_ObjectHideFlags: 0
@@ -949,8 +2094,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.68, g: 0.93, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -1028,8 +2173,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -1103,8 +2248,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.45, g: 0.92, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -1236,6 +2381,8 @@ RectTransform:
   m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 397484221}
+  - {fileID: 23962613}
   - {fileID: 767385742}
   - {fileID: 584408483}
   - {fileID: 247074786}
@@ -1290,6 +2437,9 @@ MonoBehaviour:
   weaponLockText: {fileID: 1439542612}
   weaponTargetMarker: {fileID: 245265064}
   targetArrow: {fileID: 0}
+  planetLightLayer: {fileID: 0}
+  planetLightTemplate: {fileID: 0}
+  warpOverlay: {fileID: 0}
   enemyThreatArrows:
   - {fileID: 1801699282}
   - {fileID: 827015943}
@@ -1424,8 +2574,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 0.38, b: 0.08, a: 1}
   m_RaycastTarget: 0
@@ -1440,7 +2590,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 48
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -1519,8 +2669,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 0.38, b: 0.08, a: 1}
   m_RaycastTarget: 0
@@ -1535,7 +2685,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 48
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -1598,8 +2748,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.55, g: 0.9, b: 1, a: 0.94}
   m_RaycastTarget: 0
@@ -1677,8 +2827,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.45, g: 0.92, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -1756,8 +2906,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.45, g: 0.92, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -1835,8 +2985,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.45, g: 0.92, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -1914,8 +3064,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.45, g: 0.92, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -1993,8 +3143,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.45, g: 0.92, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -2088,8 +3238,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.75, g: 0.94, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -2183,8 +3333,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 0.68, b: 0.2, a: 1}
   m_RaycastTarget: 0
@@ -2246,6 +3396,87 @@ Transform:
   m_Children: []
   m_Father: {fileID: 449002351}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1621993065
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1621993066}
+  - component: {fileID: 1621993068}
+  - component: {fileID: 1621993067}
+  m_Layer: 0
+  m_Name: PlanetLightTemplate
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!224 &1621993066
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1621993065}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 549185985}
+  - {fileID: 260253997}
+  m_Father: {fileID: 23962613}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 42, y: 42}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1621993067
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1621993065}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.2, g: 0.85, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 12800000, guid: 4dc8aa084416d904b8623eecd3e80018, type: 3}
+    m_FontSize: 12
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 10
+    m_MaxSize: 40
+    m_Alignment: 4
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text: "\u25CF"
+--- !u!222 &1621993068
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1621993065}
+  m_CullTransparentMesh: 1
 --- !u!1 &1739610644
 GameObject:
   m_ObjectHideFlags: 0
@@ -2293,8 +3524,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.55, g: 0.9, b: 1, a: 0.94}
   m_RaycastTarget: 0
@@ -2388,8 +3619,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.7, g: 0.95, b: 1, a: 0.7}
   m_RaycastTarget: 0
@@ -2483,8 +3714,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 0.38, b: 0.08, a: 1}
   m_RaycastTarget: 0
@@ -2499,7 +3730,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 48
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -2593,8 +3824,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.55, g: 0.9, b: 1, a: 0.94}
   m_RaycastTarget: 0
@@ -2672,8 +3903,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.55, g: 0.9, b: 1, a: 0.94}
   m_RaycastTarget: 0
@@ -2751,8 +3982,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.08, g: 0.9, b: 1, a: 0.72}
   m_RaycastTarget: 0
@@ -2842,8 +4073,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 0.86, g: 0.97, b: 1, a: 1}
   m_RaycastTarget: 0
@@ -2881,3 +4112,4 @@ SceneRoots:
   - {fileID: 449002349}
   - {fileID: 114571649}
   - {fileID: 1881216849}
+  - {fileID: 454491678}

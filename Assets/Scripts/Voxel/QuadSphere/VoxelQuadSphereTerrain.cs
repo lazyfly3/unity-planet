@@ -67,7 +67,8 @@ public static class VoxelQuadSphereTerrain
         int innerSolidDepthLayers,
         int seed,
         Vector3 planetCenter,
-        float planetRadius,
+        float voxelOuterRadius,
+        float surfaceReferenceRadius,
         PlanetTerrainSettings settings,
         float riverCarveDepth = 0f)
     {
@@ -76,11 +77,12 @@ public static class VoxelQuadSphereTerrain
 
         settings = settings ?? PlanetTerrainSettings.CreateLegacy();
         Vector3 center = VoxelQuadSphereMapping.FaceCellCenterLocal(
-            face, cellU, cellV, depth, gridSize, planetRadius, planetCenter);
+            face, cellU, cellV, depth, gridSize, voxelOuterRadius, planetCenter);
 
         float radialDistance = Vector3.Distance(center, planetCenter);
         float surfaceNoise = GetSurfaceNoise(center - planetCenter, seed, settings);
-        float depthFromSurface = planetRadius - radialDistance + surfaceNoise - Mathf.Max(0f, riverCarveDepth);
+        float surfaceRadius = surfaceReferenceRadius + surfaceNoise - Mathf.Max(0f, riverCarveDepth);
+        float depthFromSurface = surfaceRadius - radialDistance;
         if (depthFromSurface <= 0f)
             return VoxelTypes.Air;
 

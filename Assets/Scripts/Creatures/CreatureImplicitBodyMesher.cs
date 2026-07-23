@@ -7,7 +7,9 @@ using UnityEngine;
 public enum CreatureBodyMeshQuality
 {
     Preview,
-    Final
+    Final,
+    Lod1,
+    Lod2
 }
 
 public sealed class CreatureImplicitMeshData
@@ -23,7 +25,10 @@ public sealed class CreatureImplicitMeshData
 public static class CreatureImplicitBodyMesher
 {
     const int MaximumGridDimension = 128;
-    const int MaximumVertexCount = 20000;
+    const int MaximumVertexCount = 26000;
+    static readonly object V4CacheLock = new object();
+    static readonly Dictionary<long, CreatureImplicitMeshData> V4MeshDataCache =
+        new Dictionary<long, CreatureImplicitMeshData>();
     static readonly int[,] Tetrahedra =
     {
         { 0, 5, 1, 6 }, { 0, 1, 2, 6 }, { 0, 2, 3, 6 },
@@ -49,6 +54,16 @@ public static class CreatureImplicitBodyMesher
         return Task.Run(() => Build(snapshot, quality, revision, cancellationToken), cancellationToken);
     }
 
+    public static Task<CreatureImplicitMeshData> BuildAsync(
+        CreaturePhenotype phenotype,
+        CreatureBodyMeshQuality quality,
+        int revision,
+        CancellationToken cancellationToken = default)
+    {
+        if (phenotype == null) throw new ArgumentNullException(nameof(phenotype));
+        return Task.Run(() => Build(phenotype, quality, revision, cancellationToken), cancellationToken);
+    }
+
     public static CreatureImplicitMeshData Build(
         CreatureTorsoSpline spline,
         CreatureBodyMeshQuality quality,
@@ -59,7 +74,7 @@ public static class CreatureImplicitBodyMesher
         if (spline == null || !spline.Validate(out error))
             throw new ArgumentException(error ?? "A valid torso spline is required.", nameof(spline));
 
-        float requestedCell = quality == CreatureBodyMeshQuality.Preview ? 0.22f : 0.1f;
+        float requestedCell = GetRequestedCellSize(quality);
         for (int attempt = 0; attempt < 8; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -72,6 +87,55 @@ public static class CreatureImplicitBodyMesher
         return BuildAtCellSize(spline, requestedCell, revision, cancellationToken);
     }
 
+    public static CreatureImplicitMeshData Build(
+        CreaturePhenotype phenotype,
+        CreatureBodyMeshQuality quality,
+        int revision = 0,
+        CancellationToken cancellationToken = default)
+    {
+        if (phenotype == null) throw new ArgumentNullException(nameof(phenotype));
+        long cacheKey = ((long)phenotype.shapeHash << 32) ^ (uint)quality;
+        if (revision == 0)
+        {
+            lock (V4CacheLock)
+                if (V4MeshDataCache.TryGetValue(cacheKey, out CreatureImplicitMeshData cached))
+                    return cached;
+        }
+        float requestedCell = GetRequestedCellSize(quality);
+        for (int attempt = 0; attempt < 8; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CreatureImplicitMeshData result = BuildAtCellSize(
+                phenotype, requestedCell, revision, cancellationToken);
+            if (result.vertices.Length <= MaximumVertexCount)
+                return CacheV4Result(cacheKey, revision, result);
+            requestedCell *= 1.22f;
+        }
+        return CacheV4Result(cacheKey, revision,
+            BuildAtCellSize(phenotype, requestedCell, revision, cancellationToken));
+    }
+
+    static CreatureImplicitMeshData CacheV4Result(
+        long cacheKey,
+        int revision,
+        CreatureImplicitMeshData result)
+    {
+        if (revision != 0) return result;
+        lock (V4CacheLock) V4MeshDataCache[cacheKey] = result;
+        return result;
+    }
+
+    static float GetRequestedCellSize(CreatureBodyMeshQuality quality)
+    {
+        switch (quality)
+        {
+            case CreatureBodyMeshQuality.Preview: return 0.16f;
+            case CreatureBodyMeshQuality.Lod1: return 0.12f;
+            case CreatureBodyMeshQuality.Lod2: return 0.24f;
+            default: return 0.08f;
+        }
+    }
+
     static CreatureImplicitMeshData BuildAtCellSize(
         CreatureTorsoSpline spline,
         float cellSize,
@@ -79,6 +143,30 @@ public static class CreatureImplicitBodyMesher
         CancellationToken cancellationToken)
     {
         CalculateBounds(spline, out Vector3 minimum, out Vector3 maximum);
+        return BuildAtCellSize(minimum, maximum, point => SampleDistance(spline, point),
+            cellSize, revision, cancellationToken);
+    }
+
+    static CreatureImplicitMeshData BuildAtCellSize(
+        CreaturePhenotype phenotype,
+        float cellSize,
+        int revision,
+        CancellationToken cancellationToken)
+    {
+        Bounds bounds = phenotype.fieldBounds;
+        Vector3 padding = Vector3.one * Mathf.Max(0.18f, cellSize * 2f);
+        return BuildAtCellSize(bounds.min - padding, bounds.max + padding, phenotype.SampleDistance,
+            cellSize, revision, cancellationToken);
+    }
+
+    static CreatureImplicitMeshData BuildAtCellSize(
+        Vector3 minimum,
+        Vector3 maximum,
+        Func<Vector3, float> sampleDistance,
+        float cellSize,
+        int revision,
+        CancellationToken cancellationToken)
+    {
         Vector3 size = maximum - minimum;
         int nx = Math.Max(3, (int)Math.Ceiling(size.x / cellSize) + 1);
         int ny = Math.Max(3, (int)Math.Ceiling(size.y / cellSize) + 1);
@@ -101,7 +189,7 @@ public static class CreatureImplicitBodyMesher
         for (int x = 0; x < nx; x++)
         {
             Vector3 point = minimum + new Vector3(x * cellSize, y * cellSize, z * cellSize);
-            field[Index(x, y, z, nx, ny)] = SampleDistance(spline, point);
+            field[Index(x, y, z, nx, ny)] = sampleDistance(point);
         }
         }
 
@@ -137,6 +225,7 @@ public static class CreatureImplicitBodyMesher
 
         WeldVertices(vertices, normals, triangles,
             out Vector3[] weldedVertices, out Vector3[] weldedNormals, out int[] weldedTriangles);
+        RecalculateGradientNormals(weldedVertices, weldedNormals, sampleDistance, cellSize * 0.55f);
         return new CreatureImplicitMeshData
         {
             revision = revision,
@@ -146,6 +235,28 @@ public static class CreatureImplicitBodyMesher
             triangles = weldedTriangles,
             bounds = new Bounds((minimum + maximum) * 0.5f, maximum - minimum)
         };
+    }
+
+    static void RecalculateGradientNormals(
+        IReadOnlyList<Vector3> vertices,
+        Vector3[] normals,
+        Func<Vector3, float> sampleDistance,
+        float epsilon)
+    {
+        epsilon = Mathf.Max(0.002f, epsilon);
+        Vector3 x = Vector3.right * epsilon;
+        Vector3 y = Vector3.up * epsilon;
+        Vector3 z = Vector3.forward * epsilon;
+        for (int i = 0; i < vertices.Count; i++)
+        {
+            Vector3 point = vertices[i];
+            Vector3 gradient = new Vector3(
+                sampleDistance(point + x) - sampleDistance(point - x),
+                sampleDistance(point + y) - sampleDistance(point - y),
+                sampleDistance(point + z) - sampleDistance(point - z));
+            if (gradient.sqrMagnitude > 0.000001f)
+                normals[i] = gradient.normalized;
+        }
     }
 
     static void WeldVertices(

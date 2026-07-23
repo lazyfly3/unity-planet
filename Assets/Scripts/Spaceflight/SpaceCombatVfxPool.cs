@@ -112,6 +112,28 @@ public sealed class SpaceCombatVfxPool : MonoBehaviour
         }
     }
 
+    public void ReleaseAllActiveEffects()
+    {
+        foreach (Bucket bucket in buckets.Values)
+        {
+            for (int index = 0; index < bucket.instances.Count; index++)
+            {
+                SpacePooledEffect effect = bucket.instances[index];
+                if (effect != null && effect.IsPlaying)
+                    effect.Release();
+            }
+        }
+        if (audioSources == null)
+            return;
+        for (int index = 0; index < audioSources.Length; index++)
+        {
+            if (audioSources[index] == null)
+                continue;
+            audioSources[index].Stop();
+            audioSources[index].clip = null;
+        }
+    }
+
     void PrewarmCatalog()
     {
         if (catalog == null)

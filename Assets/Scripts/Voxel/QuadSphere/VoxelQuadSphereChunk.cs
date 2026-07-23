@@ -7,7 +7,10 @@ public class VoxelQuadSphereChunk
     public bool IsDirty { get; private set; }
     public bool IsModified { get; private set; }
     public bool HasMesh => runtimeMesh != null;
+    public bool HasCollider => meshCollider != null && meshCollider.enabled && meshCollider.sharedMesh != null;
+    public bool IsCollisionReady => runtimeMesh != null && (runtimeMesh.vertexCount == 0 || HasCollider);
     public Collider Collider => meshCollider;
+    public int MeshRevision { get; private set; }
 
     readonly GameObject viewObject;
     readonly MeshFilter meshFilter;
@@ -29,6 +32,10 @@ public class VoxelQuadSphereChunk
         meshFilter = viewObject.AddComponent<MeshFilter>();
         MeshRenderer renderer = viewObject.AddComponent<MeshRenderer>();
         meshCollider = viewObject.AddComponent<MeshCollider>();
+        meshCollider.cookingOptions = MeshColliderCookingOptions.CookForFasterSimulation
+            | MeshColliderCookingOptions.EnableMeshCleaning
+            | MeshColliderCookingOptions.WeldColocatedVertices
+            | MeshColliderCookingOptions.UseFastMidphase;
 
         if (stoneMaterial != null)
             renderer.sharedMaterials = new[] { dirtMaterial, stoneMaterial };
@@ -66,7 +73,57 @@ public class VoxelQuadSphereChunk
         meshFilter.sharedMesh = runtimeMesh;
         meshCollider.sharedMesh = null;
         meshCollider.sharedMesh = runtimeMesh;
+        MeshRevision++;
         IsDirty = false;}
+
+    public int ApplyMeshData(VoxelQuadSphereMeshData data, bool enableCollider)
+    {
+        data = data ?? VoxelQuadSphereMeshData.Empty;
+        if (runtimeMesh == null)
+        {
+            runtimeMesh = new Mesh
+            {
+                name = $"QuadSphereChunk_{Key.Face}_{Key.ChunkU}_{Key.ChunkV}_{Key.ChunkDepth}"
+            };
+            runtimeMesh.MarkDynamic();
+        }
+        else
+        {
+            runtimeMesh.Clear(false);
+        }
+
+        runtimeMesh.indexFormat = data.Vertices.Count > ushort.MaxValue
+            ? UnityEngine.Rendering.IndexFormat.UInt32
+            : UnityEngine.Rendering.IndexFormat.UInt16;
+        runtimeMesh.SetVertices(data.Vertices);
+        if (data.Normals.Count == data.Vertices.Count)
+            runtimeMesh.SetNormals(data.Normals);
+        runtimeMesh.subMeshCount = data.SubMeshTriangles.Length;
+        for (int subMesh = 0; subMesh < data.SubMeshTriangles.Length; subMesh++)
+            runtimeMesh.SetTriangles(data.SubMeshTriangles[subMesh], subMesh, false);
+        runtimeMesh.RecalculateBounds();
+        meshFilter.sharedMesh = runtimeMesh;
+
+        meshCollider.sharedMesh = null;
+        meshCollider.enabled = enableCollider && !data.IsEmpty;
+        if (meshCollider.enabled)
+            meshCollider.sharedMesh = runtimeMesh;
+
+        MeshRevision++;
+        IsDirty = false;
+        return MeshRevision;
+    }
+
+    public bool BakeAndApplyCollider(int revision)
+    {
+        if (runtimeMesh == null || revision != MeshRevision || runtimeMesh.vertexCount == 0)
+            return false;
+        Physics.BakeMesh(runtimeMesh.GetInstanceID(), false, meshCollider.cookingOptions);
+        meshCollider.sharedMesh = null;
+        meshCollider.enabled = true;
+        meshCollider.sharedMesh = runtimeMesh;
+        return true;
+    }
 
     public void AddMeshSnapshot(QuadSphereChunkSaveEntry entry)
     {
@@ -111,6 +168,7 @@ public class VoxelQuadSphereChunk
         meshFilter.sharedMesh = runtimeMesh;
         meshCollider.sharedMesh = null;
         meshCollider.sharedMesh = runtimeMesh;
+        MeshRevision++;
         IsDirty = false;
         return true;}
 

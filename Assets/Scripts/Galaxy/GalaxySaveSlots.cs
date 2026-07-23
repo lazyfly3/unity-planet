@@ -16,7 +16,7 @@ public sealed class GalaxyInventorySaveEntry
 [Serializable]
 public sealed class GalaxySaveSlotMetadata
 {
-    public int formatVersion = 6;
+    public int formatVersion = 7;
     public string slotId;
     public string displayName;
     public int worldSeed;
@@ -29,6 +29,7 @@ public sealed class GalaxySaveSlotMetadata
     public GalaxyInventorySaveEntry[] inventory = Array.Empty<GalaxyInventorySaveEntry>();
     public bool developmentSlot;
     public double weatherTimeSeconds;
+    public double universeTimeSeconds;
     public GalaxyMode galaxyMode;
     public long shipCoordinateX;
     public long shipCoordinateY;
@@ -146,7 +147,8 @@ displayName = NormalizeDisplayName(displayName);
             currentPlanetId = ProceduralInterstellarGenerator.EncodePlanetId(InterstellarCoordinate.Zero),
             galaxyMode = GalaxyMode.Interstellar3DProcedural,
             galaxyGeneratorVersion = ProceduralInterstellarGenerator.CurrentVersion,
-            shipFacing = GalaxyShipFacing.Up
+            shipFacing = GalaxyShipFacing.Up,
+            spacePositionZ = 14000d
         };
         SaveMetadata(metadata);
         return metadata;
@@ -162,7 +164,7 @@ ValidateSlotId(slotId);
 
         GalaxySaveSlotMetadata metadata = JsonUtility.FromJson<GalaxySaveSlotMetadata>(File.ReadAllText(path));
         ValidateMetadata(metadata, slotId);
-        if (MigrateToInterstellarV6(metadata, path))
+        if (MigrateToInterstellarV7(metadata, path))
             SaveMetadata(metadata);
         return metadata;
     
@@ -186,7 +188,8 @@ GalaxySaveSlotMetadata existing = LoadMetadata(DevelopmentSlotId);
             developmentSlot = true,
             galaxyMode = GalaxyMode.Interstellar3DProcedural,
             galaxyGeneratorVersion = ProceduralInterstellarGenerator.CurrentVersion,
-            shipFacing = GalaxyShipFacing.Up
+            shipFacing = GalaxyShipFacing.Up,
+            spacePositionZ = 14000d
         };
         SaveMetadata(metadata);
         return metadata;
@@ -197,7 +200,7 @@ GalaxySaveSlotMetadata existing = LoadMetadata(DevelopmentSlotId);
     {
 if (metadata == null)
             throw new ArgumentNullException(nameof(metadata));
-        metadata.formatVersion = 6;
+        metadata.formatVersion = 7;
         ValidateSlotId(metadata.slotId);
         metadata.displayName = NormalizeDisplayName(metadata.displayName);
         metadata.lastPlayedUtcTicks = DateTime.UtcNow.Ticks;
@@ -267,14 +270,14 @@ ValidateSlotId(slotId);
 
     static void ValidateMetadata(GalaxySaveSlotMetadata metadata, string expectedSlotId)
     {
-        if (metadata == null || (metadata.formatVersion < 1 || metadata.formatVersion > 6)
+        if (metadata == null || (metadata.formatVersion < 1 || metadata.formatVersion > 7)
             || metadata.slotId != expectedSlotId)
             throw new InvalidDataException("Invalid save slot metadata.");
         if (string.IsNullOrWhiteSpace(metadata.displayName))
             throw new InvalidDataException("Save slot has no display name.");
     }
 
-    static bool MigrateToInterstellarV6(GalaxySaveSlotMetadata metadata, string metadataPath)
+    static bool MigrateToInterstellarV7(GalaxySaveSlotMetadata metadata, string metadataPath)
     {
         bool changed = false;
         if (metadata.visitedPlanets == null)
@@ -367,6 +370,54 @@ ValidateSlotId(slotId);
         if (metadata.formatVersion < 6)
         {
             metadata.formatVersion = 6;
+            changed = true;
+        }
+
+        // The development slot is disposable scene-test state. Keep production
+        // LegacyFinite saves untouched, but make direct scene launches exercise
+        // the current interstellar and large-planet pipeline.
+        if (metadata.developmentSlot
+            && metadata.galaxyMode != GalaxyMode.Interstellar3DProcedural)
+        {
+            string backupPath = metadataPath + ".pre-interstellar-development-v7.backup";
+            if (File.Exists(metadataPath) && !File.Exists(backupPath))
+                File.Copy(metadataPath, backupPath);
+
+            metadata.galaxyMode = GalaxyMode.Interstellar3DProcedural;
+            metadata.galaxyGeneratorVersion = ProceduralInterstellarGenerator.CurrentVersion;
+            metadata.currentPlanetId = ProceduralInterstellarGenerator.EncodePlanetId(InterstellarCoordinate.Zero);
+            metadata.shipCoordinateX = 0L;
+            metadata.shipCoordinateY = 0L;
+            metadata.shipCoordinateZ = 0L;
+            metadata.currentPlanetCoordinateX = 0L;
+            metadata.currentPlanetCoordinateY = 0L;
+            metadata.currentPlanetCoordinateZ = 0L;
+            metadata.spacePositionX = 0d;
+            metadata.spacePositionY = 0d;
+            metadata.spacePositionZ = 14000d;
+            changed = true;
+        }
+
+        if (metadata.formatVersion < 7)
+        {
+            string backupPath = metadataPath + ".pre-large-planets-v7.backup";
+            if (File.Exists(metadataPath) && !File.Exists(backupPath))
+                File.Copy(metadataPath, backupPath);
+
+            // Version 6 interstellar saves commonly started at the universe origin.
+            // Version 7 reserves that coordinate for the 2 km origin planet itself.
+            double distanceSquared = metadata.spacePositionX * metadata.spacePositionX
+                + metadata.spacePositionY * metadata.spacePositionY
+                + metadata.spacePositionZ * metadata.spacePositionZ;
+            if (metadata.galaxyMode == GalaxyMode.Interstellar3DProcedural
+                && distanceSquared < 5000d * 5000d)
+            {
+                metadata.spacePositionX = 0d;
+                metadata.spacePositionY = 0d;
+                metadata.spacePositionZ = 14000d;
+            }
+
+            metadata.formatVersion = 7;
             changed = true;
         }
         return changed;

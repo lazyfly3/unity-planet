@@ -19,12 +19,18 @@ public sealed class BioCreatureTestController : MonoBehaviour
     [SerializeField] BioCreatureFollowCamera followCamera;
     [SerializeField] LayerMask groundLayers = ~0;
     [SerializeField] Vector3 spawnDirection = Vector3.up;
+    [SerializeField] bool autoWalk;
 
     GameObject currentCreature;
     Material fallbackMaterial;
 
     public int Seed => seed;
     public Transform CurrentCreature => currentCreature != null ? currentCreature.transform : null;
+
+    public void SetAutoWalk(bool enabled)
+    {
+        autoWalk = enabled;
+    }
 
     public void Configure(
         SphericalGravitySource source,
@@ -44,10 +50,42 @@ gravitySource = source;
 
     void Update()
     {
-        if (!Input.GetKeyDown(KeyCode.R))
+        if (Input.GetKeyDown(KeyCode.R))
+            RegenerateNextSeed();
+        if (Input.GetKeyDown(KeyCode.T))
+            autoWalk = !autoWalk;
+
+        if (gravitySource == null
+            || currentCreature == null
+            || !currentCreature.TryGetComponent(out CreatureProceduralController controller)
+            || controller.Phenotype == null)
             return;
 
-        RegenerateNextSeed();
+        CreaturePhenotype phenotype = controller.Phenotype;
+
+        Vector3 up = gravitySource.GetUp(currentCreature.transform.position);
+        Camera viewCamera = Camera.main;
+        Vector3 forward = viewCamera != null
+            ? Vector3.ProjectOnPlane(viewCamera.transform.forward, up)
+            : Vector3.ProjectOnPlane(controller.SurfaceForward, up);
+        if (forward.sqrMagnitude < 0.0001f) forward = controller.SurfaceForward;
+        forward.Normalize();
+        Vector3 right = Vector3.Cross(up, forward).normalized;
+        Vector2 input = autoWalk
+            ? Vector2.up
+            : new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+        Vector3 direction = Vector3.ClampMagnitude(forward * input.y + right * input.x, 1f);
+        float speed = Input.GetKey(KeyCode.LeftShift)
+            ? phenotype.runSpeed
+            : phenotype.walkSpeed;
+        controller.SetCommand(new CreatureMotionCommand
+        {
+            desiredVelocityWorld = direction * speed,
+            desiredFacingWorld = direction.sqrMagnitude > 0.0001f ? direction : controller.SurfaceForward,
+            jumpRequested = Input.GetKeyDown(KeyCode.Space),
+            attackRequested = Input.GetKeyDown(KeyCode.F),
+            attackTargetWorld = currentCreature.transform.position + controller.SurfaceForward * 4f
+        });
     }
 
     public void RegenerateNextSeed()

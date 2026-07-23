@@ -37,7 +37,10 @@ public sealed class PirateEncounterDirector : MonoBehaviour
     {
         ResolveReferences();
         if (flightRuntime != null)
+        {
             flightRuntime.OriginShifted += HandleOriginShift;
+            flightRuntime.UniverseRelocated += HandleUniverseRelocated;
+        }
         nextSpawnTime = Time.time + initialSpawnDelay;
     }
 
@@ -242,10 +245,24 @@ public sealed class PirateEncounterDirector : MonoBehaviour
         Physics.SyncTransforms();
     }
 
+    void HandleUniverseRelocated(DoubleVector3 previousPosition, DoubleVector3 currentPosition)
+    {
+        for (int index = activeEnemies.Count - 1; index >= 0; index--)
+        {
+            if (activeEnemies[index] != null)
+                Destroy(activeEnemies[index]);
+        }
+        activeEnemies.Clear();
+        nextSpawnTime = Time.time + Mathf.Max(5f, spawnInterval);
+    }
+
     void OnDisable()
     {
         if (flightRuntime != null)
+        {
             flightRuntime.OriginShifted -= HandleOriginShift;
+            flightRuntime.UniverseRelocated -= HandleUniverseRelocated;
+        }
     }
 
     static ulong Hash(uint seed, uint index)

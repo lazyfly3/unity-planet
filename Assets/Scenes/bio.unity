@@ -288,6 +288,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   spawnDirection: {x: 0, y: 1, z: 0}
+  autoWalk: 0
 --- !u!114 &281707461
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1934,6 +1935,7 @@ MonoBehaviour:
   target: {fileID: 2111000001}
   followDistance: 11
   height: 6
+  sideOffset: 5
   positionSmoothSpeed: 6
   rotationSmoothSpeed: 8
 --- !u!1 &1516248860

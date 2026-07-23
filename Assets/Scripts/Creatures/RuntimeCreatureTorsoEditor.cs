@@ -18,6 +18,28 @@ public sealed class RuntimeTorsoHandle : MonoBehaviour
     public Vector3 localAxis;
 }
 
+[Serializable]
+public sealed class CreatureEditSnapshot
+{
+    public CreatureTorsoSpline torsoSpline;
+    public CreatureV5EditableParameters v5Parameters;
+
+    public static CreatureEditSnapshot Capture(CreatureGenome genome)
+    {
+        return new CreatureEditSnapshot
+        {
+            torsoSpline = genome.torsoSpline != null ? genome.torsoSpline.Clone() : null,
+            v5Parameters = genome.v5Parameters != null ? genome.v5Parameters.Clone() : null
+        };
+    }
+
+    public void Apply(CreatureGenome genome)
+    {
+        genome.torsoSpline = torsoSpline != null ? torsoSpline.Clone() : genome.torsoSpline;
+        genome.v5Parameters = v5Parameters != null ? v5Parameters.Clone() : genome.v5Parameters;
+    }
+}
+
 [DisallowMultipleComponent]
 public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
 {
@@ -34,11 +56,11 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     [SerializeField] Button applyButton;
 
     readonly List<GameObject> handles = new List<GameObject>();
-    readonly List<CreatureTorsoSpline> undo = new List<CreatureTorsoSpline>();
-    readonly List<CreatureTorsoSpline> redo = new List<CreatureTorsoSpline>();
+    readonly List<CreatureEditSnapshot> undo = new List<CreatureEditSnapshot>();
+    readonly List<CreatureEditSnapshot> redo = new List<CreatureEditSnapshot>();
 
     CreatureTorsoRuntime runtime;
-    CreatureTorsoSpline originalSpline;
+    CreatureEditSnapshot originalSnapshot;
     Transform handleRoot;
     Material handleMaterial;
     int handleLayer = -1;
@@ -53,6 +75,7 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     float cameraYaw;
     float cameraPitch = 18f;
     float cameraDistance = 10f;
+    Vector2 v5Scroll;
 
     public bool IsEditing => runtime != null && runtime.IsEditing;
 
@@ -99,7 +122,7 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
 
         runtime.SetEditing(true);
         runtime.CancelPendingRebuild();
-        originalSpline = runtime.Genome.torsoSpline.Clone();
+        originalSnapshot = CreatureEditSnapshot.Capture(runtime.Genome);
         selectedPoint = Mathf.Clamp(selectedPoint, 0, runtime.Genome.torsoSpline.points.Count - 1);
         selectedSegment = -1;
         undo.Clear();
@@ -157,9 +180,9 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
 
     public void ResetShape()
     {
-        if (!IsEditing || originalSpline == null) return;
+        if (!IsEditing || originalSnapshot == null) return;
         PushUndo();
-        runtime.Genome.torsoSpline = originalSpline.Clone();
+        originalSnapshot.Apply(runtime.Genome);
         selectedPoint = 0;
         ShapeChanged(false);
     }
@@ -169,8 +192,9 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
         if (!IsEditing) return;
         try
         {
-            CreatureTorsoPresetStore.Save(runtime.Genome);
-            SetStatus("已保存控制点预设");
+            if (runtime.IsV5) CreatureTorsoPresetStore.SaveV5(runtime.Genome);
+            else CreatureTorsoPresetStore.Save(runtime.Genome);
+            SetStatus(runtime.IsV5 ? "已保存 V5 形态预设" : "已保存控制点预设");
         }
         catch (Exception exception)
         {
@@ -182,7 +206,23 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     public void LoadPreset()
     {
         if (!IsEditing) return;
-        if (!CreatureTorsoPresetStore.TryLoad(runtime.Genome.seed, out CreatureTorsoPresetData preset, out string error))
+        if (runtime.IsV5)
+        {
+            if (!CreatureTorsoPresetStore.TryLoadV5(
+                runtime.Genome.seed, out CreatureV5PresetData v5Preset, out string v5Error))
+            {
+                SetStatus(v5Error);
+                return;
+            }
+            PushUndo();
+            runtime.Genome.torsoSpline = v5Preset.torsoSpline.Clone();
+            runtime.Genome.v5Parameters = v5Preset.parameters.Clone();
+            selectedPoint = 0;
+            ShapeChanged(false);
+            return;
+        }
+        if (!CreatureTorsoPresetStore.TryLoad(
+            runtime.Genome.seed, out CreatureTorsoPresetData preset, out string error))
         {
             SetStatus(error);
             return;
@@ -196,8 +236,8 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     public void Undo()
     {
         if (!IsEditing || undo.Count == 0) return;
-        redo.Add(runtime.Genome.torsoSpline.Clone());
-        runtime.Genome.torsoSpline = undo[undo.Count - 1];
+        redo.Add(CreatureEditSnapshot.Capture(runtime.Genome));
+        undo[undo.Count - 1].Apply(runtime.Genome);
         undo.RemoveAt(undo.Count - 1);
         selectedPoint = Mathf.Clamp(selectedPoint, 0, runtime.Genome.torsoSpline.points.Count - 1);
         ShapeChanged(false, false);
@@ -206,8 +246,8 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     public void Redo()
     {
         if (!IsEditing || redo.Count == 0) return;
-        undo.Add(runtime.Genome.torsoSpline.Clone());
-        runtime.Genome.torsoSpline = redo[redo.Count - 1];
+        undo.Add(CreatureEditSnapshot.Capture(runtime.Genome));
+        redo[redo.Count - 1].Apply(runtime.Genome);
         redo.RemoveAt(redo.Count - 1);
         selectedPoint = Mathf.Clamp(selectedPoint, 0, runtime.Genome.torsoSpline.points.Count - 1);
         ShapeChanged(false, false);
@@ -344,7 +384,7 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     void PushUndo()
     {
         if (!IsEditing) return;
-        undo.Add(runtime.Genome.torsoSpline.Clone());
+        undo.Add(CreatureEditSnapshot.Capture(runtime.Genome));
         if (undo.Count > 32) undo.RemoveAt(0);
         redo.Clear();
     }
@@ -642,6 +682,93 @@ public sealed class RuntimeCreatureTorsoEditor : MonoBehaviour
     {
         if (statusText != null) statusText.text = value;
     }
+
+    void OnGUI()
+    {
+        if (!IsEditing || runtime == null)
+            return;
+        if (!runtime.IsV5 || runtime.Genome.v5Parameters == null) return;
+        float panelHeight = Mathf.Min(650f, Screen.height - 24f);
+        Rect panel = new Rect(Mathf.Max(12f, Screen.width - 326f), 12f, 314f, panelHeight);
+        GUILayout.BeginArea(panel, GUI.skin.window);
+        GUILayout.Label("V5 ANATOMY");
+        v5Scroll = GUILayout.BeginScrollView(v5Scroll, false, true);
+        CreatureV5EditableParameters current = runtime.Genome.v5Parameters;
+        CreatureV5EditableParameters next = current.Clone();
+        next.chestWidth = MorphSlider("胸腔宽度", current.chestWidth, 0.55f, 2.4f);
+        next.chestDepth = MorphSlider("胸腔深度", current.chestDepth, 0.55f, 2.4f);
+        next.waistTuck = MorphSlider("腰部收缩", current.waistTuck, 0.52f, 0.88f);
+        next.bellyRise = MorphSlider("腹线上提", current.bellyRise, 0.1f, 0.28f);
+        next.pelvisWidth = MorphSlider("骨盆宽度", current.pelvisWidth, 0.5f, 2.2f);
+        next.pelvisDepth = MorphSlider("骨盆深度", current.pelvisDepth, 0.5f, 2.2f);
+        next.legLength = MorphSlider("腿部长度", current.legLength, 1.2f, 4.5f);
+        next.legThickness = MorphSlider("腿部粗细", current.legThickness, 0.07f, 0.42f);
+        next.distalLegFraction = MorphSlider("远端腿比例", current.distalLegFraction, 0.3f, 0.42f);
+        next.neckLength = MorphSlider("颈部长度", current.neckLength, 0.45f, 3.1f);
+        next.neckAngle = MorphSlider("颈部角度", current.neckAngle, -5f, 48f);
+        next.neckRootScale = MorphSlider("颈根宽度", current.neckRootScale, 0.82f, 1.2f);
+        next.headLength = MorphSlider("头部长度", current.headLength, 0.35f, 1.65f);
+        next.headWidth = MorphSlider("头部宽度", current.headWidth, 0.25f, 1.2f);
+        next.headHeight = MorphSlider("头部高度", current.headHeight, 0.25f, 1.35f);
+        next.muzzleLengthRatio = MorphSlider("口鼻比例", current.muzzleLengthRatio, 0.45f, 0.7f);
+        next.earLengthRatio = MorphSlider("耳朵长度", current.earLengthRatio, 0.7f, 1.1f);
+        next.earOutwardAngle = MorphSlider("耳朵外张", current.earOutwardAngle, 15f, 42f);
+        next.hoofLength = MorphSlider("蹄部长度", current.hoofLength, 0.08f, 0.62f);
+        next.hoofWidth = MorphSlider("蹄部宽度", current.hoofWidth, 0.06f, 0.48f);
+        GUILayout.EndScrollView();
+        GUILayout.EndArea();
+
+        if (!ParametersDiffer(current, next)) return;
+        PushUndo();
+        next.Clamp();
+        runtime.Genome.v5Parameters = next;
+        runtime.ApplyBonePreview();
+        runtime.ScheduleFinalRebuild(0.18f);
+    }
+
+    static float MorphSlider(string label, float value, float minimum, float maximum)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(label, GUILayout.Width(88f));
+        float next = GUILayout.HorizontalSlider(value, minimum, maximum, GUILayout.Width(150f));
+        GUILayout.Label(next.ToString("F2"), GUILayout.Width(42f));
+        GUILayout.EndHorizontal();
+        return next;
+    }
+
+    static bool ParametersDiffer(CreatureV5EditableParameters a, CreatureV5EditableParameters b)
+    {
+        return Mathf.Abs(a.chestWidth - b.chestWidth) > 0.0001f
+            || Mathf.Abs(a.chestDepth - b.chestDepth) > 0.0001f
+            || Mathf.Abs(a.waistTuck - b.waistTuck) > 0.0001f
+            || Mathf.Abs(a.pelvisWidth - b.pelvisWidth) > 0.0001f
+            || Mathf.Abs(a.pelvisDepth - b.pelvisDepth) > 0.0001f
+            || Mathf.Abs(a.legLength - b.legLength) > 0.0001f
+            || Mathf.Abs(a.legThickness - b.legThickness) > 0.0001f
+            || Mathf.Abs(a.distalLegFraction - b.distalLegFraction) > 0.0001f
+            || Mathf.Abs(a.neckLength - b.neckLength) > 0.0001f
+            || Mathf.Abs(a.neckAngle - b.neckAngle) > 0.0001f
+            || Mathf.Abs(a.headLength - b.headLength) > 0.0001f
+            || Mathf.Abs(a.headWidth - b.headWidth) > 0.0001f
+            || Mathf.Abs(a.headHeight - b.headHeight) > 0.0001f
+            || Mathf.Abs(a.hoofLength - b.hoofLength) > 0.0001f
+            || Mathf.Abs(a.hoofWidth - b.hoofWidth) > 0.0001f
+            || Mathf.Abs(a.bellyRise - b.bellyRise) > 0.0001f
+            || Mathf.Abs(a.neckRootScale - b.neckRootScale) > 0.0001f
+            || Mathf.Abs(a.muzzleLengthRatio - b.muzzleLengthRatio) > 0.0001f
+            || Mathf.Abs(a.earLengthRatio - b.earLengthRatio) > 0.0001f
+            || Mathf.Abs(a.earOutwardAngle - b.earOutwardAngle) > 0.0001f;
+    }
+
+}
+
+[Serializable]
+public sealed class CreatureV5PresetData
+{
+    public int version = CreatureGenerationVersions.AnatomicalV5;
+    public int seed;
+    public CreatureTorsoSpline torsoSpline;
+    public CreatureV5EditableParameters parameters;
 }
 
 public static class CreatureTorsoPresetStore
@@ -651,6 +778,11 @@ public static class CreatureTorsoPresetStore
     public static string GetPath(int seed)
     {
         return Path.Combine(DirectoryPath, $"creature_{seed}.json");
+    }
+
+    public static string GetV5Path(int seed)
+    {
+        return Path.Combine(DirectoryPath, $"creature_{seed}_v5.json");
     }
 
     public static void Save(CreatureGenome genome)
@@ -699,4 +831,55 @@ public static class CreatureTorsoPresetStore
             return false;
         }
     }
+
+    public static void SaveV5(CreatureGenome genome)
+    {
+        string error = null;
+        if (genome == null || genome.generatorVersion < CreatureGenerationVersions.AnatomicalV5
+            || genome.v5Parameters == null || genome.torsoSpline == null
+            || !genome.torsoSpline.Validate(out error))
+            throw new InvalidDataException(error ?? "Creature V5 morphology is invalid.");
+        Directory.CreateDirectory(DirectoryPath);
+        var preset = new CreatureV5PresetData
+        {
+            seed = genome.seed,
+            torsoSpline = genome.torsoSpline.Clone(),
+            parameters = genome.v5Parameters.Clone()
+        };
+        File.WriteAllText(GetV5Path(genome.seed), JsonUtility.ToJson(preset, true));
+    }
+
+    public static bool TryLoadV5(int seed, out CreatureV5PresetData preset, out string error)
+    {
+        preset = null;
+        error = null;
+        string path = GetV5Path(seed);
+        if (!File.Exists(path))
+        {
+            error = "没有该种子的 V5 形态预设";
+            return false;
+        }
+        try
+        {
+            preset = JsonUtility.FromJson<CreatureV5PresetData>(File.ReadAllText(path));
+            if (preset == null || preset.version != CreatureGenerationVersions.AnatomicalV5
+                || preset.seed != seed || preset.parameters == null
+                || preset.torsoSpline == null || !preset.torsoSpline.Validate(out error))
+            {
+                error = error ?? "V5 形态预设损坏或版本不兼容";
+                preset = null;
+                return false;
+            }
+            preset.parameters.Clamp();
+            error = null;
+            return true;
+        }
+        catch (Exception exception)
+        {
+            error = "读取 V5 预设失败: " + exception.Message;
+            preset = null;
+            return false;
+        }
+    }
+
 }

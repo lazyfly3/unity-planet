@@ -27,6 +27,9 @@ public sealed class InterstellarFlightHud : MonoBehaviour
     [SerializeField] Text weaponLockText;
     [SerializeField] RectTransform weaponTargetMarker;
     [SerializeField] RectTransform targetArrow;
+    [SerializeField] RectTransform planetLightLayer;
+    [SerializeField] RectTransform planetLightTemplate;
+    [SerializeField] InterstellarWarpStreakGraphic warpOverlay;
     [SerializeField] RectTransform[] enemyThreatArrows = new RectTransform[3];
     [SerializeField, Min(0f)] float attackThreatHoldSeconds = 2.5f;
     [SerializeField, Min(0f)] float hitThreatHoldSeconds = 4f;
@@ -34,11 +37,18 @@ public sealed class InterstellarFlightHud : MonoBehaviour
     [SerializeField] Image integrityFrame;
 
     const int MaximumThreatArrows = 3;
+    const int MaximumPlanetLights = 16;
     float damageFlashUntil;
     SpaceTargetLockGraphic weaponTargetGraphic;
     readonly PirateShipAiController[] threatQueryBuffer = new PirateShipAiController[MaximumThreatArrows];
     readonly ThreatSlot[] threatSlots = new ThreatSlot[MaximumThreatArrows];
     readonly Text[] threatArrowTexts = new Text[MaximumThreatArrows];
+    readonly InterstellarPlanetTargetSnapshot[] planetSnapshots =
+        new InterstellarPlanetTargetSnapshot[MaximumPlanetLights];
+    readonly RectTransform[] planetLights = new RectTransform[MaximumPlanetLights];
+    readonly Text[] planetLightDots = new Text[MaximumPlanetLights];
+    readonly Text[] planetLightRings = new Text[MaximumPlanetLights];
+    readonly Text[] planetLightLabels = new Text[MaximumPlanetLights];
 
     struct ThreatSlot
     {
@@ -77,6 +87,13 @@ public sealed class InterstellarFlightHud : MonoBehaviour
         weaponTargetMarker = ResolveRect(weaponTargetMarker, "WeaponTargetMarker");
         ConfigureWeaponTargetMarker();
         targetArrow = ResolveRect(targetArrow, "TargetArrow");
+        planetLightLayer = ResolveRect(planetLightLayer, "PlanetLightLayer");
+        planetLightTemplate = ResolveRect(planetLightTemplate, "PlanetLightTemplate");
+        if (planetLightTemplate == null && planetLightLayer != null)
+            planetLightTemplate = planetLightLayer.Find("PlanetLightTemplate") as RectTransform;
+        if (warpOverlay == null)
+            warpOverlay = GameObject.Find("WarpOverlay")?.GetComponent<InterstellarWarpStreakGraphic>();
+        BuildPlanetLightPool();
         ResolveThreatArrows();
         if (integrityFill == null)
             integrityFill = GameObject.Find("IntegrityFill")?.GetComponent<Image>();
@@ -105,9 +122,11 @@ public sealed class InterstellarFlightHud : MonoBehaviour
     {
         SpacecraftControlTelemetry telemetry = ship == null ? default : ship.Telemetry;
         if (targetText != null)
-            targetText.text = navigation != null && navigation.HasTarget
+            targetText.text = navigation != null && navigation.HasLockedTarget
                 ? $"目标  {navigation.TargetName}\n距离  {FormatDistance(navigation.TargetDistance)}"
-                : "目标  未发现星球";
+                : navigation != null && navigation.TargetCount > 0
+                    ? "目标  未锁定"
+                    : "目标  未发现星球";
         if (speedText != null)
             speedText.text = $"速度  {(ship == null ? 0f : ship.Speed):0} m/s";
         if (flightModeText != null)
@@ -123,8 +142,11 @@ public sealed class InterstellarFlightHud : MonoBehaviour
         UpdateIntegrity();
         UpdateWeapons();
         UpdateCruiseText();
+        UpdatePlanetLights();
         UpdateArrow();
         UpdateThreatArrows();
+        if (warpOverlay != null)
+            warpOverlay.SetIntensity(ship == null ? 0f : ship.WarpVisualIntensity);
     }
 
     void UpdateWeapons()
@@ -221,16 +243,123 @@ public sealed class InterstellarFlightHud : MonoBehaviour
     void UpdateCruiseText()
     {
         if (cruiseText != null)
-        {
-            cruiseText.text = ship != null && ship.CruiseActive
-                ? $"星际巡航  {CruiseLabel(ship.CruiseState)}"
-                : "B  启动星际巡航";
-        }
+            cruiseText.text = WarpStatusText();
         if (promptText != null)
         {
             promptText.text = navigation != null && navigation.CanEnterSelected
                 ? "正在进入星球引力范围"
-                : "1/2 武器组 | 左键开火 | Tab 云台锁定 | N 星球目标 | C 模式 | X 刹车 | Q/E 横滚";
+                : "L 全自动着陆 | B 锁定/跃迁 | N 切换星球 | 1/2 武器组 | 左键开火 | Tab 云台锁定 | C 模式 | X 刹车 | Q/E 横滚";
+        }
+    }
+
+    string WarpStatusText()
+    {
+        if (ship == null)
+            return "B  锁定星球";
+        switch (ship.WarpState)
+        {
+            case InterstellarWarpState.Locked:
+                return ship.AutomaticLandingActive
+                    ? $"自动驾驶接近星球  |  距离 {FormatDistance(navigation == null ? 0d : navigation.TargetDistance)}  |  L 取消"
+                    : "B  启动跃迁  |  L 全自动着陆";
+            case InterstellarWarpState.Aligning:
+                return $"{(ship.AutomaticLandingActive ? "L 取消自动着陆" : "B 取消跃迁")}  |  对准误差 {ship.WarpAlignmentError:0.0}°";
+            case InterstellarWarpState.Spooling:
+                return $"{(ship.AutomaticLandingActive ? "L 取消自动着陆" : "B 取消跃迁")}  |  预热 {ship.WarpProgress * 100f:0}%";
+            case InterstellarWarpState.Transit:
+                return $"星际跃迁  {ship.WarpProgress * 100f:0}%";
+            case InterstellarWarpState.Exiting:
+                return $"跃迁退出  |  距目标 {ship.WarpExitDistance / 1000f:0.0} km";
+            case InterstellarWarpState.Cooldown:
+                return "跃迁系统冷却";
+            default:
+                return ship.WarpCancelReason == InterstellarWarpCancelReason.NoReticleTarget
+                    ? "准星对准星球光点后按 B"
+                    : "B  锁定星球";
+        }
+    }
+
+    void BuildPlanetLightPool()
+    {
+        if (planetLightLayer == null || planetLightTemplate == null)
+            return;
+        planetLightTemplate.gameObject.SetActive(false);
+        for (int index = 0; index < MaximumPlanetLights; index++)
+        {
+            RectTransform marker = Instantiate(planetLightTemplate, planetLightLayer);
+            marker.name = "PlanetLight_" + index.ToString("00");
+            marker.gameObject.SetActive(false);
+            planetLights[index] = marker;
+            planetLightDots[index] = marker.GetComponent<Text>();
+            Transform ring = marker.Find("PlanetSelectionRing");
+            Transform label = marker.Find("PlanetLightLabel");
+            planetLightRings[index] = ring == null ? null : ring.GetComponent<Text>();
+            planetLightLabels[index] = label == null ? null : label.GetComponent<Text>();
+        }
+    }
+
+    void UpdatePlanetLights()
+    {
+        int count = navigation == null
+            ? 0
+            : navigation.CopyTargetSnapshots(planetSnapshots);
+        for (int index = 0; index < MaximumPlanetLights; index++)
+        {
+            RectTransform marker = planetLights[index];
+            if (marker == null)
+                continue;
+            if (index >= count || worldCamera == null)
+            {
+                marker.gameObject.SetActive(false);
+                continue;
+            }
+
+            InterstellarPlanetTargetSnapshot snapshot = planetSnapshots[index];
+            Vector3 direction = navigation.GetDirectionToUniversePosition(snapshot.universePosition);
+            float forwardDot = Vector3.Dot(worldCamera.transform.forward, direction);
+            Vector3 viewport = worldCamera.WorldToViewportPoint(
+                worldCamera.transform.position + direction * 10f);
+            bool visible = forwardDot > 0f && viewport.z > 0f
+                && viewport.x >= 0f && viewport.x <= 1f
+                && viewport.y >= 0f && viewport.y <= 1f;
+            if (!visible)
+            {
+                marker.gameObject.SetActive(false);
+                continue;
+            }
+
+            marker.gameObject.SetActive(true);
+            SetViewportAnchor(marker, viewport, 0.018f);
+            float distanceRatio = Mathf.Clamp01((float)(snapshot.distance / 260000d));
+            float size = Mathf.Lerp(14f, 8f, Mathf.Sqrt(distanceRatio));
+            Text dot = planetLightDots[index];
+            if (dot != null)
+            {
+                dot.text = snapshot.locked ? "\u25c6" : "\u25cf";
+                dot.fontSize = Mathf.RoundToInt(snapshot.locked ? size + 3f : size);
+                dot.color = Color.Lerp(snapshot.color, Color.white, snapshot.locked ? 0.45f : 0.2f);
+            }
+
+            float angle = Vector3.Angle(worldCamera.transform.forward, direction);
+            Text ring = planetLightRings[index];
+            if (ring != null)
+            {
+                ring.gameObject.SetActive(snapshot.locked || angle <= 10f);
+                ring.text = snapshot.locked ? "\u25c7" : "\u25cb";
+                ring.color = snapshot.locked
+                    ? new Color(0.12f, 0.88f, 1f, 1f)
+                    : new Color(0.38f, 0.72f, 1f, 0.7f);
+            }
+
+            Text label = planetLightLabels[index];
+            if (label != null)
+            {
+                label.gameObject.SetActive(snapshot.locked);
+                label.text = snapshot.locked
+                    ? snapshot.displayName + "  " + FormatDistance(snapshot.distance)
+                    : string.Empty;
+                label.color = new Color(0.65f, 0.92f, 1f, 0.96f);
+            }
         }
     }
 
@@ -403,16 +532,23 @@ public sealed class InterstellarFlightHud : MonoBehaviour
 
     void UpdateArrow()
     {
-        if (targetArrow == null || worldCamera == null || navigation == null || !navigation.HasTarget)
+        if (targetArrow == null || worldCamera == null || navigation == null || !navigation.HasLockedTarget)
         {
             if (targetArrow != null)
                 targetArrow.gameObject.SetActive(false);
             return;
         }
 
-        targetArrow.gameObject.SetActive(true);
         Vector3 direction = navigation.DirectionToTarget;
         Vector3 viewport = worldCamera.WorldToViewportPoint(worldCamera.transform.position + direction.normalized * 10f);
+        bool onScreen = viewport.z > 0f && viewport.x >= 0f && viewport.x <= 1f
+            && viewport.y >= 0f && viewport.y <= 1f;
+        if (onScreen)
+        {
+            targetArrow.gameObject.SetActive(false);
+            return;
+        }
+        targetArrow.gameObject.SetActive(true);
         Vector2 fromCenter = new Vector2(viewport.x - 0.5f, viewport.y - 0.5f);
         if (viewport.z < 0f)
         {
@@ -460,16 +596,4 @@ public sealed class InterstellarFlightHud : MonoBehaviour
         return distance >= 1000d ? $"{distance / 1000d:0.0} km" : $"{distance:0} m";
     }
 
-    static string CruiseLabel(InterstellarCruiseState state)
-    {
-        switch (state)
-        {
-            case InterstellarCruiseState.Spooling: return "预热";
-            case InterstellarCruiseState.Accelerating: return "加速";
-            case InterstellarCruiseState.Cruising: return "恒速";
-            case InterstellarCruiseState.Decelerating: return "自动制动";
-            case InterstellarCruiseState.Cooldown: return "冷却";
-            default: return "关闭";
-        }
-    }
 }

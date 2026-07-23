@@ -1,0 +1,161 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebd9cbd63a246e6a4b7f59e51876f85, type: 3}
+  m_Name: AntelopeAuthorizedLibrary
+  m_EditorClassIdentifier: 
+  familyId: AntelopeQuadruped
+  rigPrefab: {fileID: 919132149155446097, guid: 8d41916e18075d644ae421fc24051fe1, type: 3}
+  safeFallbackPrefab: {fileID: 7475410704388689906, guid: a4cc08f9d2b0f884a96d77e2e1d70b0f, type: 3}
+  animatorController: {fileID: 22100000, guid: ff75f8d3f002ff84fa2b3f09891b20be, type: 2}
+  locomotionState: Locomotion
+  speedParameter: Speed
+  modules:
+  - selectionId: bodydeer
+    meshName: _Body_Deer
+    modulePrefab: {fileID: 7679694462417414667, guid: d044d4989cd3cae48a90e6b41a88ae49, type: 3}
+    materials:
+    - {fileID: 1550922484105707780, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: bodyfat
+    meshName: _Body_Fat
+    modulePrefab: {fileID: 3675494676994472987, guid: 664f7ed2d6eb5174b8344bc43699cf2e, type: 3}
+    materials:
+    - {fileID: -4449038792117579657, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: deeracc1n2
+    meshName: _DeerAcc_1N2
+    modulePrefab: {fileID: 5179896874878216556, guid: 4ea9f93c8d1800a4980b5c611e375449, type: 3}
+    materials:
+    - {fileID: -1587876514007007936, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: deeracc23
+    meshName: _DeerAcc_23
+    modulePrefab: {fileID: 703661861304312160, guid: a564fa35d11b4b540b2bc206a2ba6f20, type: 3}
+    materials:
+    - {fileID: 3127397877998790537, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: deeracc24
+    meshName: _DeerAcc_24
+    modulePrefab: {fileID: 8188625232654486303, guid: 44bb73e236845ee408eb21432e70184a, type: 3}
+    materials:
+    - {fileID: -8039634252952092969, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: deeracc25
+    meshName: _DeerAcc_25
+    modulePrefab: {fileID: 1239870603666961917, guid: dabe1317835488244ab171afd63fad5d, type: 3}
+    materials:
+    - {fileID: 4367654691431528144, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: deeracc2n2
+    meshName: _DeerAcc_2N2
+    modulePrefab: {fileID: 809868238663188841, guid: a79a4db83ad9f11468a0ef1f37e42b16, type: 3}
+    materials:
+    - {fileID: -1587876514007007936, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: deeracc5n2
+    meshName: _DeerAcc_5N2
+    modulePrefab: {fileID: 725163988020005510, guid: 3fe42308f25c1474b826239523b77d6b, type: 3}
+    materials:
+    - {fileID: -3657894833945215582, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: deeracc6n2
+    meshName: _DeerAcc_6N2
+    modulePrefab: {fileID: 4789410131891297702, guid: f4ca7d5ee98adaf4087a26705114777e, type: 3}
+    materials:
+    - {fileID: -6592091877441324569, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: deereyes
+    meshName: DeerEyes
+    modulePrefab: {fileID: 1122264332731016117, guid: 094e18cdc8473f94f96497198667823d, type: 3}
+    materials:
+    - {fileID: 1568673758417272559, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: fatacc11ok
+    meshName: _FatAcc_11OK
+    modulePrefab: {fileID: 8637471821876207160, guid: 40980f206dd8c6248b8cd2523a1f1436, type: 3}
+    materials:
+    - {fileID: 4367654691431528144, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: fatacc12ok
+    meshName: _FatAcc_12OK
+    modulePrefab: {fileID: 7688699555938589474, guid: 3edeb70ca157a8f499571d728b2f2d77, type: 3}
+    materials:
+    - {fileID: 3127397877998790537, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: fatacc14ok
+    meshName: _FatAcc_14OK
+    modulePrefab: {fileID: 8022872068934041147, guid: 45508fbe09347e2499a422237cd514c6, type: 3}
+    materials:
+    - {fileID: -8039634252952092969, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: fatacc1n
+    meshName: _FatAcc_1N
+    modulePrefab: {fileID: 1192828319885168207, guid: e11a2e8559ee88d40b9803527e97118d, type: 3}
+    materials:
+    - {fileID: -1587876514007007936, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: fatacc2n
+    meshName: _FatAcc_2N
+    modulePrefab: {fileID: 2817356689346512239, guid: b2ff59223e4428a48b70862ee49566f1, type: 3}
+    materials:
+    - {fileID: -1587876514007007936, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: fatacc5n
+    meshName: _FatAcc_5N
+    modulePrefab: {fileID: 2862169142669917107, guid: 1cfce0371691d4941873177e97b8c817, type: 3}
+    materials:
+    - {fileID: -3657894833945215582, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: fatacc6n
+    meshName: _FatAcc_6N
+    modulePrefab: {fileID: 7317159223035158692, guid: 2d4303722e383aa4eaaa45c168eaf596, type: 3}
+    materials:
+    - {fileID: -6592091877441324569, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: hdears1
+    meshName: _HDEars_1
+    modulePrefab: {fileID: 8964129841217898232, guid: 67b9df8c0e2089b40bdad0afe2b0da75, type: 3}
+    materials:
+    - {fileID: 2856282501890951529, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: hdears9
+    meshName: _HDEars_9
+    modulePrefab: {fileID: 7581969403054890408, guid: 7abeea44a9b321d4c8e0c4d39779c6db, type: 3}
+    materials:
+    - {fileID: -4483235143470206513, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: hdhorns1
+    meshName: _HDHorns_1
+    modulePrefab: {fileID: 8540087093101161218, guid: 8ff18757a2326b747ad45ea81bbe082a, type: 3}
+    materials:
+    - {fileID: -1906576045585187690, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: hdhorns2
+    meshName: _HDHorns_2
+    modulePrefab: {fileID: 1773263814248648433, guid: 24015deef7b439448939193b87a507ae, type: 3}
+    materials:
+    - {fileID: -7838378039426443287, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: hdhorns3
+    meshName: _HDHorns_3
+    modulePrefab: {fileID: 877079169500863982, guid: b5c7c0508817e7e4cbf8cb23a809d224, type: 3}
+    materials:
+    - {fileID: -3603800448671299344, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: hdhorns4
+    meshName: _HDHorns_4
+    modulePrefab: {fileID: 4300284466487108482, guid: e81a1f662cf7e6349a8c573cfbe0147c, type: 3}
+    materials:
+    - {fileID: -598733602025942308, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: hdhorns5
+    meshName: _HDHorns_5
+    modulePrefab: {fileID: 6520274472127871753, guid: e267b9ebb65ff3c4d8ce111e7c961570, type: 3}
+    materials:
+    - {fileID: 5716344535992296762, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: headdeer
+    meshName: _Head_Deer
+    modulePrefab: {fileID: 6979272920450917149, guid: 7980b8ce696a0544897b6f8faebb3612, type: 3}
+    materials:
+    - {fileID: 3105047405648458639, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: tailalien0
+    meshName: _Tail_Alien0
+    modulePrefab: {fileID: 1677853787197909333, guid: fb551a68568e9e94bbccab2c451129d9, type: 3}
+    materials:
+    - {fileID: -6394076301152194499, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: tailalien1
+    meshName: _Tail_Alien1
+    modulePrefab: {fileID: 5317646075113252052, guid: 2928369f39e549444add8a03632a1374, type: 3}
+    materials:
+    - {fileID: -6394076301152194499, guid: 3b847622512186e4bb124e42244244d3, type: 3}
+  - selectionId: tailalien4
+    meshName: _Tail_Alien4
+    modulePrefab: {fileID: 7415936002942203743, guid: 594b1ea2cf3849e4db219af765eaf030, type: 3}
+    materials:
+    - {fileID: -6394076301152194499, guid: 3b847622512186e4bb124e42244244d3, type: 3}

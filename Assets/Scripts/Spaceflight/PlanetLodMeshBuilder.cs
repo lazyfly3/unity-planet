@@ -9,6 +9,7 @@ public static class PlanetLodMeshBuilder
         resolution = Mathf.Clamp(resolution, 6, 48);
         PlanetCelestialProfile celestial = definition.celestial ?? PlanetCelestialProfile.CreateCompatibleDefault();
         PlanetTerrainSettings terrain = definition.terrain ?? new PlanetTerrainSettings();
+        float colorRange = Mathf.Max(8f, celestial.maximumTerrainElevation);
         var vertices = new List<Vector3>(6 * (resolution + 1) * (resolution + 1));
         var triangles = new List<int>(6 * resolution * resolution * 6);
         var colors = new List<Color>(vertices.Capacity);
@@ -29,7 +30,10 @@ public static class PlanetLodMeshBuilder
                     definition.seed,
                     terrain);
                 vertices.Add(radial * (celestial.radius + height));
-                colors.Add(Color.Lerp(definition.rockColor, definition.surfaceColor, Mathf.InverseLerp(-4f, 8f, height)));
+                colors.Add(Color.Lerp(
+                    definition.rockColor,
+                    definition.surfaceColor,
+                    Mathf.InverseLerp(-colorRange * 0.35f, colorRange, height)));
             }
 
             for (int y = 0; y < resolution; y++)

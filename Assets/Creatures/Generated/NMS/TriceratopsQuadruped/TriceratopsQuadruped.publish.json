@@ -1,0 +1,96 @@
+{
+  "pipelineVersion": 10,
+  "familyId": "TriceratopsQuadruped",
+  "skeletonHash": "efc6c1e2bd64bd76546d8b5afffc5fe5500961bddbfb0ce538ec2651b5afecee",
+  "validationHash": "a10669ff99e5b6e7c09444758078b2dd6b973ac6259a1750273bba20c2b0747b",
+  "sourceKind": "Fbx",
+  "sourceModelAsset": "Assets/Creatures/Generated/NMS/TriceratopsQuadruped/TriceratopsQuadruped.fbx",
+  "sourcePrefabAsset": "",
+  "familyManifestAsset": "Assets/Creatures/Generated/NMS/TriceratopsQuadruped/TriceratopsQuadruped_family.json",
+  "skeletonManifestAsset": "Assets/Creatures/Generated/NMS/TriceratopsQuadruped/TriceratopsQuadruped_skeleton.json",
+  "locomotionType": "Quadruped",
+  "surfaceMode": "Ground",
+  "variantIds": [
+    "TriceratopsQuadruped"
+  ],
+  "legCount": 4,
+  "allowRareModules": false,
+  "excludedModulePrefixes": [],
+  "selectionWeight": 1,
+  "walkSpeed": 1.15,
+  "surfaceRootOffset": -1.0,
+  "hoverClearance": 0.0,
+  "importScale": 1.0,
+  "importEuler": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "localForwardAxis": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -1.0
+  },
+  "actions": [
+    {
+      "key": "idle",
+      "clipName": "TriceratopsQuadruped_IDLE_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/TriceratopsQuadruped/TriceratopsQuadruped.fbx",
+      "frames": 481,
+      "loop": true
+    },
+    {
+      "key": "walk",
+      "clipName": "TriceratopsQuadruped_WALK_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/TriceratopsQuadruped/TriceratopsQuadruped.fbx",
+      "frames": 97,
+      "loop": true
+    },
+    {
+      "key": "run",
+      "clipName": "TriceratopsQuadruped_RUN_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/TriceratopsQuadruped/TriceratopsQuadruped.fbx",
+      "frames": 49,
+      "loop": true
+    }
+  ],
+  "loadBearingChains": [
+    {
+      "id": "Leg1",
+      "bones": [
+        "LFShoulderJNT",
+        "LFElbowJNT",
+        "LFAnkleJNT",
+        "LFToeJNT"
+      ]
+    },
+    {
+      "id": "Leg2",
+      "bones": [
+        "RFShoulderJNT",
+        "RFElbowJNT",
+        "RFAnkleJNT",
+        "RFToeJNT"
+      ]
+    },
+    {
+      "id": "Leg3",
+      "bones": [
+        "LBLegJNT",
+        "LBKneeJNT",
+        "LBAnkleJNT",
+        "LBToeJNT"
+      ]
+    },
+    {
+      "id": "Leg4",
+      "bones": [
+        "RBLegJNT",
+        "RBKneeJNT",
+        "RBAnkleJNT",
+        "RBToeJNT"
+      ]
+    }
+  ],
+  "sourceFbxSha256": "52bb2962a692190f0302872b492f046c2eb6911cca25447d682c6d0d12df8d57"
+}

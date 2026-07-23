@@ -4,11 +4,30 @@ public static class ProceduralCreatureGenerator
 {
     public static CreatureGenome Generate(int seed)
     {
-return Generate(seed, null);
+        return Generate(seed, null);
     
 }
 
     public static CreatureGenome Generate(int seed, CreatureTopology? forcedTopology)
+    {
+        CreatureGenome genome = GenerateLegacyV3(seed, forcedTopology);
+        if (genome.topology != CreatureTopology.Quadruped)
+            return genome;
+
+        CreaturePhenotypeBuilder.ConstrainV4Genome(genome);
+        if (genome.locomotionArchetype == CreatureLocomotionArchetype.CursorialUngulate)
+        {
+            genome.generatorVersion = CreatureGenerationVersions.AnatomicalV5;
+            genome.v5Parameters = CreatureV5EditableParameters.CreateFromGenome(genome);
+        }
+        genome.torsoSpline = CreatureTorsoSplineGenerator.Generate(genome);
+        genome.designLanguage = CreatureBodyGraphBuilder.GenerateDesignLanguage(genome);
+        genome.bodyGraph = CreatureBodyGraphBuilder.Build(genome);
+        genome.bodyGraph.generatorVersion = genome.generatorVersion;
+        return genome;
+    }
+
+    public static CreatureGenome GenerateLegacyV3(int seed, CreatureTopology? forcedTopology = null)
     {
 var random = new StableCreatureRandom(seed);
         CreatureTopology generatedTopology = (CreatureTopology)random.Range(0, 4);

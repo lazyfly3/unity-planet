@@ -50,6 +50,9 @@ namespace SpacecraftEditor
         public float CurrentThrottle => allocator.MaximumAppliedThrottle;
         public SpacecraftControlTelemetry Telemetry { get; private set; }
         public KeyboardMouseFlightInput FlightInput => flightCommandSource as KeyboardMouseFlightInput;
+        public SpacecraftFlightCommand CurrentCommand => commandSource == null
+            ? default
+            : commandSource.Command;
 
         public void SetExternalWorldVelocityTarget(Vector3 velocity)
         {

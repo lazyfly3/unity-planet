@@ -5,8 +5,9 @@ public sealed class BioCreatureFollowCamera : MonoBehaviour
 {
     [SerializeField] SphericalGravitySource gravitySource;
     [SerializeField] Transform target;
-    [SerializeField, Min(1f)] float followDistance = 11f;
-    [SerializeField, Min(0f)] float height = 6f;
+    [SerializeField, Min(1f)] float followDistance = 7.5f;
+    [SerializeField, Min(0f)] float height = 3.2f;
+    [SerializeField] float sideOffset = 4.5f;
     [SerializeField, Min(0.1f)] float positionSmoothSpeed = 6f;
     [SerializeField, Min(0.1f)] float rotationSmoothSpeed = 8f;
 
@@ -39,7 +40,9 @@ target = newTarget;
             forward = Vector3.Cross(Vector3.forward, up);
         forward.Normalize();
 
-        Vector3 desiredPosition = target.position - forward * followDistance + up * height;
+        Vector3 right = Vector3.Cross(up, forward).normalized;
+        Vector3 desiredPosition = target.position - forward * followDistance
+            + right * sideOffset + up * height;
         float positionBlend = deltaTime >= 1f ? 1f : 1f - Mathf.Exp(-positionSmoothSpeed * deltaTime);
         transform.position = Vector3.Lerp(transform.position, desiredPosition, positionBlend);
 

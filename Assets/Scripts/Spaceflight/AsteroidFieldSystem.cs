@@ -99,7 +99,10 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
     void OnEnable()
     {
         if (runtime != null)
+        {
             runtime.OriginShifted += HandleOriginShift;
+            runtime.UniverseRelocated += HandleUniverseRelocated;
+        }
     }
 
     void Start()
@@ -254,6 +257,28 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
         }
     }
 
+    void HandleUniverseRelocated(DoubleVector3 previousPosition, DoubleVector3 currentPosition)
+    {
+        ClearAllChunks();
+        nextRefresh = 0f;
+        RefreshChunks();
+    }
+
+    void ClearAllChunks()
+    {
+        foreach (ChunkRuntime chunk in activeChunks.Values)
+        {
+            foreach (AsteroidBody body in chunk.bodies)
+            {
+                if (body != null)
+                    Destroy(body.gameObject);
+            }
+        }
+        activeChunks.Clear();
+        requiredChunks.Clear();
+        removalBuffer.Clear();
+    }
+
     ChunkKey GetChunk(DoubleVector3 position) => new ChunkKey(
         (long)Math.Floor(position.x / chunkSize),
         (long)Math.Floor(position.y / chunkSize),
@@ -291,7 +316,10 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
     void OnDisable()
     {
         if (runtime != null)
+        {
             runtime.OriginShifted -= HandleOriginShift;
+            runtime.UniverseRelocated -= HandleUniverseRelocated;
+        }
     }
 
     void OnDestroy()

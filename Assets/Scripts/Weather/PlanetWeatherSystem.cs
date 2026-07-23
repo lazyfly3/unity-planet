@@ -288,6 +288,8 @@ if (!configured || world == null)
         }
         if (cloudShell != null)
         {
+            if (cloudProperties == null)
+                cloudProperties = new MaterialPropertyBlock();
             cloudShell.GetPropertyBlock(cloudProperties);
             cloudProperties.SetFloat("_Coverage", cloud);
             cloudProperties.SetColor("_CloudColor", Color.Lerp(a.fogColor, b.fogColor, transition));

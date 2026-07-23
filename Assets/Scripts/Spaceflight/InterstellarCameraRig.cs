@@ -37,7 +37,10 @@ public sealed class InterstellarCameraRig : MonoBehaviour
     {
         ResolveReferences();
         if (runtime != null)
+        {
             runtime.OriginShifted += HandleOriginShift;
+            runtime.UniverseRelocated += HandleUniverseRelocated;
+        }
         if (damageReceiver != null)
             damageReceiver.Damaged += HandleDamaged;
     }
@@ -72,6 +75,8 @@ public sealed class InterstellarCameraRig : MonoBehaviour
             float speed = targetBody == null ? 0f : targetBody.velocity.magnitude;
             float ratio = Mathf.Clamp01(speed / maximumFovSpeed);
             float desiredFov = Mathf.Lerp(fieldOfViewRange.x, fieldOfViewRange.y, ratio);
+            desiredFov += (fieldOfViewRange.y - fieldOfViewRange.x) * 0.7f
+                * (ship == null ? 0f : ship.WarpVisualIntensity);
             targetCamera.fieldOfView = Mathf.Lerp(
                 targetCamera.fieldOfView,
                 desiredFov,
@@ -154,6 +159,11 @@ public sealed class InterstellarCameraRig : MonoBehaviour
         SnapToTarget();
     }
 
+    void HandleUniverseRelocated(DoubleVector3 previousPosition, DoubleVector3 currentPosition)
+    {
+        SnapToTarget();
+    }
+
     void HandleDamaged(float integrity, float maximumIntegrity, SpaceDamageInfo damage)
     {
         float strength = Mathf.Clamp(damage.amount * 0.025f, 0.05f, 0.45f);
@@ -163,7 +173,10 @@ public sealed class InterstellarCameraRig : MonoBehaviour
     void OnDisable()
     {
         if (runtime != null)
+        {
             runtime.OriginShifted -= HandleOriginShift;
+            runtime.UniverseRelocated -= HandleUniverseRelocated;
+        }
         if (damageReceiver != null)
             damageReceiver.Damaged -= HandleDamaged;
     }

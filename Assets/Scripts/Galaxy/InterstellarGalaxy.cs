@@ -62,8 +62,8 @@ public struct DoubleVector3
 
 public sealed class ProceduralInterstellarGenerator
 {
-    public const int CurrentVersion = 1;
-    public const double SectorSpacing = 12000d;
+    public const int CurrentVersion = 2;
+    public const double SectorSpacing = 32000d;
     const long MacroCellSize = 4L;
 
     readonly int worldSeed;

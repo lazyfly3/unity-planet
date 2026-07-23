@@ -1,0 +1,5001 @@
+{
+  "pipelineVersion": 10,
+  "rngAlgorithm": "SplitMix64-v1",
+  "familyId": "StriderGround",
+  "variantIds": [
+    "Strider"
+  ],
+  "skeletonHash": "6ec5a95910df2c61ad4cf32edf8b1874baaa15ef1adf0f0d96722d1e42256a45",
+  "sourceScene": "D:\\blender\\creature\\NMSImport\\StriderRig\\Extracted\\models\\planets\\creatures\\striderrig\\strider.scene.mbin",
+  "locomotionType": "Ground",
+  "legCount": 2,
+  "descriptorGroups": [
+    {
+      "typeId": "_HEAD_",
+      "path": [],
+      "candidates": [
+        {
+          "id": "_HEAD_BUG",
+          "name": "_Head_Bug",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Bug"
+          ],
+          "children": [
+            {
+              "typeId": "_SH2ACC_",
+              "path": [
+                "_HEAD_",
+                "_Head_Bug"
+              ],
+              "candidates": [
+                {
+                  "id": "_SH2ACC_1XRARE",
+                  "name": "_SH2Acc_1xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Bug",
+                    "_SH2ACC_",
+                    "_SH2Acc_1xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SH2ACC_NONE",
+                  "name": "_SH2Acc_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Bug",
+                    "_SH2ACC_",
+                    "_SH2Acc_none"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_BUGARM_",
+              "path": [
+                "_HEAD_",
+                "_Head_Bug"
+              ],
+              "candidates": [
+                {
+                  "id": "_BUGARM_0",
+                  "name": "_BugArm_0",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Bug",
+                    "_BUGARM_",
+                    "_BugArm_0"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_ACCBACK_",
+              "path": [
+                "_HEAD_",
+                "_Head_Bug"
+              ],
+              "candidates": [
+                {
+                  "id": "_ACCBACK_1",
+                  "name": "_AccBack_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Bug",
+                    "_ACCBACK_",
+                    "_AccBack_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACCBACK_0",
+                  "name": "_AccBack_0",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Bug",
+                    "_ACCBACK_",
+                    "_AccBack_0"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_HEAD_FISH",
+          "name": "_Head_Fish",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Fish"
+          ],
+          "children": [
+            {
+              "typeId": "_FISH_",
+              "path": [
+                "_HEAD_",
+                "_Head_Fish"
+              ],
+              "candidates": [
+                {
+                  "id": "_FISH_1",
+                  "name": "_Fish_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Fish",
+                    "_FISH_",
+                    "_Fish_1"
+                  ],
+                  "children": [
+                    {
+                      "typeId": "_FISHEYES_",
+                      "path": [
+                        "_HEAD_",
+                        "_Head_Fish",
+                        "_FISH_",
+                        "_Fish_1"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_FISHEYES_1",
+                          "name": "_FishEyes_1",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Fish",
+                            "_FISH_",
+                            "_Fish_1",
+                            "_FISHEYES_",
+                            "_FishEyes_1"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "typeId": "_FIN_",
+                      "path": [
+                        "_HEAD_",
+                        "_Head_Fish",
+                        "_FISH_",
+                        "_Fish_1"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_FIN_NONE",
+                          "name": "_Fin_none",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Fish",
+                            "_FISH_",
+                            "_Fish_1",
+                            "_FIN_",
+                            "_Fin_none"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_FIN_1XRARE",
+                          "name": "_Fin_1xRARE",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Fish",
+                            "_FISH_",
+                            "_Fish_1",
+                            "_FIN_",
+                            "_Fin_1xRARE"
+                          ],
+                          "children": [
+                            {
+                              "typeId": "_FILLE_",
+                              "path": [
+                                "_HEAD_",
+                                "_Head_Fish",
+                                "_FISH_",
+                                "_Fish_1",
+                                "_FIN_",
+                                "_Fin_1xRARE"
+                              ],
+                              "candidates": [
+                                {
+                                  "id": "_FILLE_NONE",
+                                  "name": "_FillE_none",
+                                  "chance": 0.0,
+                                  "path": [
+                                    "_HEAD_",
+                                    "_Head_Fish",
+                                    "_FISH_",
+                                    "_Fish_1",
+                                    "_FIN_",
+                                    "_Fin_1xRARE",
+                                    "_FILLE_",
+                                    "_FillE_none"
+                                  ],
+                                  "children": []
+                                },
+                                {
+                                  "id": "_FILLE_1",
+                                  "name": "_FillE_1",
+                                  "chance": 0.0,
+                                  "path": [
+                                    "_HEAD_",
+                                    "_Head_Fish",
+                                    "_FISH_",
+                                    "_Fish_1",
+                                    "_FIN_",
+                                    "_Fin_1xRARE",
+                                    "_FILLE_",
+                                    "_FillE_1"
+                                  ],
+                                  "children": []
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "_FISH_2XRARE",
+                  "name": "_Fish_2xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Fish",
+                    "_FISH_",
+                    "_Fish_2xRARE"
+                  ],
+                  "children": [
+                    {
+                      "typeId": "_FILLE2_",
+                      "path": [
+                        "_HEAD_",
+                        "_Head_Fish",
+                        "_FISH_",
+                        "_Fish_2xRARE"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_FILLE2_NONE",
+                          "name": "_FillE2_none",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Fish",
+                            "_FISH_",
+                            "_Fish_2xRARE",
+                            "_FILLE2_",
+                            "_FillE2_none"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_FILLE2_1",
+                          "name": "_FillE2_1",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Fish",
+                            "_FISH_",
+                            "_Fish_2xRARE",
+                            "_FILLE2_",
+                            "_FillE2_1"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "typeId": "_NECK_",
+                      "path": [
+                        "_HEAD_",
+                        "_Head_Fish",
+                        "_FISH_",
+                        "_Fish_2xRARE"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_NECK_1",
+                          "name": "_Neck_1",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Fish",
+                            "_FISH_",
+                            "_Fish_2xRARE",
+                            "_NECK_",
+                            "_Neck_1"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "typeId": "_MOUTH_",
+                      "path": [
+                        "_HEAD_",
+                        "_Head_Fish",
+                        "_FISH_",
+                        "_Fish_2xRARE"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_MOUTH_1",
+                          "name": "_Mouth_1",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Fish",
+                            "_FISH_",
+                            "_Fish_2xRARE",
+                            "_MOUTH_",
+                            "_Mouth_1"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_HEAD_FLATHEAD",
+          "name": "_Head_FlatHead",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_FlatHead"
+          ],
+          "children": [
+            {
+              "typeId": "_FHACC_",
+              "path": [
+                "_HEAD_",
+                "_Head_FlatHead"
+              ],
+              "candidates": [
+                {
+                  "id": "_FHACC_7XRARE",
+                  "name": "_FHAcc_7xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_FlatHead",
+                    "_FHACC_",
+                    "_FHAcc_7xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FHACC_3XRARE",
+                  "name": "_FHAcc_3xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_FlatHead",
+                    "_FHACC_",
+                    "_FHAcc_3xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FHACC_5XRARE",
+                  "name": "_FHAcc_5xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_FlatHead",
+                    "_FHACC_",
+                    "_FHAcc_5xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FHACC_6",
+                  "name": "_FHAcc_6",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_FlatHead",
+                    "_FHACC_",
+                    "_FHAcc_6"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FHACC_4",
+                  "name": "_FHAcc_4",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_FlatHead",
+                    "_FHACC_",
+                    "_FHAcc_4"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FHACC_3",
+                  "name": "_FHAcc_3",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_FlatHead",
+                    "_FHACC_",
+                    "_FHAcc_3"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FHACC_0",
+                  "name": "_FHAcc_0",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_FlatHead",
+                    "_FHACC_",
+                    "_FHAcc_0"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FHACC_2",
+                  "name": "_FHAcc_2",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_FlatHead",
+                    "_FHACC_",
+                    "_FHAcc_2"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FHACC_1",
+                  "name": "_FHAcc_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_FlatHead",
+                    "_FHACC_",
+                    "_FHAcc_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FHACC_2XRARE",
+                  "name": "_FHAcc_2xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_FlatHead",
+                    "_FHACC_",
+                    "_FHAcc_2xRARE"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_HEAD_STRIDER",
+          "name": "_Head_Strider",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider"
+          ],
+          "children": [
+            {
+              "typeId": "_SHACC_",
+              "path": [
+                "_HEAD_",
+                "_Head_Strider"
+              ],
+              "candidates": [
+                {
+                  "id": "_SHACC_0",
+                  "name": "_SHAcc_0",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Strider",
+                    "_SHACC_",
+                    "_SHAcc_0"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SHACC_5XRARE",
+                  "name": "_SHAcc_5xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Strider",
+                    "_SHACC_",
+                    "_SHAcc_5xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SHACC_1",
+                  "name": "_SHAcc_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Strider",
+                    "_SHACC_",
+                    "_SHAcc_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SHACC_2",
+                  "name": "_SHAcc_2",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Strider",
+                    "_SHACC_",
+                    "_SHAcc_2"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SHACC_4",
+                  "name": "_SHAcc_4",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Strider",
+                    "_SHACC_",
+                    "_SHAcc_4"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SHACC_3",
+                  "name": "_SHAcc_3",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Strider",
+                    "_SHACC_",
+                    "_SHAcc_3"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_HEAD_STRIDER2",
+          "name": "_Head_Strider2",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider2"
+          ],
+          "children": [
+            {
+              "typeId": "_SH1ACC_",
+              "path": [
+                "_HEAD_",
+                "_Head_Strider2"
+              ],
+              "candidates": [
+                {
+                  "id": "_SH1ACC_0",
+                  "name": "_SH1Acc_0",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Strider2",
+                    "_SH1ACC_",
+                    "_SH1Acc_0"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SH1ACC_4XRARE",
+                  "name": "_SH1Acc_4xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Strider2",
+                    "_SH1ACC_",
+                    "_SH1Acc_4xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SH1ACC_1",
+                  "name": "_SH1Acc_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Strider2",
+                    "_SH1ACC_",
+                    "_SH1Acc_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SH1ACC_2",
+                  "name": "_SH1Acc_2",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Strider2",
+                    "_SH1ACC_",
+                    "_SH1Acc_2"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SH1ACC_3",
+                  "name": "_SH1Acc_3",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Strider2",
+                    "_SH1ACC_",
+                    "_SH1Acc_3"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_SH2ACC_",
+      "path": [
+        "_HEAD_",
+        "_Head_Bug"
+      ],
+      "candidates": [
+        {
+          "id": "_SH2ACC_1XRARE",
+          "name": "_SH2Acc_1xRARE",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Bug",
+            "_SH2ACC_",
+            "_SH2Acc_1xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SH2ACC_NONE",
+          "name": "_SH2Acc_none",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Bug",
+            "_SH2ACC_",
+            "_SH2Acc_none"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_BUGARM_",
+      "path": [
+        "_HEAD_",
+        "_Head_Bug"
+      ],
+      "candidates": [
+        {
+          "id": "_BUGARM_0",
+          "name": "_BugArm_0",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Bug",
+            "_BUGARM_",
+            "_BugArm_0"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_ACCBACK_",
+      "path": [
+        "_HEAD_",
+        "_Head_Bug"
+      ],
+      "candidates": [
+        {
+          "id": "_ACCBACK_1",
+          "name": "_AccBack_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Bug",
+            "_ACCBACK_",
+            "_AccBack_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACCBACK_0",
+          "name": "_AccBack_0",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Bug",
+            "_ACCBACK_",
+            "_AccBack_0"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_FISH_",
+      "path": [
+        "_HEAD_",
+        "_Head_Fish"
+      ],
+      "candidates": [
+        {
+          "id": "_FISH_1",
+          "name": "_Fish_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Fish",
+            "_FISH_",
+            "_Fish_1"
+          ],
+          "children": [
+            {
+              "typeId": "_FISHEYES_",
+              "path": [
+                "_HEAD_",
+                "_Head_Fish",
+                "_FISH_",
+                "_Fish_1"
+              ],
+              "candidates": [
+                {
+                  "id": "_FISHEYES_1",
+                  "name": "_FishEyes_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Fish",
+                    "_FISH_",
+                    "_Fish_1",
+                    "_FISHEYES_",
+                    "_FishEyes_1"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_FIN_",
+              "path": [
+                "_HEAD_",
+                "_Head_Fish",
+                "_FISH_",
+                "_Fish_1"
+              ],
+              "candidates": [
+                {
+                  "id": "_FIN_NONE",
+                  "name": "_Fin_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Fish",
+                    "_FISH_",
+                    "_Fish_1",
+                    "_FIN_",
+                    "_Fin_none"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FIN_1XRARE",
+                  "name": "_Fin_1xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Fish",
+                    "_FISH_",
+                    "_Fish_1",
+                    "_FIN_",
+                    "_Fin_1xRARE"
+                  ],
+                  "children": [
+                    {
+                      "typeId": "_FILLE_",
+                      "path": [
+                        "_HEAD_",
+                        "_Head_Fish",
+                        "_FISH_",
+                        "_Fish_1",
+                        "_FIN_",
+                        "_Fin_1xRARE"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_FILLE_NONE",
+                          "name": "_FillE_none",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Fish",
+                            "_FISH_",
+                            "_Fish_1",
+                            "_FIN_",
+                            "_Fin_1xRARE",
+                            "_FILLE_",
+                            "_FillE_none"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_FILLE_1",
+                          "name": "_FillE_1",
+                          "chance": 0.0,
+                          "path": [
+                            "_HEAD_",
+                            "_Head_Fish",
+                            "_FISH_",
+                            "_Fish_1",
+                            "_FIN_",
+                            "_Fin_1xRARE",
+                            "_FILLE_",
+                            "_FillE_1"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_FISH_2XRARE",
+          "name": "_Fish_2xRARE",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Fish",
+            "_FISH_",
+            "_Fish_2xRARE"
+          ],
+          "children": [
+            {
+              "typeId": "_FILLE2_",
+              "path": [
+                "_HEAD_",
+                "_Head_Fish",
+                "_FISH_",
+                "_Fish_2xRARE"
+              ],
+              "candidates": [
+                {
+                  "id": "_FILLE2_NONE",
+                  "name": "_FillE2_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Fish",
+                    "_FISH_",
+                    "_Fish_2xRARE",
+                    "_FILLE2_",
+                    "_FillE2_none"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FILLE2_1",
+                  "name": "_FillE2_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Fish",
+                    "_FISH_",
+                    "_Fish_2xRARE",
+                    "_FILLE2_",
+                    "_FillE2_1"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_NECK_",
+              "path": [
+                "_HEAD_",
+                "_Head_Fish",
+                "_FISH_",
+                "_Fish_2xRARE"
+              ],
+              "candidates": [
+                {
+                  "id": "_NECK_1",
+                  "name": "_Neck_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Fish",
+                    "_FISH_",
+                    "_Fish_2xRARE",
+                    "_NECK_",
+                    "_Neck_1"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_MOUTH_",
+              "path": [
+                "_HEAD_",
+                "_Head_Fish",
+                "_FISH_",
+                "_Fish_2xRARE"
+              ],
+              "candidates": [
+                {
+                  "id": "_MOUTH_1",
+                  "name": "_Mouth_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Fish",
+                    "_FISH_",
+                    "_Fish_2xRARE",
+                    "_MOUTH_",
+                    "_Mouth_1"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_FISHEYES_",
+      "path": [
+        "_HEAD_",
+        "_Head_Fish",
+        "_FISH_",
+        "_Fish_1"
+      ],
+      "candidates": [
+        {
+          "id": "_FISHEYES_1",
+          "name": "_FishEyes_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Fish",
+            "_FISH_",
+            "_Fish_1",
+            "_FISHEYES_",
+            "_FishEyes_1"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_FIN_",
+      "path": [
+        "_HEAD_",
+        "_Head_Fish",
+        "_FISH_",
+        "_Fish_1"
+      ],
+      "candidates": [
+        {
+          "id": "_FIN_NONE",
+          "name": "_Fin_none",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Fish",
+            "_FISH_",
+            "_Fish_1",
+            "_FIN_",
+            "_Fin_none"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FIN_1XRARE",
+          "name": "_Fin_1xRARE",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Fish",
+            "_FISH_",
+            "_Fish_1",
+            "_FIN_",
+            "_Fin_1xRARE"
+          ],
+          "children": [
+            {
+              "typeId": "_FILLE_",
+              "path": [
+                "_HEAD_",
+                "_Head_Fish",
+                "_FISH_",
+                "_Fish_1",
+                "_FIN_",
+                "_Fin_1xRARE"
+              ],
+              "candidates": [
+                {
+                  "id": "_FILLE_NONE",
+                  "name": "_FillE_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Fish",
+                    "_FISH_",
+                    "_Fish_1",
+                    "_FIN_",
+                    "_Fin_1xRARE",
+                    "_FILLE_",
+                    "_FillE_none"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FILLE_1",
+                  "name": "_FillE_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_HEAD_",
+                    "_Head_Fish",
+                    "_FISH_",
+                    "_Fish_1",
+                    "_FIN_",
+                    "_Fin_1xRARE",
+                    "_FILLE_",
+                    "_FillE_1"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_FILLE_",
+      "path": [
+        "_HEAD_",
+        "_Head_Fish",
+        "_FISH_",
+        "_Fish_1",
+        "_FIN_",
+        "_Fin_1xRARE"
+      ],
+      "candidates": [
+        {
+          "id": "_FILLE_NONE",
+          "name": "_FillE_none",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Fish",
+            "_FISH_",
+            "_Fish_1",
+            "_FIN_",
+            "_Fin_1xRARE",
+            "_FILLE_",
+            "_FillE_none"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FILLE_1",
+          "name": "_FillE_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Fish",
+            "_FISH_",
+            "_Fish_1",
+            "_FIN_",
+            "_Fin_1xRARE",
+            "_FILLE_",
+            "_FillE_1"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_FILLE2_",
+      "path": [
+        "_HEAD_",
+        "_Head_Fish",
+        "_FISH_",
+        "_Fish_2xRARE"
+      ],
+      "candidates": [
+        {
+          "id": "_FILLE2_NONE",
+          "name": "_FillE2_none",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Fish",
+            "_FISH_",
+            "_Fish_2xRARE",
+            "_FILLE2_",
+            "_FillE2_none"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FILLE2_1",
+          "name": "_FillE2_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Fish",
+            "_FISH_",
+            "_Fish_2xRARE",
+            "_FILLE2_",
+            "_FillE2_1"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_NECK_",
+      "path": [
+        "_HEAD_",
+        "_Head_Fish",
+        "_FISH_",
+        "_Fish_2xRARE"
+      ],
+      "candidates": [
+        {
+          "id": "_NECK_1",
+          "name": "_Neck_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Fish",
+            "_FISH_",
+            "_Fish_2xRARE",
+            "_NECK_",
+            "_Neck_1"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_MOUTH_",
+      "path": [
+        "_HEAD_",
+        "_Head_Fish",
+        "_FISH_",
+        "_Fish_2xRARE"
+      ],
+      "candidates": [
+        {
+          "id": "_MOUTH_1",
+          "name": "_Mouth_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Fish",
+            "_FISH_",
+            "_Fish_2xRARE",
+            "_MOUTH_",
+            "_Mouth_1"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_FHACC_",
+      "path": [
+        "_HEAD_",
+        "_Head_FlatHead"
+      ],
+      "candidates": [
+        {
+          "id": "_FHACC_7XRARE",
+          "name": "_FHAcc_7xRARE",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_FlatHead",
+            "_FHACC_",
+            "_FHAcc_7xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FHACC_3XRARE",
+          "name": "_FHAcc_3xRARE",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_FlatHead",
+            "_FHACC_",
+            "_FHAcc_3xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FHACC_5XRARE",
+          "name": "_FHAcc_5xRARE",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_FlatHead",
+            "_FHACC_",
+            "_FHAcc_5xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FHACC_6",
+          "name": "_FHAcc_6",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_FlatHead",
+            "_FHACC_",
+            "_FHAcc_6"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FHACC_4",
+          "name": "_FHAcc_4",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_FlatHead",
+            "_FHACC_",
+            "_FHAcc_4"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FHACC_3",
+          "name": "_FHAcc_3",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_FlatHead",
+            "_FHACC_",
+            "_FHAcc_3"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FHACC_0",
+          "name": "_FHAcc_0",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_FlatHead",
+            "_FHACC_",
+            "_FHAcc_0"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FHACC_2",
+          "name": "_FHAcc_2",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_FlatHead",
+            "_FHACC_",
+            "_FHAcc_2"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FHACC_1",
+          "name": "_FHAcc_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_FlatHead",
+            "_FHACC_",
+            "_FHAcc_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FHACC_2XRARE",
+          "name": "_FHAcc_2xRARE",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_FlatHead",
+            "_FHACC_",
+            "_FHAcc_2xRARE"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_SHACC_",
+      "path": [
+        "_HEAD_",
+        "_Head_Strider"
+      ],
+      "candidates": [
+        {
+          "id": "_SHACC_0",
+          "name": "_SHAcc_0",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider",
+            "_SHACC_",
+            "_SHAcc_0"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SHACC_5XRARE",
+          "name": "_SHAcc_5xRARE",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider",
+            "_SHACC_",
+            "_SHAcc_5xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SHACC_1",
+          "name": "_SHAcc_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider",
+            "_SHACC_",
+            "_SHAcc_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SHACC_2",
+          "name": "_SHAcc_2",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider",
+            "_SHACC_",
+            "_SHAcc_2"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SHACC_4",
+          "name": "_SHAcc_4",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider",
+            "_SHACC_",
+            "_SHAcc_4"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SHACC_3",
+          "name": "_SHAcc_3",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider",
+            "_SHACC_",
+            "_SHAcc_3"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_SH1ACC_",
+      "path": [
+        "_HEAD_",
+        "_Head_Strider2"
+      ],
+      "candidates": [
+        {
+          "id": "_SH1ACC_0",
+          "name": "_SH1Acc_0",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider2",
+            "_SH1ACC_",
+            "_SH1Acc_0"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SH1ACC_4XRARE",
+          "name": "_SH1Acc_4xRARE",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider2",
+            "_SH1ACC_",
+            "_SH1Acc_4xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SH1ACC_1",
+          "name": "_SH1Acc_1",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider2",
+            "_SH1ACC_",
+            "_SH1Acc_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SH1ACC_2",
+          "name": "_SH1Acc_2",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider2",
+            "_SH1ACC_",
+            "_SH1Acc_2"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SH1ACC_3",
+          "name": "_SH1Acc_3",
+          "chance": 0.0,
+          "path": [
+            "_HEAD_",
+            "_Head_Strider2",
+            "_SH1ACC_",
+            "_SH1Acc_3"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_BODY_",
+      "path": [],
+      "candidates": [
+        {
+          "id": "_BODY_BUG",
+          "name": "_Body_Bug",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Bug"
+          ],
+          "children": [
+            {
+              "typeId": "_BBACC_",
+              "path": [
+                "_BODY_",
+                "_Body_Bug"
+              ],
+              "candidates": [
+                {
+                  "id": "_BBACC_1XRARE",
+                  "name": "_BBAcc_1xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Bug",
+                    "_BBACC_",
+                    "_BBAcc_1xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_BBACC_4XRARE",
+                  "name": "_BBAcc_4xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Bug",
+                    "_BBACC_",
+                    "_BBAcc_4xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_BBACC_3XRARE",
+                  "name": "_BBAcc_3xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Bug",
+                    "_BBACC_",
+                    "_BBAcc_3xRARE"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_BBARM_",
+              "path": [
+                "_BODY_",
+                "_Body_Bug"
+              ],
+              "candidates": [
+                {
+                  "id": "_BBARM_1",
+                  "name": "_BBArm_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Bug",
+                    "_BBARM_",
+                    "_BBArm_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_BBARM_NONE",
+                  "name": "_BBArm_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Bug",
+                    "_BBARM_",
+                    "_BBArm_none"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_BODY_STRIDER",
+          "name": "_Body_Strider",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider"
+          ],
+          "children": [
+            {
+              "typeId": "_SBACC_",
+              "path": [
+                "_BODY_",
+                "_Body_Strider"
+              ],
+              "candidates": [
+                {
+                  "id": "_SBACC_1",
+                  "name": "_SBAcc_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider",
+                    "_SBACC_",
+                    "_SBAcc_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SBACC_2XRARE",
+                  "name": "_SBAcc_2xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider",
+                    "_SBACC_",
+                    "_SBAcc_2xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SBACC_4XRARE",
+                  "name": "_SBAcc_4xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider",
+                    "_SBACC_",
+                    "_SBAcc_4xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SBACC_5XRARE",
+                  "name": "_SBAcc_5xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider",
+                    "_SBACC_",
+                    "_SBAcc_5xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SBACC_6",
+                  "name": "_SBAcc_6",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider",
+                    "_SBACC_",
+                    "_SBAcc_6"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SBACC_7XRARE",
+                  "name": "_SBAcc_7xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider",
+                    "_SBACC_",
+                    "_SBAcc_7xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_SBACC_8XRARE",
+                  "name": "_SBAcc_8xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider",
+                    "_SBACC_",
+                    "_SBAcc_8xRARE"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_BODY_STRIDER2",
+          "name": "_Body_Strider2",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider2"
+          ],
+          "children": [
+            {
+              "typeId": "_ACC_",
+              "path": [
+                "_BODY_",
+                "_Body_Strider2"
+              ],
+              "candidates": [
+                {
+                  "id": "_ACC_ARM1",
+                  "name": "_Acc_Arm1",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider2",
+                    "_ACC_",
+                    "_Acc_Arm1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACC_ARM2XRARE",
+                  "name": "_Acc_Arm2xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider2",
+                    "_ACC_",
+                    "_Acc_Arm2xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_ACC_NONE",
+                  "name": "_Acc_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider2",
+                    "_ACC_",
+                    "_Acc_none"
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "typeId": "_S1ACC_",
+              "path": [
+                "_BODY_",
+                "_Body_Strider2"
+              ],
+              "candidates": [
+                {
+                  "id": "_S1ACC_7XRARE",
+                  "name": "_S1Acc_7xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider2",
+                    "_S1ACC_",
+                    "_S1Acc_7xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_S1ACC_2XRARE",
+                  "name": "_S1Acc_2xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider2",
+                    "_S1ACC_",
+                    "_S1Acc_2xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_S1ACC_3XRARE",
+                  "name": "_S1Acc_3xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider2",
+                    "_S1ACC_",
+                    "_S1Acc_3xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_S1ACC_4",
+                  "name": "_S1Acc_4",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider2",
+                    "_S1ACC_",
+                    "_S1Acc_4"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_S1ACC_6XRARE",
+                  "name": "_S1Acc_6xRARE",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider2",
+                    "_S1ACC_",
+                    "_S1Acc_6xRARE"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_S1ACC_5",
+                  "name": "_S1Acc_5",
+                  "chance": 0.0,
+                  "path": [
+                    "_BODY_",
+                    "_Body_Strider2",
+                    "_S1ACC_",
+                    "_S1Acc_5"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_BBACC_",
+      "path": [
+        "_BODY_",
+        "_Body_Bug"
+      ],
+      "candidates": [
+        {
+          "id": "_BBACC_1XRARE",
+          "name": "_BBAcc_1xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Bug",
+            "_BBACC_",
+            "_BBAcc_1xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_BBACC_4XRARE",
+          "name": "_BBAcc_4xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Bug",
+            "_BBACC_",
+            "_BBAcc_4xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_BBACC_3XRARE",
+          "name": "_BBAcc_3xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Bug",
+            "_BBACC_",
+            "_BBAcc_3xRARE"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_BBARM_",
+      "path": [
+        "_BODY_",
+        "_Body_Bug"
+      ],
+      "candidates": [
+        {
+          "id": "_BBARM_1",
+          "name": "_BBArm_1",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Bug",
+            "_BBARM_",
+            "_BBArm_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_BBARM_NONE",
+          "name": "_BBArm_none",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Bug",
+            "_BBARM_",
+            "_BBArm_none"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_SBACC_",
+      "path": [
+        "_BODY_",
+        "_Body_Strider"
+      ],
+      "candidates": [
+        {
+          "id": "_SBACC_1",
+          "name": "_SBAcc_1",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider",
+            "_SBACC_",
+            "_SBAcc_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SBACC_2XRARE",
+          "name": "_SBAcc_2xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider",
+            "_SBACC_",
+            "_SBAcc_2xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SBACC_4XRARE",
+          "name": "_SBAcc_4xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider",
+            "_SBACC_",
+            "_SBAcc_4xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SBACC_5XRARE",
+          "name": "_SBAcc_5xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider",
+            "_SBACC_",
+            "_SBAcc_5xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SBACC_6",
+          "name": "_SBAcc_6",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider",
+            "_SBACC_",
+            "_SBAcc_6"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SBACC_7XRARE",
+          "name": "_SBAcc_7xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider",
+            "_SBACC_",
+            "_SBAcc_7xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_SBACC_8XRARE",
+          "name": "_SBAcc_8xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider",
+            "_SBACC_",
+            "_SBAcc_8xRARE"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_ACC_",
+      "path": [
+        "_BODY_",
+        "_Body_Strider2"
+      ],
+      "candidates": [
+        {
+          "id": "_ACC_ARM1",
+          "name": "_Acc_Arm1",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider2",
+            "_ACC_",
+            "_Acc_Arm1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACC_ARM2XRARE",
+          "name": "_Acc_Arm2xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider2",
+            "_ACC_",
+            "_Acc_Arm2xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_ACC_NONE",
+          "name": "_Acc_none",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider2",
+            "_ACC_",
+            "_Acc_none"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_S1ACC_",
+      "path": [
+        "_BODY_",
+        "_Body_Strider2"
+      ],
+      "candidates": [
+        {
+          "id": "_S1ACC_7XRARE",
+          "name": "_S1Acc_7xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider2",
+            "_S1ACC_",
+            "_S1Acc_7xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_S1ACC_2XRARE",
+          "name": "_S1Acc_2xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider2",
+            "_S1ACC_",
+            "_S1Acc_2xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_S1ACC_3XRARE",
+          "name": "_S1Acc_3xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider2",
+            "_S1ACC_",
+            "_S1Acc_3xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_S1ACC_4",
+          "name": "_S1Acc_4",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider2",
+            "_S1ACC_",
+            "_S1Acc_4"
+          ],
+          "children": []
+        },
+        {
+          "id": "_S1ACC_6XRARE",
+          "name": "_S1Acc_6xRARE",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider2",
+            "_S1ACC_",
+            "_S1Acc_6xRARE"
+          ],
+          "children": []
+        },
+        {
+          "id": "_S1ACC_5",
+          "name": "_S1Acc_5",
+          "chance": 0.0,
+          "path": [
+            "_BODY_",
+            "_Body_Strider2",
+            "_S1ACC_",
+            "_S1Acc_5"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_TAIL_",
+      "path": [],
+      "candidates": [
+        {
+          "id": "_TAIL_1",
+          "name": "_Tail_1",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_TAIL_2",
+          "name": "_Tail_2",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_2"
+          ],
+          "children": []
+        },
+        {
+          "id": "_TAIL_4",
+          "name": "_Tail_4",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_4"
+          ],
+          "children": []
+        },
+        {
+          "id": "_TAIL_5",
+          "name": "_Tail_5",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_5"
+          ],
+          "children": []
+        },
+        {
+          "id": "_TAIL_6",
+          "name": "_Tail_6",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_6"
+          ],
+          "children": [
+            {
+              "typeId": "_FINC_",
+              "path": [
+                "_TAIL_",
+                "_Tail_6"
+              ],
+              "candidates": [
+                {
+                  "id": "_FINC_1",
+                  "name": "_FinC_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_TAIL_",
+                    "_Tail_6",
+                    "_FINC_",
+                    "_FinC_1"
+                  ],
+                  "children": [
+                    {
+                      "typeId": "_FILLC_",
+                      "path": [
+                        "_TAIL_",
+                        "_Tail_6",
+                        "_FINC_",
+                        "_FinC_1"
+                      ],
+                      "candidates": [
+                        {
+                          "id": "_FILLC_1",
+                          "name": "_FillC_1",
+                          "chance": 0.0,
+                          "path": [
+                            "_TAIL_",
+                            "_Tail_6",
+                            "_FINC_",
+                            "_FinC_1",
+                            "_FILLC_",
+                            "_FillC_1"
+                          ],
+                          "children": []
+                        },
+                        {
+                          "id": "_FILLC_NONE",
+                          "name": "_FillC_none",
+                          "chance": 0.0,
+                          "path": [
+                            "_TAIL_",
+                            "_Tail_6",
+                            "_FINC_",
+                            "_FinC_1",
+                            "_FILLC_",
+                            "_FillC_none"
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "_TAIL_7XRARE",
+          "name": "_Tail_7xRARE",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_7xRARE"
+          ],
+          "children": [
+            {
+              "typeId": "_TAILS_",
+              "path": [
+                "_TAIL_",
+                "_Tail_7xRARE"
+              ],
+              "candidates": [
+                {
+                  "id": "_TAILS_1",
+                  "name": "_Tails_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_TAIL_",
+                    "_Tail_7xRARE",
+                    "_TAILS_",
+                    "_Tails_1"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_FINC_",
+      "path": [
+        "_TAIL_",
+        "_Tail_6"
+      ],
+      "candidates": [
+        {
+          "id": "_FINC_1",
+          "name": "_FinC_1",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_6",
+            "_FINC_",
+            "_FinC_1"
+          ],
+          "children": [
+            {
+              "typeId": "_FILLC_",
+              "path": [
+                "_TAIL_",
+                "_Tail_6",
+                "_FINC_",
+                "_FinC_1"
+              ],
+              "candidates": [
+                {
+                  "id": "_FILLC_1",
+                  "name": "_FillC_1",
+                  "chance": 0.0,
+                  "path": [
+                    "_TAIL_",
+                    "_Tail_6",
+                    "_FINC_",
+                    "_FinC_1",
+                    "_FILLC_",
+                    "_FillC_1"
+                  ],
+                  "children": []
+                },
+                {
+                  "id": "_FILLC_NONE",
+                  "name": "_FillC_none",
+                  "chance": 0.0,
+                  "path": [
+                    "_TAIL_",
+                    "_Tail_6",
+                    "_FINC_",
+                    "_FinC_1",
+                    "_FILLC_",
+                    "_FillC_none"
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "typeId": "_FILLC_",
+      "path": [
+        "_TAIL_",
+        "_Tail_6",
+        "_FINC_",
+        "_FinC_1"
+      ],
+      "candidates": [
+        {
+          "id": "_FILLC_1",
+          "name": "_FillC_1",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_6",
+            "_FINC_",
+            "_FinC_1",
+            "_FILLC_",
+            "_FillC_1"
+          ],
+          "children": []
+        },
+        {
+          "id": "_FILLC_NONE",
+          "name": "_FillC_none",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_6",
+            "_FINC_",
+            "_FinC_1",
+            "_FILLC_",
+            "_FillC_none"
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "typeId": "_TAILS_",
+      "path": [
+        "_TAIL_",
+        "_Tail_7xRARE"
+      ],
+      "candidates": [
+        {
+          "id": "_TAILS_1",
+          "name": "_Tails_1",
+          "chance": 0.0,
+          "path": [
+            "_TAIL_",
+            "_Tail_7xRARE",
+            "_TAILS_",
+            "_Tails_1"
+          ],
+          "children": []
+        }
+      ]
+    }
+  ],
+  "availableActions": {
+    "idle": {
+      "name": "StriderGround_IDLE_InvBind",
+      "source": "D:\\blender\\creature\\NMSImport\\StriderRig\\Extracted\\models\\planets\\creatures\\striderrig\\anims\\strideridle01.anim.mbin",
+      "frames": 241,
+      "maximumScaleDelta": 5.960464477539062e-07,
+      "animatedScaleFrozenAtFirstFrame": false
+    },
+    "walk": {
+      "name": "StriderGround_WALK_InvBind",
+      "source": "D:\\blender\\creature\\NMSImport\\StriderRig\\Extracted\\models\\planets\\creatures\\striderrig\\anims\\striderwalk.anim.mbin",
+      "frames": 65,
+      "maximumScaleDelta": 5.960464477539062e-07,
+      "animatedScaleFrozenAtFirstFrame": false
+    },
+    "run": {
+      "name": "StriderGround_RUN_InvBind",
+      "source": "D:\\blender\\creature\\NMSImport\\StriderRig\\Extracted\\models\\planets\\creatures\\striderrig\\anims\\striderrun.anim.mbin",
+      "frames": 41,
+      "maximumScaleDelta": 6.556510925292969e-07,
+      "animatedScaleFrozenAtFirstFrame": false
+    }
+  },
+  "validationInput": {
+    "pipelineVersion": 10,
+    "animationTransformPolicy": "native_trs",
+    "loadBearingChains": [
+      [
+        "RHipJNT",
+        "RKneeJNT",
+        "RDoubleKneeJNT",
+        "RAnkleJNT",
+        "RBigToeJNT"
+      ],
+      [
+        "LHipJNT",
+        "LKneeJNT",
+        "LDoubleKneeJNT",
+        "LAnkleJNT",
+        "LBigToeJNT"
+      ]
+    ],
+    "animationTransformCorrectionScope": "allWeighted",
+    "actions": {
+      "idle": {
+        "source": "D:\\blender\\creature\\NMSImport\\StriderRig\\Extracted\\models\\planets\\creatures\\striderrig\\anims\\strideridle01.anim.mbin",
+        "frames": 241
+      },
+      "run": {
+        "source": "D:\\blender\\creature\\NMSImport\\StriderRig\\Extracted\\models\\planets\\creatures\\striderrig\\anims\\striderrun.anim.mbin",
+        "frames": 41
+      },
+      "walk": {
+        "source": "D:\\blender\\creature\\NMSImport\\StriderRig\\Extracted\\models\\planets\\creatures\\striderrig\\anims\\striderwalk.anim.mbin",
+        "frames": 65
+      }
+    }
+  },
+  "modules": [
+    {
+      "name": "_AccBack_0",
+      "objects": [
+        "_AccBack_0"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_AccBack_1",
+      "objects": [
+        "_AccBack_1"
+      ],
+      "materials": [
+        "BugHead_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_AccBack_1": {
+          "restPoseMaximumVertexError": 1.2287812309317793e-07,
+          "maximumBoundsRatio": 1.0907205579585748,
+          "maximumEdgeStretch": 1.3035852565166846,
+          "maximumTriangleAreaStretch": 1.301789697522846,
+          "maximumNormalizedEdgeDelta": 0.030825971865661883,
+          "maximumNormalizedTriangleAreaDelta": 0.0012107045041157018,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 146,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Acc_Arm1",
+      "objects": [
+        "_Acc_Arm1"
+      ],
+      "materials": [
+        "StriderVariant_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_Acc_Arm1: significant edge stretch reached 6.421x"
+      ],
+      "meshValidation": {
+        "_Acc_Arm1": {
+          "restPoseMaximumVertexError": 1.2036781326982014e-07,
+          "maximumBoundsRatio": 1.2101772127624735,
+          "maximumEdgeStretch": 6.421086453252318,
+          "maximumTriangleAreaStretch": 6.72591208135224,
+          "maximumNormalizedEdgeDelta": 0.1802765081142443,
+          "maximumNormalizedTriangleAreaDelta": 0.004971300165037896,
+          "maximumSignificantEdgeStretch": 6.421086453252318,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 36,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 6.421x"
+          ],
+          "passed": false
+        }
+      }
+    },
+    {
+      "name": "_Acc_Arm2xRARE",
+      "objects": [
+        "_Acc_Arm2xRARE"
+      ],
+      "materials": [
+        "spiderwimbleLegs_BulbTop_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Acc_Arm2xRARE": {
+          "restPoseMaximumVertexError": 1.1944189326376765e-07,
+          "maximumBoundsRatio": 1.0631792181327826,
+          "maximumEdgeStretch": 5.245417889240665,
+          "maximumTriangleAreaStretch": 4.509512800157163,
+          "maximumNormalizedEdgeDelta": 0.05891588996706785,
+          "maximumNormalizedTriangleAreaDelta": 0.0006454535435394205,
+          "maximumSignificantEdgeStretch": 2.8737721216084875,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 31,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Acc_none",
+      "objects": [
+        "_Acc_none"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_BBAcc_1xRARE",
+      "objects": [
+        "_BBAcc_1xRARE"
+      ],
+      "materials": [
+        "BugBody_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_BBAcc_1xRARE": {
+          "restPoseMaximumVertexError": 6.828569911354542e-08,
+          "maximumBoundsRatio": 1.545861411652604,
+          "maximumEdgeStretch": 1.9348635702212056,
+          "maximumTriangleAreaStretch": 2.302323417597107,
+          "maximumNormalizedEdgeDelta": 0.06386679493156759,
+          "maximumNormalizedTriangleAreaDelta": 0.0020659200752862427,
+          "maximumSignificantEdgeStretch": 0.2976144238559066,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 52,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_BBAcc_3xRARE",
+      "objects": [
+        "_BBAcc_3xRARE"
+      ],
+      "materials": [
+        "Acc_LongSpine"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_BBAcc_3xRARE": {
+          "restPoseMaximumVertexError": 1.228781230931777e-07,
+          "maximumBoundsRatio": 1.0585564496430844,
+          "maximumEdgeStretch": 2.784955216164983,
+          "maximumTriangleAreaStretch": 3.5780526276167373,
+          "maximumNormalizedEdgeDelta": 0.01136814050749607,
+          "maximumNormalizedTriangleAreaDelta": 0.00012555932225152358,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 42,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_BBAcc_4xRARE",
+      "objects": [
+        "_BBAcc_4xRARE"
+      ],
+      "materials": [
+        "BackSpines_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_BBAcc_4xRARE": {
+          "restPoseMaximumVertexError": 1.2013700229374406e-07,
+          "maximumBoundsRatio": 1.0929135503805179,
+          "maximumEdgeStretch": 1.186782224741983,
+          "maximumTriangleAreaStretch": 1.181064705441228,
+          "maximumNormalizedEdgeDelta": 0.007635201754076812,
+          "maximumNormalizedTriangleAreaDelta": 0.00011652052383379507,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 10,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_BBArm_1",
+      "objects": [
+        "_BBArm_1"
+      ],
+      "materials": [
+        "BugHead_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_BBArm_1": {
+          "restPoseMaximumVertexError": 1.4901161193847656e-08,
+          "maximumBoundsRatio": 1.1500231882533904,
+          "maximumEdgeStretch": 1.0000453503889395,
+          "maximumTriangleAreaStretch": 1.0000663725864496,
+          "maximumNormalizedEdgeDelta": 6.469303615896957e-07,
+          "maximumNormalizedTriangleAreaDelta": 1.9907646113225877e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 42,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_BBArm_none",
+      "objects": [
+        "_BBArm_none"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_Body_Bug",
+      "objects": [
+        "_Body_Bug"
+      ],
+      "materials": [
+        "BugBody_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Body_Bug": {
+          "restPoseMaximumVertexError": 1.210576058124894e-07,
+          "maximumBoundsRatio": 1.4993520106496743,
+          "maximumEdgeStretch": 5.591673474058895,
+          "maximumTriangleAreaStretch": 17.55540789711378,
+          "maximumNormalizedEdgeDelta": 0.09252921311502706,
+          "maximumNormalizedTriangleAreaDelta": 0.0012762338047803835,
+          "maximumSignificantEdgeStretch": 5.591673474058895,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 5,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Body_Strider",
+      "objects": [
+        "_Body_Strider"
+      ],
+      "materials": [
+        "StriderBody_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Body_Strider": {
+          "restPoseMaximumVertexError": 1.228781230931777e-07,
+          "maximumBoundsRatio": 1.5973870187294623,
+          "maximumEdgeStretch": 5.165989418743613,
+          "maximumTriangleAreaStretch": 4.958421979681141,
+          "maximumNormalizedEdgeDelta": 0.06201575043683653,
+          "maximumNormalizedTriangleAreaDelta": 0.0006851059846197062,
+          "maximumSignificantEdgeStretch": 3.751192901160904,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 31,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Body_Strider2",
+      "objects": [
+        "_Body_Strider2"
+      ],
+      "materials": [
+        "StriderVariant_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Body_Strider2": {
+          "restPoseMaximumVertexError": 1.210576058124894e-07,
+          "maximumBoundsRatio": 1.484492059073019,
+          "maximumEdgeStretch": 3.974001885883241,
+          "maximumTriangleAreaStretch": 5.119182702914131,
+          "maximumNormalizedEdgeDelta": 0.04439719770712285,
+          "maximumNormalizedTriangleAreaDelta": 0.0005336329269265308,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 3,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_BugArm_0",
+      "objects": [
+        "_BugArm_0"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_FHAcc_0",
+      "objects": [
+        "_FHAcc_0"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_FHAcc_1",
+      "objects": [
+        "_FHAcc_1"
+      ],
+      "materials": [
+        "HeadFinAcc_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_FHAcc_1: significant edge stretch reached 8.504x"
+      ],
+      "meshValidation": {
+        "_FHAcc_1": {
+          "restPoseMaximumVertexError": 1.3348812510944096e-07,
+          "maximumBoundsRatio": 1.129269822367542,
+          "maximumEdgeStretch": 8.504108098880465,
+          "maximumTriangleAreaStretch": 8.49859891236108,
+          "maximumNormalizedEdgeDelta": 0.20563604673021418,
+          "maximumNormalizedTriangleAreaDelta": 0.0033169125682032384,
+          "maximumSignificantEdgeStretch": 8.504108098880465,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 8.504x"
+          ],
+          "passed": false
+        }
+      }
+    },
+    {
+      "name": "_FHAcc_2",
+      "objects": [
+        "_FHAcc_2"
+      ],
+      "materials": [
+        "JawPlateAcc_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_FHAcc_2": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.1296177109454943,
+          "maximumEdgeStretch": 1.0000567983069621,
+          "maximumTriangleAreaStretch": 1.0000625889538635,
+          "maximumNormalizedEdgeDelta": 1.819996980832622e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.738243680364821e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 33,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_FHAcc_2xRARE",
+      "objects": [
+        "_FHAcc_2xRARE"
+      ],
+      "materials": [
+        "HeadBlockAcc_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_FHAcc_2xRARE": {
+          "restPoseMaximumVertexError": 2.4646110694144804e-07,
+          "maximumBoundsRatio": 1.0174742527537457,
+          "maximumEdgeStretch": 1.0000796820621352,
+          "maximumTriangleAreaStretch": 1.0000870958215249,
+          "maximumNormalizedEdgeDelta": 8.016020598749305e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.743165551000818e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 188,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_FHAcc_3",
+      "objects": [
+        "_FHAcc_3"
+      ],
+      "materials": [
+        "HornMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_FHAcc_3": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.0465939610046815,
+          "maximumEdgeStretch": 1.0001371378397295,
+          "maximumTriangleAreaStretch": 1.0001562336111207,
+          "maximumNormalizedEdgeDelta": 1.0967411760851568e-06,
+          "maximumNormalizedTriangleAreaDelta": 5.538107420704207e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 198,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_FHAcc_3xRARE",
+      "objects": [
+        "_FHAcc_3xRARE"
+      ],
+      "materials": [
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_FHAcc_3xRARE": {
+          "restPoseMaximumVertexError": 2.467706078541159e-07,
+          "maximumBoundsRatio": 1.0413205741689207,
+          "maximumEdgeStretch": 2.8499608243728534,
+          "maximumTriangleAreaStretch": 3.7666186307683667,
+          "maximumNormalizedEdgeDelta": 0.009891373960787887,
+          "maximumNormalizedTriangleAreaDelta": 0.00035240005693521387,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_FHAcc_4",
+      "objects": [
+        "_FHAcc_4"
+      ],
+      "materials": [
+        "HornMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_FHAcc_4": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.0438133952791475,
+          "maximumEdgeStretch": 1.0001435990854928,
+          "maximumTriangleAreaStretch": 1.000205337074307,
+          "maximumNormalizedEdgeDelta": 1.0278174100353784e-06,
+          "maximumNormalizedTriangleAreaDelta": 4.810313497558839e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 23,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_FHAcc_5xRARE",
+      "objects": [
+        "_FHAcc_5xRARE"
+      ],
+      "materials": [
+        "HornMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_FHAcc_5xRARE": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.1331781880437948,
+          "maximumEdgeStretch": 1.0001859380975235,
+          "maximumTriangleAreaStretch": 1.000205337074307,
+          "maximumNormalizedEdgeDelta": 9.117676518914889e-07,
+          "maximumNormalizedTriangleAreaDelta": 3.853600703859933e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 23,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_FHAcc_6",
+      "objects": [
+        "_FHAcc_6"
+      ],
+      "materials": [
+        "BackSpines_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_FHAcc_6: significant edge stretch reached 14.926x"
+      ],
+      "meshValidation": {
+        "_FHAcc_6": {
+          "restPoseMaximumVertexError": 1.3339712671781986e-07,
+          "maximumBoundsRatio": 1.1084434695218486,
+          "maximumEdgeStretch": 14.92633489065105,
+          "maximumTriangleAreaStretch": 20.275724865138386,
+          "maximumNormalizedEdgeDelta": 0.11263357111114965,
+          "maximumNormalizedTriangleAreaDelta": 0.0008887675485652747,
+          "maximumSignificantEdgeStretch": 14.92633489065105,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 14.926x"
+          ],
+          "passed": false
+        }
+      }
+    },
+    {
+      "name": "_FHAcc_7xRARE",
+      "objects": [
+        "_FHAcc_7xRARE"
+      ],
+      "materials": [
+        "HornMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_FHAcc_7xRARE": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0585677673774958,
+          "maximumEdgeStretch": 1.000136739332978,
+          "maximumTriangleAreaStretch": 1.0001971058398256,
+          "maximumNormalizedEdgeDelta": 8.415227226090735e-07,
+          "maximumNormalizedTriangleAreaDelta": 4.635010749538696e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 52,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_FillC_1",
+      "objects": [
+        "_FillC_1"
+      ],
+      "materials": [
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_FillC_1": {
+          "restPoseMaximumVertexError": 5.0372358333294756e-15,
+          "maximumBoundsRatio": 1.0677701182279957,
+          "maximumEdgeStretch": 1.0000075122681689,
+          "maximumTriangleAreaStretch": 1.0,
+          "maximumNormalizedEdgeDelta": 0.0014196210975345686,
+          "maximumNormalizedTriangleAreaDelta": 0.0001457925638918933,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_FillC_none",
+      "objects": [
+        "_FillC_none"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_FillE2_1",
+      "objects": [
+        "_FillE2_1"
+      ],
+      "materials": [
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_FillE2_1: significant edge stretch reached 9.197x"
+      ],
+      "meshValidation": {
+        "_FillE2_1": {
+          "restPoseMaximumVertexError": 1.3328003749250118e-07,
+          "maximumBoundsRatio": 1.2393287936107993,
+          "maximumEdgeStretch": 9.197129466676312,
+          "maximumTriangleAreaStretch": 12.06095053551737,
+          "maximumNormalizedEdgeDelta": 0.16095658312542868,
+          "maximumNormalizedTriangleAreaDelta": 0.005059776486879919,
+          "maximumSignificantEdgeStretch": 9.197129466676312,
+          "maximumSignificantTriangleAreaStretch": 2.506186586231282,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 9.197x"
+          ],
+          "passed": false
+        }
+      }
+    },
+    {
+      "name": "_FillE2_none",
+      "objects": [
+        "_FillE2_none"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_FillE_1",
+      "objects": [
+        "_FillE_1"
+      ],
+      "materials": [
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_FillE_1: significant edge stretch reached 9.197x"
+      ],
+      "meshValidation": {
+        "_FillE_1": {
+          "restPoseMaximumVertexError": 1.3328003749250118e-07,
+          "maximumBoundsRatio": 1.2393287936107993,
+          "maximumEdgeStretch": 9.197129466676312,
+          "maximumTriangleAreaStretch": 12.06095053551737,
+          "maximumNormalizedEdgeDelta": 0.16095658312542868,
+          "maximumNormalizedTriangleAreaDelta": 0.005059776486879919,
+          "maximumSignificantEdgeStretch": 9.197129466676312,
+          "maximumSignificantTriangleAreaStretch": 2.506186586231282,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 9.197x"
+          ],
+          "passed": false
+        }
+      }
+    },
+    {
+      "name": "_FillE_none",
+      "objects": [
+        "_FillE_none"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_FinC_1",
+      "objects": [
+        "_FinC_1"
+      ],
+      "materials": [
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_FinC_1": {
+          "restPoseMaximumVertexError": 6.664001874625075e-08,
+          "maximumBoundsRatio": 1.0354472390749325,
+          "maximumEdgeStretch": 1.0000121477659227,
+          "maximumTriangleAreaStretch": 1.0,
+          "maximumNormalizedEdgeDelta": 0.0007965241243336226,
+          "maximumNormalizedTriangleAreaDelta": 5.370483424175214e-05,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Fin_1xRARE",
+      "objects": [
+        "_Fin_1xRARE",
+        "PETACC_fin"
+      ],
+      "materials": [
+        "PetHarnessMat1",
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_Fin_1xRARE: significant edge stretch reached 13.613x"
+      ],
+      "meshValidation": {
+        "_Fin_1xRARE": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.0657942277860788,
+          "maximumEdgeStretch": 13.61305658103391,
+          "maximumTriangleAreaStretch": 12.322976632423563,
+          "maximumNormalizedEdgeDelta": 0.08599946667319329,
+          "maximumNormalizedTriangleAreaDelta": 0.002558513071227215,
+          "maximumSignificantEdgeStretch": 13.61305658103391,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 13.613x"
+          ],
+          "passed": false
+        },
+        "PETACC_fin": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.196499524355406,
+          "maximumEdgeStretch": 4.384875533230792,
+          "maximumTriangleAreaStretch": 5.271915011361127,
+          "maximumNormalizedEdgeDelta": 0.05261806222506097,
+          "maximumNormalizedTriangleAreaDelta": 0.0023364349112412696,
+          "maximumSignificantEdgeStretch": 2.07150441667472,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 177,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Fin_none",
+      "objects": [
+        "_Fin_none",
+        "PETACC_finNone"
+      ],
+      "materials": [
+        "PetHarnessMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "PETACC_finNone": {
+          "restPoseMaximumVertexError": 2.9802322387695312e-08,
+          "maximumBoundsRatio": 1.1371309645701848,
+          "maximumEdgeStretch": 1.1625969234898155,
+          "maximumTriangleAreaStretch": 1.1734430450158726,
+          "maximumNormalizedEdgeDelta": 0.022578053949656916,
+          "maximumNormalizedTriangleAreaDelta": 0.0007044017584333668,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 167,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_FishEyes_1",
+      "objects": [
+        "_FishEyes_1"
+      ],
+      "materials": [
+        "EyeMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_FishEyes_1": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.0468383245714354,
+          "maximumEdgeStretch": 1.0002330114333624,
+          "maximumTriangleAreaStretch": 1.0002484829349738,
+          "maximumNormalizedEdgeDelta": 1.9472530516584614e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.239142374578408e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 3,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Fish_1",
+      "objects": [
+        "_Fish_1",
+        "FishBot",
+        "FishTop",
+        "_Fin_1xRAREShape"
+      ],
+      "materials": [
+        "CatTongueMat",
+        "FishHead_mat",
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_Fin_1xRAREShape: significant edge stretch reached 13.613x"
+      ],
+      "meshValidation": {
+        "_Fish_1": {
+          "restPoseMaximumVertexError": 2.4575624618635703e-07,
+          "maximumBoundsRatio": 1.1251557982653124,
+          "maximumEdgeStretch": 5.540229510942445,
+          "maximumTriangleAreaStretch": 5.998991145630071,
+          "maximumNormalizedEdgeDelta": 0.15192750298337507,
+          "maximumNormalizedTriangleAreaDelta": 0.009825198431201974,
+          "maximumSignificantEdgeStretch": 5.540229510942445,
+          "maximumSignificantTriangleAreaStretch": 5.998991145630071,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "FishBot": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0222813520703495,
+          "maximumEdgeStretch": 1.0001145785923005,
+          "maximumTriangleAreaStretch": 1.0001465005023775,
+          "maximumNormalizedEdgeDelta": 3.3984416442198904e-06,
+          "maximumNormalizedTriangleAreaDelta": 4.0669782655877584e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 167,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "FishTop": {
+          "restPoseMaximumVertexError": 2.457562461863554e-07,
+          "maximumBoundsRatio": 1.1429324012073092,
+          "maximumEdgeStretch": 1.0001873396864431,
+          "maximumTriangleAreaStretch": 1.000207825142392,
+          "maximumNormalizedEdgeDelta": 3.3323813441158357e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.1676368093473537e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 209,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "_Fin_1xRAREShape": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.0657942277860788,
+          "maximumEdgeStretch": 13.61305658103391,
+          "maximumTriangleAreaStretch": 12.322976632423563,
+          "maximumNormalizedEdgeDelta": 0.08599946667319329,
+          "maximumNormalizedTriangleAreaDelta": 0.002558513071227215,
+          "maximumSignificantEdgeStretch": 13.61305658103391,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 13.613x"
+          ],
+          "passed": false
+        }
+      }
+    },
+    {
+      "name": "_Fish_2xRARE",
+      "objects": [
+        "_Fish_2xRARE",
+        "FishBot2",
+        "FishTongue",
+        "FishTop2",
+        "PETACC_finRare"
+      ],
+      "materials": [
+        "CatTongueMat",
+        "PetHarnessMat1",
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_Fish_2xRARE: significant edge stretch reached 13.613x"
+      ],
+      "meshValidation": {
+        "_Fish_2xRARE": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.0657942277860788,
+          "maximumEdgeStretch": 13.61305658103391,
+          "maximumTriangleAreaStretch": 12.322976632423563,
+          "maximumNormalizedEdgeDelta": 0.08599946667319329,
+          "maximumNormalizedTriangleAreaDelta": 0.002558513071227215,
+          "maximumSignificantEdgeStretch": 13.61305658103391,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 13.613x"
+          ],
+          "passed": false
+        },
+        "FishBot2": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0676089058548546,
+          "maximumEdgeStretch": 1.0001157584037572,
+          "maximumTriangleAreaStretch": 1.000112672785508,
+          "maximumNormalizedEdgeDelta": 4.893844317280734e-06,
+          "maximumNormalizedTriangleAreaDelta": 4.2785468331372804e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 3,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "FishTongue": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0228813346897485,
+          "maximumEdgeStretch": 1.0001156505003381,
+          "maximumTriangleAreaStretch": 1.0001690619371295,
+          "maximumNormalizedEdgeDelta": 1.9869148092061973e-06,
+          "maximumNormalizedTriangleAreaDelta": 1.2851073720215818e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "FishTop2": {
+          "restPoseMaximumVertexError": 2.457562461863554e-07,
+          "maximumBoundsRatio": 1.165798222112172,
+          "maximumEdgeStretch": 1.0001990793307216,
+          "maximumTriangleAreaStretch": 1.0001895459884376,
+          "maximumNormalizedEdgeDelta": 4.506067989798138e-06,
+          "maximumNormalizedTriangleAreaDelta": 4.3328059545736466e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 209,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "PETACC_finRare": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.196499524355406,
+          "maximumEdgeStretch": 5.218638739014507,
+          "maximumTriangleAreaStretch": 5.271915011361127,
+          "maximumNormalizedEdgeDelta": 0.050672204367498974,
+          "maximumNormalizedTriangleAreaDelta": 0.0023364349112412696,
+          "maximumSignificantEdgeStretch": 5.218638739014507,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 177,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Head_Bug",
+      "objects": [
+        "_Head_Bug",
+        "Antenna",
+        "BugArm_1",
+        "BugArm_2",
+        "BugLids",
+        "BugEyes",
+        "BugEyes1",
+        "PETACC_Bug"
+      ],
+      "materials": [
+        "BugEye_Mat",
+        "BugHead_Mat",
+        "PetHarnessMat4"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Head_Bug": {
+          "restPoseMaximumVertexError": 2.4578447942743725e-07,
+          "maximumBoundsRatio": 1.0932123870940036,
+          "maximumEdgeStretch": 2.0189937877655715,
+          "maximumTriangleAreaStretch": 2.063662099830888,
+          "maximumNormalizedEdgeDelta": 0.022201782364179332,
+          "maximumNormalizedTriangleAreaDelta": 0.0006764491692709464,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 42,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "Antenna": {
+          "restPoseMaximumVertexError": 1.6049041769309353e-07,
+          "maximumBoundsRatio": 1.0748769786745802,
+          "maximumEdgeStretch": 1.000436254667633,
+          "maximumTriangleAreaStretch": 1.0014521313673705,
+          "maximumNormalizedEdgeDelta": 3.098710812637819e-06,
+          "maximumNormalizedTriangleAreaDelta": 7.292318787200257e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 42,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "BugArm_1": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.209557824460007,
+          "maximumEdgeStretch": 1.0000743142349222,
+          "maximumTriangleAreaStretch": 1.0000685217971281,
+          "maximumNormalizedEdgeDelta": 8.637178176758323e-07,
+          "maximumNormalizedTriangleAreaDelta": 1.8118446868695733e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 58,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "BugArm_2": {
+          "restPoseMaximumVertexError": 2.9802322387695312e-08,
+          "maximumBoundsRatio": 1.240854796344082,
+          "maximumEdgeStretch": 1.0001231333994027,
+          "maximumTriangleAreaStretch": 1.0001180719510716,
+          "maximumNormalizedEdgeDelta": 1.0164600904738844e-06,
+          "maximumNormalizedTriangleAreaDelta": 2.6576929944111192e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 50,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "BugLids": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.1353194473118953,
+          "maximumEdgeStretch": 1.0001078934148164,
+          "maximumTriangleAreaStretch": 1.0001378156547138,
+          "maximumNormalizedEdgeDelta": 5.840881733236544e-06,
+          "maximumNormalizedTriangleAreaDelta": 2.0207662306026721e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 10,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "BugEyes": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.0450764162775166,
+          "maximumEdgeStretch": 1.2651456065670912,
+          "maximumTriangleAreaStretch": 1.2264563869655283,
+          "maximumNormalizedEdgeDelta": 0.011557417459743796,
+          "maximumNormalizedTriangleAreaDelta": 8.716563865548394e-05,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 19,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "BugEyes1": {
+          "restPoseMaximumVertexError": 6.006850114687196e-08,
+          "maximumBoundsRatio": 1.067161788336158,
+          "maximumEdgeStretch": 1.0000982422536544,
+          "maximumTriangleAreaStretch": 1.000102737002153,
+          "maximumNormalizedEdgeDelta": 1.7629887020039503e-06,
+          "maximumNormalizedTriangleAreaDelta": 4.5284207097125384e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 167,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "PETACC_Bug": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.3710063655724678,
+          "maximumEdgeStretch": 10.498245904285945,
+          "maximumTriangleAreaStretch": 9.92405615095109,
+          "maximumNormalizedEdgeDelta": 0.06550375019943659,
+          "maximumNormalizedTriangleAreaDelta": 0.001577819196214379,
+          "maximumSignificantEdgeStretch": 3.1276594048610806,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 177,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Head_Fish",
+      "objects": [
+        "_Head_Fish"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_Head_FlatHead",
+      "objects": [
+        "_Head_FlatHead",
+        "FlatheadMouth",
+        "FlatheadEye",
+        "PETACC_FlatHead"
+      ],
+      "materials": [
+        "CatTongueMat",
+        "EyeMat",
+        "FlatHead_Mat",
+        "PetHarnessMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": false,
+      "validationFailures": [
+        "_Head_FlatHead: significant edge stretch reached 6.821x"
+      ],
+      "meshValidation": {
+        "_Head_FlatHead": {
+          "restPoseMaximumVertexError": 2.467706078541159e-07,
+          "maximumBoundsRatio": 1.1688990204635663,
+          "maximumEdgeStretch": 6.820537363236235,
+          "maximumTriangleAreaStretch": 5.024083234167074,
+          "maximumNormalizedEdgeDelta": 0.08507755018471015,
+          "maximumNormalizedTriangleAreaDelta": 0.0006969018555367944,
+          "maximumSignificantEdgeStretch": 6.820537363236235,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [
+            "significant edge stretch reached 6.821x"
+          ],
+          "passed": false
+        },
+        "FlatheadMouth": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.1053315016410747,
+          "maximumEdgeStretch": 1.00015355583745,
+          "maximumTriangleAreaStretch": 1.000154140707198,
+          "maximumNormalizedEdgeDelta": 2.1380082907940764e-06,
+          "maximumNormalizedTriangleAreaDelta": 1.0420002145843794e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 28,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "FlatheadEye": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.035845986225748,
+          "maximumEdgeStretch": 1.000326839064136,
+          "maximumTriangleAreaStretch": 1.0003213489445029,
+          "maximumNormalizedEdgeDelta": 1.758043588881022e-06,
+          "maximumNormalizedTriangleAreaDelta": 2.0126450903918666e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 28,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "PETACC_FlatHead": {
+          "restPoseMaximumVertexError": 1.4057727354849284e-07,
+          "maximumBoundsRatio": 1.1617905066042642,
+          "maximumEdgeStretch": 1.9891940504886716,
+          "maximumTriangleAreaStretch": 2.2029196054028795,
+          "maximumNormalizedEdgeDelta": 0.017691611532912998,
+          "maximumNormalizedTriangleAreaDelta": 0.0006408576673105139,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 136,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Head_Strider",
+      "objects": [
+        "_Head_Strider",
+        "StriderTeeth",
+        "PETACC_Strider"
+      ],
+      "materials": [
+        "CatTongueMat",
+        "PetHarnessMat",
+        "StriderHead_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Head_Strider": {
+          "restPoseMaximumVertexError": 2.4575624618635613e-07,
+          "maximumBoundsRatio": 1.10221979044727,
+          "maximumEdgeStretch": 1.5700268076569486,
+          "maximumTriangleAreaStretch": 1.5593397678753065,
+          "maximumNormalizedEdgeDelta": 0.014820609726878722,
+          "maximumNormalizedTriangleAreaDelta": 0.00027595730927010623,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "StriderTeeth": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.0527628410141752,
+          "maximumEdgeStretch": 1.0001143769244707,
+          "maximumTriangleAreaStretch": 1.000171154059049,
+          "maximumNormalizedEdgeDelta": 7.139841764280723e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.174767001083064e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 10,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "PETACC_Strider": {
+          "restPoseMaximumVertexError": 1.4057727354849284e-07,
+          "maximumBoundsRatio": 1.160733240863141,
+          "maximumEdgeStretch": 2.438983897214214,
+          "maximumTriangleAreaStretch": 2.927667689430218,
+          "maximumNormalizedEdgeDelta": 0.017883800077950537,
+          "maximumNormalizedTriangleAreaDelta": 0.0006267453638916952,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 167,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Head_Strider2",
+      "objects": [
+        "_Head_Strider2",
+        "StriderTop",
+        "StriderBot",
+        "Eyes",
+        "PETACC_Strider2"
+      ],
+      "materials": [
+        "CatTongueMat",
+        "EyeMat",
+        "PetHarnessMat",
+        "StriderVariantHead_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Head_Strider2": {
+          "restPoseMaximumVertexError": 2.4586915969848633e-07,
+          "maximumBoundsRatio": 1.0681545174522709,
+          "maximumEdgeStretch": 1.487371046573387,
+          "maximumTriangleAreaStretch": 1.647254809033152,
+          "maximumNormalizedEdgeDelta": 0.016289703160572513,
+          "maximumNormalizedTriangleAreaDelta": 0.00028951331717092134,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "StriderTop": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.0671262462021764,
+          "maximumEdgeStretch": 1.0000971358880997,
+          "maximumTriangleAreaStretch": 1.0001236905109152,
+          "maximumNormalizedEdgeDelta": 1.1916890207039584e-06,
+          "maximumNormalizedTriangleAreaDelta": 5.883322108131331e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 188,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "StriderBot": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.097199438922642,
+          "maximumEdgeStretch": 1.0000648102914043,
+          "maximumTriangleAreaStretch": 1.0000822507202407,
+          "maximumNormalizedEdgeDelta": 1.2221032664447648e-06,
+          "maximumNormalizedTriangleAreaDelta": 6.871132452491688e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 31,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "Eyes": {
+          "restPoseMaximumVertexError": 2.457562461863554e-07,
+          "maximumBoundsRatio": 1.1703179750556678,
+          "maximumEdgeStretch": 1.000249301045543,
+          "maximumTriangleAreaStretch": 1.000360208967294,
+          "maximumNormalizedEdgeDelta": 2.5620048181972398e-06,
+          "maximumNormalizedTriangleAreaDelta": 2.6142911690929086e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 61,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "PETACC_Strider2": {
+          "restPoseMaximumVertexError": 1.4057727354849284e-07,
+          "maximumBoundsRatio": 1.1535441419967025,
+          "maximumEdgeStretch": 2.782684651874805,
+          "maximumTriangleAreaStretch": 2.927667689430218,
+          "maximumNormalizedEdgeDelta": 0.01737141409083023,
+          "maximumNormalizedTriangleAreaDelta": 0.0005913462721745874,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 167,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Mouth_1",
+      "objects": [
+        "_Mouth_1"
+      ],
+      "materials": [
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Mouth_1": {
+          "restPoseMaximumVertexError": 2.4575624618635613e-07,
+          "maximumBoundsRatio": 1.0502933936794363,
+          "maximumEdgeStretch": 1.000049168752725,
+          "maximumTriangleAreaStretch": 1.0000554584432488,
+          "maximumNormalizedEdgeDelta": 3.307605518868816e-06,
+          "maximumNormalizedTriangleAreaDelta": 1.176009443279392e-07,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 21,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Neck_1",
+      "objects": [
+        "_Neck_1"
+      ],
+      "materials": [
+        "FishHead_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Neck_1": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.1168297829318892,
+          "maximumEdgeStretch": 5.540229510942445,
+          "maximumTriangleAreaStretch": 5.998991145630071,
+          "maximumNormalizedEdgeDelta": 0.1973332283850624,
+          "maximumNormalizedTriangleAreaDelta": 0.015381166146528222,
+          "maximumSignificantEdgeStretch": 5.540229510942445,
+          "maximumSignificantTriangleAreaStretch": 5.998991145630071,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_S1Acc_2xRARE",
+      "objects": [
+        "_S1Acc_2xRARE"
+      ],
+      "materials": [
+        "Acc_Wings_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_S1Acc_2xRARE": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0431273722848726,
+          "maximumEdgeStretch": 1.0001464631038424,
+          "maximumTriangleAreaStretch": 1.0002546821622302,
+          "maximumNormalizedEdgeDelta": 3.302250707366204e-07,
+          "maximumNormalizedTriangleAreaDelta": 1.2750525227944537e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 38,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_S1Acc_3xRARE",
+      "objects": [
+        "_S1Acc_3xRARE"
+      ],
+      "materials": [
+        "Acc_LongSpine"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_S1Acc_3xRARE": {
+          "restPoseMaximumVertexError": 1.228781230931777e-07,
+          "maximumBoundsRatio": 1.1653956674705612,
+          "maximumEdgeStretch": 5.310888215537484,
+          "maximumTriangleAreaStretch": 3.356345737069689,
+          "maximumNormalizedEdgeDelta": 0.02954447637090091,
+          "maximumNormalizedTriangleAreaDelta": 0.00020466917613139892,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 10,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_S1Acc_4",
+      "objects": [
+        "_S1Acc_4"
+      ],
+      "materials": [
+        "BackSpines_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_S1Acc_4": {
+          "restPoseMaximumVertexError": 1.2013700229374393e-07,
+          "maximumBoundsRatio": 1.098698666387335,
+          "maximumEdgeStretch": 4.254820234960223,
+          "maximumTriangleAreaStretch": 3.2039549877109725,
+          "maximumNormalizedEdgeDelta": 0.026924704702459272,
+          "maximumNormalizedTriangleAreaDelta": 0.00036132327068176935,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 10,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_S1Acc_5",
+      "objects": [
+        "_S1Acc_5"
+      ],
+      "materials": [
+        "Acc_HeadFrill2"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_S1Acc_5": {
+          "restPoseMaximumVertexError": 1.1944189326376765e-07,
+          "maximumBoundsRatio": 1.0607493543248971,
+          "maximumEdgeStretch": 2.023361417325666,
+          "maximumTriangleAreaStretch": 2.450041412235324,
+          "maximumNormalizedEdgeDelta": 0.03813521989453106,
+          "maximumNormalizedTriangleAreaDelta": 0.0014534832505143378,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 31,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_S1Acc_6xRARE",
+      "objects": [
+        "_S1Acc_6xRARE"
+      ],
+      "materials": [
+        "ShroomBack_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_S1Acc_6xRARE": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0320210470026447,
+          "maximumEdgeStretch": 1.0000409472049623,
+          "maximumTriangleAreaStretch": 1.0000459155123316,
+          "maximumNormalizedEdgeDelta": 2.142785993388013e-07,
+          "maximumNormalizedTriangleAreaDelta": 1.2660844769404163e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 219,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_S1Acc_7xRARE",
+      "objects": [
+        "_S1Acc_7xRARE"
+      ],
+      "materials": [
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_S1Acc_7xRARE": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0479214855333345,
+          "maximumEdgeStretch": 1.0000341492502618,
+          "maximumTriangleAreaStretch": 1.0000345444578465,
+          "maximumNormalizedEdgeDelta": 2.781382363287771e-07,
+          "maximumNormalizedTriangleAreaDelta": 9.394845762076015e-09,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 125,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SBAcc_1",
+      "objects": [
+        "_SBAcc_1"
+      ],
+      "materials": [
+        "Acc_BackSpikes"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SBAcc_1": {
+          "restPoseMaximumVertexError": 1.2013700229374393e-07,
+          "maximumBoundsRatio": 1.0252713547456065,
+          "maximumEdgeStretch": 3.0034966261423715,
+          "maximumTriangleAreaStretch": 2.9535802383071124,
+          "maximumNormalizedEdgeDelta": 0.02317681044064751,
+          "maximumNormalizedTriangleAreaDelta": 0.0006792491700557808,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 17,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SBAcc_2xRARE",
+      "objects": [
+        "_SBAcc_2xRARE"
+      ],
+      "materials": [
+        "Acc_Wings_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SBAcc_2xRARE": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0426618136811385,
+          "maximumEdgeStretch": 1.000106417327133,
+          "maximumTriangleAreaStretch": 1.0002666100774844,
+          "maximumNormalizedEdgeDelta": 3.040825712585482e-07,
+          "maximumNormalizedTriangleAreaDelta": 1.1179597776890297e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 19,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SBAcc_4xRARE",
+      "objects": [
+        "_SBAcc_4xRARE"
+      ],
+      "materials": [
+        "TurtleShell_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SBAcc_4xRARE": {
+          "restPoseMaximumVertexError": 1.228781230931777e-07,
+          "maximumBoundsRatio": 1.0486554035312279,
+          "maximumEdgeStretch": 2.6430612663047586,
+          "maximumTriangleAreaStretch": 2.6452974352219365,
+          "maximumNormalizedEdgeDelta": 0.08209098883416614,
+          "maximumNormalizedTriangleAreaDelta": 0.0032542914995233106,
+          "maximumSignificantEdgeStretch": 2.6430612663047586,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 42,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SBAcc_5xRARE",
+      "objects": [
+        "_SBAcc_5xRARE"
+      ],
+      "materials": [
+        "Acc_HeadFrill2"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SBAcc_5xRARE": {
+          "restPoseMaximumVertexError": 7.450580596923828e-09,
+          "maximumBoundsRatio": 1.1216380144006006,
+          "maximumEdgeStretch": 1.3558491484619553,
+          "maximumTriangleAreaStretch": 1.339330593200025,
+          "maximumNormalizedEdgeDelta": 0.025420393510667143,
+          "maximumNormalizedTriangleAreaDelta": 0.0006794714076765482,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 167,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SBAcc_6",
+      "objects": [
+        "_SBAcc_6"
+      ],
+      "materials": [
+        "BackSpines_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SBAcc_6": {
+          "restPoseMaximumVertexError": 1.228781230931777e-07,
+          "maximumBoundsRatio": 1.1346199172280813,
+          "maximumEdgeStretch": 4.820052723957369,
+          "maximumTriangleAreaStretch": 5.403154908430079,
+          "maximumNormalizedEdgeDelta": 0.026172978765255702,
+          "maximumNormalizedTriangleAreaDelta": 0.00035856304443719096,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 10,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SBAcc_7xRARE",
+      "objects": [
+        "_SBAcc_7xRARE"
+      ],
+      "materials": [
+        "Acc_LongSpine"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SBAcc_7xRARE": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0630488919513819,
+          "maximumEdgeStretch": 1.0002827993338534,
+          "maximumTriangleAreaStretch": 1.0004345640503491,
+          "maximumNormalizedEdgeDelta": 7.422735728906159e-07,
+          "maximumNormalizedTriangleAreaDelta": 1.4805630184758099e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SBAcc_8xRARE",
+      "objects": [
+        "_SBAcc_8xRARE"
+      ],
+      "materials": [
+        "ShellSpike_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SBAcc_8xRARE": {
+          "restPoseMaximumVertexError": 1.1944189326376765e-07,
+          "maximumBoundsRatio": 1.201903889484832,
+          "maximumEdgeStretch": 6.8505832770298545,
+          "maximumTriangleAreaStretch": 7.726860559309278,
+          "maximumNormalizedEdgeDelta": 0.08996684159385594,
+          "maximumNormalizedTriangleAreaDelta": 0.004056961423306758,
+          "maximumSignificantEdgeStretch": 5.455643405305228,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "run",
+          "worstTriangleFrame": 14,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SH1Acc_0",
+      "objects": [
+        "_SH1Acc_0"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_SH1Acc_1",
+      "objects": [
+        "_SH1Acc_1"
+      ],
+      "materials": [
+        "RhinoHorn_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SH1Acc_1": {
+          "restPoseMaximumVertexError": 2.4586915969848633e-07,
+          "maximumBoundsRatio": 1.0457603551290167,
+          "maximumEdgeStretch": 1.3978764878957355,
+          "maximumTriangleAreaStretch": 1.3857497253153697,
+          "maximumNormalizedEdgeDelta": 0.014930591381953918,
+          "maximumNormalizedTriangleAreaDelta": 0.00027175358933755284,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SH1Acc_2",
+      "objects": [
+        "_SH1Acc_2"
+      ],
+      "materials": [
+        "NoseBone_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SH1Acc_2": {
+          "restPoseMaximumVertexError": 2.4575624618635703e-07,
+          "maximumBoundsRatio": 1.0423107104081712,
+          "maximumEdgeStretch": 1.0000967123714273,
+          "maximumTriangleAreaStretch": 1.0001086017720515,
+          "maximumNormalizedEdgeDelta": 1.3397379013609205e-06,
+          "maximumNormalizedTriangleAreaDelta": 4.844167665637681e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 42,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SH1Acc_3",
+      "objects": [
+        "_SH1Acc_3"
+      ],
+      "materials": [
+        "BackSpines_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SH1Acc_3": {
+          "restPoseMaximumVertexError": 2.4575624618635703e-07,
+          "maximumBoundsRatio": 1.0365702236730352,
+          "maximumEdgeStretch": 1.4739733409024514,
+          "maximumTriangleAreaStretch": 1.4924427171552395,
+          "maximumNormalizedEdgeDelta": 0.006314570665282334,
+          "maximumNormalizedTriangleAreaDelta": 4.845019340348095e-05,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 17,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SH1Acc_4xRARE",
+      "objects": [
+        "_SH1Acc_4xRARE"
+      ],
+      "materials": [
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SH1Acc_4xRARE": {
+          "restPoseMaximumVertexError": 2.457562461863554e-07,
+          "maximumBoundsRatio": 1.0397115047796743,
+          "maximumEdgeStretch": 2.1807913745822223,
+          "maximumTriangleAreaStretch": 2.170123172466493,
+          "maximumNormalizedEdgeDelta": 0.01624477872381705,
+          "maximumNormalizedTriangleAreaDelta": 0.00013410057216729597,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SH2Acc_1xRARE",
+      "objects": [
+        "_SH2Acc_1xRARE"
+      ],
+      "materials": [
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SH2Acc_1xRARE": {
+          "restPoseMaximumVertexError": 2.457562461863565e-07,
+          "maximumBoundsRatio": 1.036147042734179,
+          "maximumEdgeStretch": 1.0008701744179291,
+          "maximumTriangleAreaStretch": 1.0009195505179092,
+          "maximumNormalizedEdgeDelta": 1.7045270636262953e-06,
+          "maximumNormalizedTriangleAreaDelta": 3.50238614267239e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 104,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SH2Acc_none",
+      "objects": [
+        "_SH2Acc_none"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_SHAcc_0",
+      "objects": [
+        "_SHAcc_0"
+      ],
+      "materials": [],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {}
+    },
+    {
+      "name": "_SHAcc_1",
+      "objects": [
+        "_SHAcc_1"
+      ],
+      "materials": [
+        "Acc_BackSpikes"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SHAcc_1": {
+          "restPoseMaximumVertexError": 1.3328003749250113e-07,
+          "maximumBoundsRatio": 1.057174141542497,
+          "maximumEdgeStretch": 1.993013480348486,
+          "maximumTriangleAreaStretch": 1.900103526177112,
+          "maximumNormalizedEdgeDelta": 0.018155017352022865,
+          "maximumNormalizedTriangleAreaDelta": 0.0005152105634180227,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SHAcc_2",
+      "objects": [
+        "_SHAcc_2"
+      ],
+      "materials": [
+        "NoseBone_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SHAcc_2": {
+          "restPoseMaximumVertexError": 2.457562461863554e-07,
+          "maximumBoundsRatio": 1.0462392035580093,
+          "maximumEdgeStretch": 1.000128467578556,
+          "maximumTriangleAreaStretch": 1.0001398590210262,
+          "maximumNormalizedEdgeDelta": 1.710080144086753e-06,
+          "maximumNormalizedTriangleAreaDelta": 7.056744176823507e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 104,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SHAcc_3",
+      "objects": [
+        "_SHAcc_3"
+      ],
+      "materials": [
+        "NoseBone2_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SHAcc_3": {
+          "restPoseMaximumVertexError": 2.384185791015642e-07,
+          "maximumBoundsRatio": 1.0202221378461374,
+          "maximumEdgeStretch": 1.0000838274322141,
+          "maximumTriangleAreaStretch": 1.000117640576386,
+          "maximumNormalizedEdgeDelta": 1.7840677502809482e-06,
+          "maximumNormalizedTriangleAreaDelta": 6.346895563494404e-08,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SHAcc_4",
+      "objects": [
+        "_SHAcc_4"
+      ],
+      "materials": [
+        "HeadBone_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SHAcc_4": {
+          "restPoseMaximumVertexError": 2.4575624618635687e-07,
+          "maximumBoundsRatio": 1.02307180769096,
+          "maximumEdgeStretch": 4.340041949766158,
+          "maximumTriangleAreaStretch": 2.6872757632646462,
+          "maximumNormalizedEdgeDelta": 0.09315244597431724,
+          "maximumNormalizedTriangleAreaDelta": 0.0016707428392678644,
+          "maximumSignificantEdgeStretch": 4.340041949766158,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_SHAcc_5xRARE",
+      "objects": [
+        "_SHAcc_5xRARE"
+      ],
+      "materials": [
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_SHAcc_5xRARE": {
+          "restPoseMaximumVertexError": 2.4575624618635597e-07,
+          "maximumBoundsRatio": 1.0375884109557911,
+          "maximumEdgeStretch": 1.136579706494478,
+          "maximumTriangleAreaStretch": 1.2187444975648238,
+          "maximumNormalizedEdgeDelta": 0.007153977788559963,
+          "maximumNormalizedTriangleAreaDelta": 0.00016201863866420908,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 94,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Tail_1",
+      "objects": [
+        "_Tail_1"
+      ],
+      "materials": [
+        "StriderTail_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Tail_1": {
+          "restPoseMaximumVertexError": 2.457562461863554e-07,
+          "maximumBoundsRatio": 1.0504534512184176,
+          "maximumEdgeStretch": 1.1535407769883883,
+          "maximumTriangleAreaStretch": 1.1576109159408856,
+          "maximumNormalizedEdgeDelta": 0.007479043720680275,
+          "maximumNormalizedTriangleAreaDelta": 0.00010999962488775465,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 10,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Tail_2",
+      "objects": [
+        "_Tail_2"
+      ],
+      "materials": [
+        "StriderVariantTail_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Tail_2": {
+          "restPoseMaximumVertexError": 2.457562461863601e-07,
+          "maximumBoundsRatio": 1.072594281255555,
+          "maximumEdgeStretch": 2.013272632159654,
+          "maximumTriangleAreaStretch": 2.301996741341701,
+          "maximumNormalizedEdgeDelta": 0.03583581595165757,
+          "maximumNormalizedTriangleAreaDelta": 0.0007613885344004542,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 10,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Tail_4",
+      "objects": [
+        "_Tail_4"
+      ],
+      "materials": [
+        "BugTail_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Tail_4": {
+          "restPoseMaximumVertexError": 1.6858739404357672e-07,
+          "maximumBoundsRatio": 1.0188207698185225,
+          "maximumEdgeStretch": 1.3719091364615152,
+          "maximumTriangleAreaStretch": 1.3718058961939805,
+          "maximumNormalizedEdgeDelta": 0.030118177958768057,
+          "maximumNormalizedTriangleAreaDelta": 0.0007245390580620649,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 10,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Tail_5",
+      "objects": [
+        "_Tail_5"
+      ],
+      "materials": [
+        "LongTail_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Tail_5": {
+          "restPoseMaximumVertexError": 1.6858739404357664e-07,
+          "maximumBoundsRatio": 1.0299369287971416,
+          "maximumEdgeStretch": 1.1441352152187383,
+          "maximumTriangleAreaStretch": 1.1496372580552086,
+          "maximumNormalizedEdgeDelta": 0.01262146379669813,
+          "maximumNormalizedTriangleAreaDelta": 0.00021756270628447717,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 10,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Tail_6",
+      "objects": [
+        "_Tail_6",
+        "_FinC_1Shape"
+      ],
+      "materials": [
+        "StriderVariantTail_Mat",
+        "TileableB_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Tail_6": {
+          "restPoseMaximumVertexError": 2.980232238769586e-08,
+          "maximumBoundsRatio": 1.0490614395118365,
+          "maximumEdgeStretch": 1.07243778991345,
+          "maximumTriangleAreaStretch": 1.0811811856001572,
+          "maximumNormalizedEdgeDelta": 0.003996238363514435,
+          "maximumNormalizedTriangleAreaDelta": 0.0002352879218229513,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "_FinC_1Shape": {
+          "restPoseMaximumVertexError": 6.664001874625075e-08,
+          "maximumBoundsRatio": 1.0354472390749325,
+          "maximumEdgeStretch": 1.0000121477659227,
+          "maximumTriangleAreaStretch": 1.0,
+          "maximumNormalizedEdgeDelta": 0.0007965241243336226,
+          "maximumNormalizedTriangleAreaDelta": 5.370483424175214e-05,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Tail_7xRARE",
+      "objects": [
+        "_Tail_7xRARE"
+      ],
+      "materials": [
+        "StriderVariantTail_Mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Tail_7xRARE": {
+          "restPoseMaximumVertexError": 2.980232238769586e-08,
+          "maximumBoundsRatio": 1.0269060650199824,
+          "maximumEdgeStretch": 1.0710259774896285,
+          "maximumTriangleAreaStretch": 1.0709230515574826,
+          "maximumNormalizedEdgeDelta": 0.004539079735192842,
+          "maximumNormalizedTriangleAreaDelta": 0.00038170036781149454,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "walk",
+          "worstTriangleFrame": 33,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Tails_1",
+      "objects": [
+        "_Tails_1"
+      ],
+      "materials": [
+        "spiderwimbleLegs_BulbTop_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Tails_1": {
+          "restPoseMaximumVertexError": 1.6858739404357614e-07,
+          "maximumBoundsRatio": 1.087303093806189,
+          "maximumEdgeStretch": 1.6489618638765926,
+          "maximumTriangleAreaStretch": 1.6495286015185573,
+          "maximumNormalizedEdgeDelta": 0.015685708868660615,
+          "maximumNormalizedTriangleAreaDelta": 0.00015959700677683962,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 10,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    }
+  ],
+  "excludedMeshObjects": [],
+  "baselineSeed": 0,
+  "baselineChoices": [
+    {
+      "typeId": "_HEAD_",
+      "id": "_HEAD_BUG",
+      "name": "_Head_Bug",
+      "path": [
+        "_HEAD_",
+        "_Head_Bug"
+      ]
+    },
+    {
+      "typeId": "_SH2ACC_",
+      "id": "_SH2ACC_NONE",
+      "name": "_SH2Acc_none",
+      "path": [
+        "_HEAD_",
+        "_Head_Bug",
+        "_SH2ACC_",
+        "_SH2Acc_none"
+      ]
+    },
+    {
+      "typeId": "_BUGARM_",
+      "id": "_BUGARM_0",
+      "name": "_BugArm_0",
+      "path": [
+        "_HEAD_",
+        "_Head_Bug",
+        "_BUGARM_",
+        "_BugArm_0"
+      ]
+    },
+    {
+      "typeId": "_ACCBACK_",
+      "id": "_ACCBACK_1",
+      "name": "_AccBack_1",
+      "path": [
+        "_HEAD_",
+        "_Head_Bug",
+        "_ACCBACK_",
+        "_AccBack_1"
+      ]
+    },
+    {
+      "typeId": "_BODY_",
+      "id": "_BODY_STRIDER",
+      "name": "_Body_Strider",
+      "path": [
+        "_BODY_",
+        "_Body_Strider"
+      ]
+    },
+    {
+      "typeId": "_SBACC_",
+      "id": "_SBACC_1",
+      "name": "_SBAcc_1",
+      "path": [
+        "_BODY_",
+        "_Body_Strider",
+        "_SBACC_",
+        "_SBAcc_1"
+      ]
+    },
+    {
+      "typeId": "_TAIL_",
+      "id": "_TAIL_5",
+      "name": "_Tail_5",
+      "path": [
+        "_TAIL_",
+        "_Tail_5"
+      ]
+    }
+  ],
+  "showcaseSignatureCount": 8,
+  "limitedDiversity": false
+}

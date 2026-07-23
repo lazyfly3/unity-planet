@@ -92,7 +92,7 @@ public sealed class GalaxyGeneratedResourceRecord
 [Serializable]
 public sealed class GalaxyGeneratedPlanetRecord
 {
-    public int formatVersion = 4;
+    public int formatVersion = 5;
     public int generatorVersion;
     public string planetId;
     public string displayName;
@@ -248,16 +248,47 @@ if (!HasPlanet(coordinate))
         bool hasAtmosphere = atmosphere > 0.16f;
         var profile = new PlanetCelestialProfile
         {
-            radius = PlanetCelestialProfile.CompatibleRadius,
+            surfaceGenerationMode = PlanetSurfaceGenerationMode.StreamingLargeSphere,
+            radius = PlanetCelestialProfile.LargePlanetRadius,
             surfaceGravity = gravity,
             rotationAxis = axis,
-            rotationPeriod = Mathf.Lerp(90f, 240f, random.Value()),
+            rotationPeriod = Mathf.Lerp(600f, 1200f, random.Value()),
             atmosphereSurfaceDensity = hasAtmosphere ? Mathf.Lerp(0.18f, 1.2f, atmosphere) : 0f,
-            atmosphereScaleHeight = hasAtmosphere ? Mathf.Lerp(3f, 6f, random.Value()) : 1f,
-            atmosphereTopAltitude = hasAtmosphere ? Mathf.Lerp(16f, 28f, atmosphere) : 0f
+            atmosphereScaleHeight = hasAtmosphere ? Mathf.Lerp(95f, 150f, random.Value()) : 1f,
+            atmosphereTopAltitude = hasAtmosphere ? Mathf.Lerp(700f, 900f, atmosphere) : 0f,
+            maximumTerrainElevation = Mathf.Lerp(90f, 160f, random.Value()),
+            editableDepth = 96f,
+            rotationEpochSeconds = random.Value() * 1200d,
+            atmosphereVisual = CreateAtmosphereVisual(ref random, atmosphere, hasAtmosphere)
         };
         profile.ClampValues();
         return profile;
+    }
+
+    static AtmosphereVisualProfile CreateAtmosphereVisual(
+        ref StableRandom random,
+        float atmosphere,
+        bool hasAtmosphere)
+    {
+        if (!hasAtmosphere)
+            return new AtmosphereVisualProfile { kind = PlanetAtmosphereKind.None, scatteringStrength = 0f, cloudCoverage = 0f };
+
+        PlanetAtmosphereKind kind = atmosphere > 0.82f
+            ? PlanetAtmosphereKind.Dense
+            : atmosphere < 0.3f ? PlanetAtmosphereKind.Thin : PlanetAtmosphereKind.Temperate;
+        float hue = Mathf.Lerp(0.52f, 0.64f, random.Value());
+        Color horizon = Color.HSVToRGB(hue, Mathf.Lerp(0.35f, 0.72f, atmosphere), 1f);
+        Color zenith = Color.Lerp(horizon, new Color(0.01f, 0.025f, 0.08f), 0.72f);
+        return new AtmosphereVisualProfile
+        {
+            kind = kind,
+            horizonColor = horizon,
+            zenithColor = zenith,
+            sunsetColor = Color.Lerp(new Color(1f, 0.18f, 0.04f), horizon, 0.18f),
+            scatteringStrength = Mathf.Lerp(0.35f, 1.25f, atmosphere),
+            cloudCoverage = Mathf.Lerp(0.08f, 0.72f, atmosphere),
+            cloudRotationMultiplier = Mathf.Lerp(1.03f, 1.14f, random.Value())
+        };
     }
 
     List<HarvestableResourceSpawnSettings> CreateResources(ref StableRandom random, float geology, float crystal)
@@ -294,17 +325,17 @@ if (!HasPlanet(coordinate))
     {
         return new PlanetTerrainSettings
         {
-            continentScale = Mathf.Lerp(0.009f, 0.038f, random.Value()),
-            continentHeight = Mathf.Lerp(4f, 12f, Mathf.Lerp(random.Value(), geology, 0.5f)),
-            detailScale = Mathf.Lerp(0.035f, 0.12f, random.Value()),
-            detailHeight = Mathf.Lerp(0.5f, 6f, geology),
-            ridgeHeight = Mathf.Lerp(0.1f, 8f, geology * geology),
+            continentScale = Mathf.Lerp(0.00055f, 0.0018f, random.Value()),
+            continentHeight = Mathf.Lerp(55f, 125f, Mathf.Lerp(random.Value(), geology, 0.5f)),
+            detailScale = Mathf.Lerp(0.004f, 0.014f, random.Value()),
+            detailHeight = Mathf.Lerp(8f, 34f, geology),
+            ridgeHeight = Mathf.Lerp(2f, 48f, geology * geology),
             surfaceLayerDepth = Mathf.Lerp(0.6f, 2.2f, moisture),
-            stoneDepth = Mathf.Lerp(2.5f, 7f, 1f - temperature * 0.35f),
+            stoneDepth = Mathf.Lerp(4f, 12f, 1f - temperature * 0.35f),
             generateCaves = geology > 0.18f,
-            caveScale = Mathf.Lerp(0.035f, 0.11f, random.Value()),
+            caveScale = Mathf.Lerp(0.012f, 0.045f, random.Value()),
             caveThreshold = Mathf.Lerp(0.79f, 0.56f, geology),
-            caveSurfaceClearance = Mathf.Lerp(5f, 1.2f, geology)
+            caveSurfaceClearance = Mathf.Lerp(12f, 3f, geology)
         };
     }
 

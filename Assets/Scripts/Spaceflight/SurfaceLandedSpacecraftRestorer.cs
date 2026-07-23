@@ -54,7 +54,10 @@ public sealed class SurfaceLandedSpacecraftRestorer : MonoBehaviour
             yield break;
 
         Vector3 up = hit.normal.sqrMagnitude > 0.001f ? hit.normal.normalized : direction;
-        Vector3 forward = Vector3.ProjectOnPlane(landing.shipRotation * Vector3.forward, up).normalized;
+        Vector3 localForward = landing.shipRotation * Vector3.forward;
+        Vector3 forward = Vector3.ProjectOnPlane(
+            world.transform.TransformDirection(localForward),
+            up).normalized;
         if (forward.sqrMagnitude < 0.001f)
             forward = Vector3.Cross(up, Mathf.Abs(Vector3.Dot(up, Vector3.right)) < 0.9f ? Vector3.right : Vector3.forward).normalized;
         assembly.transform.SetPositionAndRotation(hit.point + up * 2f, Quaternion.LookRotation(forward, up));
@@ -71,6 +74,7 @@ public sealed class SurfaceLandedSpacecraftRestorer : MonoBehaviour
 
         yield return null;
         PlaceBottomOnGround(assembly.transform, hit.point, up);
+        PlacePlayerBesideShip(hit.point, up, forward);
     }
 
     static void DisableWorkshopSystems(GameObject instance)
@@ -120,5 +124,40 @@ public sealed class SurfaceLandedSpacecraftRestorer : MonoBehaviour
         }
         if (float.IsFinite(lowest))
             ship.position += up * (0.08f - lowest);
+    }
+
+    void PlacePlayerBesideShip(Vector3 shipGroundPoint, Vector3 up, Vector3 forward)
+    {
+        VoxelPlanetPlayerController player = FindObjectOfType<VoxelPlanetPlayerController>();
+        if (player == null)
+            return;
+
+        Vector3 side = Vector3.Cross(up, forward).normalized;
+        if (side.sqrMagnitude < 0.001f)
+            side = Vector3.Cross(up, Vector3.right).normalized;
+        Vector3 center = world.GetPlanetCenterWorld();
+        Vector3 playerDirection = (shipGroundPoint + side * 6f - center).normalized;
+        Vector3 playerGroundPoint;
+        Vector3 playerUp;
+        if (world.TryFindPlanetSurface(playerDirection, out RaycastHit playerHit))
+        {
+            playerGroundPoint = playerHit.point;
+            playerUp = playerHit.normal.sqrMagnitude > 0.001f
+                ? playerHit.normal.normalized
+                : playerDirection;
+        }
+        else
+        {
+            playerGroundPoint = center
+                + playerDirection * world.GetProceduralSurfaceRadius(playerDirection);
+            playerUp = playerDirection;
+        }
+
+        Vector3 playerForward = Vector3.ProjectOnPlane(forward, playerUp).normalized;
+        if (playerForward.sqrMagnitude < 0.001f)
+            playerForward = Vector3.Cross(playerUp, side).normalized;
+        player.TeleportTo(
+            playerGroundPoint + playerUp * 1.2f,
+            Quaternion.LookRotation(playerForward, playerUp));
     }
 }

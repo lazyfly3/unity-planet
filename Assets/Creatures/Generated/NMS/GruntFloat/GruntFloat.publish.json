@@ -1,0 +1,77 @@
+{
+  "pipelineVersion": 10,
+  "familyId": "GruntFloat",
+  "skeletonHash": "32d65baa8d2afd49d85e5c9d3c7a8b353a354fc55d8668f4885d55c4cf507823",
+  "validationHash": "5199a2c5f99c15e07b01707432534892037f08f6ca11f6896423b25fa8f0926d",
+  "sourceKind": "Fbx",
+  "sourceModelAsset": "Assets/Creatures/Generated/NMS/GruntFloat/GruntFloat.fbx",
+  "sourcePrefabAsset": "",
+  "familyManifestAsset": "Assets/Creatures/Generated/NMS/GruntFloat/GruntFloat_family.json",
+  "skeletonManifestAsset": "Assets/Creatures/Generated/NMS/GruntFloat/GruntFloat_skeleton.json",
+  "locomotionType": "Hover",
+  "surfaceMode": "Hover",
+  "variantIds": [
+    "GruntGround",
+    "GruntFloat"
+  ],
+  "legCount": 2,
+  "allowRareModules": false,
+  "excludedModulePrefixes": [],
+  "selectionWeight": 1,
+  "walkSpeed": 1.0,
+  "surfaceRootOffset": -1.0,
+  "hoverClearance": 0.65,
+  "importScale": 1.0,
+  "importEuler": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "localForwardAxis": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -1.0
+  },
+  "actions": [
+    {
+      "key": "idle",
+      "clipName": "GruntFloat_IDLE_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/GruntFloat/GruntFloat.fbx",
+      "frames": 181,
+      "loop": true
+    },
+    {
+      "key": "walk",
+      "clipName": "GruntFloat_WALK_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/GruntFloat/GruntFloat.fbx",
+      "frames": 181,
+      "loop": true
+    },
+    {
+      "key": "run",
+      "clipName": "GruntFloat_RUN_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/GruntFloat/GruntFloat.fbx",
+      "frames": 91,
+      "loop": true
+    }
+  ],
+  "loadBearingChains": [
+    {
+      "id": "Leg1",
+      "bones": [
+        "RLegJNT",
+        "RKneeJNT",
+        "RFootJNT"
+      ]
+    },
+    {
+      "id": "Leg2",
+      "bones": [
+        "LLegJNT",
+        "LKneeJNT",
+        "LFootJNT"
+      ]
+    }
+  ],
+  "sourceFbxSha256": "92c94a719b98806b7b40077d8879989b19fd9a9b6f3dfccbe16f757bd1104fc0"
+}

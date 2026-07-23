@@ -18,6 +18,12 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
     [SerializeField] int seed = 12345;
     [SerializeField] string forcedFamilyId;
     [SerializeField] bool regenerateWithR = true;
+    [SerializeField] NmsCreatureMotionMode motionMode = NmsCreatureMotionMode.ImportedAnimator;
+    [SerializeField] NmsProceduralMotionProfile proceduralMotionProfile;
+    [SerializeField] NmsAuthorizedAntelopeLibrary authorizedAntelopeLibrary;
+
+    [Header("Imported Walk")]
+    [SerializeField, Range(0.5f, 3f)] float importedWalkPlaybackSpeed = 1.8f;
 
     [Header("Spherical Test")]
     [SerializeField] SphericalGravitySource gravitySource;
@@ -39,15 +45,29 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
     MaterialPropertyBlock propertyBlock;
     GameObject currentCreature;
     Animator currentAnimator;
+    NmsProceduralMotionController currentMotionController;
+    NmsImportedAnimatorMotionController currentImportedController;
     NmsCreatureFamilyDefinition currentFamily;
     NmsCreatureSpeciesDefinition currentSpecies;
     bool invariantReported;
     int generationRevision;
+    int readyRevision = -1;
     int automaticRetryCount;
+    bool forceStandardVariant;
+    bool currentUsesAuthorizedAntelope;
 
     public int Seed => seed;
     public Transform CurrentCreature => currentCreature != null ? currentCreature.transform : null;
     public NmsCreatureSpeciesDefinition CurrentSpecies => currentSpecies;
+    public NmsCreatureFamilyDefinition CurrentFamily => currentFamily;
+    public Animator CurrentAnimator => currentAnimator;
+    public NmsProceduralMotionController CurrentMotionController => currentMotionController;
+    public NmsImportedAnimatorMotionController CurrentImportedController =>
+        currentImportedController;
+    public NmsCreatureMotionMode MotionMode => motionMode;
+    public bool CurrentVariantValidated { get; private set; }
+    public string LastValidationResult { get; private set; } = "Not generated";
+    public event Action<NmsCreatureSpawnContext> CreatureReady;
 
     void Start()
     {
@@ -64,8 +84,9 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
     {
         if (currentCreature == null || currentFamily == null || gravitySource == null)
             return;
-        if (moveAlongGreatCircle)
-            MoveAlongSphere(currentFamily.WalkSpeed * Time.fixedDeltaTime);
+        if (moveAlongGreatCircle && motionMode == NmsCreatureMotionMode.ImportedAnimator)
+            if (currentImportedController == null)
+                MoveAlongSphere(currentFamily.WalkSpeed * Time.fixedDeltaTime);
     }
 
     void LateUpdate()
@@ -94,6 +115,7 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
     public void Generate(int newSeed)
     {
         automaticRetryCount = 0;
+        forceStandardVariant = false;
         GenerateInternal(newSeed);
     }
 
@@ -135,6 +157,14 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
             currentFamily.ExcludedModulePrefixes,
             BuildIncompatibleModuleSet(manifest.modules),
             ref descriptorRandom);
+        if (forceStandardVariant)
+        {
+            selected.Clear();
+            selected.Add("_Body_Deer");
+            selected.Add("_Head_Deer");
+            selected.Add("DeerEyes");
+            selected.Add("_HDEars_1");
+        }
         CreatePalette(
             ref colorRandom,
             out Color primary,
@@ -160,7 +190,23 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
         if (forward.sqrMagnitude <= 0.000001f)
             forward = Vector3.Cross(Vector3.right, up);
 
-        currentCreature = Instantiate(currentFamily.RuntimePrefab, transform);
+        bool useAuthorizedAntelope = authorizedAntelopeLibrary != null
+            && authorizedAntelopeLibrary.CanBuild(currentFamily.FamilyId);
+        currentUsesAuthorizedAntelope = useAuthorizedAntelope;
+        if (useAuthorizedAntelope)
+        {
+            if (!authorizedAntelopeLibrary.TryBuild(
+                transform, selected, activeRenderers,
+                out currentCreature, out currentAnimator, out string assemblyError))
+            {
+                RejectCurrent("Authorized antelope assembly failed. " + assemblyError);
+                return;
+            }
+        }
+        else
+        {
+            currentCreature = Instantiate(currentFamily.RuntimePrefab, transform);
+        }
         currentCreature.name = $"NMS_{currentFamily.FamilyId}_{seed}";
         SetLayerRecursively(currentCreature.transform, 2);
         currentCreature.transform.SetPositionAndRotation(
@@ -168,7 +214,10 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
             RotationForLocalForward(currentFamily.LocalForwardAxis, forward.normalized, up));
         currentCreature.SetActive(true);
 
-        ApplyModules(selected, primary, secondary, accent);
+        if (useAuthorizedAntelope)
+            ApplyPalette(primary, secondary, accent);
+        else
+            ApplyModules(selected, primary, secondary, accent);
         if (!HasAnimatedBody())
         {
             Debug.LogError(
@@ -178,22 +227,60 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
             DestroyCurrent();
             return;
         }
-        currentAnimator = currentCreature.GetComponentInChildren<Animator>(true);
-        if (currentAnimator != null)
+        if (currentAnimator == null)
+            currentAnimator = currentCreature.GetComponentInChildren<Animator>(true);
+        if (motionMode == NmsCreatureMotionMode.ImportedAnimator && currentAnimator != null)
         {
-            currentAnimator.runtimeAnimatorController = currentFamily.AnimatorController;
-            currentAnimator.applyRootMotion = false;
-            currentAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-            currentAnimator.Play(currentFamily.WalkState, 0, 0f);
+            if (useAuthorizedAntelope)
+            {
+                currentImportedController =
+                    currentCreature.AddComponent<NmsImportedAnimatorMotionController>();
+                if (!currentImportedController.Configure(
+                    gravitySource, currentFamily, currentAnimator,
+                    authorizedAntelopeLibrary.AnimatorController,
+                    authorizedAntelopeLibrary.LocomotionState,
+                    authorizedAntelopeLibrary.SpeedParameter,
+                    groundLayers, surfaceProbeHeight,
+                    importedWalkPlaybackSpeed, out string importedError))
+                {
+                    RejectCurrent("Imported Animator configuration failed. " + importedError);
+                    return;
+                }
+            }
+            else
+            {
+                currentAnimator.runtimeAnimatorController = currentFamily.AnimatorController;
+                currentAnimator.applyRootMotion = false;
+                currentAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                currentAnimator.Play(currentFamily.WalkState, 0, 0f);
+            }
         }
+        else if (motionMode == NmsCreatureMotionMode.Procedural)
+        {
+            currentMotionController = currentCreature.AddComponent<NmsProceduralMotionController>();
+            if (!currentMotionController.Configure(
+                gravitySource, currentFamily, currentSpecies, proceduralMotionProfile,
+                groundLayers, currentAnimator, out string motionError))
+            {
+                RejectCurrent("Procedural rig configuration failed. " + motionError);
+                return;
+            }
+        }
+        CaptureSegmentInvariants();
+        CurrentVariantValidated = false;
+        LastValidationResult = "Pending";
+        if (followCamera != null)
+            followCamera.SetTarget(currentCreature.transform, true);
         if (rejectInvalidSkinnedMeshes)
         {
             SetActiveRenderersForceOff(true);
             StartCoroutine(ValidateSkinnedMeshesAfterPose(generationRevision));
         }
-        CaptureSegmentInvariants();
-        if (followCamera != null)
-            followCamera.SetTarget(currentCreature.transform, true);
+        else
+        {
+            SetActiveRenderersForceOff(false);
+            NotifyCreatureReady(generationRevision);
+        }
 
         Debug.Log(
             $"NMS species generated. Family={currentFamily.FamilyId}, Seed={seed}, " +
@@ -210,13 +297,27 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
             yield break;
 
         string failure = null;
-        const int poseSamples = 8;
+        int poseSamples = motionMode == NmsCreatureMotionMode.ImportedAnimator
+            ? 8
+            : 1;
         for (int sample = 0; sample < poseSamples; sample++)
         {
-            if (currentAnimator != null)
+            if (motionMode == NmsCreatureMotionMode.ImportedAnimator && currentAnimator != null)
             {
-                float normalizedTime = sample / (float)poseSamples;
-                currentAnimator.Play(currentFamily.WalkState, 0, normalizedTime);
+                if (currentUsesAuthorizedAntelope)
+                {
+                    float normalizedTime = sample / 8f;
+                    currentAnimator.SetFloat(
+                        authorizedAntelopeLibrary.SpeedParameter, 0.5f);
+                    currentAnimator.Play(
+                        "Base Layer." + authorizedAntelopeLibrary.LocomotionState,
+                        0, normalizedTime);
+                }
+                else
+                {
+                    float normalizedTime = sample / (float)poseSamples;
+                    currentAnimator.Play(currentFamily.WalkState, 0, normalizedTime);
+                }
                 currentAnimator.Update(0f);
             }
             failure = ValidateActiveSkinnedMeshes();
@@ -224,38 +325,32 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
                 break;
         }
 
-        if (currentAnimator != null)
+        if (motionMode == NmsCreatureMotionMode.ImportedAnimator && currentAnimator != null)
         {
-            currentAnimator.Play(currentFamily.WalkState, 0, 0f);
+            if (currentUsesAuthorizedAntelope)
+            {
+                currentAnimator.SetFloat(authorizedAntelopeLibrary.SpeedParameter, 0.5f);
+                currentAnimator.Play(
+                    "Base Layer." + authorizedAntelopeLibrary.LocomotionState,
+                    0, 0f);
+                currentAnimator.speed = 0f;
+            }
+            else
+            {
+                currentAnimator.Play(currentFamily.WalkState, 0, 0f);
+            }
             currentAnimator.Update(0f);
         }
 
         if (string.IsNullOrEmpty(failure))
         {
             SetActiveRenderersForceOff(false);
+            CurrentVariantValidated = true;
+            LastValidationResult = "Passed authoritative Walk skin validation";
+            NotifyCreatureReady(revision);
             yield break;
         }
-
-        int failedSeed = seed;
-        string failedFamily = currentFamily != null ? currentFamily.FamilyId : "<missing>";
-        string failedSignature = currentSpecies != null ? currentSpecies.signature : "<missing>";
-        Debug.LogError(
-            $"NMS species rejected after animation validation. Family={failedFamily}, " +
-            $"Seed={failedSeed}, Signature={failedSignature}. {failure}",
-            currentCreature);
-
-        automaticRetryCount++;
-        if (automaticRetryCount > maximumAutomaticRetries)
-        {
-            Debug.LogError(
-                $"NMS generation stopped after {maximumAutomaticRetries} invalid animated species. " +
-                "The published family assets must be rebuilt from compatible Bind Poses.",
-                this);
-            DestroyCurrent();
-            yield break;
-        }
-
-        GenerateInternal(unchecked(failedSeed + 1));
+        RejectCurrent("Runtime skinned-mesh validation failed. " + failure);
     }
 
     string ValidateActiveSkinnedMeshes()
@@ -268,29 +363,44 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
                 continue;
 
             Mesh source = renderer.sharedMesh;
-            if (!source.isReadable)
+            if (!source.isReadable
+                && motionMode == NmsCreatureMotionMode.ImportedAnimator)
                 return $"Renderer '{renderer.name}' source mesh is not readable; " +
                     "animated deformation validation cannot run.";
             var baked = new Mesh { name = $"{renderer.name}_Validation" };
             try
             {
                 renderer.BakeMesh(baked, false);
-                Vector3[] sourceVertices = source.vertices;
                 Vector3[] bakedVertices = baked.vertices;
-                if (sourceVertices.Length == 0 || bakedVertices.Length != sourceVertices.Length)
+                if (bakedVertices.Length == 0
+                    || bakedVertices.Length != source.vertexCount)
                     return $"Renderer '{renderer.name}' produced an invalid baked vertex count.";
 
                 for (int vertexIndex = 0; vertexIndex < bakedVertices.Length; vertexIndex++)
                     if (!IsFinite(bakedVertices[vertexIndex]))
                         return $"Renderer '{renderer.name}' produced a non-finite vertex.";
 
-                float sourceSpan = Mathf.Max(source.bounds.size.magnitude, 0.0001f);
+                Vector3 rendererScale = renderer.transform.lossyScale;
+                float sourceScale = Mathf.Max(
+                    Mathf.Abs(rendererScale.x),
+                    Mathf.Abs(rendererScale.y),
+                    Mathf.Abs(rendererScale.z));
+                sourceScale = Mathf.Max(0.0001f, sourceScale);
+                float sourceSpan = Mathf.Max(
+                    source.bounds.size.magnitude * sourceScale, 0.0001f);
                 float bakedSpan = baked.bounds.size.magnitude;
                 float boundsMultiplier = bakedSpan / sourceSpan;
-                if (!IsFinite(bakedSpan) || boundsMultiplier > maximumBakedBoundsMultiplier)
+                if (!IsFinite(bakedSpan) || bakedSpan <= 0.0001f)
+                    return $"Renderer '{renderer.name}' produced invalid baked bounds.";
+                if (motionMode == NmsCreatureMotionMode.ImportedAnimator
+                    && boundsMultiplier > maximumBakedBoundsMultiplier)
                     return $"Renderer '{renderer.name}' bounds expanded {boundsMultiplier:F2}x " +
                         $"({sourceSpan:F3} -> {bakedSpan:F3}); its Bind Pose is incompatible.";
 
+                if (motionMode == NmsCreatureMotionMode.Procedural)
+                    continue;
+
+                Vector3[] sourceVertices = source.vertices;
                 int[] triangles = source.triangles;
                 int triangleCount = triangles.Length / 3;
                 int stride = Mathf.Max(1, triangleCount / 4096);
@@ -300,9 +410,12 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
                     int offset = triangleIndex * 3;
                     worstStretch = Mathf.Max(
                         worstStretch,
-                        EdgeStretch(sourceVertices, bakedVertices, triangles[offset], triangles[offset + 1]),
-                        EdgeStretch(sourceVertices, bakedVertices, triangles[offset + 1], triangles[offset + 2]),
-                        EdgeStretch(sourceVertices, bakedVertices, triangles[offset + 2], triangles[offset]));
+                        EdgeStretch(sourceVertices, bakedVertices,
+                            triangles[offset], triangles[offset + 1], sourceScale),
+                        EdgeStretch(sourceVertices, bakedVertices,
+                            triangles[offset + 1], triangles[offset + 2], sourceScale),
+                        EdgeStretch(sourceVertices, bakedVertices,
+                            triangles[offset + 2], triangles[offset], sourceScale));
                     if (!IsFinite(worstStretch) || worstStretch > maximumTriangleEdgeStretch)
                         return $"Renderer '{renderer.name}' triangle edge stretched {worstStretch:F2}x; " +
                             "its skin weights or Bind Pose are incompatible with this animation.";
@@ -320,11 +433,13 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
         Vector3[] sourceVertices,
         Vector3[] bakedVertices,
         int first,
-        int second)
+        int second,
+        float sourceScale)
     {
         if ((uint)first >= sourceVertices.Length || (uint)second >= sourceVertices.Length)
             return float.PositiveInfinity;
-        float sourceLength = Vector3.Distance(sourceVertices[first], sourceVertices[second]);
+        float sourceLength = Vector3.Distance(
+            sourceVertices[first], sourceVertices[second]) * sourceScale;
         if (sourceLength <= 0.00001f)
             return 1f;
         return Vector3.Distance(bakedVertices[first], bakedVertices[second]) / sourceLength;
@@ -652,6 +767,11 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
             renderers[i].enabled = false;
         }
 
+        ApplyPalette(primary, secondary, accent);
+    }
+
+    void ApplyPalette(Color primary, Color secondary, Color accent)
+    {
         if (propertyBlock == null)
             propertyBlock = new MaterialPropertyBlock();
         for (int i = 0; i < activeRenderers.Count; i++)
@@ -794,8 +914,12 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
         activeRenderers.Clear();
         segmentInvariants.Clear();
         currentAnimator = null;
+        currentMotionController = null;
+        currentImportedController = null;
         currentFamily = null;
         currentSpecies = null;
+        readyRevision = -1;
+        CurrentVariantValidated = false;
         if (currentCreature == null)
             return;
         currentCreature.SetActive(false);
@@ -813,7 +937,56 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
         invariantReported = true;
         if (currentAnimator != null)
             currentAnimator.enabled = false;
+        if (currentMotionController != null)
+            currentMotionController.enabled = false;
+        if (currentImportedController != null)
+            currentImportedController.enabled = false;
+        LastValidationResult = message;
         Debug.LogError("NMS native rig invariant failed: " + message, this);
+    }
+
+    void NotifyCreatureReady(int revision)
+    {
+        if (revision != generationRevision || revision == readyRevision || currentCreature == null)
+            return;
+        readyRevision = revision;
+        CreatureReady?.Invoke(new NmsCreatureSpawnContext(
+            currentCreature, currentFamily, currentSpecies,
+            currentAnimator, currentMotionController, currentImportedController));
+    }
+
+    void RejectCurrent(string failure)
+    {
+        int failedSeed = seed;
+        string failedFamily = currentFamily != null ? currentFamily.FamilyId : "<missing>";
+        string failedSignature = currentSpecies != null ? currentSpecies.signature : "<missing>";
+        Debug.LogError(
+            $"NMS species rejected. Family={failedFamily}, Seed={failedSeed}, " +
+            $"Signature={failedSignature}. {failure}",
+            currentCreature != null ? currentCreature : gameObject);
+        LastValidationResult = failure;
+        automaticRetryCount++;
+        if (automaticRetryCount > maximumAutomaticRetries)
+        {
+            if (!forceStandardVariant
+                && authorizedAntelopeLibrary != null
+                && string.Equals(failedFamily, authorizedAntelopeLibrary.FamilyId,
+                    StringComparison.Ordinal))
+            {
+                Debug.LogWarning(
+                    "Random variants failed validation; using the canonical standard variant.",
+                    this);
+                forceStandardVariant = true;
+                automaticRetryCount = 0;
+                GenerateInternal(failedSeed);
+                return;
+            }
+            Debug.LogError(
+                $"NMS generation stopped after {maximumAutomaticRetries} invalid species.", this);
+            DestroyCurrent();
+            return;
+        }
+        GenerateInternal(unchecked(failedSeed + 1));
     }
 
     static void CreatePalette(
@@ -903,6 +1076,9 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
         regenerateWithR = true;
         moveAlongGreatCircle = true;
         validateRigContinuously = true;
+        motionMode = NmsCreatureMotionMode.ImportedAnimator;
+        proceduralMotionProfile = null;
+        authorizedAntelopeLibrary = null;
     }
 #endif
 

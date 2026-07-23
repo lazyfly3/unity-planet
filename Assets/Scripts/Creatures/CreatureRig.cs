@@ -11,9 +11,11 @@ public sealed class CreatureLegRig
     public CreatureBodySide side;
     public Transform upper;
     public Transform lower;
+    public Transform distal;
     public Transform foot;
     public float upperLength;
     public float lowerLength;
+    public float distalLength;
     public float footSoleOffset;
     public float phaseOffset;
     public float longitudinalPosition;
@@ -27,7 +29,7 @@ public sealed class CreatureLegRig
 
     public bool IsFront => longitudinalPosition >= 0.5f;
     public bool IsLeft => side == CreatureBodySide.Left;
-    public float TotalLength => upperLength + lowerLength;
+    public float TotalLength => upperLength + lowerLength + distalLength;
 }
 
 public sealed class CreatureSecondaryRig
@@ -63,6 +65,7 @@ public sealed class CreatureRig
     public int tailTipIndex;
     public int[] upperLegIndices;
     public int[] lowerLegIndices;
+    public int[] distalLegIndices;
     public int[] footIndices;
     public int[] spineIndices;
 }

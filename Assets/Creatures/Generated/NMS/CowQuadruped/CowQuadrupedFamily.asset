@@ -1,0 +1,695 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51c2f5f83ec62f444ad2111650f3a41c, type: 3}
+  m_Name: CowQuadrupedFamily
+  m_EditorClassIdentifier: 
+  familyId: CowQuadruped
+  skeletonHash: d1a2c03f21042fd72858106e6e0ea794272774ed26911db53668421d1fdc5f7c
+  locomotionType: Quadruped
+  surfaceMode: 0
+  variantIds:
+  - CowQuadruped
+  selectionWeight: 1
+  legCount: 4
+  allowRareModules: 0
+  excludedModulePrefixes: []
+  runtimePrefab: {fileID: 8182522231082483423, guid: 871fdbc6e16d7cb49b8a9aefd888f20e, type: 3}
+  animatorController: {fileID: 9100000, guid: 8521cd21fb76b074aa7014244c5a8054, type: 2}
+  familyManifest: {fileID: 4900000, guid: 6980db7b7de2e8e458248933cc0461e0, type: 3}
+  moduleBindings:
+  - moduleId: _Acc_Feathers
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Acc_Feathers
+  - moduleId: _Acc_none
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Acc_none
+  - moduleId: _BCA_BackFinxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BCA_BackFinxRARE
+  - moduleId: _BCA_BackSpinesxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BCA_BackSpinesxRARE
+  - moduleId: _BCA_Blank1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BCA_Blank1
+  - moduleId: _BCA_Blank2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BCA_Blank2
+  - moduleId: _BCA_CowHump
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BCA_CowHump
+  - moduleId: _BCA_LumpxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BCA_LumpxRARE
+  - moduleId: _BCA_RocksxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BCA_RocksxRARE
+  - moduleId: _BCA_StegSpikesxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BCA_StegSpikesxRARE
+  - moduleId: _BCA_TurtShellxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BCA_TurtShellxRARE
+  - moduleId: _BRA_ArmSpinesxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BRA_ArmSpinesxRARE
+  - moduleId: _BRA_BackFinxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BRA_BackFinxRARE
+  - moduleId: _BRA_BackSpinesxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BRA_BackSpinesxRARE
+  - moduleId: _BRA_Lump1xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BRA_Lump1xRARE
+  - moduleId: _BRA_Rocks1xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BRA_Rocks1xRARE
+  - moduleId: _BRA_StegSpikesxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BRA_StegSpikesxRARE
+  - moduleId: _BRA_TurtShellxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_BRA_TurtShellxRARE
+  - moduleId: _Body_Cow
+    rendererPaths:
+    - ImportSpace/CanonicalRig/PETACC_cow
+    - ImportSpace/CanonicalRig/_Body_Cow
+  - moduleId: _Body_Rock
+    rendererPaths:
+    - ImportSpace/CanonicalRig/PETACC_rock
+    - ImportSpace/CanonicalRig/_Body_Rock
+  - moduleId: _CowEars_0xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CowEars_0xRARE
+  - moduleId: _CowEars_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CowEars_1
+  - moduleId: _CowEars_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CowEars_2
+  - moduleId: _CowEars_3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CowEars_3
+  - moduleId: _CowEars_4
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CowEars_4
+  - moduleId: _CowEars_5
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CowEars_5
+  - moduleId: _CowEars_6
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_CowEars_6
+  - moduleId: _Cow_FloatxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Cow_FloatxRARE
+  - moduleId: _Cow_HindxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Cow_HindxRARE
+  - moduleId: _Cow_Normal
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Cow_Normal
+  - moduleId: _Divide_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Divide_1
+  - moduleId: _Divide_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Divide_2
+  - moduleId: _EarsL1_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsL1_A
+  - moduleId: _EarsL1_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsL1_B
+  - moduleId: _EarsL1_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsL1_None
+  - moduleId: _EarsL2_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsL2_A
+  - moduleId: _EarsL2_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsL2_None
+  - moduleId: _EarsS1_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsS1_A
+  - moduleId: _EarsS1_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsS1_B
+  - moduleId: _EarsS1_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsS1_C
+  - moduleId: _EarsS1_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsS1_D
+  - moduleId: _EarsS1_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsS1_E
+  - moduleId: _EarsS1_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsS1_None
+  - moduleId: _EarsSH1_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsSH1_A
+  - moduleId: _EarsSH1_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsSH1_B
+  - moduleId: _EarsSH1_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EarsSH1_None
+  - moduleId: _Ext_BackSpinesxRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Ext_BackSpinesxRARE
+  - moduleId: _Ext_BlankYo
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Ext_BlankYo
+  - moduleId: _Ext_BlankYo2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Ext_BlankYo2
+  - moduleId: _Ext_BlankYo3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Ext_BlankYo3
+  - moduleId: _Ext_Mine
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Ext_Mine
+  - moduleId: _Ext_Mine2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Ext_Mine2
+  - moduleId: _EyeTail1_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyeTail1_A
+    - ImportSpace/CanonicalRig/_EyeTail1_A
+  - moduleId: _EyeTail1_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyeTail1_B
+    - ImportSpace/CanonicalRig/_EyeTail1_B
+  - moduleId: _EyeTail1_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyeTail1_C
+    - ImportSpace/CanonicalRig/_EyeTail1_C
+  - moduleId: _EyeTail1_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyeTail1_D
+    - ImportSpace/CanonicalRig/_EyeTail1_D
+  - moduleId: _EyeTail1_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyeTail1_E
+    - ImportSpace/CanonicalRig/_EyeTail1_E
+  - moduleId: _EyeTail1_F
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyeTail1_F
+    - ImportSpace/CanonicalRig/_EyeTail1_F
+  - moduleId: _EyeTail1_G
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyeTail1_G
+    - ImportSpace/CanonicalRig/_EyeTail1_G
+  - moduleId: _EyeTail1_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EyeTail1_None
+  - moduleId: _EyeTail1_None1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EyeTail1_None1
+  - moduleId: _EyeTail1_None2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EyeTail1_None2
+  - moduleId: _EyeTail1_None3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EyeTail1_None3
+  - moduleId: _Eyes2_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_Eyes2_A
+    - ImportSpace/CanonicalRig/_Eyes2_A
+  - moduleId: _Eyes2_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_Eyes2_B
+    - ImportSpace/CanonicalRig/_Eyes2_B
+  - moduleId: _Eyes2_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Eyes2_None
+  - moduleId: _Eyes3_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_Eyes3_A
+    - ImportSpace/CanonicalRig/_Eyes3_A
+  - moduleId: _EyesF_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesF_A
+    - ImportSpace/CanonicalRig/_EyesF_A
+  - moduleId: _EyesF_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesF_B
+    - ImportSpace/CanonicalRig/_EyesF_B
+  - moduleId: _EyesF_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EyesF_None
+  - moduleId: _EyesL1_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesL1_A
+    - ImportSpace/CanonicalRig/_EyesL1_A
+  - moduleId: _EyesL1_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesL1_B
+    - ImportSpace/CanonicalRig/_EyesL1_B
+  - moduleId: _EyesL1_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesL1_C
+    - ImportSpace/CanonicalRig/_EyesL1_C
+  - moduleId: _EyesL1_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesL1_D
+    - ImportSpace/CanonicalRig/_EyesL1_D
+  - moduleId: _EyesL1_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EyesL1_None
+  - moduleId: _EyesL2_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesL2_A
+    - ImportSpace/CanonicalRig/_EyesL2_A
+  - moduleId: _EyesL2_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesL2_B
+    - ImportSpace/CanonicalRig/_EyesL2_B
+  - moduleId: _EyesL2_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesL2_C
+    - ImportSpace/CanonicalRig/_EyesL2_C
+  - moduleId: _EyesL2_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesL2_D
+    - ImportSpace/CanonicalRig/_EyesL2_D
+  - moduleId: _EyesL2_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EyesL2_None
+  - moduleId: _EyesS1_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesS1_A
+    - ImportSpace/CanonicalRig/_EyesS1_A
+  - moduleId: _EyesS1_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesS1_B
+    - ImportSpace/CanonicalRig/_EyesS1_B
+  - moduleId: _EyesS1_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesS1_C
+    - ImportSpace/CanonicalRig/_EyesS1_C
+  - moduleId: _EyesS1_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesS1_D
+    - ImportSpace/CanonicalRig/_EyesS1_D
+  - moduleId: _EyesS1_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesS1_E
+    - ImportSpace/CanonicalRig/_EyesS1_E
+  - moduleId: _EyesS1_F
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesS1_F
+    - ImportSpace/CanonicalRig/_EyesS1_F
+  - moduleId: _EyesS1_G
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesS1_G
+    - ImportSpace/CanonicalRig/_EyesS1_G
+  - moduleId: _EyesS1_H
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesS1_H
+    - ImportSpace/CanonicalRig/_EyesS1_H
+  - moduleId: _EyesS1_I
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesS1_I
+    - ImportSpace/CanonicalRig/_EyesS1_I
+  - moduleId: _EyesS1_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EyesS1_None
+  - moduleId: _EyesSH1_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesSH1_A
+    - ImportSpace/CanonicalRig/_EyesSH1_A
+  - moduleId: _EyesSH1_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesSH1_C
+    - ImportSpace/CanonicalRig/_EyesSH1_C
+  - moduleId: _EyesSH1_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesSH1_D
+    - ImportSpace/CanonicalRig/_EyesSH1_D
+  - moduleId: _EyesSH1_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesSH1_E
+    - ImportSpace/CanonicalRig/_EyesSH1_E
+  - moduleId: _EyesSH1_F
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesSH1_F
+    - ImportSpace/CanonicalRig/_EyesSH1_F
+  - moduleId: _EyesSH1_G
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesSH1_G
+    - ImportSpace/CanonicalRig/_EyesSH1_G
+  - moduleId: _EyesSH1_H
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesSH1_H
+    - ImportSpace/CanonicalRig/_EyesSH1_H
+  - moduleId: _EyesSH1_I
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesSH1_I
+    - ImportSpace/CanonicalRig/_EyesSH1_I
+  - moduleId: _EyesSH1_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EyesSH1_None
+  - moduleId: _EyesTail2_B
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesTail2_B
+    - ImportSpace/CanonicalRig/_EyesTail2_B
+  - moduleId: _EyesTail2_C
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesTail2_C
+    - ImportSpace/CanonicalRig/_EyesTail2_C
+  - moduleId: _EyesTail2_D
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesTail2_D
+    - ImportSpace/CanonicalRig/_EyesTail2_D
+  - moduleId: _EyesTail2_E
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesTail2_E
+    - ImportSpace/CanonicalRig/_EyesTail2_E
+  - moduleId: _EyesTail2_F
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesTail2_F
+    - ImportSpace/CanonicalRig/_EyesTail2_F
+  - moduleId: _EyesTail2_G
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesTail2_G
+    - ImportSpace/CanonicalRig/_EyesTail2_G
+  - moduleId: _EyesTail2_H
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_EyesTail2_H
+    - ImportSpace/CanonicalRig/_EyesTail2_H
+  - moduleId: _EyesTail2_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EyesTail2_None
+  - moduleId: _EyesTail2_None1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_EyesTail2_None1
+  - moduleId: _FaceLong_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FaceLong_1
+  - moduleId: _FaceLong_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FaceLong_2
+  - moduleId: _FaceSH_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FaceSH_1
+  - moduleId: _FaceStump_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FaceStump_1
+  - moduleId: _Feet_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Feet_1
+  - moduleId: _FlareTop_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FlareTop_1
+  - moduleId: _FlareTop_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FlareTop_2
+  - moduleId: _FlareTop_3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FlareTop_3
+  - moduleId: _FlareTop_4
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FlareTop_4
+  - moduleId: _FlareTop_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FlareTop_None
+  - moduleId: _FruitF_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FruitF_A
+  - moduleId: _FruitF_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FruitF_None
+  - moduleId: _HABAcc_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HABAcc_1
+  - moduleId: _HABAcc_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HABAcc_2
+  - moduleId: _HABAcc_3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/AlienBirdEyes
+    - ImportSpace/CanonicalRig/_HABAcc_3
+  - moduleId: _HABAcc_Blank
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HABAcc_Blank
+  - moduleId: _HBugAcc_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HBugAcc_1
+  - moduleId: _HBugAcc_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_HBugAcc_2
+    - ImportSpace/CanonicalRig/_HBugAcc_2
+  - moduleId: _HBugAcc_Blank
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HBugAcc_Blank
+  - moduleId: _HCE_0xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCE_0xRARE
+  - moduleId: _HCE_CowEars
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCE_CowEars
+  - moduleId: _HCE_CowEars1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCE_CowEars1
+  - moduleId: _HCE_CowEars2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCE_CowEars2
+  - moduleId: _HCE_CowEars3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCE_CowEars3
+  - moduleId: _HCE_CowEars4
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCE_CowEars4
+  - moduleId: _HCE_CowEars5
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCE_CowEars5
+  - moduleId: _HCH_AntHorn
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCH_AntHorn
+  - moduleId: _HCH_Blank
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCH_Blank
+  - moduleId: _HCH_CowHorn
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCH_CowHorn
+  - moduleId: _HCH_HeadBone
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCH_HeadBone
+  - moduleId: _HCH_HeadPlate
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCH_HeadPlate
+  - moduleId: _HCH_LorisHorn
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCH_LorisHorn
+  - moduleId: _HCH_MultiHorn
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCH_MultiHorn
+  - moduleId: _HCSH_AntHorn
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCSH_AntHorn
+  - moduleId: _HCSH_Blank
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCSH_Blank
+  - moduleId: _HCSH_CowHorn
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCSH_CowHorn
+  - moduleId: _HCSH_HeadAcc
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCSH_HeadAcc
+  - moduleId: _HCSH_HeadBone
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCSH_HeadBone
+  - moduleId: _HCSH_LorisHorn
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HCSH_LorisHorn
+  - moduleId: _HLE_0xRARE
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLE_0xRARE
+  - moduleId: _HLE_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLE_1
+  - moduleId: _HLE_2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLE_2
+  - moduleId: _HLE_3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLE_3
+  - moduleId: _HLH_AntHorn
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLH_AntHorn
+  - moduleId: _HLH_Blank
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLH_Blank
+  - moduleId: _HLH_CowHorn
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLH_CowHorn
+  - moduleId: _HLH_HeadPlate
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLH_HeadPlate
+  - moduleId: _HLH_LorisHorn
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLH_LorisHorn
+  - moduleId: _HLH_MultiHorn3
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLH_MultiHorn3
+  - moduleId: _HLH_NoseBone
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HLH_NoseBone
+  - moduleId: _HRexAcc_0
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HRexAcc_0
+  - moduleId: _HRexAcc_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HRexAcc_1
+  - moduleId: _Head_AlienBird
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_HABAcc_3Shape
+    - ImportSpace/CanonicalRig/_Head_AlienBird
+  - moduleId: _Head_AlienType
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Head_AlienType
+  - moduleId: _Head_Bug
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Head_Bug
+  - moduleId: _Head_Cow
+    rendererPaths:
+    - ImportSpace/CanonicalRig/CowBTeeth
+    - ImportSpace/CanonicalRig/CowEyes
+    - ImportSpace/CanonicalRig/CowTTeeth
+    - ImportSpace/CanonicalRig/CowTongue
+    - ImportSpace/CanonicalRig/_Head_Cow
+  - moduleId: _Head_CowSkew
+    rendererPaths:
+    - ImportSpace/CanonicalRig/CowBTeeth1
+    - ImportSpace/CanonicalRig/CowTTeeth1
+    - ImportSpace/CanonicalRig/CowTongue1
+    - ImportSpace/CanonicalRig/EyesCowSkew1
+    - ImportSpace/CanonicalRig/_Head_CowSkew
+  - moduleId: _Head_Loris
+    rendererPaths:
+    - ImportSpace/CanonicalRig/LorisEyes
+    - ImportSpace/CanonicalRig/LorisTeeth
+    - ImportSpace/CanonicalRig/LorisTongue
+    - ImportSpace/CanonicalRig/_Head_Loris
+  - moduleId: _Head_Rex
+    rendererPaths:
+    - ImportSpace/CanonicalRig/RexBottomTeeth
+    - ImportSpace/CanonicalRig/RexEyes
+    - ImportSpace/CanonicalRig/RexTongue
+    - ImportSpace/CanonicalRig/RexTopTeeth
+    - ImportSpace/CanonicalRig/_Head_Rex
+  - moduleId: _Nose1_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Nose1_A
+  - moduleId: _NoseT1_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_NoseT1_A
+  - moduleId: _NoseT1_None
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_NoseT1_None
+  - moduleId: _NoseT1_None1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_NoseT1_None1
+  - moduleId: _NoseT1_None2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_NoseT1_None2
+  - moduleId: _Orbs_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Orbs_1
+  - moduleId: _Shapen_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Shapen_1
+  - moduleId: _TAacc_0
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_TAacc_0
+  - moduleId: _TAacc_1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_TAacc_1
+  - moduleId: _Tail_Cow
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Tail_Cow
+  - moduleId: _Tail_Thin
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Tail_Thin
+  - moduleId: _Tail_Turtle
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Tail_Turtle
+  - moduleId: _Type_EqLegs
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Type_EqLegs
+  - moduleId: _Type_Rock
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Type_Rock
+  - moduleId: _Type_SplitCow
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Type_SplitCow
+  - moduleId: _Weird_Connect
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Shapen_1Shape
+    - ImportSpace/CanonicalRig/_Weird_Connect
+  - moduleId: _Weird_Flared
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_FlareTop_2Shape
+    - ImportSpace/CanonicalRig/_FlareTop_3Shape
+    - ImportSpace/CanonicalRig/_Weird_Flared
+  - moduleId: _Weird_HTail1
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Weird_HTail1
+  - moduleId: _Weird_HTail2
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Weird_HTail2
+  - moduleId: _Weird_Long
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Weird_Long
+  - moduleId: _Weird_Stump
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Weird_Stump
+  - moduleId: _Wings_A
+    rendererPaths:
+    - ImportSpace/CanonicalRig/SUB1_Wings_A
+    - ImportSpace/CanonicalRig/_Wings_A
+  loadBearingChains:
+  - id: Leg1
+    bones:
+    - LFShoulderJNT
+    - LFElbowJNT
+    - LFWristJNT
+    - LFFootJNT
+  - id: Leg2
+    bones:
+    - RFShoulderJNT
+    - RFElbowJNT
+    - RFWristJNT
+    - RFFootJNT
+  - id: Leg3
+    bones:
+    - LBHipJNT
+    - LBKneeJNT
+    - LBAnkleJNT
+    - LBFootJNT
+  - id: Leg4
+    bones:
+    - RBHipJNT
+    - RBKneeJNT
+    - RBAnkleJNT
+    - RBFootJNT
+  walkSpeed: 1.15
+  surfaceRootOffset: 0.42768994
+  hoverClearance: 0
+  localForwardAxis: {x: 0, y: 0, z: -1}
+  idleState: Idle
+  walkState: Walk
+  runState: Run

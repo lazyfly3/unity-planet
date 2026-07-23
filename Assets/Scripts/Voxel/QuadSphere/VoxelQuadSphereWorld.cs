@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System;
+using System.Threading.Tasks;
 using UnityEngine;
 
 [System.Serializable]
@@ -30,6 +31,20 @@ count = Mathf.Max(0, count);
 
 public class VoxelQuadSphereWorld : MonoBehaviour
 {
+    sealed class FlightChunkBuildWork
+    {
+        public QuadSphereChunkKey Key;
+        public byte[] PaddedVoxels;
+        public int NextSample;
+        public Task<VoxelQuadSphereMeshData> MeshTask;
+    }
+
+    sealed class FlightColliderBakeWork
+    {
+        public QuadSphereChunkKey Key;
+        public int MeshRevision;
+    }
+
     struct ResourcePlacement
     {
         public Vector3 Position;
@@ -46,6 +61,7 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     [SerializeField] int seed = 12345;
     [SerializeField] Vector3 planetCenterLocal = Vector3.zero;
     [SerializeField] float planetRadius = 100f;
+    [SerializeField] float voxelOuterRadius = 100f;
     [SerializeField] float surfaceGravity = 9.8f;
     [SerializeField] int faceGridSize = 100;
     [SerializeField] int maxDepth = 64;
@@ -93,6 +109,44 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     PlanetTerrainSettings previousTerrainSettings;
     Material runtimeDirtMaterial;
     Material runtimeStoneMaterial;
+    PlanetCelestialProfile celestialProfile = PlanetCelestialProfile.CreateCompatibleDefault();
+    bool streamingLargePlanet;
+    bool streamingPassRunning;
+    float nextStreamingUpdateTime;
+    QuadSphereChunkKey lastStreamingAnchor;
+    readonly HashSet<QuadSphereChunkKey> desiredStreamingChunks = new HashSet<QuadSphereChunkKey>();
+    readonly HashSet<QuadSphereChunkKey> readinessChunks = new HashSet<QuadSphereChunkKey>();
+    readonly HashSet<QuadSphereChunkKey> retainedFlightChunks = new HashSet<QuadSphereChunkKey>();
+    readonly List<QuadSphereChunkKey> flightBuildQueue = new List<QuadSphereChunkKey>();
+    readonly HashSet<QuadSphereChunkKey> flightScheduledChunks = new HashSet<QuadSphereChunkKey>();
+    readonly List<FlightChunkBuildWork> flightMeshBuilds = new List<FlightChunkBuildWork>();
+    readonly List<FlightColliderBakeWork> flightColliderBakes = new List<FlightColliderBakeWork>();
+    readonly Stack<byte[]> flightVoxelBufferPool = new Stack<byte[]>();
+    FlightChunkBuildWork activeFlightVoxelWork;
+    bool readOnlyFlightStreaming;
+    Transform flightStreamingTarget;
+    Vector3 predictedFlightDirection;
+    float requestedFlightDistanceAhead;
+    float readyDistanceAhead;
+
+    const int LargePlanetFaceGridSize = 2048;
+    const int InitialStreamingChunkRadius = 3;
+    const int ActiveStreamingChunkRadius = 4;
+    const float StreamingRefreshSeconds = 0.35f;
+    const int FlightLocalChunkRadius = 5;
+    const int FlightCorridorChunkRadius = 1;
+    const float FlightStreamingRefreshSeconds = 0.18f;
+    const float FlightStreamingFrameBudgetSeconds = 0.004f;
+    const float FlightMinimumReadyDistance = 180f;
+    const float FlightMaximumReadyDistance = 1200f;
+    const float FlightCorridorStepDistance = 150f;
+    const int FlightVoxelBudgetCheckInterval = 32;
+    const int FlightMaxMeshWorkers = 2;
+    const int FlightMaxMeshAppliesPerFrame = 1;
+    const int FlightMaxColliderAppliesPerFrame = 1;
+    const int FlightColliderApplyIntervalFrames = 2;
+    const int FlightVoxelBufferPoolCapacity = 6;
+    int nextFlightColliderApplyFrame;
 
     public event Action<QuadSphereVoxelAddress> VoxelChanged;
 
@@ -101,6 +155,16 @@ public class VoxelQuadSphereWorld : MonoBehaviour
     public bool IsGenerationComplete => generationComplete
         && (surfaceDecorationSystem == null || surfaceDecorationSystem.IsGenerationComplete);
     public float PlanetRadius => planetRadius;
+    public float VoxelOuterRadius => voxelOuterRadius;
+    public bool IsStreamingLargePlanet => streamingLargePlanet;
+    public bool IsReadOnlyFlightStreaming => readOnlyFlightStreaming;
+    public bool IsFlightRegionReady => readOnlyFlightStreaming
+        && generationComplete
+        && readyDistanceAhead >= FlightMinimumReadyDistance;
+    public float ReadyDistanceAhead => readyDistanceAhead;
+    public PlanetCelestialProfile CelestialProfile => celestialProfile != null
+        ? celestialProfile.Clone()
+        : PlanetCelestialProfile.CreateCompatibleDefault();
     public float SurfaceGravity => surfaceGravity;
     public float GravitationalParameter => PlanetGravity.ComputeGravitationalParameter(surfaceGravity, planetRadius);
     public int FaceGridSize => faceGridSize;
@@ -129,6 +193,52 @@ public class VoxelQuadSphereWorld : MonoBehaviour
         }
     }
 
+    public void SetBaseTerrainMaterials(Material surfaceMaterial, Material rockMaterial)
+    {
+        dirtMaterial = surfaceMaterial;
+        stoneMaterial = rockMaterial;
+    }
+
+    public void BeginReadOnlyFlightStreaming(
+        int planetSeed,
+        GalaxyPlanetSaveData save,
+        Color surfaceColor,
+        Color rockColor,
+        PlanetTerrainSettings planetTerrainSettings,
+        PlanetCelestialProfile physicsProfile,
+        Transform target,
+        Vector3 predictedDirection)
+    {
+        readOnlyFlightStreaming = true;
+        flightStreamingTarget = target;
+        playerSpawn = target;
+        autoPlacePlayerOnStart = false;
+        spawnHarvestableResources = false;
+        this.predictedFlightDirection = predictedDirection;
+        requestedFlightDistanceAhead = FlightMinimumReadyDistance;
+        readyDistanceAhead = 0f;
+        ConfigurePlanet(
+            planetSeed,
+            save,
+            surfaceColor,
+            rockColor,
+            planetTerrainSettings,
+            false,
+            new List<HarvestableResourceSpawnSettings>(),
+            new List<PlanetSurfacePropSpawnSettings>(),
+            null,
+            null,
+            physicsProfile);
+    }
+
+    public void SetFlightStreamingTarget(Transform target, Vector3 predictedDirection)
+    {
+        flightStreamingTarget = target;
+        if (target != null)
+            playerSpawn = target;
+        this.predictedFlightDirection = predictedDirection;
+    }
+
     public void ConfigurePlanet(
         int planetSeed,
         GalaxyPlanetSaveData save,
@@ -146,7 +256,22 @@ generationComplete = false;
         seed = planetSeed;
         PlanetCelestialProfile physicsProfile = celestialProfile ?? PlanetCelestialProfile.CreateCompatibleDefault();
         physicsProfile.ClampValues();
+        this.celestialProfile = physicsProfile.Clone();
         planetRadius = physicsProfile.radius;
+        streamingLargePlanet = physicsProfile.surfaceGenerationMode == PlanetSurfaceGenerationMode.StreamingLargeSphere;
+        if (streamingLargePlanet)
+        {
+            faceGridSize = LargePlanetFaceGridSize;
+            voxelOuterRadius = planetRadius + physicsProfile.maximumTerrainElevation + 4f;
+            float editableShellDepth = physicsProfile.maximumTerrainElevation + physicsProfile.editableDepth + 16f;
+            maxDepth = Mathf.CeilToInt(editableShellDepth / VoxelTypes.ChunkSize) * VoxelTypes.ChunkSize;
+        }
+        else
+        {
+            faceGridSize = 100;
+            maxDepth = 64;
+            voxelOuterRadius = planetRadius;
+        }
         surfaceGravity = physicsProfile.surfaceGravity;
         PendingPlanetLandingContext landing = PendingPlanetLandingContext.Peek();
         if (landing != null && landing.landingDirection.sqrMagnitude > 0.001f)
@@ -162,12 +287,15 @@ generationComplete = false;
         resourceSpawnSettings = planetResourceSpawnSettings ?? new List<HarvestableResourceSpawnSettings>();
         if (riverSystem == null)
             riverSystem = GetComponent<PlanetRiverSystem>();
+        if (streamingLargePlanet && planetRiverSettings != null)
+            planetRiverSettings.enabled = false;
         riverSystem?.Configure(this, planetRiverSettings, savedRiverData);
-        if (surfaceDecorationSystem == null)
+        if (!readOnlyFlightStreaming && surfaceDecorationSystem == null)
             surfaceDecorationSystem = GetComponent<PlanetSurfaceDecorationSystem>();
-        if (surfaceDecorationSystem == null)
+        if (!readOnlyFlightStreaming && surfaceDecorationSystem == null)
             surfaceDecorationSystem = gameObject.AddComponent<PlanetSurfaceDecorationSystem>();
-        surfaceDecorationSystem.Configure(this, planetSurfacePropSettings, save);
+        if (!readOnlyFlightStreaming)
+            surfaceDecorationSystem.Configure(this, planetSurfacePropSettings, save);
         savedResourceSnapshot = save != null ? save.resources : null;
         loadingResourceSnapshot = save != null
             && save.hasFullResourceSnapshot
@@ -489,6 +617,14 @@ if (riverSystem == null)
 
     IEnumerator Start()
     {
+        if (readOnlyFlightStreaming)
+        {
+            yield return null;
+            generationComplete = true;
+            RefreshFlightStreamingPlan();
+            yield break;
+        }
+
         if (loadingUI == null)
             loadingUI = FindObjectOfType<PlanetLoadingUI>(true);
         loadingUI?.Show("正在分析星球数据");
@@ -523,7 +659,10 @@ if (riverSystem == null)
             if (riversEnabled)
                 riverSystem?.PrepareHydrology();
             yield return null;
-            yield return GenerateEntirePlanetIncremental();
+            if (streamingLargePlanet)
+                yield return GenerateStreamingRegionIncremental(spawnDirectionLocal, InitialStreamingChunkRadius, false);
+            else
+                yield return GenerateEntirePlanetIncremental();
         }
         finally
         {
@@ -560,6 +699,7 @@ if (riverSystem == null)
 
     void OnDestroy()
     {
+        CompleteFlightBackgroundWork();
         RestoreLogTrackAfterGeneration();
         if (runtimeDirtMaterial != null)
             Destroy(runtimeDirtMaterial);
@@ -569,10 +709,644 @@ if (riverSystem == null)
 
     void LateUpdate()
     {
+        if (bulkLoadingPlanet || readOnlyFlightStreaming)
+            return;
+
         foreach (VoxelQuadSphereChunk chunk in chunks.Values)
         {
             if (chunk.IsDirty)
-                chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, planetRadius, planetCenterLocal);
+                chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, voxelOuterRadius, planetCenterLocal);
+        }
+    }
+
+    void Update()
+    {
+        if (readOnlyFlightStreaming)
+        {
+            UpdateReadOnlyFlightStreaming();
+            return;
+        }
+
+        Transform streamingTarget = readOnlyFlightStreaming ? flightStreamingTarget : playerSpawn;
+        if (!streamingLargePlanet || !generationComplete || streamingPassRunning
+            || streamingTarget == null || Time.unscaledTime < nextStreamingUpdateTime)
+            return;
+
+        nextStreamingUpdateTime = Time.unscaledTime
+            + (readOnlyFlightStreaming ? FlightStreamingRefreshSeconds : StreamingRefreshSeconds);
+        Vector3 localPlayer = transform.InverseTransformPoint(streamingTarget.position);
+        Vector3 direction = localPlayer - planetCenterLocal;
+        if (direction.sqrMagnitude < 0.001f)
+            return;
+
+        QuadSphereChunkKey anchor = GetSurfaceAnchor(direction);
+        if (anchor.Equals(lastStreamingAnchor) && !readOnlyFlightStreaming)
+            return;
+
+        lastStreamingAnchor = anchor;
+        StartCoroutine(GenerateStreamingRegionIncremental(
+            direction,
+            readOnlyFlightStreaming ? FlightLocalChunkRadius : ActiveStreamingChunkRadius,
+            true));
+    }
+
+    void UpdateReadOnlyFlightStreaming()
+    {
+        ApplyCompletedFlightMeshes();
+        ApplyCompletedFlightColliders();
+
+        if (!streamingLargePlanet || !generationComplete || flightStreamingTarget == null)
+            return;
+
+        if (Time.unscaledTime >= nextStreamingUpdateTime)
+        {
+            nextStreamingUpdateTime = Time.unscaledTime + FlightStreamingRefreshSeconds;
+            RefreshFlightStreamingPlan();
+        }
+
+        AdvanceFlightVoxelSampling();
+
+        Vector3 localTarget = transform.InverseTransformPoint(flightStreamingTarget.position);
+        Vector3 direction = localTarget - planetCenterLocal;
+        readyDistanceAhead = direction.sqrMagnitude > 0.001f
+            ? CalculateReadyDistanceAhead(direction)
+            : 0f;
+    }
+
+    void RefreshFlightStreamingPlan()
+    {
+        if (flightStreamingTarget == null)
+            return;
+
+        Vector3 localTarget = transform.InverseTransformPoint(flightStreamingTarget.position);
+        Vector3 direction = localTarget - planetCenterLocal;
+        if (direction.sqrMagnitude < 0.001f)
+            return;
+
+        lastStreamingAnchor = GetSurfaceAnchor(direction);
+        BuildFlightDesiredStreamingChunks(direction, desiredStreamingChunks);
+        BuildFlightRetainedStreamingChunks(direction, retainedFlightChunks);
+        flightBuildQueue.Clear();
+        foreach (QuadSphereChunkKey key in desiredStreamingChunks)
+        {
+            if (!chunks.ContainsKey(key) && !flightScheduledChunks.Contains(key))
+                flightBuildQueue.Add(key);
+        }
+
+        Vector3 radial = direction.normalized;
+        flightBuildQueue.Sort((left, right) =>
+            GetFlightChunkPriority(left, radial).CompareTo(GetFlightChunkPriority(right, radial)));
+        UnloadChunksOutside(retainedFlightChunks);
+    }
+
+    float GetFlightChunkPriority(QuadSphereChunkKey key, Vector3 targetRadial)
+    {
+        int centerU = Mathf.Min(
+            faceGridSize - 1,
+            key.ChunkU * VoxelTypes.ChunkSize + VoxelTypes.ChunkSize / 2);
+        int centerV = Mathf.Min(
+            faceGridSize - 1,
+            key.ChunkV * VoxelTypes.ChunkSize + VoxelTypes.ChunkSize / 2);
+        Vector3 radial = VoxelQuadSphereMapping.GetRadialDirection(
+            key.Face, centerU, centerV, faceGridSize);
+        float arcDistance = Vector3.Angle(targetRadial, radial) * Mathf.Deg2Rad * planetRadius;
+        return arcDistance + key.ChunkDepth * 0.25f;
+    }
+
+    void AdvanceFlightVoxelSampling()
+    {
+        double deadline = Time.realtimeSinceStartupAsDouble + FlightStreamingFrameBudgetSeconds;
+        int paddedSize = VoxelQuadSphereMesher.PaddedChunkSize;
+
+        while (Time.realtimeSinceStartupAsDouble < deadline)
+        {
+            if (activeFlightVoxelWork == null)
+            {
+                if (flightMeshBuilds.Count >= FlightMaxMeshWorkers || flightBuildQueue.Count == 0)
+                    return;
+
+                QuadSphereChunkKey key = flightBuildQueue[0];
+                flightBuildQueue.RemoveAt(0);
+                if (chunks.ContainsKey(key) || flightScheduledChunks.Contains(key))
+                    continue;
+
+                activeFlightVoxelWork = new FlightChunkBuildWork
+                {
+                    Key = key,
+                    PaddedVoxels = RentFlightVoxelBuffer()
+                };
+                flightScheduledChunks.Add(key);
+            }
+
+            if (!desiredStreamingChunks.Contains(activeFlightVoxelWork.Key))
+            {
+                flightScheduledChunks.Remove(activeFlightVoxelWork.Key);
+                ReturnFlightVoxelBuffer(activeFlightVoxelWork.PaddedVoxels);
+                activeFlightVoxelWork = null;
+                continue;
+            }
+
+            FlightChunkBuildWork work = activeFlightVoxelWork;
+            int sampleCount = work.PaddedVoxels.Length;
+            while (work.NextSample < sampleCount)
+            {
+                int index = work.NextSample++;
+                int x = index % paddedSize;
+                int yz = index / paddedSize;
+                int y = yz % paddedSize;
+                int z = yz / paddedSize;
+                work.PaddedVoxels[index] = SampleFlightVoxel(
+                    work.Key,
+                    x - 1,
+                    y - 1,
+                    z - 1);
+
+                if ((work.NextSample & (FlightVoxelBudgetCheckInterval - 1)) == 0
+                    && Time.realtimeSinceStartupAsDouble >= deadline)
+                {
+                    return;
+                }
+            }
+
+            QuadSphereChunkKey meshKey = work.Key;
+            byte[] voxelData = work.PaddedVoxels;
+            int meshGridSize = faceGridSize;
+            float meshRadius = voxelOuterRadius;
+            Vector3 meshCenter = planetCenterLocal;
+            work.MeshTask = Task.Run(() =>
+                VoxelQuadSphereMesher.BuildChunkMeshDataFromPaddedVoxels(
+                    voxelData,
+                    meshKey,
+                    meshGridSize,
+                    meshRadius,
+                    meshCenter));
+            flightMeshBuilds.Add(work);
+            activeFlightVoxelWork = null;
+        }
+    }
+
+    byte SampleFlightVoxel(QuadSphereChunkKey key, int localU, int localV, int localDepth)
+    {
+        QuadSphereVoxelAddress address = new QuadSphereVoxelAddress(
+            key.Face,
+            key.ChunkU * VoxelTypes.ChunkSize + localU,
+            key.ChunkV * VoxelTypes.ChunkSize + localV,
+            key.ChunkDepth * VoxelTypes.ChunkSize + localDepth);
+        if (address.Depth < 0 || address.Depth >= maxDepth)
+            return VoxelTypes.Air;
+
+        address = VoxelQuadSphereMapping.RemapAcrossFace(address, faceGridSize);
+        if (address.U < 0 || address.V < 0
+            || address.U >= faceGridSize || address.V >= faceGridSize)
+        {
+            return VoxelTypes.Air;
+        }
+
+        QuadSphereChunkKey savedKey = AddressToChunkKey(address);
+        Vector3Int savedLocal = AddressToLocalCoord(address);
+        int savedIndex = VoxelTypes.ToIndex(savedLocal.x, savedLocal.y, savedLocal.z);
+        bool hasSavedVoxel = modifiedChunkCache.TryGetValue(savedKey, out byte[] saved)
+            && saved.Length == VoxelTypes.ChunkSize * VoxelTypes.ChunkSize * VoxelTypes.ChunkSize;
+
+        byte generated = VoxelQuadSphereTerrain.GenerateVoxel(
+            address.Face,
+            address.U,
+            address.V,
+            address.Depth,
+            faceGridSize,
+            maxDepth,
+            innerSolidDepthLayers,
+            seed,
+            planetCenterLocal,
+            voxelOuterRadius,
+            planetRadius,
+            terrainSettings);
+        if (!hasSavedVoxel)
+            return generated;
+        if (!migrateSavedTerrainChanges)
+            return saved[savedIndex];
+
+        byte previousGenerated = VoxelQuadSphereTerrain.GenerateVoxel(
+            address.Face,
+            address.U,
+            address.V,
+            address.Depth,
+            faceGridSize,
+            maxDepth,
+            innerSolidDepthLayers,
+            seed,
+            planetCenterLocal,
+            voxelOuterRadius,
+            planetRadius,
+            previousTerrainSettings ?? PlanetTerrainSettings.CreateLegacy());
+        return saved[savedIndex] == previousGenerated ? generated : saved[savedIndex];
+    }
+
+    void ApplyCompletedFlightMeshes()
+    {
+        int applied = 0;
+        for (int i = 0;
+             i < flightMeshBuilds.Count && applied < FlightMaxMeshAppliesPerFrame;)
+        {
+            FlightChunkBuildWork work = flightMeshBuilds[i];
+            if (work.MeshTask == null || !work.MeshTask.IsCompleted)
+            {
+                i++;
+                continue;
+            }
+
+            flightMeshBuilds.RemoveAt(i);
+            if (work.MeshTask.IsFaulted)
+            {
+                flightScheduledChunks.Remove(work.Key);
+                ReturnFlightVoxelBuffer(work.PaddedVoxels);
+                Debug.LogError(
+                    $"VoxelQuadSphereWorld: background flight mesh failed for {work.Key.Face}:" +
+                    $"{work.Key.ChunkU}:{work.Key.ChunkV}:{work.Key.ChunkDepth}. " +
+                    work.MeshTask.Exception?.GetBaseException().Message,
+                    this);
+                continue;
+            }
+
+            if (!desiredStreamingChunks.Contains(work.Key))
+            {
+                flightScheduledChunks.Remove(work.Key);
+                work.MeshTask.Result.Release();
+                ReturnFlightVoxelBuffer(work.PaddedVoxels);
+                continue;
+            }
+
+            if (!chunks.TryGetValue(work.Key, out VoxelQuadSphereChunk chunk))
+            {
+                chunk = new VoxelQuadSphereChunk(work.Key, transform, dirtMaterial, stoneMaterial);
+                CopyFlightChunkVoxels(work.PaddedVoxels, chunk.Voxels);
+                if (modifiedChunkCache.ContainsKey(work.Key))
+                    chunk.MarkModified();
+                else
+                    chunk.ClearModifiedFlag();
+                chunks.Add(work.Key, chunk);
+                terrainColliders.Add(chunk.Collider);
+            }
+
+            VoxelQuadSphereMeshData meshData = work.MeshTask.Result;
+            bool meshIsEmpty = meshData.IsEmpty;
+            int revision;
+            try
+            {
+                revision = chunk.ApplyMeshData(meshData, false);
+            }
+            finally
+            {
+                meshData.Release();
+            }
+            if (meshIsEmpty)
+            {
+                flightScheduledChunks.Remove(work.Key);
+            }
+            else
+            {
+                var bakeWork = new FlightColliderBakeWork
+                {
+                    Key = work.Key,
+                    MeshRevision = revision
+                };
+                flightColliderBakes.Add(bakeWork);
+            }
+            ReturnFlightVoxelBuffer(work.PaddedVoxels);
+            applied++;
+        }
+    }
+
+    byte[] RentFlightVoxelBuffer()
+    {
+        if (flightVoxelBufferPool.Count > 0)
+            return flightVoxelBufferPool.Pop();
+        int size = VoxelQuadSphereMesher.PaddedChunkSize;
+        return new byte[size * size * size];
+    }
+
+    void ReturnFlightVoxelBuffer(byte[] buffer)
+    {
+        if (buffer == null || flightVoxelBufferPool.Count >= FlightVoxelBufferPoolCapacity)
+            return;
+        flightVoxelBufferPool.Push(buffer);
+    }
+
+    static void CopyFlightChunkVoxels(byte[] padded, byte[] destination)
+    {
+        int paddedSize = VoxelQuadSphereMesher.PaddedChunkSize;
+        for (int z = 0; z < VoxelTypes.ChunkSize; z++)
+        {
+            for (int y = 0; y < VoxelTypes.ChunkSize; y++)
+            {
+                for (int x = 0; x < VoxelTypes.ChunkSize; x++)
+                {
+                    int sourceIndex = (x + 1)
+                        + (y + 1) * paddedSize
+                        + (z + 1) * paddedSize * paddedSize;
+                    destination[VoxelTypes.ToIndex(x, y, z)] = padded[sourceIndex];
+                }
+            }
+        }
+    }
+
+    void ApplyCompletedFlightColliders()
+    {
+        if (Time.frameCount < nextFlightColliderApplyFrame)
+            return;
+
+        int applied = 0;
+        while (flightColliderBakes.Count > 0 && applied < FlightMaxColliderAppliesPerFrame)
+        {
+            FlightColliderBakeWork work = flightColliderBakes[0];
+            flightColliderBakes.RemoveAt(0);
+            flightScheduledChunks.Remove(work.Key);
+            if (desiredStreamingChunks.Contains(work.Key)
+                && chunks.TryGetValue(work.Key, out VoxelQuadSphereChunk chunk))
+            {
+                chunk.BakeAndApplyCollider(work.MeshRevision);
+            }
+            applied++;
+        }
+
+        if (applied > 0)
+            nextFlightColliderApplyFrame = Time.frameCount + FlightColliderApplyIntervalFrames;
+    }
+
+    void CompleteFlightBackgroundWork()
+    {
+        var tasks = new List<Task>(flightMeshBuilds.Count);
+        for (int i = 0; i < flightMeshBuilds.Count; i++)
+            if (flightMeshBuilds[i].MeshTask != null)
+                tasks.Add(flightMeshBuilds[i].MeshTask);
+        if (tasks.Count > 0)
+        {
+            try
+            {
+                Task.WaitAll(tasks.ToArray());
+            }
+            catch (AggregateException)
+            {
+                // Individual task failures are reported during normal application.
+            }
+        }
+
+        if (activeFlightVoxelWork != null)
+        {
+            ReturnFlightVoxelBuffer(activeFlightVoxelWork.PaddedVoxels);
+            activeFlightVoxelWork = null;
+        }
+        for (int i = 0; i < flightMeshBuilds.Count; i++)
+        {
+            Task<VoxelQuadSphereMeshData> task = flightMeshBuilds[i].MeshTask;
+            if (task != null && task.Status == TaskStatus.RanToCompletion)
+                task.Result.Release();
+            ReturnFlightVoxelBuffer(flightMeshBuilds[i].PaddedVoxels);
+        }
+    }
+
+    IEnumerator GenerateStreamingRegionIncremental(Vector3 direction, int horizontalRadius, bool unloadOutsideRegion)
+    {
+        streamingPassRunning = true;
+        try
+        {
+            float frameStartedAt = Time.realtimeSinceStartup;
+            float frameBudgetSeconds = readOnlyFlightStreaming
+                ? FlightStreamingFrameBudgetSeconds
+                : 0.006f;
+            if (readOnlyFlightStreaming)
+                BuildFlightDesiredStreamingChunks(direction, desiredStreamingChunks);
+            else
+                BuildDesiredStreamingChunks(direction, horizontalRadius, desiredStreamingChunks);
+
+            bulkLoadingPlanet = true;
+            foreach (QuadSphereChunkKey key in desiredStreamingChunks)
+            {
+                if (!chunks.ContainsKey(key))
+                    LoadChunk(key);
+                if (Time.realtimeSinceStartup - frameStartedAt < frameBudgetSeconds)
+                    continue;
+                loadingUI?.SetProgress(0.12f, "正在加载着陆区域地形");
+                yield return null;
+                frameStartedAt = Time.realtimeSinceStartup;
+            }
+            bulkLoadingPlanet = false;
+
+            foreach (QuadSphereChunkKey key in desiredStreamingChunks)
+            {
+                if (!chunks.TryGetValue(key, out VoxelQuadSphereChunk chunk) || !chunk.IsDirty)
+                    continue;
+                chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, voxelOuterRadius, planetCenterLocal);
+                if (Time.realtimeSinceStartup - frameStartedAt < frameBudgetSeconds)
+                    continue;
+                loadingUI?.SetProgress(0.70f, "正在构建无缝地表");
+                yield return null;
+                frameStartedAt = Time.realtimeSinceStartup;
+            }
+
+            if (unloadOutsideRegion)
+                UnloadChunksOutside(desiredStreamingChunks);
+
+            generationComplete = true;
+            if (readOnlyFlightStreaming)
+                readyDistanceAhead = CalculateReadyDistanceAhead(direction);
+        }
+        finally
+        {
+            bulkLoadingPlanet = false;
+            streamingPassRunning = false;
+        }
+    }
+
+    void BuildDesiredStreamingChunks(
+        Vector3 direction,
+        int horizontalRadius,
+        HashSet<QuadSphereChunkKey> destination)
+    {
+        destination.Clear();
+        AddDesiredStreamingChunks(direction, horizontalRadius, destination, false);
+    }
+
+    void BuildFlightDesiredStreamingChunks(
+        Vector3 direction,
+        HashSet<QuadSphereChunkKey> destination)
+    {
+        destination.Clear();
+        Vector3 radial = direction.sqrMagnitude > 0.001f ? direction.normalized : Vector3.up;
+        Vector3 localForward = transform.InverseTransformDirection(predictedFlightDirection);
+        localForward = Vector3.ProjectOnPlane(localForward, radial);
+        if (localForward.sqrMagnitude < 0.001f)
+            localForward = Vector3.Cross(radial, Vector3.right);
+        if (localForward.sqrMagnitude < 0.001f)
+            localForward = Vector3.Cross(radial, Vector3.forward);
+        localForward.Normalize();
+
+        float speed = flightStreamingTarget == null
+            ? 0f
+            : Vector3.ProjectOnPlane(predictedFlightDirection, transform.TransformDirection(radial)).magnitude;
+        requestedFlightDistanceAhead = Mathf.Clamp(
+            speed * 5f + 220f,
+            FlightMinimumReadyDistance,
+            FlightMaximumReadyDistance);
+        AddDesiredStreamingChunks(radial, FlightLocalChunkRadius, destination, true);
+        for (float distance = FlightCorridorStepDistance;
+             distance <= requestedFlightDistanceAhead + 0.01f;
+             distance += FlightCorridorStepDistance)
+        {
+            Vector3 corridorDirection = (radial
+                + localForward * (distance / Mathf.Max(1f, planetRadius))).normalized;
+            AddDesiredStreamingChunks(
+                corridorDirection,
+                FlightCorridorChunkRadius,
+                destination,
+                true);
+        }
+    }
+
+    void BuildFlightRetainedStreamingChunks(
+        Vector3 direction,
+        HashSet<QuadSphereChunkKey> destination)
+    {
+        destination.Clear();
+        Vector3 radial = direction.sqrMagnitude > 0.001f ? direction.normalized : Vector3.up;
+        Vector3 localForward = transform.InverseTransformDirection(predictedFlightDirection);
+        localForward = Vector3.ProjectOnPlane(localForward, radial);
+        if (localForward.sqrMagnitude < 0.001f)
+            localForward = Vector3.Cross(radial, Vector3.right);
+        if (localForward.sqrMagnitude < 0.001f)
+            localForward = Vector3.Cross(radial, Vector3.forward);
+        localForward.Normalize();
+
+        AddDesiredStreamingChunks(radial, FlightLocalChunkRadius + 2, destination, true);
+        float retainedDistance = Mathf.Min(
+            FlightMaximumReadyDistance,
+            requestedFlightDistanceAhead + FlightCorridorStepDistance);
+        for (float distance = FlightCorridorStepDistance;
+             distance <= retainedDistance + 0.01f;
+             distance += FlightCorridorStepDistance)
+        {
+            Vector3 corridorDirection = (radial
+                + localForward * (distance / Mathf.Max(1f, planetRadius))).normalized;
+            AddDesiredStreamingChunks(
+                corridorDirection,
+                FlightCorridorChunkRadius + 1,
+                destination,
+                true);
+        }
+    }
+
+    void AddDesiredStreamingChunks(
+        Vector3 direction,
+        int horizontalRadius,
+        HashSet<QuadSphereChunkKey> destination,
+        bool surfaceOnly)
+    {
+        VoxelQuadSphereMapping.DirectionToFaceCell(
+            direction, faceGridSize, out QuadSphereFace anchorFace, out int anchorU, out int anchorV);
+        int chunkDepthCount = Mathf.CeilToInt(maxDepth / (float)VoxelTypes.ChunkSize);
+        int belowSurfaceChunks = Mathf.CeilToInt(
+            celestialProfile.editableDepth / VoxelTypes.ChunkSize) + 1;
+
+        for (int dv = -horizontalRadius; dv <= horizontalRadius; dv++)
+        {
+            for (int du = -horizontalRadius; du <= horizontalRadius; du++)
+            {
+                int sampleU = anchorU + du * VoxelTypes.ChunkSize;
+                int sampleV = anchorV + dv * VoxelTypes.ChunkSize;
+                QuadSphereVoxelAddress remapped = VoxelQuadSphereMapping.RemapAcrossFace(
+                    new QuadSphereVoxelAddress(anchorFace, sampleU, sampleV, 0), faceGridSize);
+                int chunkU = remapped.U / VoxelTypes.ChunkSize;
+                int chunkV = remapped.V / VoxelTypes.ChunkSize;
+                int centerU = Mathf.Min(faceGridSize - 1, chunkU * VoxelTypes.ChunkSize + VoxelTypes.ChunkSize / 2);
+                int centerV = Mathf.Min(faceGridSize - 1, chunkV * VoxelTypes.ChunkSize + VoxelTypes.ChunkSize / 2);
+                Vector3 radial = VoxelQuadSphereMapping.GetRadialDirection(remapped.Face, centerU, centerV, faceGridSize);
+                float surfaceDepth = voxelOuterRadius - GetProceduralSurfaceRadius(radial);
+                int surfaceChunkDepth = Mathf.Clamp(
+                    Mathf.FloorToInt(surfaceDepth / VoxelTypes.ChunkSize), 0, chunkDepthCount - 1);
+                int firstDepth = Mathf.Max(0, surfaceChunkDepth - 1);
+                int lastDepth = Mathf.Min(
+                    chunkDepthCount - 1,
+                    surfaceChunkDepth + (surfaceOnly ? 1 : belowSurfaceChunks));
+                for (int chunkDepth = firstDepth; chunkDepth <= lastDepth; chunkDepth++)
+                {
+                    destination.Add(new QuadSphereChunkKey(
+                        remapped.Face, chunkU, chunkV, chunkDepth));
+                }
+            }
+        }
+    }
+
+    float CalculateReadyDistanceAhead(Vector3 direction)
+    {
+        Vector3 radial = direction.sqrMagnitude > 0.001f ? direction.normalized : Vector3.up;
+        Vector3 localForward = transform.InverseTransformDirection(predictedFlightDirection);
+        localForward = Vector3.ProjectOnPlane(localForward, radial);
+        if (localForward.sqrMagnitude < 0.001f)
+            return 0f;
+        localForward.Normalize();
+
+        float ready = 0f;
+        for (float distance = FlightCorridorStepDistance;
+             distance <= requestedFlightDistanceAhead + 0.01f;
+             distance += FlightCorridorStepDistance)
+        {
+            Vector3 corridorDirection = (radial
+                + localForward * (distance / Mathf.Max(1f, planetRadius))).normalized;
+            readinessChunks.Clear();
+            AddDesiredStreamingChunks(
+                corridorDirection,
+                FlightCorridorChunkRadius,
+                readinessChunks,
+                true);
+            bool complete = true;
+            foreach (QuadSphereChunkKey key in readinessChunks)
+            {
+                if (!chunks.TryGetValue(key, out VoxelQuadSphereChunk chunk) || !chunk.IsCollisionReady)
+                {
+                    complete = false;
+                    break;
+                }
+            }
+            if (!complete)
+                break;
+            ready = distance;
+        }
+        return ready;
+    }
+
+    QuadSphereChunkKey GetSurfaceAnchor(Vector3 direction)
+    {
+        VoxelQuadSphereMapping.DirectionToFaceCell(
+            direction, faceGridSize, out QuadSphereFace face, out int cellU, out int cellV);
+        float surfaceDepth = voxelOuterRadius - GetProceduralSurfaceRadius(direction);
+        return new QuadSphereChunkKey(
+            face,
+            cellU / VoxelTypes.ChunkSize,
+            cellV / VoxelTypes.ChunkSize,
+            Mathf.Clamp(Mathf.FloorToInt(surfaceDepth / VoxelTypes.ChunkSize), 0, maxDepth / VoxelTypes.ChunkSize - 1));
+    }
+
+    void UnloadChunksOutside(HashSet<QuadSphereChunkKey> keep)
+    {
+        var remove = new List<QuadSphereChunkKey>();
+        foreach (KeyValuePair<QuadSphereChunkKey, VoxelQuadSphereChunk> pair in chunks)
+        {
+            if (!keep.Contains(pair.Key) && !flightScheduledChunks.Contains(pair.Key))
+                remove.Add(pair.Key);
+        }
+
+        foreach (QuadSphereChunkKey key in remove)
+        {
+            VoxelQuadSphereChunk chunk = chunks[key];
+            if (chunk.IsModified)
+            {
+                byte[] saved = new byte[chunk.Voxels.Length];
+                Array.Copy(chunk.Voxels, saved, saved.Length);
+                modifiedChunkCache[key] = saved;
+            }
+            terrainColliders.Remove(chunk.Collider);
+            chunk.Destroy();
+            chunks.Remove(key);
         }
     }
 
@@ -713,7 +1487,7 @@ float loadStartedAt = Time.realtimeSinceStartup;
         {
             foreach (VoxelQuadSphereChunk chunk in chunks.Values)
             {
-                chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, planetRadius, planetCenterLocal);
+                chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, voxelOuterRadius, planetCenterLocal);
                 processedMeshes++;
                 if (Time.realtimeSinceStartup - frameStartedAt < frameBudgetSeconds)
                     continue;
@@ -746,7 +1520,7 @@ float loadStartedAt = Time.realtimeSinceStartup;
     void RebuildAllChunkMeshes()
     {
         foreach (VoxelQuadSphereChunk chunk in chunks.Values)
-            chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, planetRadius, planetCenterLocal);
+            chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, voxelOuterRadius, planetCenterLocal);
     }
 
     bool RestoreAllChunkMeshesFromSnapshot()
@@ -775,7 +1549,7 @@ float loadStartedAt = Time.realtimeSinceStartup;
         terrainColliders.Add(chunk.Collider);
         if (!bulkLoadingPlanet)
         {
-            chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, planetRadius, planetCenterLocal);
+            chunk.RebuildMesh(SampleVoxelAt, faceGridSize, maxDepth, voxelOuterRadius, planetCenterLocal);
             MarkLoadedNeighborsDirty(key);
         }
     }
@@ -814,7 +1588,9 @@ ClearGeneratedResources();
             int maximumAttempts = settings.count * settings.placementAttempts;
             for (int attempt = 0; attempt < maximumAttempts && spawnedCount < settings.count; attempt++)
             {
-                Vector3 direction = GetRandomSphereDirection(random);
+                Vector3 direction = streamingLargePlanet
+                    ? GetStreamingSurfaceDirection(random)
+                    : GetRandomSphereDirection(random);
                 if (!TryFindPlanetSurface(direction, out RaycastHit surfaceHit))
                     continue;
 
@@ -928,7 +1704,7 @@ ClearGeneratedResources();
             Mathf.Abs(transform.lossyScale.x),
             Mathf.Abs(transform.lossyScale.y),
             Mathf.Abs(transform.lossyScale.z));
-        float outerDistance = (planetRadius + 10f) * worldScale;
+        float outerDistance = (voxelOuterRadius + 10f) * worldScale;
         float castDistance = (maxDepth + 20f) * worldScale;
         Vector3 origin = center + worldDirection.normalized * outerDistance;
         RaycastHit[] hits = Physics.RaycastAll(
@@ -991,6 +1767,20 @@ ClearGeneratedResources();
         return new Vector3(horizontal * Mathf.Cos(angle), y, horizontal * Mathf.Sin(angle));
     }
 
+    public Vector3 GetStreamingSurfaceDirection(System.Random random, float angularRadiusDegrees = 5f)
+    {
+        Vector3 center = spawnDirectionLocal.sqrMagnitude > 0.001f
+            ? spawnDirectionLocal.normalized
+            : Vector3.up;
+        Vector3 tangentX = Vector3.Cross(
+            center, Mathf.Abs(Vector3.Dot(center, Vector3.up)) < 0.9f ? Vector3.up : Vector3.forward).normalized;
+        Vector3 tangentY = Vector3.Cross(center, tangentX).normalized;
+        float radius = Mathf.Sqrt((float)random.NextDouble()) * angularRadiusDegrees * Mathf.Deg2Rad;
+        float azimuth = (float)random.NextDouble() * Mathf.PI * 2f;
+        Vector3 tangent = tangentX * Mathf.Cos(azimuth) + tangentY * Mathf.Sin(azimuth);
+        return (center * Mathf.Cos(radius) + tangent * Mathf.Sin(radius)).normalized;
+    }
+
     void GenerateChunkData(VoxelQuadSphereChunk chunk)
     {
         if (loadingCompleteSnapshot
@@ -1019,7 +1809,8 @@ ClearGeneratedResources();
                     int depth = originDepth + z;
                     byte voxel = VoxelQuadSphereTerrain.GenerateVoxel(
                         key.Face, cellU, cellV, depth,
-                        faceGridSize, maxDepth, innerSolidDepthLayers, seed, planetCenterLocal, planetRadius, terrainSettings,
+                        faceGridSize, maxDepth, innerSolidDepthLayers, seed, planetCenterLocal,
+                        voxelOuterRadius, planetRadius, terrainSettings,
                         riverSystem != null ? riverSystem.GetCarveDepth(key.Face, cellU, cellV) : 0f);
                     chunk.Voxels[VoxelTypes.ToIndex(x, y, z)] = voxel;
                 }
@@ -1045,7 +1836,7 @@ ClearGeneratedResources();
                             byte previousGenerated = VoxelQuadSphereTerrain.GenerateVoxel(
                                 key.Face, cellU, cellV, depth,
                                 faceGridSize, maxDepth, innerSolidDepthLayers, seed,
-                                planetCenterLocal, planetRadius, previousTerrainSettings);
+                                planetCenterLocal, voxelOuterRadius, planetRadius, previousTerrainSettings);
                             if (saved[index] == previousGenerated)
                                 continue;
                             chunk.Voxels[index] = saved[index];
@@ -1092,7 +1883,8 @@ ClearGeneratedResources();
 
         return VoxelQuadSphereTerrain.GenerateVoxel(
             address.Face, address.U, address.V, address.Depth,
-            faceGridSize, maxDepth, innerSolidDepthLayers, seed, planetCenterLocal, planetRadius, terrainSettings,
+            faceGridSize, maxDepth, innerSolidDepthLayers, seed, planetCenterLocal,
+            voxelOuterRadius, planetRadius, terrainSettings,
             riverSystem != null ? riverSystem.GetCarveDepth(address.Face, address.U, address.V) : 0f);
     }
 
@@ -1104,13 +1896,21 @@ return SetVoxel(address, VoxelTypes.Air);
 
     public bool SetVoxel(QuadSphereVoxelAddress address, byte value)
     {
-if (address.U < 0 || address.V < 0 || address.Depth < 0
+if (readOnlyFlightStreaming)
+            return false;
+        if (address.U < 0 || address.V < 0 || address.Depth < 0
             || address.U >= faceGridSize || address.V >= faceGridSize || address.Depth >= maxDepth)
             return false;
 
         QuadSphereChunkKey key = AddressToChunkKey(address);
         if (!chunks.TryGetValue(key, out VoxelQuadSphereChunk chunk))
-            return false;
+        {
+            if (!streamingLargePlanet)
+                return false;
+            LoadChunk(key);
+            if (!chunks.TryGetValue(key, out chunk))
+                return false;
+        }
 
         Vector3Int local = AddressToLocalCoord(address);
         chunk.SetLocalVoxel(local.x, local.y, local.z, value);
@@ -1143,7 +1943,7 @@ if (address.U < 0 || address.V < 0 || address.Depth < 0
     public bool TryDigAtLocalPoint(Vector3 localPoint)
     {
 if (!VoxelQuadSphereMapping.TryLocalPointToVoxel(
-                localPoint, planetCenterLocal, planetRadius, faceGridSize, maxDepth, out QuadSphereVoxelAddress address))
+                localPoint, planetCenterLocal, voxelOuterRadius, faceGridSize, maxDepth, out QuadSphereVoxelAddress address))
             return false;
 
         return DigVoxel(address);
@@ -1215,7 +2015,8 @@ if (!VoxelQuadSphereMapping.TryLocalPointToVoxel(
             ? Vector3.up
             : spawnDirectionLocal.normalized;
         Vector3 direction = FindSafeSpawnDirection(preferredDirection);
-        Vector3 localSpawn = planetCenterLocal + direction * (planetRadius + spawnHeightOffset);
+        float surfaceRadius = GetProceduralSurfaceRadius(direction);
+        Vector3 localSpawn = planetCenterLocal + direction * (surfaceRadius + spawnHeightOffset);
         Vector3 worldPosition = transform.TransformPoint(localSpawn);
         Quaternion worldRotation = PlanetGravity.GetSurfaceRotation(worldPosition, GetPlanetCenterWorld());
         VoxelPlanetPlayerController playerController = playerSpawn.GetComponent<VoxelPlanetPlayerController>();
@@ -1272,22 +2073,22 @@ if (!VoxelQuadSphereMapping.TryLocalPointToVoxel(
 
     bool HasSolidSpawnPatch(Vector3 direction)
     {
-        Vector3 surfacePoint = planetCenterLocal + direction.normalized * (planetRadius - 0.5f);
+        float surfaceRadius = GetProceduralSurfaceRadius(direction);
+        Vector3 surfacePoint = planetCenterLocal + direction.normalized * (surfaceRadius - 0.5f);
         if (!VoxelQuadSphereMapping.TryLocalPointToVoxel(
-                surfacePoint, planetCenterLocal, planetRadius,
+                surfacePoint, planetCenterLocal, voxelOuterRadius,
                 faceGridSize, maxDepth, out QuadSphereVoxelAddress center))
             return false;
 
-        center.Depth = 0;
         if (!VoxelTypes.IsSolid(SampleVoxelAt(center)))
             return false;
 
         QuadSphereVoxelAddress[] neighbors =
         {
-            new QuadSphereVoxelAddress(center.Face, center.U + 1, center.V, 0),
-            new QuadSphereVoxelAddress(center.Face, center.U - 1, center.V, 0),
-            new QuadSphereVoxelAddress(center.Face, center.U, center.V + 1, 0),
-            new QuadSphereVoxelAddress(center.Face, center.U, center.V - 1, 0)
+            new QuadSphereVoxelAddress(center.Face, center.U + 1, center.V, center.Depth),
+            new QuadSphereVoxelAddress(center.Face, center.U - 1, center.V, center.Depth),
+            new QuadSphereVoxelAddress(center.Face, center.U, center.V + 1, center.Depth),
+            new QuadSphereVoxelAddress(center.Face, center.U, center.V - 1, center.Depth)
         };
 
         foreach (QuadSphereVoxelAddress neighbor in neighbors)

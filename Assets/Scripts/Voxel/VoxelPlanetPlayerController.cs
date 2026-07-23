@@ -360,7 +360,8 @@ if (body == null)
 
     void CheckGalaxyTransition()
     {
-        if (!enableSpaceTravel || galaxyTransitionRequested || quadSphereWorld == null)
+        if (!enableSpaceTravel || galaxyTransitionRequested || quadSphereWorld == null
+            || !quadSphereWorld.IsGenerationComplete)
             return;
 
         Vector3 center = quadSphereWorld.GetPlanetCenterWorld();
@@ -369,7 +370,10 @@ if (body == null)
             Mathf.Abs(quadSphereWorld.transform.lossyScale.x),
             Mathf.Abs(quadSphereWorld.transform.lossyScale.y),
             Mathf.Abs(quadSphereWorld.transform.lossyScale.z));
-        float altitude = fromCenter.magnitude - quadSphereWorld.PlanetRadius * worldScale;
+        Vector3 localPosition = quadSphereWorld.transform.InverseTransformPoint(body.position);
+        Vector3 localFromCenter = localPosition - quadSphereWorld.GetPlanetCenterLocal();
+        float surfaceRadius = quadSphereWorld.GetProceduralSurfaceRadius(localFromCenter);
+        float altitude = (localFromCenter.magnitude - surfaceRadius) * worldScale;
         if (altitude < galaxyMapAltitude)
             return;
 
