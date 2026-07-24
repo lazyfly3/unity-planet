@@ -23,7 +23,8 @@ public class VoxelDigTool : MonoBehaviour
         if (voxelWorld == null || digCamera == null)
             return;
 
-        if (Input.GetMouseButton(0))
+        if (Input.GetMouseButton(0)
+            && SurfaceToolInputRouter.CanWorldInteractionUsePrimary)
             TryDig();
     }
 

@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: decor_swept_wing
   m_EditorClassIdentifier: 
   partId: decor.swept_wing
-  displayName: "\u540E\u63A0\u673A\u7FFC"
+  displayName: "\u88C5\u7532\u677F"
   prefab: {fileID: 4341904923787458531, guid: eace6324c454ed44d9f230905f36cdf5, type: 3}
-  thumbnail: {fileID: 21300000, guid: f159eed587004e14f83d7521431e9c0d, type: 3}
+  thumbnail: {fileID: 21300000, guid: 67aba6ad3c10fc24fbdad593e29ea062, type: 3}
   category: 0
   scaleMode: 0
-  placementMode: 1
+  placementMode: 0
   baseMass: 8
   baseThrust: 0
   minimumScale: 0.6

@@ -10,6 +10,62 @@ public enum ProceduralPlanetLabTemplate
     Crystal
 }
 
+public enum PlanetLabSurfaceMode
+{
+    Globe = 0,
+    Planar = 1,
+    InfinitePlanar = 2
+}
+
+[Serializable]
+public sealed class PlanetLabPlanarSettings
+{
+    public const float PatchSize = 512f;
+    public const int PatchResolution = 128;
+    public const float InfiniteChunkSize = 128f;
+    public const int InfiniteChunkResolution = 16;
+    public const int InfiniteViewRadius = 2;
+
+    public bool autoAnchor = true;
+    [Range(-89.9f, 89.9f)] public float anchorLatitude = 45f;
+    [Range(-180f, 180f)] public float anchorLongitude;
+
+    public Vector3 AnchorDirection
+    {
+        get
+        {
+            float latitude = anchorLatitude * Mathf.Deg2Rad;
+            float longitude = anchorLongitude * Mathf.Deg2Rad;
+            float latitudeRadius = Mathf.Cos(latitude);
+            return new Vector3(
+                latitudeRadius * Mathf.Cos(longitude),
+                Mathf.Sin(latitude),
+                latitudeRadius * Mathf.Sin(longitude)).normalized;
+        }
+    }
+
+    public PlanetLabPlanarSettings Clone()
+        => (PlanetLabPlanarSettings)MemberwiseClone();
+
+    public void SetAnchorDirection(Vector3 direction)
+    {
+        Vector3 normalized = direction.sqrMagnitude > 0.0001f
+            ? direction.normalized
+            : Vector3.up;
+        anchorLatitude = Mathf.Asin(Mathf.Clamp(normalized.y, -1f, 1f))
+            * Mathf.Rad2Deg;
+        anchorLongitude = Mathf.Atan2(normalized.z, normalized.x)
+            * Mathf.Rad2Deg;
+        ClampValues();
+    }
+
+    public void ClampValues()
+    {
+        anchorLatitude = Mathf.Clamp(anchorLatitude, -89.9f, 89.9f);
+        anchorLongitude = Mathf.Repeat(anchorLongitude + 180f, 360f) - 180f;
+    }
+}
+
 [Serializable]
 public sealed class ProceduralPlanetLabPreviewSettings
 {
@@ -46,7 +102,7 @@ public sealed class ProceduralPlanetLabPreviewSettings
     menuName = "Voxel Planet/Procedural Planet Preset")]
 public sealed class ProceduralPlanetPreset : ScriptableObject
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     [HideInInspector] public int version = CurrentVersion;
     public string displayName = "Temperate Ocean";
@@ -82,6 +138,9 @@ public sealed class ProceduralPlanetPreset : ScriptableObject
     [Header("Preview")]
     public ProceduralPlanetLabPreviewSettings preview =
         new ProceduralPlanetLabPreviewSettings();
+
+    [Header("Planar Experiment")]
+    public PlanetLabPlanarSettings planar = new PlanetLabPlanarSettings();
 
     public GalaxyPlanetDefinition CloneDefinition()
     {
@@ -149,6 +208,7 @@ public sealed class ProceduralPlanetPreset : ScriptableObject
         terrain = CreateBaseTerrain();
         visual = new PlanetLowPolyVisualProfile();
         preview = new ProceduralPlanetLabPreviewSettings();
+        planar = new PlanetLabPlanarSettings();
 
         switch (value)
         {
@@ -286,11 +346,13 @@ public sealed class ProceduralPlanetPreset : ScriptableObject
         terrain = terrain ?? CreateBaseTerrain();
         visual = visual ?? new PlanetLowPolyVisualProfile();
         preview = preview ?? new ProceduralPlanetLabPreviewSettings();
+        planar = planar ?? new PlanetLabPlanarSettings();
         terrain.shapeVersion = PlanetTerrainSettings.CurrentShapeVersion;
         terrain.generateCaves = false;
         terrain.ClampValues();
         visual.ClampValues();
         preview.ClampValues();
+        planar.ClampValues();
     }
 
     public static int SnapResolution(int value)

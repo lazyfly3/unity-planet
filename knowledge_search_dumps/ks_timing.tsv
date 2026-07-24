@@ -1,0 +1,2 @@
+ts	path	depth	total_ms	subagent_ms	external_ms	overhead_ms	subagent_attempt_ms	doc_id_ms	rag_ms	local_ms	sub_llm_ms	sub_tools_ms	sub_turns	tool_breakdown	query
+2026-07-24 20:37:51	subagent	auto	15387.7	15325.9	0.0	61.8					13732.9	1396.1	3	rag_search×1=1395ms,read_files×1=1ms	请读取并总结这篇 KM 文章的核心方案、架构、世界/地图表现形式，以及与“玩家进入星球后在平面世界中活动”最相关的设计：https://km.woa.com/articles/show/618337?from=iSearch

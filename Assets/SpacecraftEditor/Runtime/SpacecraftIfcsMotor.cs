@@ -20,8 +20,11 @@ namespace SpacecraftEditor
 
         readonly SpacecraftThrusterAllocator allocator = new SpacecraftThrusterAllocator();
         ShipFlightProfile profile;
-        float speedLimit;
+        float targetSpeed;
         float boostSeconds;
+        Vector3 previousWorldVelocity;
+        Vector3 measuredWorldAcceleration;
+        bool hasVelocitySample;
         bool controlsEnabled;
         ISpacecraftFlightCommandSource commandSource;
         ISpacecraftPilotControlSource pilotControls;
@@ -29,6 +32,8 @@ namespace SpacecraftEditor
         Vector3 externalWorldVelocity;
         bool hasExternalWorldAttitude;
         Quaternion externalWorldAttitude;
+        bool hasVelocityReference;
+        Vector3 velocityReferenceWorld;
 
         public bool ControlsEnabled
         {
@@ -45,7 +50,10 @@ namespace SpacecraftEditor
 
         public SpacecraftAssistMode AssistMode => assistMode;
         public bool LinearControlEnabled { get; set; } = true;
-        public float SpeedLimit => speedLimit;
+        public bool AngularControlEnabled { get; set; } = true;
+        public float TargetSpeed => targetSpeed;
+        [System.Obsolete("Use TargetSpeed. This value is an IFCS setpoint, not a physical speed limit.")]
+        public float SpeedLimit => targetSpeed;
         public float BoostRatio => profile == null ? 0f : Mathf.Clamp01(boostSeconds / profile.BoostCapacitySeconds);
         public float CurrentThrottle => allocator.MaximumAppliedThrottle;
         public SpacecraftControlTelemetry Telemetry { get; private set; }
@@ -53,6 +61,21 @@ namespace SpacecraftEditor
         public SpacecraftFlightCommand CurrentCommand => commandSource == null
             ? default
             : commandSource.Command;
+        public Vector3 VelocityReferenceWorld => hasVelocityReference
+            ? velocityReferenceWorld
+            : Vector3.zero;
+
+        public void SetVelocityReference(Vector3 worldVelocity)
+        {
+            velocityReferenceWorld = worldVelocity;
+            hasVelocityReference = true;
+        }
+
+        public void ClearVelocityReference()
+        {
+            velocityReferenceWorld = Vector3.zero;
+            hasVelocityReference = false;
+        }
 
         public void SetExternalWorldVelocityTarget(Vector3 velocity)
         {
@@ -129,11 +152,31 @@ namespace SpacecraftEditor
         public void ResetControllerState()
         {
             allocator.StopAll();
+            hasVelocitySample = false;
+            measuredWorldAcceleration = Vector3.zero;
             if (pilotControls != null)
             {
                 pilotControls.ResetVJoy();
                 pilotControls.ClearTransientRequests();
             }
+        }
+
+        public void StabilizeAfterCinematic(
+            Quaternion worldRotation,
+            Vector3 worldVelocity)
+        {
+            ClearExternalTargets();
+            ResetControllerState();
+            if (shipBody == null)
+                return;
+
+            RigidbodyInterpolation interpolation = shipBody.interpolation;
+            shipBody.interpolation = RigidbodyInterpolation.None;
+            shipBody.rotation = worldRotation;
+            shipBody.velocity = worldVelocity;
+            shipBody.angularVelocity = Vector3.zero;
+            Physics.SyncTransforms();
+            shipBody.interpolation = interpolation;
         }
 
         void Update()
@@ -158,10 +201,15 @@ namespace SpacecraftEditor
 
             if (profile != null)
             {
-                speedLimit = Mathf.Clamp(
-                    speedLimit + pilotControls.ConsumeSpeedLimitDelta(),
-                    profile.MinimumSpeedLimit,
-                    profile.MaximumSpeedLimit);
+                float notches = pilotControls.ConsumeSpeedLimitDelta();
+                if (Mathf.Abs(notches) > 0.001f)
+                {
+                    float step = SpaceflightUnitFormatter.AdaptiveTargetSpeedStep(targetSpeed);
+                    targetSpeed = Mathf.Clamp(
+                        targetSpeed + notches * step,
+                        profile.MinimumTargetSpeed,
+                        profile.MaximumTargetSpeed);
+                }
             }
         }
 
@@ -183,12 +231,18 @@ namespace SpacecraftEditor
             float thrustMultiplier = boosting ? profile.BoostMultiplier : 1f;
             UpdateBoostReserve(boosting);
 
-            Vector3 localVelocity = transform.InverseTransformDirection(shipBody.velocity);
+            Vector3 referenceVelocity = hasVelocityReference
+                ? velocityReferenceWorld
+                : Vector3.zero;
+            Vector3 localVelocity = transform.InverseTransformDirection(
+                shipBody.velocity - referenceVelocity);
             Vector3 localAngularVelocity = transform.InverseTransformDirection(shipBody.angularVelocity);
             Vector3 desiredAcceleration = LinearControlEnabled
                 ? CalculateLinearAcceleration(command, localVelocity, thrustMultiplier)
                 : Vector3.zero;
-            Vector3 desiredAngularAcceleration = CalculateAngularAcceleration(command, localAngularVelocity);
+            Vector3 desiredAngularAcceleration = AngularControlEnabled
+                ? CalculateAngularAcceleration(command, localAngularVelocity)
+                : Vector3.zero;
             Vector3 desiredForce = desiredAcceleration * shipBody.mass;
             Vector3 desiredTorque = AccelerationToTorque(desiredAngularAcceleration);
 
@@ -200,6 +254,7 @@ namespace SpacecraftEditor
                 torqueWeight,
                 thrustMultiplier,
                 Time.fixedDeltaTime);
+            UpdateMeasuredAcceleration();
             UpdateTelemetry(desiredForce, desiredTorque, authority);
         }
 
@@ -212,14 +267,17 @@ namespace SpacecraftEditor
             Vector3 desiredAcceleration;
             if (hasExternalWorldVelocity)
             {
-                Vector3 targetVelocity = transform.InverseTransformDirection(externalWorldVelocity);
+                Vector3 targetVelocity = transform.InverseTransformDirection(
+                    externalWorldVelocity - (hasVelocityReference
+                        ? velocityReferenceWorld
+                        : Vector3.zero));
                 desiredAcceleration = (targetVelocity - localVelocity) * profile.VelocityResponse;
             }
             else if (assistMode == SpacecraftAssistMode.Coupled || command.brake)
             {
                 Vector3 targetVelocity = command.brake
                     ? Vector3.zero
-                    : Vector3.Scale(command.translation, new Vector3(0.72f, 0.72f, 1f)) * speedLimit;
+                    : Vector3.Scale(command.translation, new Vector3(0.72f, 0.72f, 1f)) * targetSpeed;
                 desiredAcceleration = (targetVelocity - localVelocity) * profile.VelocityResponse;
             }
             else
@@ -284,17 +342,45 @@ namespace SpacecraftEditor
             {
                 localVelocity = shipBody == null
                     ? Vector3.zero
-                    : transform.InverseTransformDirection(shipBody.velocity),
+                    : transform.InverseTransformDirection(
+                        shipBody.velocity - (hasVelocityReference
+                            ? velocityReferenceWorld
+                            : Vector3.zero)),
                 localAngularVelocity = shipBody == null
                     ? Vector3.zero
                     : transform.InverseTransformDirection(shipBody.angularVelocity),
                 requestedLocalForce = requestedForce,
                 requestedLocalTorque = requestedTorque,
-                speedLimit = speedLimit,
+                appliedLocalForce = allocator.AppliedLocalForce,
+                currentAcceleration = transform.InverseTransformDirection(measuredWorldAcceleration),
+                shipMass = shipBody == null ? 0f : shipBody.mass,
+                targetSpeed = targetSpeed,
+                speedLimit = targetSpeed,
                 controlAuthority = authority,
                 boostRatio = BoostRatio,
                 assistMode = assistMode
             };
+        }
+
+        void UpdateMeasuredAcceleration()
+        {
+            if (shipBody == null)
+            {
+                measuredWorldAcceleration = Vector3.zero;
+                hasVelocitySample = false;
+                return;
+            }
+            if (hasVelocitySample)
+            {
+                measuredWorldAcceleration = (shipBody.velocity - previousWorldVelocity)
+                    / Mathf.Max(0.0001f, Time.fixedDeltaTime);
+            }
+            else
+            {
+                measuredWorldAcceleration = Vector3.zero;
+                hasVelocitySample = true;
+            }
+            previousWorldVelocity = shipBody.velocity;
         }
 
         void ResolveReferences()
@@ -329,9 +415,12 @@ namespace SpacecraftEditor
             ResolveReferences();
             ShipHullDefinition hull = hullController == null ? null : hullController.CurrentHull;
             profile = hull == null ? ShipFlightProfile.CreateForHull(string.Empty) : hull.FlightProfile;
-            speedLimit = speedLimit <= 0f
-                ? profile.DefaultSpeedLimit
-                : Mathf.Clamp(speedLimit, profile.MinimumSpeedLimit, profile.MaximumSpeedLimit);
+            targetSpeed = targetSpeed <= 0f
+                ? profile.DefaultTargetSpeed
+                : Mathf.Clamp(
+                    targetSpeed,
+                    profile.MinimumTargetSpeed,
+                    profile.MaximumTargetSpeed);
             boostSeconds = boostSeconds <= 0f ? profile.BoostCapacitySeconds : Mathf.Min(boostSeconds, profile.BoostCapacitySeconds);
             allocator.Rebuild(assembly, hull);
         }

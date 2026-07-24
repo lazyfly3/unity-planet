@@ -11,7 +11,7 @@ namespace SpacecraftEditor
         [SerializeField] private GameObject modelPrefab;
         [SerializeField] private Sprite thumbnail;
         [SerializeField] private Mesh collisionMesh;
-        [SerializeField] private float baseMass = 100f;
+        [SerializeField] private float baseMass = 12000f;
         [SerializeField] private Vector3 dimensions = new Vector3(3f, 2.2f, 6f);
         [SerializeField] private ShipFlightProfile flightProfile;
 

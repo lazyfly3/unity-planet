@@ -10,7 +10,7 @@ namespace SpacecraftEditor
         [SerializeField] private Rigidbody shipBody;
         [SerializeField] private Transform partsRoot;
         [SerializeField] private PartCatalog catalog;
-        [SerializeField] private float hullMass = 100f;
+        [SerializeField] private float hullMass = 12000f;
 
         private readonly List<SpacecraftPart> parts = new List<SpacecraftPart>();
         private readonly List<ThrusterPart> thrusters = new List<ThrusterPart>();
@@ -38,7 +38,7 @@ namespace SpacecraftEditor
             Recalculate();
         }
 
-        public void Configure(Rigidbody body, Transform root, PartCatalog partCatalog, float baseHullMass = 100f)
+        public void Configure(Rigidbody body, Transform root, PartCatalog partCatalog, float baseHullMass = 12000f)
         {
             shipBody = body;
             partsRoot = root;
@@ -238,8 +238,64 @@ namespace SpacecraftEditor
                 shipBody.mass = Mathf.Max(0.01f, totalMass);
                 shipBody.centerOfMass = center;
                 shipBody.ResetInertiaTensor();
+                ApplyAssemblyInertiaTensor(center);
             }
             AssemblyChanged?.Invoke();
+        }
+
+        void ApplyAssemblyInertiaTensor(Vector3 centerOfMass)
+        {
+            if (shipBody == null)
+                return;
+
+            ShipHullController hull = GetComponentInChildren<ShipHullController>(true);
+            Vector3 hullSize = hull == null
+                ? new Vector3(3f, 2.2f, 6f)
+                : hull.CurrentHull == null
+                    ? hull.LocalBounds.size
+                    : hull.CurrentHull.Dimensions;
+            hullSize = new Vector3(
+                Mathf.Max(0.1f, Mathf.Abs(hullSize.x)),
+                Mathf.Max(0.1f, Mathf.Abs(hullSize.y)),
+                Mathf.Max(0.1f, Mathf.Abs(hullSize.z)));
+
+            // Unity leaves the compound MeshCollider inertia at (1,1,1) for the
+            // runtime-built spacecraft hierarchy. For a multi-ton hull that
+            // turns tiny allocator residuals into extreme angular acceleration.
+            // Use the hull's box inertia plus the parallel-axis contribution of
+            // every installed part so mass and layout affect handling reliably.
+            float baseMass = Mathf.Max(0.01f, hullMass);
+            Vector3 inertia = new Vector3(
+                baseMass * (hullSize.y * hullSize.y + hullSize.z * hullSize.z) / 12f,
+                baseMass * (hullSize.x * hullSize.x + hullSize.z * hullSize.z) / 12f,
+                baseMass * (hullSize.x * hullSize.x + hullSize.y * hullSize.y) / 12f);
+            AddPointMassInertia(ref inertia, baseMass, -centerOfMass);
+
+            foreach (SpacecraftPart part in parts)
+            {
+                if (part == null)
+                    continue;
+                AddPointMassInertia(
+                    ref inertia,
+                    Mathf.Max(0f, part.ActualMass),
+                    part.transform.localPosition - centerOfMass);
+            }
+
+            shipBody.inertiaTensorRotation = Quaternion.identity;
+            shipBody.inertiaTensor = new Vector3(
+                Mathf.Max(0.01f, inertia.x),
+                Mathf.Max(0.01f, inertia.y),
+                Mathf.Max(0.01f, inertia.z));
+        }
+
+        static void AddPointMassInertia(
+            ref Vector3 inertia,
+            float mass,
+            Vector3 offset)
+        {
+            inertia.x += mass * (offset.y * offset.y + offset.z * offset.z);
+            inertia.y += mass * (offset.x * offset.x + offset.z * offset.z);
+            inertia.z += mass * (offset.x * offset.x + offset.y * offset.y);
         }
 
         private void RefreshPartList()

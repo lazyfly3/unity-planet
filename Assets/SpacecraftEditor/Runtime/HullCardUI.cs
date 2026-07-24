@@ -28,7 +28,7 @@ namespace SpacecraftEditor
             thumbnail.sprite = definition.Thumbnail;
             nameText.text = definition.DisplayName;
             statsText.text = $"长 {definition.Dimensions.z:0.0}m  ·  宽 {definition.Dimensions.x:0.0}m  ·  高 {definition.Dimensions.y:0.0}m\n" +
-                             $"基础质量 {definition.BaseMass:0}kg";
+                             $"基础质量 {SpaceflightUnitFormatter.FormatMass(definition.BaseMass)}";
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(() => select(definition));
             SetSelected(false);

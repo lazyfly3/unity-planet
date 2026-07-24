@@ -14,9 +14,21 @@ public sealed class GalaxyInventorySaveEntry
 }
 
 [Serializable]
+public sealed class BiotaDiscoveryRecord
+{
+    public string stableId;
+    public BiotaDiscoveryType discoveryType;
+    public string displayName;
+    public string description;
+    public string planetId;
+    public string planetName;
+    public long discoveredUtcTicks;
+}
+
+[Serializable]
 public sealed class GalaxySaveSlotMetadata
 {
-    public int formatVersion = 7;
+    public int formatVersion = 8;
     public string slotId;
     public string displayName;
     public int worldSeed;
@@ -27,6 +39,8 @@ public sealed class GalaxySaveSlotMetadata
     public int shipGridY = -1;
     public int selectedInventorySlot;
     public GalaxyInventorySaveEntry[] inventory = Array.Empty<GalaxyInventorySaveEntry>();
+    public int starterEquipmentVersion;
+    public BiotaDiscoveryRecord[] biotaCodex = Array.Empty<BiotaDiscoveryRecord>();
     public bool developmentSlot;
     public double weatherTimeSeconds;
     public double universeTimeSeconds;
@@ -42,6 +56,13 @@ public sealed class GalaxySaveSlotMetadata
     public double spacePositionX;
     public double spacePositionY;
     public double spacePositionZ;
+    public bool hasHierarchicalSpacePosition;
+    public long spaceSystemX;
+    public long spaceSystemY;
+    public long spaceSystemZ;
+    public double spaceLocalX;
+    public double spaceLocalY;
+    public double spaceLocalZ;
     public string nearObservationPlanetId;
     public float spacecraftHullIntegrity = 100f;
     public VisitedPlanetRecord[] visitedPlanets = Array.Empty<VisitedPlanetRecord>();
@@ -151,6 +172,7 @@ displayName = NormalizeDisplayName(displayName);
             shipFacing = GalaxyShipFacing.Up,
             spacePositionZ = 14000d
         };
+        InitializePhysicalSpacePosition(metadata);
         SaveMetadata(metadata);
         return metadata;
     
@@ -192,6 +214,7 @@ GalaxySaveSlotMetadata existing = LoadMetadata(DevelopmentSlotId);
             shipFacing = GalaxyShipFacing.Up,
             spacePositionZ = 14000d
         };
+        InitializePhysicalSpacePosition(metadata);
         SaveMetadata(metadata);
         return metadata;
     
@@ -201,7 +224,7 @@ GalaxySaveSlotMetadata existing = LoadMetadata(DevelopmentSlotId);
     {
 if (metadata == null)
             throw new ArgumentNullException(nameof(metadata));
-        metadata.formatVersion = 7;
+        metadata.formatVersion = 8;
         ValidateSlotId(metadata.slotId);
         metadata.displayName = NormalizeDisplayName(metadata.displayName);
         metadata.lastPlayedUtcTicks = DateTime.UtcNow.Ticks;
@@ -209,6 +232,8 @@ if (metadata == null)
             metadata.inventory = Array.Empty<GalaxyInventorySaveEntry>();
         if (metadata.visitedPlanets == null)
             metadata.visitedPlanets = Array.Empty<VisitedPlanetRecord>();
+        if (metadata.biotaCodex == null)
+            metadata.biotaCodex = Array.Empty<BiotaDiscoveryRecord>();
 
         string directory = GetSlotDirectory(metadata.slotId);
         Directory.CreateDirectory(directory);
@@ -271,7 +296,7 @@ ValidateSlotId(slotId);
 
     static void ValidateMetadata(GalaxySaveSlotMetadata metadata, string expectedSlotId)
     {
-        if (metadata == null || (metadata.formatVersion < 1 || metadata.formatVersion > 7)
+        if (metadata == null || (metadata.formatVersion < 1 || metadata.formatVersion > 8)
             || metadata.slotId != expectedSlotId)
             throw new InvalidDataException("Invalid save slot metadata.");
         if (string.IsNullOrWhiteSpace(metadata.displayName))
@@ -284,6 +309,11 @@ ValidateSlotId(slotId);
         if (metadata.visitedPlanets == null)
         {
             metadata.visitedPlanets = Array.Empty<VisitedPlanetRecord>();
+            changed = true;
+        }
+        if (metadata.biotaCodex == null)
+        {
+            metadata.biotaCodex = Array.Empty<BiotaDiscoveryRecord>();
             changed = true;
         }
 
@@ -421,7 +451,54 @@ ValidateSlotId(slotId);
             metadata.formatVersion = 7;
             changed = true;
         }
+        if (metadata.formatVersion < 8)
+        {
+            string backupPath = metadataPath + ".pre-physical-universe-v8.backup";
+            if (File.Exists(metadataPath) && !File.Exists(backupPath))
+                File.Copy(metadataPath, backupPath);
+
+            if (metadata.galaxyMode == GalaxyMode.Interstellar3DProcedural)
+                InitializePhysicalSpacePosition(metadata);
+            metadata.galaxyGeneratorVersion = ProceduralInterstellarGenerator.CurrentVersion;
+            metadata.formatVersion = 8;
+            changed = true;
+        }
         return changed;
+    }
+
+    static void InitializePhysicalSpacePosition(GalaxySaveSlotMetadata metadata)
+    {
+        if (metadata == null)
+            return;
+        var generator = new ProceduralInterstellarGenerator(
+            metadata.worldSeed,
+            Array.Empty<GalaxyResourceCatalogEntry>());
+        var planetCoordinate = new InterstellarCoordinate(
+            metadata.currentPlanetCoordinateX,
+            metadata.currentPlanetCoordinateY,
+            metadata.currentPlanetCoordinateZ);
+        UniversePosition planet = generator.GetPlanetUniverseAddress(
+            planetCoordinate,
+            metadata.universeTimeSeconds);
+        GalaxyPlanetDefinition definition = generator.GeneratePlanet(planetCoordinate);
+        double radius = definition?.celestial?.Physical.radiusMeters
+            ?? PlanetPhysicalProfile.EarthRadiusMeters;
+        double nearDistance = radius * 4.2d;
+        UniversePosition ship = planet.Add(new DoubleVector3(0d, 0d, nearDistance));
+        metadata.hasHierarchicalSpacePosition = true;
+        metadata.spaceSystemX = ship.systemCoordinate.x;
+        metadata.spaceSystemY = ship.systemCoordinate.y;
+        metadata.spaceSystemZ = ship.systemCoordinate.z;
+        metadata.spaceLocalX = ship.localMeters.x;
+        metadata.spaceLocalY = ship.localMeters.y;
+        metadata.spaceLocalZ = ship.localMeters.z;
+        DoubleVector3 legacy = ship.ToAbsoluteMeters();
+        metadata.spacePositionX = legacy.x;
+        metadata.spacePositionY = legacy.y;
+        metadata.spacePositionZ = legacy.z;
+        metadata.shipCoordinateX = planetCoordinate.x;
+        metadata.shipCoordinateY = planetCoordinate.y;
+        metadata.shipCoordinateZ = planetCoordinate.z;
     }
 
     static void ValidateSlotId(string slotId)

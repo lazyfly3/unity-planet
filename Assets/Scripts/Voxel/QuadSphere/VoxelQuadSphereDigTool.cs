@@ -20,7 +20,8 @@ public class VoxelQuadSphereDigTool : MonoBehaviour
         if (quadSphereWorld == null || digCamera == null || PauseMenuController.IsPaused)
             return;
 
-        if (Input.GetMouseButton(0))
+        if (Input.GetMouseButton(0)
+            && SurfaceToolInputRouter.CanWorldInteractionUsePrimary)
             TryDig();
     }
 

@@ -92,7 +92,7 @@ public sealed class GalaxyGeneratedResourceRecord
 [Serializable]
 public sealed class GalaxyGeneratedPlanetRecord
 {
-    public int formatVersion = 6;
+    public int formatVersion = 7;
     public int generatorVersion;
     public string planetId;
     public string displayName;
@@ -100,6 +100,9 @@ public sealed class GalaxyGeneratedPlanetRecord
     public long coordinateY;
     public long coordinateZ;
     public bool usesInterstellarCoordinate;
+    public string systemId;
+    public int orbitIndex;
+    public CelestialOrbitDefinition orbit;
     public int seed;
     public PlanetClimate climate;
     public Color mapColor;
@@ -257,26 +260,70 @@ if (!HasPlanet(coordinate))
 
     static PlanetCelestialProfile CreateCelestialProfile(ref StableRandom random, float atmosphere)
     {
-        float gravity = Mathf.Lerp(3.5f, 8.5f, random.Value());
+        double physicalRadius = Mathf.Lerp(1_500_000f, 10_000_000f, Mathf.Pow(random.Value(), 0.72f));
+        double minimumDensity = 2500d;
+        double maximumDensity = 7500d;
+        double minimumGravity = 4d / 3d * Math.PI
+            * PlanetPhysicalProfile.GravitationalConstant * physicalRadius * minimumDensity;
+        double maximumGravity = 4d / 3d * Math.PI
+            * PlanetPhysicalProfile.GravitationalConstant * physicalRadius * maximumDensity;
+        double requestedGravity = Mathf.Lerp(0.15f, 1.8f, random.Value())
+            * PhysicalConstants.StandardGravity;
+        double physicalGravity = Math.Max(
+            minimumGravity,
+            Math.Min(maximumGravity, requestedGravity));
+        double physicalDensity = physicalGravity * 3d
+            / (4d * Math.PI * PlanetPhysicalProfile.GravitationalConstant * physicalRadius);
+        double rotationPeriodSeconds = Mathf.Lerp(6f, 120f, random.Value()) * 3600d;
         Vector3 axis = new Vector3(
             random.Value() * 2f - 1f,
             Mathf.Lerp(0.35f, 1f, random.Value()),
             random.Value() * 2f - 1f).normalized;
         bool hasAtmosphere = atmosphere > 0.16f;
+        float visualRotationPeriodSeconds = Mathf.Lerp(720f, 1500f, random.Value());
+        var physical = new PlanetPhysicalProfile
+        {
+            radiusMeters = physicalRadius,
+            meanDensityKgPerCubicMeter = physicalDensity,
+            rotationPeriodSeconds = rotationPeriodSeconds,
+            atmosphereSurfaceDensityKgPerCubicMeter = hasAtmosphere
+                ? Mathf.Lerp(0.08f, 1.8f, atmosphere)
+                : 0d,
+            atmosphereScaleHeightMeters = hasAtmosphere
+                ? Mathf.Lerp(5000f, 20_000f, random.Value())
+                : 1d,
+            atmosphereTopAltitudeMeters = hasAtmosphere
+                ? Mathf.Lerp(50_000f, 300_000f, atmosphere)
+                : 0d,
+            visualExosphereAltitudeMeters = hasAtmosphere
+                ? Mathf.Lerp(100_000f, 600_000f, atmosphere)
+                : 0d
+        };
+        physical.ClampValues();
         var profile = new PlanetCelestialProfile
         {
             surfaceGenerationMode = PlanetSurfaceGenerationMode.StreamingLargeSphere,
             radius = PlanetCelestialProfile.LargePlanetRadius,
-            surfaceGravity = gravity,
+            surfaceGravity = (float)physical.surfaceGravity,
             rotationAxis = axis,
-            rotationPeriod = Mathf.Lerp(600f, 1200f, random.Value()),
+            rotationPeriod = visualRotationPeriodSeconds,
             atmosphereSurfaceDensity = hasAtmosphere ? Mathf.Lerp(0.18f, 1.2f, atmosphere) : 0f,
             atmosphereScaleHeight = hasAtmosphere ? Mathf.Lerp(95f, 150f, random.Value()) : 1f,
             atmosphereTopAltitude = hasAtmosphere ? Mathf.Lerp(700f, 900f, atmosphere) : 0f,
             maximumTerrainElevation = Mathf.Lerp(90f, 160f, random.Value()),
             editableDepth = 96f,
-            rotationEpochSeconds = random.Value() * 1200d,
-            atmosphereVisual = CreateAtmosphereVisual(ref random, atmosphere, hasAtmosphere)
+            rotationEpochSeconds = random.Value() * rotationPeriodSeconds,
+            atmosphereVisual = CreateAtmosphereVisual(ref random, atmosphere, hasAtmosphere),
+            physical = physical,
+            presentation = new PlanetPresentationProfile
+            {
+                surfaceProxyRadius = PlanetCelestialProfile.LargePlanetRadius,
+                atmosphereProxyTopAltitude = hasAtmosphere
+                    ? Mathf.Lerp(700f, 900f, atmosphere)
+                    : 0f,
+                visualRotationPeriodSeconds = visualRotationPeriodSeconds,
+                preferredOrbitalProxyDistance = 8000f
+            }
         };
         profile.ClampValues();
         return profile;

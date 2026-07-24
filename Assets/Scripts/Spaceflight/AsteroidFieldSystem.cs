@@ -10,21 +10,43 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
         public readonly long x;
         public readonly long y;
         public readonly long z;
+        public readonly long systemX;
+        public readonly long systemY;
+        public readonly long systemZ;
 
-        public ChunkKey(long x, long y, long z)
+        public ChunkKey(
+            InterstellarCoordinate systemCoordinate,
+            long x,
+            long y,
+            long z)
         {
+            systemX = systemCoordinate.x;
+            systemY = systemCoordinate.y;
+            systemZ = systemCoordinate.z;
             this.x = x;
             this.y = y;
             this.z = z;
         }
 
-        public bool Equals(ChunkKey other) => x == other.x && y == other.y && z == other.z;
+        public InterstellarCoordinate SystemCoordinate
+            => new InterstellarCoordinate(systemX, systemY, systemZ);
+
+        public bool Equals(ChunkKey other)
+            => systemX == other.systemX
+            && systemY == other.systemY
+            && systemZ == other.systemZ
+            && x == other.x
+            && y == other.y
+            && z == other.z;
         public override bool Equals(object value) => value is ChunkKey other && Equals(other);
         public override int GetHashCode()
         {
             unchecked
             {
-                int hash = x.GetHashCode();
+                int hash = systemX.GetHashCode();
+                hash = hash * 397 ^ systemY.GetHashCode();
+                hash = hash * 397 ^ systemZ.GetHashCode();
+                hash = hash * 397 ^ x.GetHashCode();
                 hash = hash * 397 ^ y.GetHashCode();
                 return hash * 397 ^ z.GetHashCode();
             }
@@ -76,6 +98,7 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
     Mesh[] colliderMeshes;
     float nextRefresh;
     Material runtimeMaterial;
+    bool localInteractionsEnabled = true;
 
     void Awake()
     {
@@ -101,7 +124,9 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
         if (runtime != null)
         {
             runtime.OriginShifted += HandleOriginShift;
-            runtime.UniverseRelocated += HandleUniverseRelocated;
+            runtime.UniverseAddressRelocated += HandleUniverseRelocated;
+            runtime.InteractionModeChanged += HandleInteractionModeChanged;
+            localInteractionsEnabled = runtime.LocalInteractionsEnabled;
         }
     }
 
@@ -112,6 +137,8 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
 
     void Update()
     {
+        if (!localInteractionsEnabled)
+            return;
         if (Time.unscaledTime < nextRefresh)
             return;
         nextRefresh = Time.unscaledTime + 0.75f;
@@ -142,16 +169,19 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
 
     void RefreshChunks()
     {
-        if (runtime == null || renderMeshes == null || renderMeshes.Length == 0)
+        if (!localInteractionsEnabled
+            || runtime == null
+            || renderMeshes == null
+            || renderMeshes.Length == 0)
             return;
-        DoubleVector3 shipPosition = runtime.ShipUniversePosition;
+        UniversePosition shipPosition = runtime.ShipPhysicalUniversePosition;
         ChunkKey center = GetChunk(shipPosition);
         requiredChunks.Clear();
         for (long z = center.z - activeChunkRadius; z <= center.z + activeChunkRadius; z++)
         for (long y = center.y - activeChunkRadius; y <= center.y + activeChunkRadius; y++)
         for (long x = center.x - activeChunkRadius; x <= center.x + activeChunkRadius; x++)
         {
-            var key = new ChunkKey(x, y, z);
+            var key = new ChunkKey(center.SystemCoordinate, x, y, z);
             requiredChunks.Add(key);
             if (!activeChunks.ContainsKey(key))
                 activeChunks.Add(key, SpawnChunk(key));
@@ -179,15 +209,20 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
     {
         var result = new ChunkRuntime();
         int worldSeed = GalaxyTravelManager.Instance == null ? 0 : GalaxyTravelManager.Instance.WorldSeed;
-        ulong chunkSeed = Hash(worldSeed, key.x, key.y, key.z);
+        ulong chunkSeed = Hash(worldSeed, key);
         var random = new StableRandom(chunkSeed);
         for (int index = 0; index < asteroidsPerChunk; index++)
         {
-            DoubleVector3 universePosition = new DoubleVector3(
-                (key.x + random.Next01()) * chunkSize,
-                (key.y + random.Next01()) * chunkSize,
-                (key.z + random.Next01()) * chunkSize);
-            if (DistanceSquared(universePosition, runtime.ShipUniversePosition) < safeSpawnRadius * safeSpawnRadius)
+            UniversePosition universePosition = new UniversePosition(
+                key.SystemCoordinate,
+                new DoubleVector3(
+                    (key.x + random.Next01()) * chunkSize,
+                    (key.y + random.Next01()) * chunkSize,
+                    (key.z + random.Next01()) * chunkSize)).Add(DoubleVector3.Zero);
+            double distance = UniversePosition.Distance(
+                universePosition,
+                runtime.ShipPhysicalUniversePosition);
+            if (distance * distance < safeSpawnRadius * safeSpawnRadius)
                 continue;
 
             int shapeIndex = random.Range(0, renderMeshes.Length);
@@ -200,7 +235,8 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
                 random.Range(0.72f, 1.35f),
                 random.Range(0.72f, 1.35f));
             Mesh variantMesh = CreateVariantMesh(renderMeshes[shapeIndex], random.NextUlong());
-            string stableId = $"a_{key.x}_{key.y}_{key.z}_{index}";
+            string stableId =
+                $"a_{key.systemX}_{key.systemY}_{key.systemZ}_{key.x}_{key.y}_{key.z}_{index}";
             AsteroidBody body = AsteroidBody.Create(
                 asteroidRoot,
                 stableId,
@@ -257,11 +293,23 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
         }
     }
 
-    void HandleUniverseRelocated(DoubleVector3 previousPosition, DoubleVector3 currentPosition)
+    void HandleUniverseRelocated(UniversePosition previousPosition, UniversePosition currentPosition)
     {
         ClearAllChunks();
         nextRefresh = 0f;
-        RefreshChunks();
+        if (localInteractionsEnabled)
+            RefreshChunks();
+    }
+
+    void HandleInteractionModeChanged(SpaceflightInteractionMode mode)
+    {
+        localInteractionsEnabled = mode == SpaceflightInteractionMode.TacticalPhysics;
+        if (!localInteractionsEnabled)
+        {
+            ClearAllChunks();
+            return;
+        }
+        nextRefresh = Time.unscaledTime;
     }
 
     void ClearAllChunks()
@@ -279,18 +327,11 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
         removalBuffer.Clear();
     }
 
-    ChunkKey GetChunk(DoubleVector3 position) => new ChunkKey(
-        (long)Math.Floor(position.x / chunkSize),
-        (long)Math.Floor(position.y / chunkSize),
-        (long)Math.Floor(position.z / chunkSize));
-
-    static double DistanceSquared(DoubleVector3 left, DoubleVector3 right)
-    {
-        double x = left.x - right.x;
-        double y = left.y - right.y;
-        double z = left.z - right.z;
-        return x * x + y * y + z * z;
-    }
+    ChunkKey GetChunk(UniversePosition position) => new ChunkKey(
+        position.systemCoordinate,
+        (long)Math.Floor(position.localMeters.x / chunkSize),
+        (long)Math.Floor(position.localMeters.y / chunkSize),
+        (long)Math.Floor(position.localMeters.z / chunkSize));
 
     static float Hash01(ulong value)
     {
@@ -302,12 +343,15 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
         return (value >> 40) * (1f / 16777216f);
     }
 
-    static ulong Hash(int seed, long x, long y, long z)
+    static ulong Hash(int seed, ChunkKey key)
     {
         ulong value = unchecked((uint)seed) ^ 0xD6E8FEB86659FD93UL;
-        value ^= unchecked((ulong)x) * 0x9E3779B97F4A7C15UL;
-        value ^= unchecked((ulong)y) * 0xBF58476D1CE4E5B9UL;
-        value ^= unchecked((ulong)z) * 0x94D049BB133111EBUL;
+        value ^= unchecked((ulong)key.systemX) * 0xD6E8FEB86659FD93UL;
+        value ^= unchecked((ulong)key.systemY) * 0xA0761D6478BD642FUL;
+        value ^= unchecked((ulong)key.systemZ) * 0xE7037ED1A0B428DBUL;
+        value ^= unchecked((ulong)key.x) * 0x9E3779B97F4A7C15UL;
+        value ^= unchecked((ulong)key.y) * 0xBF58476D1CE4E5B9UL;
+        value ^= unchecked((ulong)key.z) * 0x94D049BB133111EBUL;
         value ^= value >> 29;
         value *= 0x165667B19E3779F9UL;
         return value ^ (value >> 32);
@@ -318,7 +362,8 @@ public sealed class AsteroidFieldSystem : MonoBehaviour
         if (runtime != null)
         {
             runtime.OriginShifted -= HandleOriginShift;
-            runtime.UniverseRelocated -= HandleUniverseRelocated;
+            runtime.UniverseAddressRelocated -= HandleUniverseRelocated;
+            runtime.InteractionModeChanged -= HandleInteractionModeChanged;
         }
     }
 
@@ -383,6 +428,9 @@ public sealed class AsteroidBody : MonoBehaviour, ISpaceDamageable, ISpaceWeapon
     {
         var asteroid = new GameObject(stableId);
         asteroid.transform.SetParent(parent, false);
+        int physicsLayer = LayerMask.NameToLayer("SpacePhysicsBubble");
+        if (physicsLayer >= 0)
+            asteroid.layer = physicsLayer;
         asteroid.transform.SetPositionAndRotation(position, rotation);
         asteroid.transform.localScale = nonUniformScale * radius;
         var filter = asteroid.AddComponent<MeshFilter>();
@@ -457,6 +505,7 @@ public sealed class AsteroidBody : MonoBehaviour, ISpaceDamageable, ISpaceWeapon
                 HashSigned(seed ^ 0xA511E9B3UL),
                 HashSigned(seed ^ 0x63D83595UL)).normalized;
             GameObject fragment = new GameObject(StableId + "_fragment_" + index);
+            fragment.layer = gameObject.layer;
             fragment.transform.SetPositionAndRotation(
                 transform.position + direction * transform.lossyScale.magnitude * 0.08f,
                 Quaternion.Euler(

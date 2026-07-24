@@ -44,7 +44,7 @@ namespace SpacecraftEditor
 
             var defaultHull = hullCatalog == null ? null : hullCatalog.DefaultDefinition;
             assembly.Configure(body, assembly.transform.Find("Parts"), catalog,
-                defaultHull == null ? 100f : defaultHull.BaseMass);
+                defaultHull == null ? 12000f : defaultHull.BaseMass);
             history.Configure(assembly, hullController);
             buildController.Configure(assembly, history, mainCamera, hullCollider);
             buildController.SetBuildMode(false);

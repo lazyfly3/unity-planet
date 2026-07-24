@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using SpacecraftEditor;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public struct InterstellarPlanetTargetSnapshot
 {
     public string planetId;
     public string displayName;
     public DoubleVector3 universePosition;
+    public UniversePosition universeAddress;
     public double distance;
     public Color color;
     public bool locked;
@@ -25,21 +28,31 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
 {
     sealed class PlanetTarget
     {
+        public InterstellarCoordinate coordinate;
         public GalaxyPlanetDefinition definition;
         public DoubleVector3 universePosition;
+        public UniversePosition universeAddress;
         public SpacePlanetProxy proxy;
         public double distance;
         public bool visited;
     }
 
     [SerializeField] InterstellarFlightRuntime runtime;
+    [SerializeField] SpacecraftIfcsMotor ifcsMotor;
     [SerializeField] Transform proxyRoot;
     [SerializeField, Range(4, 12)] int scanRadiusSectors = 8;
     [SerializeField, Range(1, 16)] int maximumVisiblePlanets = 16;
-    [SerializeField, Min(100f)] float planetVisualRadius = 280f;
-    [SerializeField, Min(1000f)] float nearProxyDistance = 30000f;
-    [SerializeField, Min(100f)] float approachDistance = 720f;
-    [SerializeField, Min(1f)] float maximumEntrySpeed = 260f;
+    [FormerlySerializedAs("planetVisualRadius")]
+    [SerializeField, Min(1f)] float farProxyVisualRadiusKm = 280f;
+    [SerializeField, Min(100f)] float farProxyPresentationDistanceKm = 8000f;
+    [SerializeField, Min(1000f)] float exactPresentationEnterDistanceKm = 80000f;
+    [SerializeField, Min(1000f)] float exactPresentationExitDistanceKm = 100000f;
+    [FormerlySerializedAs("nearProxyDistance")]
+    [SerializeField, HideInInspector] float legacyNearProxyDistanceMeters = 30000f;
+    [FormerlySerializedAs("approachDistance")]
+    [SerializeField, Min(100f)] float approachDistanceMeters = 720f;
+    [FormerlySerializedAs("maximumEntrySpeed")]
+    [SerializeField, Min(1f)] float maximumEntrySpeedMetersPerSecond = 260f;
 
     readonly List<PlanetTarget> targets = new List<PlanetTarget>(16);
     InterstellarCoordinate lastScanSector;
@@ -57,13 +70,20 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
     public DoubleVector3 LockedUniversePosition => HasLockedTarget
         ? targets[lockedIndex].universePosition
         : DoubleVector3.Zero;
+    public UniversePosition LockedUniverseAddress => HasLockedTarget
+        ? targets[lockedIndex].universeAddress
+        : default;
     public string TargetName => LockedPlanet == null ? string.Empty : LockedPlanet.displayName;
     public double TargetDistance => HasLockedTarget ? targets[lockedIndex].distance : 0d;
     public int TargetCount => targets.Count;
-    public Vector3 DirectionToTarget => GetDirectionToUniversePosition(LockedUniversePosition);
+    public Vector3 DirectionToTarget => GetDirectionToUniversePosition(LockedUniverseAddress);
     public bool AutomaticLandingRequested => automaticLandingRequested;
     public string NearObservationPlanetId => nearObservationPlanetId ?? string.Empty;
     public SpacePlanetProxy LockedProxy => HasLockedTarget ? targets[lockedIndex].proxy : null;
+    public Vector3 LockedPlanetVelocity => LockedPlanet == null
+        ? Vector3.zero
+        : GalaxyTravelManager.Instance?.GetInterstellarPlanetVelocity(
+            LockedPlanet.coordinate3D) ?? Vector3.zero;
     public double SelectedApproachBoundaryDistance => HasLockedTarget
         ? GetApproachBoundaryDistance(LockedPlanet)
         : 0d;
@@ -83,28 +103,39 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
     public bool IsSelectedEntryVelocitySafe => HasLockedTarget
         && runtime != null
         && runtime.ShipBody != null
-        && runtime.ShipBody.velocity.magnitude <= CalculateAllowedEntrySpeed(LockedPlanet, TargetDistance);
+        && (runtime.ShipBody.velocity - LockedPlanetVelocity).magnitude
+            <= CalculateAllowedEntrySpeed(LockedPlanet, TargetDistance);
 
     public double GetNearExitDistance(GalaxyPlanetDefinition definition)
     {
         PlanetCelestialProfile celestial = definition?.celestial
             ?? PlanetCelestialProfile.CreateLargeDefault();
         celestial = celestial.Clone();
-        float outerRadius = celestial.radius + Mathf.Max(
+        PlanetPhysicalProfile physical = celestial.Physical;
+        double outerRadius = physical.radiusMeters + Math.Max(
             celestial.maximumTerrainElevation,
-            celestial.HasAtmosphere ? celestial.atmosphereTopAltitude : 0f);
-        return Math.Max(celestial.radius * 4.2d, outerRadius + 2500d);
+            celestial.HasAtmosphere ? physical.atmosphereTopAltitudeMeters : 0d);
+        return Math.Max(
+            physical.radiusMeters * 4.2d,
+            outerRadius + 2_500d);
     }
 
     void Awake()
     {
-        Camera camera = Camera.main;
-        if (camera != null)
-            camera.farClipPlane = Mathf.Max(camera.farClipPlane, 100000f);
         if (runtime == null)
             runtime = FindObjectOfType<InterstellarFlightRuntime>();
+        Camera camera = runtime != null && runtime.AstronomicalCamera != null
+            ? runtime.AstronomicalCamera
+            : null;
+        if (camera != null)
+            camera.farClipPlane = Mathf.Max(camera.farClipPlane, 120000f);
+        if (ifcsMotor == null)
+            ifcsMotor = FindObjectOfType<SpacecraftIfcsMotor>();
         if (proxyRoot == null)
-            proxyRoot = GameObject.Find("PlanetRuntimeRoot")?.transform ?? transform;
+            proxyRoot = runtime != null && runtime.AstronomicalRoot != null
+                ? GameObject.Find("PlanetRuntimeRoot")?.transform
+                    ?? runtime.AstronomicalRoot
+                : GameObject.Find("PlanetRuntimeRoot")?.transform ?? transform;
         planetMaterial = CreatePlanetMaterial();
         atmosphereMaterial = CreateAtmosphereMaterial();
         nearObservationPlanetId =
@@ -118,7 +149,7 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         if (runtime != null)
         {
             runtime.OriginShifted += HandleOriginShift;
-            runtime.UniverseRelocated += HandleUniverseRelocated;
+            runtime.UniverseAddressRelocated += HandleUniverseRelocated;
         }
     }
 
@@ -170,6 +201,7 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         if (string.IsNullOrEmpty(nearObservationPlanetId))
             return;
         nearObservationPlanetId = string.Empty;
+        ifcsMotor?.ClearVelocityReference();
         if (Application.isPlaying)
         {
             GalaxyTravelManager.Instance?.SetNearObservationPlanet(
@@ -188,7 +220,7 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         double bestDistance = double.PositiveInfinity;
         for (int index = 0; index < targets.Count; index++)
         {
-            Vector3 direction = GetDirectionToUniversePosition(targets[index].universePosition);
+            Vector3 direction = GetDirectionToUniversePosition(targets[index].universeAddress);
             if (direction.sqrMagnitude < 0.0001f)
                 continue;
             float angle = Vector3.Angle(camera.transform.forward, direction);
@@ -232,6 +264,7 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
                 planetId = target.definition.planetId,
                 displayName = target.definition.displayName,
                 universePosition = target.universePosition,
+                universeAddress = target.universeAddress,
                 distance = target.distance,
                 color = color,
                 locked = index == lockedIndex,
@@ -255,6 +288,23 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         return new Vector3((float)(x / magnitude), (float)(y / magnitude), (float)(z / magnitude));
     }
 
+    public Vector3 GetDirectionToUniversePosition(UniversePosition universePosition)
+    {
+        if (runtime == null)
+            return Vector3.zero;
+        DoubleVector3 delta = UniversePosition.Delta(
+            runtime.ShipPhysicalUniversePosition,
+            universePosition);
+        double magnitude = Math.Sqrt(
+            delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+        if (magnitude <= 0.000001d)
+            return Vector3.zero;
+        return new Vector3(
+            (float)(delta.x / magnitude),
+            (float)(delta.y / magnitude),
+            (float)(delta.z / magnitude));
+    }
+
     void SetLockedIndex(int index)
     {
         lockedIndex = index >= 0 && index < targets.Count ? index : -1;
@@ -266,7 +316,8 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         GalaxyTravelManager manager = GalaxyTravelManager.Instance;
         if (runtime == null || manager == null || !manager.IsInterstellarGalaxy)
             return;
-        InterstellarCoordinate sector = GetShipSector(runtime.ShipUniversePosition);
+        InterstellarCoordinate sector = manager.GetInterstellarScanCoordinate(
+            runtime.ShipPhysicalUniversePosition);
         if (!force && scanned && sector == lastScanSector)
             return;
 
@@ -283,12 +334,17 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
             GalaxyPlanetDefinition definition = manager.GetPlanetAt(coordinate);
             if (definition == null)
                 continue;
-            DoubleVector3 position = manager.GetInterstellarPlanetPosition(coordinate);
+            UniversePosition address = manager.GetInterstellarPlanetAddress(coordinate);
+            DoubleVector3 position = address.ToAbsoluteMeters();
             targets.Add(new PlanetTarget
             {
+                coordinate = coordinate,
                 definition = definition,
                 universePosition = position,
-                distance = Distance(runtime.ShipUniversePosition, position),
+                universeAddress = address,
+                distance = UniversePosition.Distance(
+                    runtime.ShipPhysicalUniversePosition,
+                    address),
                 visited = IsVisited(manager, definition.planetId)
             });
         }
@@ -319,23 +375,54 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
     {
         if (runtime == null)
             return;
-        DoubleVector3 shipPosition = runtime.ShipUniversePosition;
+        UniversePosition shipPosition = runtime.ShipPhysicalUniversePosition;
+        GalaxyTravelManager manager = GalaxyTravelManager.Instance;
         bool proxySetChanged = false;
         foreach (PlanetTarget target in targets)
         {
+            if (manager != null)
+            {
+                target.universeAddress = manager.GetInterstellarPlanetAddress(target.coordinate);
+                target.universePosition = target.universeAddress.ToAbsoluteMeters();
+            }
             double previousDistance = target.distance;
-            target.distance = Distance(shipPosition, target.universePosition);
-            if ((previousDistance <= nearProxyDistance) != (target.distance <= nearProxyDistance))
+            target.distance = UniversePosition.Distance(shipPosition, target.universeAddress);
+            double exactExitMeters = SpaceKilometerScale.ToMeters(
+                exactPresentationExitDistanceKm);
+            if ((previousDistance <= exactExitMeters) != (target.distance <= exactExitMeters))
                 proxySetChanged = true;
             if (target.proxy != null)
             {
-                target.proxy.transform.position = runtime.ToLocalPosition(target.universePosition);
+                UpdateProxyPresentation(target);
                 target.proxy.SetUniverseTime(GalaxyTravelManager.Instance?.UniverseTimeSeconds ?? 0d);
             }
         }
         ValidateNearObservationPlanet();
+        UpdateVelocityReference();
         if (proxySetChanged)
             RefreshProxySet();
+    }
+
+    void UpdateVelocityReference()
+    {
+        if (ifcsMotor == null)
+            return;
+        PlanetTarget nearTarget = targets.Find(target =>
+            target.definition != null
+            && string.Equals(
+                target.definition.planetId,
+                nearObservationPlanetId,
+                StringComparison.Ordinal)
+            && target.distance <= GetNearExitDistance(target.definition) * 1.35d);
+        if (nearTarget == null)
+        {
+            ifcsMotor.ClearVelocityReference();
+            return;
+        }
+        Vector3 planetVelocity = GalaxyTravelManager.Instance
+            ?.GetInterstellarPlanetVelocity(nearTarget.coordinate)
+            ?? Vector3.zero;
+        ifcsMotor.SetVelocityReference(planetVelocity);
     }
 
     void ValidateNearObservationPlanet()
@@ -359,11 +446,13 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
     void RefreshProxySet()
     {
         int nearProxyCount = 0;
+        double exactExitMeters = SpaceKilometerScale.ToMeters(
+            exactPresentationExitDistanceKm);
         for (int index = 0; index < targets.Count; index++)
         {
             PlanetTarget target = targets[index];
             bool shouldHaveProxy = index == lockedIndex
-                || (target.distance <= nearProxyDistance && nearProxyCount++ == 0);
+                || (target.distance <= exactExitMeters && nearProxyCount++ == 0);
             if (!shouldHaveProxy && target.proxy != null)
             {
                 Destroy(target.proxy.gameObject);
@@ -374,10 +463,10 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
                 target.proxy = SpacePlanetProxy.Create(
                     proxyRoot,
                     target.definition,
-                    planetVisualRadius,
+                    farProxyVisualRadiusKm,
                     planetMaterial,
                     atmosphereMaterial);
-                target.proxy.transform.position = runtime.ToLocalPosition(target.universePosition);
+                UpdateProxyPresentation(target);
             }
             if (target.proxy != null)
             {
@@ -395,11 +484,18 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
             return;
         runtime.SaveState(true);
         Rigidbody body = runtime.ShipBody;
-        DoubleVector3 relative = runtime.ShipUniversePosition - LockedUniversePosition;
+        DoubleVector3 physicalRelative = UniversePosition.Delta(
+            LockedUniverseAddress,
+            runtime.ShipPhysicalUniversePosition);
+        Vector3 direction = physicalRelative.ToVector3().normalized;
+        PlanetCelestialProfile celestial = LockedPlanet?.celestial
+            ?? PlanetCelestialProfile.CreateCompatibleDefault();
+        Vector3 presentationRelative = direction
+            * (celestial.radius + 6000f);
         manager.BeginPlanetApproach(
             targets[lockedIndex].definition,
-            relative.ToVector3(),
-            body.velocity,
+            presentationRelative,
+            body.velocity - LockedPlanetVelocity,
             body.rotation,
             automaticLandingRequested);
     }
@@ -426,8 +522,9 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
             ?? PlanetCelestialProfile.CreateCompatibleDefault();
         celestial.ClampValues();
         return celestial.surfaceGenerationMode == PlanetSurfaceGenerationMode.StreamingLargeSphere
-            ? celestial.radius + 6000d
-            : celestial.radius + approachDistance;
+            ? celestial.Physical.radiusMeters
+                + Math.Max(100_000d, celestial.Physical.atmosphereTopAltitudeMeters)
+            : celestial.Physical.radiusMeters + approachDistanceMeters;
     }
 
     float CalculateAllowedEntrySpeed(GalaxyPlanetDefinition definition, double distance)
@@ -435,9 +532,12 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         PlanetCelestialProfile celestial = definition?.celestial
             ?? PlanetCelestialProfile.CreateCompatibleDefault();
         celestial.ClampValues();
-        float radius = Mathf.Max(celestial.radius + 1f, (float)distance);
-        float physicalEntryLimit = Mathf.Sqrt(2f * celestial.gravitationalParameter / radius) * 0.92f;
-        return Mathf.Min(maximumEntrySpeed, Mathf.Max(35f, physicalEntryLimit));
+        double radius = Math.Max(celestial.Physical.radiusMeters + 1d, distance);
+        float physicalEntryLimit = (float)(Math.Sqrt(
+            2d * celestial.Physical.gravitationalParameter / radius) * 0.92d);
+        return Mathf.Min(
+            maximumEntrySpeedMetersPerSecond,
+            Mathf.Max(35f, physicalEntryLimit));
     }
 
     void HandleOriginShift(Vector3 shift)
@@ -445,7 +545,7 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         RepositionProxies();
     }
 
-    void HandleUniverseRelocated(DoubleVector3 previousPosition, DoubleVector3 currentPosition)
+    void HandleUniverseRelocated(UniversePosition previousPosition, UniversePosition currentPosition)
     {
         scanned = false;
         RefreshTargets(true);
@@ -457,8 +557,54 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         foreach (PlanetTarget target in targets)
         {
             if (target.proxy != null)
-                target.proxy.transform.position = runtime.ToLocalPosition(target.universePosition);
+                UpdateProxyPresentation(target);
         }
+    }
+
+    void UpdateProxyPresentation(PlanetTarget target)
+    {
+        if (runtime == null || runtime.ShipBody == null || target?.proxy == null)
+            return;
+        Vector3 direction = GetDirectionToUniversePosition(target.universeAddress);
+        if (direction.sqrMagnitude < 0.0001f)
+            direction = Vector3.forward;
+        PlanetCelestialProfile celestial = target.definition?.celestial
+            ?? PlanetCelestialProfile.CreateLargeDefault();
+        celestial.ClampValues();
+        float physicalDistanceKm = Mathf.Max(
+            0.001f,
+            (float)SpaceKilometerScale.ToKilometerUnits(target.distance));
+        float enterKm = Mathf.Min(
+            exactPresentationEnterDistanceKm,
+            exactPresentationExitDistanceKm);
+        float exitKm = Mathf.Max(
+            exactPresentationEnterDistanceKm,
+            exactPresentationExitDistanceKm);
+        float exactBlend = 1f - Mathf.InverseLerp(
+            enterKm,
+            exitKm,
+            physicalDistanceKm);
+        float farDistanceKm = Mathf.Max(100f, farProxyPresentationDistanceKm);
+        float farRadiusKm = PlanetScaleMapping.CalculateProxyRadius(
+            celestial,
+            target.distance,
+            farDistanceKm);
+        float physicalRadiusKm = Mathf.Max(
+            0.001f,
+            (float)SpaceKilometerScale.ToKilometerUnits(
+                celestial.Physical.radiusMeters));
+        float presentationDistanceKm = Mathf.Lerp(
+            farDistanceKm,
+            physicalDistanceKm,
+            exactBlend);
+        float proxyRadiusKm = Mathf.Lerp(
+            Mathf.Max(0.001f, farRadiusKm),
+            physicalRadiusKm,
+            exactBlend);
+        target.proxy.SetKilometerPresentation(
+            direction * presentationDistanceKm,
+            proxyRadiusKm,
+            exactBlend);
     }
 
     void ClearTargets()
@@ -481,15 +627,6 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
                 return true;
         }
         return false;
-    }
-
-    static InterstellarCoordinate GetShipSector(DoubleVector3 position)
-    {
-        double spacing = ProceduralInterstellarGenerator.SectorSpacing;
-        return new InterstellarCoordinate(
-            (long)Math.Round(position.x / spacing, MidpointRounding.AwayFromZero),
-            (long)Math.Round(position.y / spacing, MidpointRounding.AwayFromZero),
-            (long)Math.Round(position.z / spacing, MidpointRounding.AwayFromZero));
     }
 
     static double Distance(DoubleVector3 left, DoubleVector3 right)
@@ -532,8 +669,9 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         if (runtime != null)
         {
             runtime.OriginShifted -= HandleOriginShift;
-            runtime.UniverseRelocated -= HandleUniverseRelocated;
+            runtime.UniverseAddressRelocated -= HandleUniverseRelocated;
         }
+        ifcsMotor?.ClearVelocityReference();
     }
 
     void OnDestroy()
@@ -562,6 +700,8 @@ public sealed class SpacePlanetProxy : MonoBehaviour
 
     public PlanetProxyDetail Detail => detail;
     public Mesh TerrainMesh => runtimeMesh;
+    public float VisualRadius { get; private set; }
+    public float ExactKilometerBlend { get; private set; }
 
     void Awake()
     {
@@ -578,6 +718,8 @@ public sealed class SpacePlanetProxy : MonoBehaviour
     {
         GameObject planet = new GameObject("PlanetProxy_" + definition.planetId);
         planet.transform.SetParent(parent, false);
+        if (parent != null)
+            planet.layer = parent.gameObject.layer;
         MeshFilter filter = planet.AddComponent<MeshFilter>();
         MeshRenderer renderer = planet.AddComponent<MeshRenderer>();
 
@@ -598,11 +740,15 @@ public sealed class SpacePlanetProxy : MonoBehaviour
             PlanetOceanRenderMode.Orbital);
         proxy.ApplyTerrainProperties();
         if (!celestial.HasAtmosphere)
+        {
+            SetLayerRecursively(planet, planet.layer);
             return proxy;
+        }
 
         GameObject atmosphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         atmosphere.name = "Atmosphere";
         atmosphere.transform.SetParent(planet.transform, false);
+        atmosphere.layer = planet.layer;
         float visualAtmosphereAltitude = Mathf.Min(
             celestial.atmosphereTopAltitude,
             celestial.radius * 0.1f);
@@ -624,12 +770,33 @@ public sealed class SpacePlanetProxy : MonoBehaviour
         proxy.atmosphereProperties.SetFloat("_Scattering",
             Mathf.Clamp(atmosphereVisual.scatteringStrength, 0.25f, 1.35f));
         proxy.atmosphereRenderer.SetPropertyBlock(proxy.atmosphereProperties);
+        SetLayerRecursively(planet, planet.layer);
         return proxy;
     }
 
     public void SetUniverseTime(double value)
     {
         universeTimeSeconds = value;
+    }
+
+    public void SetVisualRadius(float radius)
+    {
+        float sourceRadius = celestial == null
+            ? PlanetCelestialProfile.CompatibleRadius
+            : Mathf.Max(0.01f, celestial.radius);
+        VisualRadius = Mathf.Max(0.01f, radius);
+        transform.localScale = Vector3.one * (VisualRadius / sourceRadius);
+    }
+
+    public void SetKilometerPresentation(
+        Vector3 centerKilometerUnits,
+        float radiusKilometerUnits,
+        float exactBlend)
+    {
+        transform.position = centerKilometerUnits;
+        ExactKilometerBlend = Mathf.Clamp01(exactBlend);
+        SetVisualRadius(radiusKilometerUnits);
+        ApplyPhysicalAtmosphereRatio();
     }
 
     public void SetDetail(PlanetProxyDetail value)
@@ -725,6 +892,31 @@ public sealed class SpacePlanetProxy : MonoBehaviour
         atmosphereRenderer.GetPropertyBlock(atmosphereProperties);
         atmosphereProperties.SetVector("_PlanetCenter", transform.position);
         atmosphereRenderer.SetPropertyBlock(atmosphereProperties);
+    }
+
+    void ApplyPhysicalAtmosphereRatio()
+    {
+        if (atmosphereRenderer == null || celestial == null)
+            return;
+        PlanetPhysicalProfile physical = celestial.Physical;
+        double radiusMeters = Math.Max(1d, physical.radiusMeters);
+        double atmosphereMeters = celestial.HasAtmosphere
+            ? Math.Max(0d, physical.atmosphereTopAltitudeMeters)
+            : 0d;
+        float sourceRadius = Mathf.Max(0.01f, celestial.radius);
+        float ratio = (float)((radiusMeters + atmosphereMeters) / radiusMeters);
+        atmosphereRenderer.transform.localScale = Vector3.one
+            * (sourceRadius * Mathf.Max(1f, ratio) * 2f);
+    }
+
+    static void SetLayerRecursively(GameObject root, int layer)
+    {
+        if (root == null)
+            return;
+        root.layer = layer;
+        Transform rootTransform = root.transform;
+        for (int index = 0; index < rootTransform.childCount; index++)
+            SetLayerRecursively(rootTransform.GetChild(index).gameObject, layer);
     }
 
     static Color GetAtmosphereColor(PlanetClimate climate)

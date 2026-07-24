@@ -9,9 +9,9 @@ namespace SpacecraftEditor.Tests
 {
     public sealed class SpacecraftEditorEditModeTests
     {
-        [TestCase("thruster_small", "thruster.small", 2f, 40f)]
-        [TestCase("thruster_medium", "thruster.medium", 5f, 100f)]
-        [TestCase("thruster_large", "thruster.large", 12f, 240f)]
+        [TestCase("thruster_small", "thruster.small", 90f, 20000f)]
+        [TestCase("thruster_medium", "thruster.medium", 300f, 80000f)]
+        [TestCase("thruster_large", "thruster.large", 950f, 300000f)]
         public void PartDefinitions_HaveExpectedValues(string assetName, string expectedId, float expectedMass, float expectedThrust)
         {
             var definition = AssetDatabase.LoadAssetAtPath<ShipPartDefinition>(
@@ -24,9 +24,9 @@ namespace SpacecraftEditor.Tests
             Assert.That(definition.Thumbnail, Is.Not.Null);
         }
 
-        [TestCase("hull_balanced", "hull.balanced", 100f, 3f, 2.2f, 6f)]
-        [TestCase("hull_spindle", "hull.spindle", 80f, 2.2f, 1.8f, 7.5f)]
-        [TestCase("hull_saucer", "hull.saucer", 130f, 5.2f, 1.4f, 4.6f)]
+        [TestCase("hull_balanced", "hull.balanced", 12000f, 3f, 2.2f, 6f)]
+        [TestCase("hull_spindle", "hull.spindle", 9000f, 2.2f, 1.8f, 7.5f)]
+        [TestCase("hull_saucer", "hull.saucer", 18000f, 5.2f, 1.4f, 4.6f)]
         public void HullDefinitions_HaveUniquePlayableModelsAndColliderBounds(
             string assetName, string expectedId, float expectedMass, float width, float height, float length)
         {
@@ -40,8 +40,11 @@ namespace SpacecraftEditor.Tests
             Assert.That(definition.Thumbnail, Is.Not.Null);
             Assert.That(definition.CollisionMesh, Is.Not.Null);
             Assert.That(definition.CollisionMesh.bounds.size.x, Is.EqualTo(width).Within(0.01f));
-            Assert.That(definition.CollisionMesh.bounds.size.y, Is.EqualTo(height).Within(0.01f));
-            Assert.That(definition.CollisionMesh.bounds.size.z, Is.EqualTo(length).Within(0.01f));
+            // Source FBX meshes use X/Z as the horizontal/vertical cross-section and
+            // Y as the longitudinal axis. The prefab rotates that authored basis into
+            // Unity's gameplay X/Y/Z convention.
+            Assert.That(definition.CollisionMesh.bounds.size.y, Is.EqualTo(length).Within(0.01f));
+            Assert.That(definition.CollisionMesh.bounds.size.z, Is.EqualTo(height).Within(0.01f));
         }
 
         [Test]
@@ -65,8 +68,8 @@ namespace SpacecraftEditor.Tests
             {
                 var thruster = instance.GetComponent<ThrusterPart>();
                 thruster.Configure(definition, 1.5f, "test", string.Empty);
-                Assert.That(thruster.ActualThrust, Is.EqualTo(225f).Within(0.001f));
-                Assert.That(thruster.ActualMass, Is.EqualTo(16.875f).Within(0.001f));
+                Assert.That(thruster.ActualThrust, Is.EqualTo(180000f).Within(0.001f));
+                Assert.That(thruster.ActualMass, Is.EqualTo(1012.5f).Within(0.001f));
             }
             finally
             {
@@ -100,13 +103,20 @@ namespace SpacecraftEditor.Tests
         [TestCase("decor_swept_wing")]
         [TestCase("decor_delta_wing")]
         [TestCase("decor_canard")]
-        public void HorizontalWingDefinitions_UseLateralPlacement(string assetName)
+        [TestCase("decor_vertical_fin")]
+        [TestCase("decor_armor_fairing")]
+        [TestCase("decor_radiator")]
+        [TestCase("decor_sensor_mast")]
+        [TestCase("decor_engine_nacelle")]
+        public void IndustrialGreebleDefinitions_UseSurfaceConformingPlacement(string assetName)
         {
             var definition = AssetDatabase.LoadAssetAtPath<ShipPartDefinition>(
                 "Assets/SpacecraftEditor/Data/ModularParts/" + assetName + ".asset");
 
             Assert.That(definition, Is.Not.Null);
-            Assert.That(definition.PlacementMode, Is.EqualTo(SpacecraftPartPlacementMode.LateralWing));
+            Assert.That(
+                definition.PlacementMode,
+                Is.EqualTo(SpacecraftPartPlacementMode.SurfaceConforming));
         }
 
         [Test]
@@ -218,7 +228,7 @@ namespace SpacecraftEditor.Tests
                 Assert.That(assembly.Metrics.localResultantTorque.y, Is.LessThan(0f));
 
                 assembly.AddPart(definition, new Vector3(-1f, 0f, -3f), rearFacing, 1f);
-                Assert.That(assembly.Metrics.localResultantForce.z, Is.EqualTo(80f).Within(0.01f));
+                Assert.That(assembly.Metrics.localResultantForce.z, Is.EqualTo(40000f).Within(0.01f));
                 Assert.That(assembly.Metrics.localResultantTorque.magnitude, Is.LessThan(0.01f));
             }
             finally
@@ -242,15 +252,15 @@ namespace SpacecraftEditor.Tests
                 assembly.AddPart(definition, new Vector3(0f, 0f, -3f),
                     Quaternion.LookRotation(Vector3.back, Vector3.up), 1f);
 
-                assembly.SetHullMass(80f);
+                assembly.SetHullMass(9000f);
                 var lightAcceleration = assembly.Metrics.Acceleration;
-                Assert.That(assembly.Metrics.totalMass, Is.EqualTo(82f).Within(0.001f));
+                Assert.That(assembly.Metrics.totalMass, Is.EqualTo(9090f).Within(0.001f));
 
-                assembly.SetHullMass(130f);
+                assembly.SetHullMass(18000f);
                 var heavyAcceleration = assembly.Metrics.Acceleration;
-                Assert.That(assembly.Metrics.totalMass, Is.EqualTo(132f).Within(0.001f));
+                Assert.That(assembly.Metrics.totalMass, Is.EqualTo(18090f).Within(0.001f));
                 Assert.That(lightAcceleration, Is.GreaterThan(heavyAcceleration));
-                Assert.That(heavyAcceleration, Is.EqualTo(40f / 132f).Within(0.001f));
+                Assert.That(heavyAcceleration, Is.EqualTo(20000f / 18090f).Within(0.001f));
             }
             finally
             {
@@ -302,6 +312,146 @@ namespace SpacecraftEditor.Tests
                 Is.False);
             Assert.That(
                 BuildModeController.IsWithinCenterSnap(new Vector3(1.45f, 0.10f, 0.30f), PlacementSnapAxis.Right, halfExtents),
+                Is.True);
+        }
+
+        [Test]
+        public void PlacementSnap_GridOnlyQuantizesCoordinatesAlongTheSurface()
+        {
+            Vector3 rear = BuildModeController.SnapTangentialToGrid(
+                new Vector3(0.37f, 0.61f, -2.93f),
+                PlacementSnapAxis.Rear,
+                0.25f);
+            Assert.That(rear.x, Is.EqualTo(0.25f).Within(0.0001f));
+            Assert.That(rear.y, Is.EqualTo(0.50f).Within(0.0001f));
+            Assert.That(rear.z, Is.EqualTo(-2.93f).Within(0.0001f));
+
+            Vector3 right = BuildModeController.SnapTangentialToGrid(
+                new Vector3(1.47f, 0.38f, -0.62f),
+                PlacementSnapAxis.Right,
+                0.25f);
+            Assert.That(right.x, Is.EqualTo(1.47f).Within(0.0001f));
+            Assert.That(right.y, Is.EqualTo(0.50f).Within(0.0001f));
+            Assert.That(right.z, Is.EqualTo(-0.50f).Within(0.0001f));
+
+            Vector3 top = BuildModeController.SnapTangentialToGrid(
+                new Vector3(-0.38f, 1.08f, 0.64f),
+                PlacementSnapAxis.Top,
+                0.25f);
+            Assert.That(top.x, Is.EqualTo(-0.50f).Within(0.0001f));
+            Assert.That(top.y, Is.EqualTo(1.08f).Within(0.0001f));
+            Assert.That(top.z, Is.EqualTo(0.75f).Within(0.0001f));
+        }
+
+        [Test]
+        public void PlacementSnap_CenterClearsOnlySurfaceCoordinates()
+        {
+            Assert.That(
+                BuildModeController.ClearTangentialCoordinates(
+                    new Vector3(0.4f, -0.3f, -2.9f),
+                    PlacementSnapAxis.Rear),
+                Is.EqualTo(new Vector3(0f, 0f, -2.9f)));
+            Assert.That(
+                BuildModeController.ClearTangentialCoordinates(
+                    new Vector3(1.5f, -0.3f, 0.6f),
+                    PlacementSnapAxis.Right),
+                Is.EqualTo(new Vector3(1.5f, 0f, 0f)));
+            Assert.That(
+                BuildModeController.ClearTangentialCoordinates(
+                    new Vector3(0.4f, 1.1f, -0.6f),
+                    PlacementSnapAxis.Top),
+                Is.EqualTo(new Vector3(0f, 1.1f, 0f)));
+        }
+
+        [Test]
+        public void PlacementSolver_MagnetizesToNeighborEdgesWithoutForcingTheGrid()
+        {
+            bool snapped = SpacecraftPlacementSolver.TrySnapInterval(
+                1.02f,
+                0.50f,
+                -0.50f,
+                0.50f,
+                0.10f,
+                out float center,
+                out PlacementAlignmentKind kind);
+
+            Assert.That(snapped, Is.True);
+            Assert.That(center, Is.EqualTo(1f).Within(0.0001f));
+            Assert.That(kind, Is.EqualTo(PlacementAlignmentKind.NeighborEdge));
+
+            snapped = SpacecraftPlacementSolver.TrySnapInterval(
+                1.18f,
+                0.50f,
+                -0.50f,
+                0.50f,
+                0.10f,
+                out center,
+                out kind);
+            Assert.That(snapped, Is.False);
+            Assert.That(center, Is.EqualTo(1.18f).Within(0.0001f));
+        }
+
+        [Test]
+        public void PlacementSolver_AllowsContactButRejectsRealInterpenetration()
+        {
+            var left = new SpacecraftPlacementSolver.OrientedBox(
+                Vector3.zero,
+                Vector3.one * 0.5f,
+                Quaternion.identity);
+            var touching = new SpacecraftPlacementSolver.OrientedBox(
+                Vector3.right,
+                Vector3.one * 0.5f,
+                Quaternion.identity);
+            var penetrating = new SpacecraftPlacementSolver.OrientedBox(
+                Vector3.right * 0.97f,
+                Vector3.one * 0.5f,
+                Quaternion.identity);
+
+            Assert.That(
+                SpacecraftPlacementSolver.Overlaps(left, touching, 0.012f),
+                Is.False);
+            Assert.That(
+                SpacecraftPlacementSolver.Overlaps(left, penetrating, 0.012f),
+                Is.True);
+        }
+
+        [Test]
+        public void WorkshopPrefab_HasBrightFourPointRigReflectionAndSurfaceSnapSettings()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Resources/Spacecraft/SpacecraftWorkshopRoot.prefab");
+            Assert.That(prefab, Is.Not.Null);
+
+            WorkshopLightingRig rig = prefab.GetComponentInChildren<WorkshopLightingRig>(true);
+            Assert.That(rig, Is.Not.Null);
+            Transform lights = rig.transform;
+            Assert.That(lights.Find("KeyLight")?.GetComponent<Light>(), Is.Not.Null);
+            Assert.That(lights.Find("FillLight")?.GetComponent<Light>(), Is.Not.Null);
+            Assert.That(lights.Find("TopLight")?.GetComponent<Light>(), Is.Not.Null);
+            Assert.That(lights.Find("RimLight")?.GetComponent<Light>(), Is.Not.Null);
+            Assert.That(
+                lights.Find("WorkshopReflectionProbe")?.GetComponent<ReflectionProbe>(),
+                Is.Not.Null);
+
+            BuildModeController controller =
+                prefab.GetComponentInChildren<BuildModeController>(true);
+            Assert.That(controller, Is.Not.Null);
+            var serialized = new SerializedObject(controller);
+            Assert.That(serialized.FindProperty("snappingEnabled").boolValue, Is.True);
+            Assert.That(
+                serialized.FindProperty("surfaceGridSize").floatValue,
+                Is.EqualTo(0.25f).Within(0.0001f));
+            Assert.That(
+                serialized.FindProperty("neighborAlignmentDistance").floatValue,
+                Is.EqualTo(0.10f).Within(0.0001f));
+            Assert.That(
+                serialized.FindProperty("centerSnapWorldDistance").floatValue,
+                Is.EqualTo(0.10f).Within(0.0001f));
+            Assert.That(
+                serialized.FindProperty("gridSnapRequiresControl").boolValue,
+                Is.True);
+            Assert.That(
+                serialized.FindProperty("allowPartSurfacePlacement").boolValue,
                 Is.True);
         }
 

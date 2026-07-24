@@ -1,3 +1,4 @@
+using System;
 using SpacecraftEditor;
 using UnityEngine;
 
@@ -6,6 +7,9 @@ public struct WarpGateContext
     public GalaxyPlanetDefinition planet;
     public DoubleVector3 targetUniversePosition;
     public DoubleVector3 destinationUniversePosition;
+    public UniversePosition targetUniverseAddress;
+    public UniversePosition destinationUniverseAddress;
+    public bool hasHierarchicalAddresses;
     public Vector3 travelDirection;
     public Quaternion exitRotation;
     public SpacePlanetProxy targetProxy;
@@ -295,10 +299,45 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
         if (portalCamera == null || runtime == null || playerCamera == null)
             return;
 
-        Vector3 destination =
-            runtime.ToLocalPosition(context.destinationUniversePosition);
-        Vector3 target = runtime.ToLocalPosition(context.targetUniversePosition);
-        Vector3 position = destination + context.exitRotation * cameraOffsetLocal;
+        Vector3 target;
+        Vector3 destination;
+        if (context.targetProxy != null)
+        {
+            target = context.targetProxy.transform.position;
+            PlanetCelestialProfile celestial = context.planet?.celestial
+                ?? PlanetCelestialProfile.CreateLargeDefault();
+            PlanetPhysicalProfile physical = celestial.Physical;
+            double outerRadius = physical.radiusMeters + Math.Max(
+                celestial.maximumTerrainElevation,
+                celestial.HasAtmosphere ? physical.atmosphereTopAltitudeMeters : 0d);
+            double exitDistance = Math.Max(
+                physical.radiusMeters * 4.2d,
+                outerRadius + 2_500d);
+            double angularRadius = Math.Asin(Math.Min(
+                0.999999d,
+                physical.radiusMeters / exitDistance));
+            float previewDistance = (float)(
+                context.targetProxy.VisualRadius
+                / Math.Max(0.0001d, Math.Tan(angularRadius)));
+            destination = target
+                - context.travelDirection.normalized * Mathf.Max(1f, previewDistance);
+        }
+        else if (context.hasHierarchicalAddresses)
+        {
+            target = runtime.ToKilometerRenderPosition(
+                context.targetUniverseAddress);
+            destination = runtime.ToKilometerRenderPosition(
+                context.destinationUniverseAddress);
+        }
+        else
+        {
+            destination = runtime.ToKilometerRenderPosition(
+                context.destinationUniversePosition);
+            target = runtime.ToKilometerRenderPosition(
+                context.targetUniversePosition);
+        }
+        Vector3 position = destination + context.exitRotation
+            * SpaceKilometerScale.ToKilometerUnits(cameraOffsetLocal);
         Vector3 lookDirection = target - position;
         if (lookDirection.sqrMagnitude < 0.001f)
             lookDirection = context.travelDirection;
@@ -308,8 +347,17 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
                 lookDirection.normalized,
                 context.exitRotation * Vector3.up));
         portalCamera.fieldOfView = playerCamera.fieldOfView;
-        portalCamera.nearClipPlane = Mathf.Max(0.1f, playerCamera.nearClipPlane);
-        portalCamera.farClipPlane = Mathf.Max(100000f, playerCamera.farClipPlane);
+        float previewRadius = context.targetProxy == null
+            ? 50f
+            : Mathf.Max(0.0001f, context.targetProxy.VisualRadius);
+        portalCamera.nearClipPlane = Mathf.Clamp(
+            previewRadius * 0.001f,
+            0.000001f,
+            0.05f);
+        portalCamera.farClipPlane = Mathf.Max(120000f, playerCamera.farClipPlane);
+        int kilometerLayer = LayerMask.NameToLayer("SpaceKilometerView");
+        if (kilometerLayer >= 0)
+            portalCamera.cullingMask = 1 << kilometerLayer;
         portalCamera.aspect = PreviewWidth / (float)PreviewHeight;
     }
 

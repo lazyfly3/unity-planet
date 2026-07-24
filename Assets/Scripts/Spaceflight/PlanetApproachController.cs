@@ -578,22 +578,35 @@ public sealed class PlanetApproachController : MonoBehaviour
             tangentSpeed = Vector3.ProjectOnPlane(relative, up).magnitude;
         }
         if (phaseText != null)
-            phaseText.text = $"飞行阶段  {phase}\nL 着陆辅助 {(landingAssist ? "开启" : "关闭")}";
+            phaseText.text = $"飞行阶段  {phase}\nL 着陆辅助  {(landingAssist ? "开启" : "关闭")}";
         if (orbitText != null)
-            orbitText.text = $"雷达高度 {clearance:F1} m\n切向速度 {tangentSpeed:F1} m/s\n径向速度 {radialSpeed:F1} m/s\n前方地形 {approachTerrainWorld?.ReadyDistanceAhead ?? 0f:F0} m";
+            orbitText.text =
+                $"雷达高度 {SpaceflightUnitFormatter.FormatAltitude(clearance)}\n" +
+                $"切向空速 {SpaceflightUnitFormatter.FormatSpeed(tangentSpeed)}\n" +
+                $"径向空速 {SpaceflightUnitFormatter.FormatSpeed(radialSpeed)}\n" +
+                $"前方地形 {SpaceflightUnitFormatter.FormatDistance(approachTerrainWorld?.ReadyDistanceAhead ?? 0f)}";
         if (landingText != null)
-            landingText.text = $"G 起落架 {(landingGear != null && landingGear.Deployed ? "展开" : "收起")}\n地面坡度 {LandingSiteSlope:F1}°\n接触点 {(landingGear == null ? 0 : landingGear.ContactCount)}/3\n预计落点 {landingSiteScanner?.Safety.ToString() ?? "Unknown"}";
+            landingText.text =
+                $"G 起落架  {(landingGear != null && landingGear.Deployed ? "展开" : "收起")}\n" +
+                $"地面坡度 {LandingSiteSlope:F1}°\n" +
+                $"接触点 {(landingGear == null ? 0 : landingGear.ContactCount)}/3\n" +
+                $"预计落点 {landingSiteScanner?.Safety.ToString() ?? "未知"}";
         if (heatText != null)
         {
             float heat = atmosphericFlight == null
                 ? 0f
                 : atmosphericFlight.Density * Mathf.Pow(atmosphericFlight.AirSpeed, 3f) * 0.002f;
-            heatText.text = $"空速 {atmosphericFlight?.AirSpeed ?? 0f:F1} m/s\n迎角 {atmosphericFlight?.AngleOfAttack ?? 0f:F1}°\n失速 {(atmosphericFlight != null && atmosphericFlight.IsStalling ? "警告" : "正常")}\n大气密度 {atmosphericFlight?.Density ?? 0f:F3}\n热流 {heat:F1}";
+            heatText.text =
+                $"大气相对空速 {SpaceflightUnitFormatter.FormatSpeed(atmosphericFlight?.AirSpeed ?? 0f)}\n" +
+                $"迎角 {atmosphericFlight?.AngleOfAttack ?? 0f:F1}°\n" +
+                $"失速 {(atmosphericFlight != null && atmosphericFlight.IsStalling ? "警告" : "正常")}\n" +
+                $"大气密度 {atmosphericFlight?.Density ?? 0f:F3} kg/m³\n" +
+                $"热流 {heat:F1}";
         }
         if (terrainStreamingText != null)
             terrainStreamingText.text = approachTerrainWorld != null && approachTerrainWorld.IsFlightRegionReady
-                ? $"地形已就绪  {approachTerrainWorld.ReadyDistanceAhead:F0} m"
-                : "正在流送前方真实地形，飞控已限制速度";
+                ? $"地形已就绪  {SpaceflightUnitFormatter.FormatDistance(approachTerrainWorld.ReadyDistanceAhead)}"
+                : "正在流送前方真实地形，飞控已限制大气安全空速";
     }
 
     void ResolveReferences()

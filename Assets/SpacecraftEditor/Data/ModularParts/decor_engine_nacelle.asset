@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: decor_engine_nacelle
   m_EditorClassIdentifier: 
   partId: decor.engine_nacelle
-  displayName: "\u53D1\u52A8\u673A\u8231\u5916\u7F69"
+  displayName: "\u53D1\u52A8\u673A\u8231"
   prefab: {fileID: 3828401236051654320, guid: a4e5d82e0727bbe4c89c23848e969f69, type: 3}
-  thumbnail: {fileID: 21300000, guid: 0fd0fcd90e5d63e4fb5ce91291d8748e, type: 3}
+  thumbnail: {fileID: 21300000, guid: 1702a750827639541a88acd556d31068, type: 3}
   category: 0
   scaleMode: 0
   placementMode: 0

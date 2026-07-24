@@ -143,6 +143,7 @@ public sealed class SurfaceMultifunctionController : MonoBehaviour
             CloseMenu();
         player?.SetGameplayInputBlocked(blocked);
         scanner?.SetInputBlocked(blocked);
+        GetComponent<SurfaceToolController>()?.SetInputBlocked(blocked);
         if (interactionLabel != null && blocked)
             interactionLabel.gameObject.SetActive(false);
     }
@@ -277,6 +278,7 @@ public sealed class SurfaceMultifunctionController : MonoBehaviour
         menuGroup.alpha = 1f;
         menuGroup.blocksRaycasts = false;
         player.SetGameplayInputBlocked(true);
+        GetComponent<SurfaceToolController>()?.SetInputBlocked(true);
         RefreshPageLayout();
         UpdateSelection();
     }
@@ -296,6 +298,7 @@ public sealed class SurfaceMultifunctionController : MonoBehaviour
         selectedLabel.text = string.Empty;
         RefreshPageLayout();
         player.SetGameplayInputBlocked(externalInputBlocked);
+        GetComponent<SurfaceToolController>()?.SetInputBlocked(externalInputBlocked);
     }
 
     void UpdateSelection()

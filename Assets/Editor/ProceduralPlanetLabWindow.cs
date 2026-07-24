@@ -105,10 +105,14 @@ public sealed class ProceduralPlanetLabWindow : EditorWindow
             EditorGUILayout.HelpBox(
                 "当前不是 PlanetLab 场景。实验室不会加载玩家、体素区块、天气或星系系统。",
                 MessageType.Info);
-            if (GUILayout.Button("打开 PlanetLab 场景", GUILayout.Height(32f))
-                && ProceduralPlanetLabAssetBuilder.OpenLaboratoryScene())
+            using (new EditorGUI.DisabledScope(
+                       EditorApplication.isPlayingOrWillChangePlaymode))
             {
-                BindScene();
+                if (GUILayout.Button("打开 PlanetLab 场景", GUILayout.Height(32f))
+                    && ProceduralPlanetLabAssetBuilder.OpenLaboratoryScene())
+                {
+                    BindScene();
+                }
             }
             return;
         }
@@ -126,12 +130,176 @@ public sealed class ProceduralPlanetLabWindow : EditorWindow
         }
 
         DrawPresetToolbar();
+        DrawSurfaceModeToolbar();
         DrawPreview();
         selectedTab = GUILayout.Toolbar(selectedTab, Tabs, GUILayout.Height(25f));
         scroll = EditorGUILayout.BeginScrollView(scroll);
         DrawSelectedTab();
         EditorGUILayout.EndScrollView();
         DrawBottomToolbar();
+    }
+
+    void DrawSurfaceModeToolbar()
+    {
+        if (controller == null)
+            return;
+
+        EditorGUILayout.Space(3f);
+        int selected = GUILayout.Toolbar(
+            (int)controller.SurfaceMode,
+            new[] { "Globe", "Planar 512m", "Infinite Planar" },
+            GUILayout.Height(28f));
+        PlanetLabSurfaceMode nextMode = (PlanetLabSurfaceMode)selected;
+        if (nextMode != controller.SurfaceMode)
+        {
+            Undo.RecordObject(controller, "Change Planet Lab Surface Mode");
+            controller.SetSurfaceMode(nextMode);
+            EditorUtility.SetDirty(controller);
+            EditorSceneManager.MarkSceneDirty(controller.gameObject.scene);
+        }
+
+        if (controller.SurfaceMode == PlanetLabSurfaceMode.Globe
+            || preset == null)
+        {
+            return;
+        }
+
+        bool infinite =
+            controller.SurfaceMode == PlanetLabSurfaceMode.InfinitePlanar;
+        preset.planar = preset.planar ?? new PlanetLabPlanarSettings();
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        EditorGUILayout.LabelField(
+            infinite ? "Infinite Tangent World" : "Planar Projection",
+            EditorStyles.boldLabel);
+        EditorGUI.BeginChangeCheck();
+        bool autoAnchor = EditorGUILayout.Toggle(
+            "Auto highest walkable land",
+            preset.planar.autoAnchor);
+        using (new EditorGUI.DisabledScope(autoAnchor))
+        {
+            float latitude = EditorGUILayout.Slider(
+                "Anchor latitude",
+                preset.planar.anchorLatitude,
+                -89.9f,
+                89.9f);
+            float longitude = EditorGUILayout.Slider(
+                "Anchor longitude",
+                preset.planar.anchorLongitude,
+                -180f,
+                180f);
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(preset, "Change Planet Lab Planar Anchor");
+                preset.planar.autoAnchor = autoAnchor;
+                preset.planar.anchorLatitude = latitude;
+                preset.planar.anchorLongitude = longitude;
+                preset.planar.ClampValues();
+                MarkPresetDirty();
+                RebuildCurrentPlanarMode();
+            }
+        }
+        if (autoAnchor && preset.planar.autoAnchor != autoAnchor)
+        {
+            Undo.RecordObject(preset, "Enable Automatic Planar Anchor");
+            preset.planar.autoAnchor = true;
+            MarkPresetDirty();
+            RebuildCurrentPlanarMode();
+        }
+
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            if (GUILayout.Button("Auto Locate Land", GUILayout.Height(24f)))
+            {
+                Undo.RecordObject(preset, "Auto Locate Planar Land");
+                controller.AutoLocatePlanarAnchor();
+                MarkPresetDirty();
+            }
+            if (GUILayout.Button(
+                    infinite ? "Rebuild Stream" : "Rebuild Planar",
+                    GUILayout.Height(24f)))
+            {
+                RebuildCurrentPlanarMode();
+            }
+        }
+
+        float edgeAngle = 0f;
+        if (infinite)
+        {
+            int diameter = PlanetLabPlanarSettings.InfiniteViewRadius * 2 + 1;
+            EditorGUILayout.LabelField(
+                $"Chunk: {PlanetLabPlanarSettings.InfiniteChunkSize:0} m | "
+                + $"Grid: {PlanetLabPlanarSettings.InfiniteChunkResolution} x "
+                + $"{PlanetLabPlanarSettings.InfiniteChunkResolution} | "
+                + $"Visible: {diameter} x {diameter} | "
+                + $"Active: {controller.InfiniteActiveChunkCount}",
+                EditorStyles.miniLabel);
+            EditorGUILayout.LabelField(
+                "Runtime loading: outer-ring prefetch, one pooled chunk per frame",
+                EditorStyles.miniLabel);
+        }
+        else
+        {
+            edgeAngle = Mathf.Atan(
+                PlanetLabPlanarSettings.PatchSize * 0.5f
+                / Mathf.Max(1f, preset.radius)) * Mathf.Rad2Deg;
+            EditorGUILayout.LabelField(
+                $"Patch: 512 x 512 m | Grid: 128 x 128 | "
+                + $"Edge projection: {edgeAngle:0.0} deg",
+                EditorStyles.miniLabel);
+        }
+        if (controller.PlanarPbrLibrary != null
+            && controller.PlanarPbrLibrary.IsReady)
+        {
+            EditorGUILayout.LabelField(
+                "PBR library: 40 sets | Seeded selection constrained by planet template",
+                EditorStyles.miniLabel);
+        }
+        if (controller.PlanarSkyboxLibrary != null
+            && controller.PlanarSkyboxLibrary.IsReady)
+        {
+            EditorGUILayout.LabelField(
+                "Skybox: " + controller.CurrentPlanarSkyboxName,
+                EditorStyles.miniLabel);
+            EditorGUILayout.LabelField(
+                "Skybox library: 25 selected | 5 per template | Seeded once",
+                EditorStyles.miniLabel);
+        }
+        if (!infinite && edgeAngle > 30f)
+        {
+            float recommendedRadius =
+                PlanetLabPlanarSettings.PatchSize * 0.5f
+                / Mathf.Tan(25f * Mathf.Deg2Rad);
+            EditorGUILayout.HelpBox(
+                $"This radius cannot produce a locally one-to-one 512 m flattening. "
+                + $"The patch edge is {edgeAngle:0.0} degrees from its anchor, so terrain "
+                + $"will look compressed compared with the globe. Use radius >= "
+                + $"{recommendedRadius:0} m for a close local correspondence (edge <= 25 degrees).",
+                MessageType.Warning);
+        }
+        if (infinite)
+        {
+            EditorGUILayout.HelpBox(
+                "The center exactly matches the selected spherical anchor. "
+                + "Beyond it, the same Seed and GetSurfaceNoise terrain rules "
+                + "continue indefinitely in tangent space. Chunks are recycled; "
+                + "the formal globe and space view are unchanged.",
+                MessageType.Info);
+        }
+        EditorGUILayout.HelpBox(
+            "Play Mode controls: WASD move, mouse look, Space jump, R reset, Esc cursor. "
+            + "Water is visual only.",
+            MessageType.Info);
+        EditorGUILayout.EndVertical();
+    }
+
+    void RebuildCurrentPlanarMode()
+    {
+        if (controller == null)
+            return;
+        if (controller.SurfaceMode == PlanetLabSurfaceMode.InfinitePlanar)
+            controller.RebuildInfinitePlanarNow();
+        else
+            controller.RebuildPlanarNow();
     }
 
     void DrawHeader()

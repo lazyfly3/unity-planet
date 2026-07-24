@@ -46,8 +46,11 @@ public sealed class InterstellarCruiseController : MonoBehaviour
     GalaxyPlanetDefinition frozenPlanet;
     DoubleVector3 frozenTargetPosition;
     DoubleVector3 frozenDestination;
+    UniversePosition frozenTargetAddress;
+    UniversePosition frozenDestinationAddress;
     Vector3 frozenTravelDirection;
     Quaternion frozenExitRotation;
+    Vector3 frozenExitVelocity;
     Vector3 frozenLandingDirection;
     Vector3 transitStartPosition;
     Vector3 transitPortalPosition;
@@ -69,7 +72,9 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         || warpState == InterstellarWarpState.Spooling
         || warpState == InterstellarWarpState.Transit
         || warpState == InterstellarWarpState.Exiting;
-    public float MaximumCruiseSpeed => exitSpeed;
+    public float ArrivalSpeed => exitSpeed;
+    [System.Obsolete("Vacuum flight has no absolute maximum speed. Use ArrivalSpeed for warp exit velocity.")]
+    public float MaximumCruiseSpeed => float.PositiveInfinity;
     public InterstellarCruiseState State => MapLegacyState(warpState);
 
     public bool ControlsEnabled
@@ -129,7 +134,9 @@ public sealed class InterstellarCruiseController : MonoBehaviour
             return;
         }
 
-        DoubleVector3 relative = flightRuntime.ShipUniversePosition - navigation.LockedUniversePosition;
+        DoubleVector3 relative = UniversePosition.Delta(
+            navigation.LockedUniverseAddress,
+            flightRuntime.ShipPhysicalUniversePosition);
         Vector3 landingDirection = relative.ToVector3();
         if (landingDirection.sqrMagnitude < 0.001f)
             landingDirection = -shipBody.transform.forward;
@@ -153,22 +160,25 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         }
 
         frozenPlanet = navigation.LockedPlanet;
-        frozenTargetPosition = navigation.LockedUniversePosition;
-        DoubleVector3 origin = flightRuntime.ShipUniversePosition;
-        frozenTravelDirection = CalculateTravelDirection(origin, frozenTargetPosition);
+        frozenTargetAddress = navigation.LockedUniverseAddress;
+        frozenTargetPosition = frozenTargetAddress.ToAbsoluteMeters();
+        UniversePosition originAddress = flightRuntime.ShipPhysicalUniversePosition;
+        frozenTravelDirection = CalculateTravelDirection(originAddress, frozenTargetAddress);
         if (frozenTravelDirection.sqrMagnitude < 0.001f)
             frozenTravelDirection = transform.forward;
         double nearDistance = navigation.GetNearExitDistance(frozenPlanet);
-        frozenDestination = CalculateWarpDestination(
-            origin,
-            frozenTargetPosition,
+        frozenDestinationAddress = CalculateWarpDestination(
+            originAddress,
+            frozenTargetAddress,
             nearDistance);
+        frozenDestination = frozenDestinationAddress.ToAbsoluteMeters();
         Vector3 up = Vector3.ProjectOnPlane(transform.up, frozenTravelDirection);
         if (up.sqrMagnitude < 0.001f)
             up = Vector3.up;
         frozenExitRotation = Quaternion.LookRotation(
             frozenTravelDirection,
             up.normalized);
+        frozenExitVelocity = frozenTravelDirection * exitSpeed;
 
         if (warpGate == null)
         {
@@ -181,6 +191,9 @@ public sealed class InterstellarCruiseController : MonoBehaviour
                 planet = frozenPlanet,
                 targetUniversePosition = frozenTargetPosition,
                 destinationUniversePosition = frozenDestination,
+                targetUniverseAddress = frozenTargetAddress,
+                destinationUniverseAddress = frozenDestinationAddress,
+                hasHierarchicalAddresses = true,
                 travelDirection = frozenTravelDirection,
                 exitRotation = frozenExitRotation,
                 targetProxy = navigation.LockedProxy
@@ -219,8 +232,9 @@ public sealed class InterstellarCruiseController : MonoBehaviour
             elapsed += Time.unscaledDeltaTime;
             float progress = Mathf.Clamp01(elapsed / duration);
             float eased = Mathf.SmoothStep(0f, 1f, progress);
-            DoubleVector3 toTarget = frozenTargetPosition
-                - flightRuntime.ShipUniversePosition;
+            DoubleVector3 toTarget = UniversePosition.Delta(
+                flightRuntime.ShipPhysicalUniversePosition,
+                frozenTargetAddress);
             Vector3 direction = toTarget.ToVector3();
             if (direction.sqrMagnitude < 0.001f)
                 direction = -frozenLandingDirection;
@@ -278,11 +292,12 @@ public sealed class InterstellarCruiseController : MonoBehaviour
                 warpGate?.SetPhase(
                     InterstellarWarpState.Exiting,
                     stateTime / Mathf.Max(0.01f, exitDuration));
-                shipBody.velocity = frozenTravelDirection * exitSpeed;
+                HoldExitPose();
                 if (stateTime >= exitDuration)
                     SetWarpState(InterstellarWarpState.Cooldown);
                 break;
             case InterstellarWarpState.Cooldown:
+                HoldExitPose();
                 if (stateTime >= cooldownDuration)
                     SetWarpState(navigation != null && navigation.HasLockedTarget
                         ? InterstellarWarpState.Locked
@@ -551,7 +566,7 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         }
         else
         {
-            shipBody.velocity = frozenTravelDirection * exitSpeed;
+            HoldExitPose();
         }
         if (relocated && stateTime >= transitDuration)
             SetWarpState(InterstellarWarpState.Exiting);
@@ -613,14 +628,31 @@ public sealed class InterstellarCruiseController : MonoBehaviour
     {
         if (flightRuntime == null || frozenPlanet == null)
             return;
+        Vector3 orbitalVelocity = GalaxyTravelManager.Instance == null
+            ? Vector3.zero
+            : GalaxyTravelManager.Instance.GetInterstellarPlanetVelocity(
+                frozenPlanet.coordinate3D);
+        frozenExitVelocity = orbitalVelocity + frozenTravelDirection * exitSpeed;
+        ifcsMotor?.ClearExternalTargets();
         flightRuntime.WarpToUniversePosition(
-            frozenDestination,
-            frozenTravelDirection * exitSpeed,
+            frozenDestinationAddress,
+            frozenExitVelocity,
             frozenExitRotation);
         navigation?.MarkNearPlanet(frozenPlanet);
         warpGate?.NotifyRelocated();
-        if (ifcsMotor != null)
-            ifcsMotor.ResetControllerState();
+        ifcsMotor?.StabilizeAfterCinematic(
+            frozenExitRotation,
+            frozenExitVelocity);
+    }
+
+    void HoldExitPose()
+    {
+        if (shipBody == null)
+            return;
+
+        shipBody.rotation = frozenExitRotation;
+        shipBody.velocity = frozenExitVelocity;
+        shipBody.angularVelocity = Vector3.zero;
     }
 
     public void Abort()
@@ -645,13 +677,19 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         bool suppressCombat = next == InterstellarWarpState.Aligning
             || next == InterstellarWarpState.Spooling
             || next == InterstellarWarpState.Transit
-            || next == InterstellarWarpState.Exiting;
+            || next == InterstellarWarpState.Exiting
+            || next == InterstellarWarpState.Cooldown;
+        bool holdExitPose = next == InterstellarWarpState.Transit
+            || next == InterstellarWarpState.Exiting
+            || next == InterstellarWarpState.Cooldown;
+        flightRuntime?.SetWarpCinematic(suppressCombat);
+        cameraRig?.SetCinematicThirdPersonOverride(suppressCombat);
         if (weaponSystem != null)
             weaponSystem.ControlsEnabled = controlsEnabled && !suppressCombat;
         if (ifcsMotor != null)
         {
-            ifcsMotor.LinearControlEnabled = next != InterstellarWarpState.Transit
-                && next != InterstellarWarpState.Exiting;
+            ifcsMotor.LinearControlEnabled = !holdExitPose;
+            ifcsMotor.AngularControlEnabled = !holdExitPose;
             if (!suppressCombat)
             {
                 ifcsMotor.ClearExternalTargets();
@@ -661,7 +699,14 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         if (next == InterstellarWarpState.Cooldown)
         {
             EndTransitKinematicControl();
+            HoldExitPose();
+            ifcsMotor?.StabilizeAfterCinematic(
+                frozenExitRotation,
+                frozenExitVelocity);
             warpGate?.EndWarp();
+        }
+        if (!suppressCombat && cinematicInputSuppressed)
+        {
             SuppressCinematicInput(false);
             cameraRig?.SetCinematicFovOverride(null);
             cameraRig?.SetCinematicMotionOverride(false);
@@ -746,6 +791,8 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         EndTransitKinematicControl();
         cameraRig?.SetCinematicFovOverride(null);
         cameraRig?.SetCinematicMotionOverride(false);
+        cameraRig?.SetCinematicThirdPersonOverride(false);
+        flightRuntime?.SetWarpCinematic(false);
         warpGate?.EndWarp();
         SuppressCinematicInput(false);
         warpState = navigation != null && navigation.HasLockedTarget
@@ -754,7 +801,9 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         if (ifcsMotor != null)
         {
             ifcsMotor.LinearControlEnabled = true;
+            ifcsMotor.AngularControlEnabled = true;
             ifcsMotor.ClearExternalTargets();
+            ifcsMotor.ResetControllerState();
         }
         if (weaponSystem != null)
             weaponSystem.ControlsEnabled = controlsEnabled;
@@ -772,6 +821,21 @@ public sealed class InterstellarCruiseController : MonoBehaviour
             : new Vector3((float)(x / magnitude), (float)(y / magnitude), (float)(z / magnitude));
     }
 
+    public static Vector3 CalculateTravelDirection(
+        UniversePosition origin,
+        UniversePosition target)
+    {
+        DoubleVector3 delta = UniversePosition.Delta(origin, target);
+        double magnitude = System.Math.Sqrt(
+            delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+        return magnitude <= 0.000001d
+            ? Vector3.zero
+            : new Vector3(
+                (float)(delta.x / magnitude),
+                (float)(delta.y / magnitude),
+                (float)(delta.z / magnitude));
+    }
+
     public static DoubleVector3 CalculateWarpDestination(
         DoubleVector3 origin,
         DoubleVector3 target,
@@ -784,14 +848,28 @@ public sealed class InterstellarCruiseController : MonoBehaviour
             direction.z * targetExitDistance);
     }
 
+    public static UniversePosition CalculateWarpDestination(
+        UniversePosition origin,
+        UniversePosition target,
+        double targetExitDistance)
+    {
+        Vector3 direction = CalculateTravelDirection(origin, target);
+        return target.Add(new DoubleVector3(
+            -direction.x * targetExitDistance,
+            -direction.y * targetExitDistance,
+            -direction.z * targetExitDistance));
+    }
+
     public static double CalculateEntryCorridorDistance(PlanetCelestialProfile profile)
     {
         profile = profile != null ? profile.Clone() : PlanetCelestialProfile.CreateLargeDefault();
-        float terrainTop = profile.radius + profile.maximumTerrainElevation;
-        float atmosphereEntry = profile.HasAtmosphere
-            ? profile.radius + profile.atmosphereTopAltitude + 180f
-            : terrainTop + 620f;
-        return Mathf.Max(terrainTop + 520f, atmosphereEntry);
+        double terrainTop = profile.Physical.radiusMeters + profile.maximumTerrainElevation;
+        double atmosphereEntry = profile.HasAtmosphere
+            ? profile.Physical.radiusMeters
+                + profile.Physical.atmosphereTopAltitudeMeters
+                + 180_000d
+            : terrainTop + 620_000d;
+        return System.Math.Max(terrainTop + 520_000d, atmosphereEntry);
     }
 
     static InterstellarCruiseState MapLegacyState(InterstellarWarpState value)

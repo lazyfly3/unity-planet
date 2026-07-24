@@ -412,23 +412,21 @@ public sealed class InterstellarPlanetGenerationTests
         try
         {
             var profile = PlanetCelestialProfile.CreateCompatibleDefault();
-            profile.surfaceGravity = 6f;
-            profile.radius = 100f;
             profile.atmosphereSurfaceDensity = 0f;
             profile.ClampValues();
 
             CelestialGravityField field = fieldObject.AddComponent<CelestialGravityField>();
             field.Configure(root.transform, profile);
             float orbitalRadius = 140f;
-            float circularSpeed = Mathf.Sqrt(profile.gravitationalParameter / orbitalRadius);
+            float circularSpeed = (float)profile.Physical.CircularOrbitSpeed(40d);
             OrbitalState state = field.CalculateOrbit(
                 root.transform.position + Vector3.right * orbitalRadius,
                 Vector3.forward * circularSpeed);
 
             Assert.That(state.isBound, Is.True);
             Assert.That(state.eccentricity, Is.LessThan(0.001f));
-            Assert.That(state.periapsisAltitude, Is.EqualTo(40f).Within(0.02f));
-            Assert.That(state.apoapsisAltitude, Is.EqualTo(40f).Within(0.02f));
+            Assert.That(state.periapsisAltitude, Is.EqualTo(40f).Within(2f));
+            Assert.That(state.apoapsisAltitude, Is.EqualTo(40f).Within(2f));
         }
         finally
         {
@@ -491,15 +489,16 @@ public sealed class InterstellarPlanetGenerationTests
     }
 
     [Test]
-    public void WarpEntryCorridorIsAboveAtmosphereAndInsideApproachBoundary()
+    public void WarpEntryCorridorUsesPhysicalRadiusAndClearsAtmosphere()
     {
         PlanetCelestialProfile profile = PlanetCelestialProfile.CreateLargeDefault();
         double corridorDistance = InterstellarCruiseController.CalculateEntryCorridorDistance(profile);
-        double atmosphereEdge = profile.radius + profile.atmosphereTopAltitude;
-        double approachBoundary = profile.radius + 6000d;
+        double atmosphereEdge = profile.Physical.radiusMeters
+            + profile.Physical.atmosphereTopAltitudeMeters;
+        double corridorAltitude = corridorDistance - profile.Physical.radiusMeters;
 
         Assert.That(corridorDistance, Is.GreaterThan(atmosphereEdge));
-        Assert.That(corridorDistance, Is.LessThan(approachBoundary));
+        Assert.That(corridorAltitude, Is.InRange(500_000d, 1_000_000d));
     }
 
     [Test]

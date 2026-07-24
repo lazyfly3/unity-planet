@@ -15,9 +15,33 @@ MonoBehaviour:
   partId: thruster.large
   displayName: "\u5927\u578B\u63A8\u8FDB\u5668"
   prefab: {fileID: 7205414828565226656, guid: a23ccbe30dcdb3f438ed95732e24dba3, type: 3}
-  thumbnail: {fileID: 21300000, guid: 0d1386b9884324948bf0c7ea311b3740, type: 3}
-  baseMass: 12
-  baseThrust: 240
+  thumbnail: {fileID: 21300000, guid: a232e475f2682b74996c439810f39c65, type: 3}
+  category: 1
+  scaleMode: 0
+  placementMode: 0
+  baseMass: 950
+  baseThrust: 300000
   minimumScale: 0.6
   maximumScale: 1.5
+  fixedScale: 1
+  defaultMaterialId: paint.deep_space_blue
   exhaustColor: {r: 1, g: 0.34, b: 0.05, a: 1}
+  weapon:
+    damageChannel: 0
+    fireMode: 0
+    mountSize: 1
+    mountMode: 0
+    gimbalConeDegrees: 18
+    gimbalTrackingDegreesPerSecond: 120
+    defaultFireGroup: 1
+    roundsPerSecond: 8
+    damage: 6
+    projectileSpeed: 420
+    range: 1600
+    spreadDegrees: 0.25
+    ammunitionCapacity: 240
+    capacitorCost: 0
+    heatPerShot: 0.045
+    heatDissipation: 0.22
+    recoilImpulse: 0.45
+    impactImpulse: 5

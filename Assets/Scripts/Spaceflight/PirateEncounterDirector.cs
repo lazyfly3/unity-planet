@@ -24,6 +24,7 @@ public sealed class PirateEncounterDirector : MonoBehaviour
     SpaceCombatant playerCombatant;
     float nextSpawnTime;
     int encounterIndex;
+    bool localInteractionsEnabled = true;
 
     public bool EncountersEnabled => encountersEnabled;
     public int ActiveEnemyCount => activeEnemies.Count;
@@ -40,13 +41,15 @@ public sealed class PirateEncounterDirector : MonoBehaviour
         {
             flightRuntime.OriginShifted += HandleOriginShift;
             flightRuntime.UniverseRelocated += HandleUniverseRelocated;
+            flightRuntime.InteractionModeChanged += HandleInteractionModeChanged;
+            localInteractionsEnabled = flightRuntime.LocalInteractionsEnabled;
         }
         nextSpawnTime = Time.time + initialSpawnDelay;
     }
 
     void Update()
     {
-        if (!encountersEnabled)
+        if (!encountersEnabled || !localInteractionsEnabled)
             return;
 
         ResolvePlayer();
@@ -134,6 +137,9 @@ public sealed class PirateEncounterDirector : MonoBehaviour
 
         GameObject enemy = Instantiate(pirateShipPrefab, spawnPosition, rotation, enemyRoot);
         enemy.name = $"Pirate_{plan.seed}_{plan.tier}";
+        int physicsLayer = LayerMask.NameToLayer("SpacePhysicsBubble");
+        if (physicsLayer >= 0)
+            SetLayerRecursively(enemy, physicsLayer);
         ProceduralPirateShipGenerator generator = enemy.GetComponent<ProceduralPirateShipGenerator>();
         if (generator == null || !generator.Generate(plan.seed, plan.tier))
         {
@@ -247,13 +253,29 @@ public sealed class PirateEncounterDirector : MonoBehaviour
 
     void HandleUniverseRelocated(DoubleVector3 previousPosition, DoubleVector3 currentPosition)
     {
+        ClearActiveEnemies();
+        nextSpawnTime = Time.time + Mathf.Max(5f, spawnInterval);
+    }
+
+    void HandleInteractionModeChanged(SpaceflightInteractionMode mode)
+    {
+        localInteractionsEnabled = mode == SpaceflightInteractionMode.TacticalPhysics;
+        if (!localInteractionsEnabled)
+        {
+            ClearActiveEnemies();
+            return;
+        }
+        nextSpawnTime = Time.time + Mathf.Max(1f, initialSpawnDelay);
+    }
+
+    void ClearActiveEnemies()
+    {
         for (int index = activeEnemies.Count - 1; index >= 0; index--)
         {
             if (activeEnemies[index] != null)
                 Destroy(activeEnemies[index]);
         }
         activeEnemies.Clear();
-        nextSpawnTime = Time.time + Mathf.Max(5f, spawnInterval);
     }
 
     void OnDisable()
@@ -262,7 +284,18 @@ public sealed class PirateEncounterDirector : MonoBehaviour
         {
             flightRuntime.OriginShifted -= HandleOriginShift;
             flightRuntime.UniverseRelocated -= HandleUniverseRelocated;
+            flightRuntime.InteractionModeChanged -= HandleInteractionModeChanged;
         }
+    }
+
+    static void SetLayerRecursively(GameObject root, int layer)
+    {
+        if (root == null)
+            return;
+        root.layer = layer;
+        Transform rootTransform = root.transform;
+        for (int index = 0; index < rootTransform.childCount; index++)
+            SetLayerRecursively(rootTransform.GetChild(index).gameObject, layer);
     }
 
     static ulong Hash(uint seed, uint index)

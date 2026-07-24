@@ -7,6 +7,7 @@ public sealed class InterstellarFlightHud : MonoBehaviour
 {
     [SerializeField] InterstellarShipController ship;
     [SerializeField] InterstellarNavigationSystem navigation;
+    [SerializeField] InterstellarFlightRuntime flightRuntime;
     [SerializeField] SpacecraftDamageReceiver damageReceiver;
     [SerializeField] PirateEncounterDirector pirateEncounterDirector;
     [SerializeField] Camera worldCamera;
@@ -54,6 +55,16 @@ public sealed class InterstellarFlightHud : MonoBehaviour
     readonly Text[] planetLightDots = new Text[MaximumPlanetLights];
     readonly Text[] planetLightRings = new Text[MaximumPlanetLights];
     readonly Text[] planetLightLabels = new Text[MaximumPlanetLights];
+    SpaceflightTelemetrySnapshot currentTelemetry;
+    SpaceflightHudPresentationMode presentationMode;
+
+    public SpaceflightTelemetrySnapshot CurrentTelemetry => currentTelemetry;
+    public SpaceflightHudPresentationMode PresentationMode => presentationMode;
+    public Font HudFont => integrityText != null
+        ? integrityText.font
+        : weaponGroupText != null
+            ? weaponGroupText.font
+            : null;
 
     struct ThreatSlot
     {
@@ -68,6 +79,8 @@ public sealed class InterstellarFlightHud : MonoBehaviour
             ship = FindObjectOfType<InterstellarShipController>();
         if (navigation == null)
             navigation = FindObjectOfType<InterstellarNavigationSystem>();
+        if (flightRuntime == null)
+            flightRuntime = FindObjectOfType<InterstellarFlightRuntime>();
         if (damageReceiver == null && ship != null)
             damageReceiver = ship.GetComponent<SpacecraftDamageReceiver>();
         if (pirateEncounterDirector == null)
@@ -156,6 +169,78 @@ public sealed class InterstellarFlightHud : MonoBehaviour
                 enemyThreatArrows[0].parent.SetAsLastSibling();
             }
         }
+        unifiedLayout.SetPresentationMode(presentationMode);
+    }
+
+    public void SetPresentationMode(SpaceflightHudPresentationMode mode)
+    {
+        presentationMode = mode;
+        if (unifiedLayout == null)
+            RebuildUnifiedLayout();
+        unifiedLayout?.SetPresentationMode(mode);
+    }
+
+    public int CopyRadarContacts(SpaceflightRadarContact[] buffer)
+    {
+        if (buffer == null || buffer.Length == 0 || ship == null)
+            return 0;
+
+        int count = 0;
+        int planetCount = navigation == null
+            ? 0
+            : navigation.CopyTargetSnapshots(planetSnapshots);
+        for (int index = 0; index < planetCount && count < buffer.Length; index++)
+        {
+            InterstellarPlanetTargetSnapshot snapshot = planetSnapshots[index];
+            Vector3 worldDirection = navigation.GetDirectionToUniversePosition(snapshot.universeAddress);
+            buffer[count++] = new SpaceflightRadarContact
+            {
+                localDirection = ship.transform.InverseTransformDirection(worldDirection),
+                distance = (float)snapshot.distance,
+                color = snapshot.color,
+                kind = SpaceflightRadarContactKind.Planet,
+                selected = snapshot.locked
+            };
+        }
+
+        int threatCount = pirateEncounterDirector == null
+            ? 0
+            : pirateEncounterDirector.GetActiveThreatsNonAlloc(threatQueryBuffer);
+        for (int index = 0; index < threatCount && count < buffer.Length; index++)
+        {
+            PirateShipAiController threat = threatQueryBuffer[index];
+            if (threat == null)
+                continue;
+            Vector3 delta = threat.AimPosition - ship.transform.position;
+            buffer[count++] = new SpaceflightRadarContact
+            {
+                localDirection = ship.transform.InverseTransformDirection(delta.normalized),
+                distance = delta.magnitude,
+                color = HudDanger,
+                kind = SpaceflightRadarContactKind.Combatant,
+                selected = ship.WeaponSystem != null
+                    && ship.WeaponSystem.CurrentTarget != null
+                    && ship.WeaponSystem.CurrentTarget.Owns(threat.transform)
+            };
+        }
+
+        SpacecraftWeaponSystem weapons = ship.WeaponSystem;
+        ISpaceWeaponTarget target = weapons == null ? null : weapons.CurrentTarget;
+        if (target != null
+            && target.TargetKind == SpaceWeaponTargetKind.Asteroid
+            && count < buffer.Length)
+        {
+            Vector3 delta = target.AimPosition - ship.transform.position;
+            buffer[count++] = new SpaceflightRadarContact
+            {
+                localDirection = ship.transform.InverseTransformDirection(delta.normalized),
+                distance = delta.magnitude,
+                color = HudAmber,
+                kind = SpaceflightRadarContactKind.Asteroid,
+                selected = true
+            };
+        }
+        return count;
     }
 
     void OnEnable()
@@ -178,31 +263,52 @@ public sealed class InterstellarFlightHud : MonoBehaviour
     void Update()
     {
         SpacecraftControlTelemetry telemetry = ship == null ? default : ship.Telemetry;
+        CaptureTelemetry(telemetry);
         if (targetText != null)
             targetText.text = navigation != null && navigation.HasLockedTarget
-                ? $"{navigation.TargetName}　　{FormatDistance(navigation.TargetDistance)}"
+                ? $"{navigation.TargetName}　　{FormatDistance(navigation.TargetDistance)}　　" +
+                    $"接近速度 {SpaceflightUnitFormatter.FormatSpeed(currentTelemetry.closingSpeed)}"
                 : string.Empty;
         if (unifiedLayout != null && unifiedLayout.TargetStrip != null)
             unifiedLayout.TargetStrip.gameObject.SetActive(
                 navigation != null && navigation.HasLockedTarget);
         if (speedText != null)
-            speedText.text = $"速度  {(ship == null ? 0f : ship.Speed):0} m/s";
+        {
+            speedText.text = currentTelemetry.cinematicTransit
+                ? ship != null && ship.SurfaceEntryActive
+                    ? "航行状态  再入过渡"
+                    : "航行状态  跃迁航行"
+                : currentTelemetry.interactionMode == SpaceflightInteractionMode.HighSpeedTravel
+                    ? $"实际速度  {SpaceflightUnitFormatter.FormatSpeed(currentTelemetry.speed)}　高速航行层"
+                    : $"实际速度  {SpaceflightUnitFormatter.FormatSpeed(currentTelemetry.speed)}";
+        }
         if (flightModeText != null)
-            flightModeText.text = telemetry.assistMode == SpacecraftAssistMode.Decoupled
+            flightModeText.text = (telemetry.assistMode == SpacecraftAssistMode.Decoupled
                 ? "惯性模式"
-                : "辅助模式";
+                : telemetry.assistMode == SpacecraftAssistMode.Direct
+                    ? "直接控制"
+                    : "辅助模式")
+                + " · "
+                + SpaceflightUnitFormatter.FormatReference(currentTelemetry.velocityReference)
+                + (currentTelemetry.interactionMode == SpaceflightInteractionMode.HighSpeedTravel
+                    ? " · 局部碰撞离线"
+                    : string.Empty);
         if (authorityText != null)
         {
-            authorityText.text = $"控制权威  {telemetry.controlAuthority * 100f:0}%";
-            authorityText.gameObject.SetActive(telemetry.controlAuthority < 0.98f);
+            bool authorityLimited = telemetry.controlAuthority < 0.98f;
+            authorityText.text = authorityLimited
+                ? $"控制权威 {telemetry.controlAuthority * 100f:0}%　" +
+                    $"加速度 {SpaceflightUnitFormatter.FormatAcceleration(telemetry.currentAcceleration.magnitude)}"
+                : $"加速度 {SpaceflightUnitFormatter.FormatAcceleration(telemetry.currentAcceleration.magnitude)}　" +
+                    $"推力 {SpaceflightUnitFormatter.FormatForce(telemetry.appliedLocalForce.magnitude)}";
+            authorityText.color = authorityLimited ? HudAmber : HudCyan;
+            authorityText.gameObject.SetActive(!currentTelemetry.cinematicTransit);
         }
         if (speedLimitText != null)
         {
-            speedLimitText.text = $"速度限制  {telemetry.speedLimit:0} m/s";
-            float speedRatio = telemetry.speedLimit <= 0f
-                ? 0f
-                : (ship == null ? 0f : ship.Speed) / telemetry.speedLimit;
-            speedLimitText.gameObject.SetActive(speedRatio >= 0.85f);
+            speedLimitText.text =
+                $"IFCS 设定  {SpaceflightUnitFormatter.FormatSpeed(telemetry.targetSpeed)}";
+            speedLimitText.gameObject.SetActive(!currentTelemetry.cinematicTransit);
         }
         if (boostText != null)
             boostText.text = $"BOOST  {telemetry.boostRatio * 100f:0}%";
@@ -216,6 +322,97 @@ public sealed class InterstellarFlightHud : MonoBehaviour
         UpdateThreatArrows();
         if (warpOverlay != null)
             warpOverlay.SetIntensity(ship == null ? 0f : ship.WarpVisualIntensity);
+    }
+
+    void CaptureTelemetry(SpacecraftControlTelemetry control)
+    {
+        SpacecraftWeaponSystem weapons = ship == null ? null : ship.WeaponSystem;
+        ISpaceWeaponTarget target = weapons == null ? null : weapons.CurrentTarget;
+        float hullRatio = damageReceiver == null || damageReceiver.MaximumIntegrity <= 0f
+            ? 1f
+            : Mathf.Clamp01(damageReceiver.Integrity / damageReceiver.MaximumIntegrity);
+        string lockLabel = weapons == null
+            ? "武器离线"
+            : !weapons.SelectedGroupHasGimbal
+                ? "固定准星"
+                : !weapons.TargetLockEnabled
+                    ? "云台待机"
+                    : weapons.CurrentTargetKind == SpaceWeaponTargetKind.Combatant
+                        ? "海盗锁定"
+                        : weapons.CurrentTargetKind == SpaceWeaponTargetKind.Asteroid
+                            ? "陨石锁定"
+                            : "搜索目标";
+        if (flightRuntime != null
+            && flightRuntime.InteractionMode != SpaceflightInteractionMode.TacticalPhysics)
+        {
+            lockLabel = flightRuntime.InteractionMode == SpaceflightInteractionMode.WarpCinematic
+                ? "跃迁锁定"
+                : "高速航行 · 武器离线";
+        }
+        bool nearPlanet = navigation != null && navigation.IsNearLockedPlanet;
+        Vector3 referenceVelocity = nearPlanet
+            ? navigation.LockedPlanetVelocity
+            : Vector3.zero;
+        Vector3 relativeVelocity = ship == null || ship.ShipBody == null
+            ? Vector3.zero
+            : ship.ShipBody.velocity - referenceVelocity;
+        Vector3 targetDirection = navigation != null && navigation.HasLockedTarget
+            ? navigation.DirectionToTarget
+            : Vector3.zero;
+        currentTelemetry = new SpaceflightTelemetrySnapshot
+        {
+            valid = ship != null,
+            speed = relativeVelocity.magnitude,
+            targetSpeed = control.targetSpeed,
+            closingSpeed = targetDirection.sqrMagnitude < 0.001f
+                ? 0f
+                : Vector3.Dot(relativeVelocity, targetDirection),
+            acceleration = control.currentAcceleration,
+            appliedLocalForce = control.appliedLocalForce,
+            shipMass = control.shipMass,
+            velocityReference = nearPlanet
+                ? SpaceflightVelocityReference.PlanetInertial
+                : SpaceflightVelocityReference.SystemBarycentric,
+            cinematicTransit = ship != null && (ship.CruiseActive || ship.SurfaceEntryActive),
+            interactionMode = flightRuntime == null
+                ? SpaceflightInteractionMode.TacticalPhysics
+                : flightRuntime.InteractionMode,
+            scaleLayer = flightRuntime == null
+                || flightRuntime.InteractionMode == SpaceflightInteractionMode.TacticalPhysics
+                    ? SpaceflightScaleLayer.MeterPhysicsBubble
+                    : flightRuntime.InteractionMode == SpaceflightInteractionMode.WarpCinematic
+                        ? SpaceflightScaleLayer.WarpCinematic
+                        : SpaceflightScaleLayer.KilometerHighSpeed,
+            highSpeedTravel = flightRuntime != null
+                && flightRuntime.InteractionMode == SpaceflightInteractionMode.HighSpeedTravel,
+            kilometerLayerVelocity = flightRuntime == null
+                ? SpaceKilometerScale.ToKilometerUnitsPerSecond(relativeVelocity)
+                : SpaceKilometerScale.ToKilometerUnitsPerSecond(
+                    flightRuntime.ShipRelativeVelocityMetersPerSecond),
+            hullRatio = hullRatio,
+            boostRatio = control.boostRatio,
+            speedLimit = control.speedLimit,
+            controlAuthority = control.controlAuthority,
+            assistMode = control.assistMode,
+            weaponGroup = weapons == null ? 0 : weapons.SelectedGroup,
+            ammunition = weapons == null ? 0 : weapons.SelectedAmmunition,
+            ammunitionCapacity = weapons == null ? 0 : weapons.SelectedAmmunitionCapacity,
+            capacitorRatio = weapons == null ? 0f : weapons.CapacitorRatio,
+            heatRatio = weapons == null ? 0f : weapons.SelectedHeat,
+            mountLabel = weapons == null ? "挂载 --" : LocalizedMountLabel(weapons.SelectedMountLabel),
+            lockLabel = lockLabel,
+            targetName = target == null || target.TargetTransform == null
+                ? navigation != null && navigation.HasLockedTarget
+                    ? navigation.TargetName
+                    : string.Empty
+                : target.TargetTransform.name,
+            targetDistance = target == null
+                ? navigation != null && navigation.HasLockedTarget
+                    ? navigation.TargetDistance
+                    : 0d
+                : Vector3.Distance(ship.transform.position, target.AimPosition),
+            targetKind = weapons == null ? SpaceWeaponTargetKind.None : weapons.CurrentTargetKind
+        };
     }
 
     void UpdateWeapons()
@@ -475,7 +672,7 @@ public sealed class InterstellarFlightHud : MonoBehaviour
             }
 
             InterstellarPlanetTargetSnapshot snapshot = planetSnapshots[index];
-            Vector3 direction = navigation.GetDirectionToUniversePosition(snapshot.universePosition);
+            Vector3 direction = navigation.GetDirectionToUniversePosition(snapshot.universeAddress);
             float forwardDot = Vector3.Dot(worldCamera.transform.forward, direction);
             Vector3 viewport = worldCamera.WorldToViewportPoint(
                 worldCamera.transform.position + direction * 10f);
@@ -753,7 +950,7 @@ public sealed class InterstellarFlightHud : MonoBehaviour
 
     static string FormatDistance(double distance)
     {
-        return distance >= 1000d ? $"{distance / 1000d:0.0} km" : $"{distance:0} m";
+        return SpaceflightUnitFormatter.FormatDistance(distance);
     }
 
 }

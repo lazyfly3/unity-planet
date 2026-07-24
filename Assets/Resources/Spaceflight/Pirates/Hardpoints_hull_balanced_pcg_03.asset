@@ -1,0 +1,99 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3fc2d10f808d92458d7d225fc409d72, type: 3}
+  m_Name: Hardpoints_hull_balanced_pcg_03
+  m_EditorClassIdentifier: 
+  hullId: hull.balanced.pcg.03
+  hardpoints:
+  - hardpointId: engine_outer_l
+    mirrorHardpointId: engine_outer_r
+    category: 1
+    localPosition: {x: -0.84000003, y: 0, z: 2.58}
+    localEulerAngles: {x: 0, y: 180, z: 0}
+    minimumWeaponSize: 1
+    maximumWeaponSize: 3
+    allowsFixedWeapons: 1
+    allowsGimbaledWeapons: 1
+  - hardpointId: engine_outer_r
+    mirrorHardpointId: engine_outer_l
+    category: 1
+    localPosition: {x: 0.84000003, y: 0, z: 2.58}
+    localEulerAngles: {x: 0, y: 180, z: 0}
+    minimumWeaponSize: 1
+    maximumWeaponSize: 3
+    allowsFixedWeapons: 1
+    allowsGimbaledWeapons: 1
+  - hardpointId: engine_upper_l
+    mirrorHardpointId: engine_upper_r
+    category: 1
+    localPosition: {x: -0.48, y: 0.616, z: 2.6999998}
+    localEulerAngles: {x: 0, y: 180, z: 0}
+    minimumWeaponSize: 1
+    maximumWeaponSize: 3
+    allowsFixedWeapons: 1
+    allowsGimbaledWeapons: 1
+  - hardpointId: engine_upper_r
+    mirrorHardpointId: engine_upper_l
+    category: 1
+    localPosition: {x: 0.48, y: 0.616, z: 2.6999998}
+    localEulerAngles: {x: 0, y: 180, z: 0}
+    minimumWeaponSize: 1
+    maximumWeaponSize: 3
+    allowsFixedWeapons: 1
+    allowsGimbaledWeapons: 1
+  - hardpointId: weapon_dorsal_l
+    mirrorHardpointId: weapon_dorsal_r
+    category: 2
+    localPosition: {x: -1.02, y: 1.0120001, z: 0.48}
+    localEulerAngles: {x: 90, y: 0, z: 0}
+    minimumWeaponSize: 1
+    maximumWeaponSize: 3
+    allowsFixedWeapons: 1
+    allowsGimbaledWeapons: 1
+  - hardpointId: weapon_dorsal_r
+    mirrorHardpointId: weapon_dorsal_l
+    category: 2
+    localPosition: {x: 1.02, y: 1.0120001, z: 0.48}
+    localEulerAngles: {x: 90, y: 0, z: 0}
+    minimumWeaponSize: 1
+    maximumWeaponSize: 3
+    allowsFixedWeapons: 1
+    allowsGimbaledWeapons: 1
+  - hardpointId: weapon_side_l
+    mirrorHardpointId: weapon_side_r
+    category: 2
+    localPosition: {x: -1.4399999, y: 0, z: 0.71999997}
+    localEulerAngles: {x: 90, y: 0, z: 0}
+    minimumWeaponSize: 1
+    maximumWeaponSize: 3
+    allowsFixedWeapons: 1
+    allowsGimbaledWeapons: 1
+  - hardpointId: weapon_side_r
+    mirrorHardpointId: weapon_side_l
+    category: 2
+    localPosition: {x: 1.4399999, y: 0, z: 0.71999997}
+    localEulerAngles: {x: 90, y: 0, z: 0}
+    minimumWeaponSize: 1
+    maximumWeaponSize: 3
+    allowsFixedWeapons: 1
+    allowsGimbaledWeapons: 1
+  decorationRegions:
+  - regionId: dorsal
+    localCenter: {x: 0, y: 0, z: 0}
+    localExtents: {x: 1.14, y: 1.056, z: 2.16}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+  - regionId: lateral
+    localCenter: {x: 0, y: 0, z: -0.71999997}
+    localExtents: {x: 1.4399999, y: 0.66, z: 1.6800001}
+    localEulerAngles: {x: -90, y: 0, z: 0}
+  minimumForwardAcceleration: 0.55
+  maximumLateralMassImbalance: 0.045

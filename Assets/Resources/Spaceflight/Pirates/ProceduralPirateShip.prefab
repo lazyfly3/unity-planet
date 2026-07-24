@@ -48,8 +48,29 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   definitions:
   - {fileID: 11400000, guid: 72bcbef385f28c74593785b91e180fc5, type: 2}
-  - {fileID: 11400000, guid: dfb09f8ee160767458e186e76eeae09d, type: 2}
+  - {fileID: 11400000, guid: 3309b8fb342e85f43a9ad68a1efcea1d, type: 2}
+  - {fileID: 11400000, guid: f6fa1e5b739d7bf458c157b4cd32b524, type: 2}
+  - {fileID: 11400000, guid: 279600063ba50b04fa6aef6d3c67dc6b, type: 2}
+  - {fileID: 11400000, guid: 6b715244cc3bd3748b4d52a12b38eca3, type: 2}
+  - {fileID: 11400000, guid: 089787c1e3496544ea91f41c87ef5344, type: 2}
+  - {fileID: 11400000, guid: f863adb0eca51774b8b0500a12b1935f, type: 2}
+  - {fileID: 11400000, guid: 4d4e7ad1ab228144cba7c90c5a5479c0, type: 2}
   - {fileID: 11400000, guid: 07ea960b540ab794fae06bbb7e3344d2, type: 2}
+  - {fileID: 11400000, guid: 2cbda0895c53ed643923b899b64f35fa, type: 2}
+  - {fileID: 11400000, guid: 7efa3cbeb69333e4cbcee8a34ea7ed65, type: 2}
+  - {fileID: 11400000, guid: cab8c616e44619e40ae0f27195917cc6, type: 2}
+  - {fileID: 11400000, guid: 6a49ea2becd75a34a8355148b0052fc0, type: 2}
+  - {fileID: 11400000, guid: 9d513d5b1a3b338449f0b0e5d6477140, type: 2}
+  - {fileID: 11400000, guid: 9a09a19edf899824cacf7712d4441458, type: 2}
+  - {fileID: 11400000, guid: 92a7b2c27a7c13341807b6bbe0ab4854, type: 2}
+  - {fileID: 11400000, guid: dfb09f8ee160767458e186e76eeae09d, type: 2}
+  - {fileID: 11400000, guid: 1e203cf216370a14bb877ceaa9230158, type: 2}
+  - {fileID: 11400000, guid: eb80bd3ffd00f9b4cadf0b4c9d960270, type: 2}
+  - {fileID: 11400000, guid: e11a4de77a16cfe4d98b8255e1f5163d, type: 2}
+  - {fileID: 11400000, guid: acad897dc7bc614478d47b34738a5753, type: 2}
+  - {fileID: 11400000, guid: 3a61196b8bc5a4349a976451563e482b, type: 2}
+  - {fileID: 11400000, guid: 873b6f6bafaa2014ebad5c6c37cfbea0, type: 2}
+  - {fileID: 11400000, guid: 6f550679c2a4496478c03edc2ddf4678, type: 2}
 --- !u!114 &1882010342613998452
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -100,29 +121,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   definitions:
   - materialId: paint.deep_space_blue
-    displayName: "\u6DF1\u7A7A\u84DD"
+    displayName: "\u6DF1\u7A7A\u949B\u84DD"
     material: {fileID: 2100000, guid: cd2c25d143d1e1c4eb2c60a2b929bac5, type: 2}
-    previewColor: {r: 0.025, g: 0.2, b: 0.36, a: 1}
+    previewColor: {r: 0.18, g: 0.42, b: 0.7, a: 1}
   - materialId: paint.gunmetal
-    displayName: "\u67AA\u7070"
+    displayName: "\u55B7\u7802\u67AA\u7070"
     material: {fileID: 2100000, guid: 2a533289e43dc5d45b715206fcf81088, type: 2}
-    previewColor: {r: 0.16, g: 0.19, b: 0.23, a: 1}
+    previewColor: {r: 0.32, g: 0.35, b: 0.38, a: 1}
   - materialId: paint.ceramic_white
-    displayName: "\u9676\u74F7\u767D"
+    displayName: "\u822A\u7A7A\u62C9\u4E1D\u94DD"
     material: {fileID: 2100000, guid: 7d51f7999275d5d459a1d1756a44b25b, type: 2}
-    previewColor: {r: 0.78, g: 0.86, b: 0.9, a: 1}
+    previewColor: {r: 0.76, g: 0.8, b: 0.82, a: 1}
   - materialId: paint.warning_red
-    displayName: "\u8B66\u6212\u7EA2"
+    displayName: "\u7EA2\u8272\u9540\u950C\u94A2"
     material: {fileID: 2100000, guid: b632582e73e26c84aa552c5483d77231, type: 2}
-    previewColor: {r: 0.68, g: 0.055, b: 0.045, a: 1}
+    previewColor: {r: 0.66, g: 0.15, b: 0.12, a: 1}
   - materialId: paint.industrial_copper
-    displayName: "\u5DE5\u4E1A\u94DC"
+    displayName: "\u6C27\u5316\u5DE5\u4E1A\u94DC"
     material: {fileID: 2100000, guid: 0887fa0151e13194e8b2d31b3d63ae51, type: 2}
-    previewColor: {r: 0.46, g: 0.2, b: 0.075, a: 1}
+    previewColor: {r: 0.63, g: 0.29, b: 0.1, a: 1}
   - materialId: paint.explorer_green
-    displayName: "\u63A2\u7D22\u7EFF"
+    displayName: "\u7EFF\u8272\u519B\u7528\u94A2"
     material: {fileID: 2100000, guid: 990692263329afe4886cc9d2386e4183, type: 2}
-    previewColor: {r: 0.045, g: 0.36, b: 0.22, a: 1}
+    previewColor: {r: 0.18, g: 0.42, b: 0.28, a: 1}
+  - materialId: paint.brushed_brass
+    displayName: "\u62C9\u4E1D\u9EC4\u94DC"
+    material: {fileID: 2100000, guid: a40f780fd15cafc4eaccc6c958a09af3, type: 2}
+    previewColor: {r: 0.67, g: 0.48, b: 0.14, a: 1}
+  - materialId: paint.graphite_pitted
+    displayName: "\u8680\u523B\u77F3\u58A8\u91D1\u5C5E"
+    material: {fileID: 2100000, guid: 76fe4bc9c29e97440b33df109635179b, type: 2}
+    previewColor: {r: 0.18, g: 0.2, b: 0.22, a: 1}
   defaultMaterialId: paint.deep_space_blue
 --- !u!1 &6015423107657650506
 GameObject:
@@ -358,8 +387,29 @@ MonoBehaviour:
   materialCatalog: {fileID: 2796705536112151102}
   layouts:
   - {fileID: 11400000, guid: 355caa559ab107545970bd2efee48dc8, type: 2}
-  - {fileID: 11400000, guid: fba165ec8a09c1546aef5c3706079b51, type: 2}
+  - {fileID: 11400000, guid: c80f4cdd1fd05834e9a7827f4d224fc2, type: 2}
+  - {fileID: 11400000, guid: f38f69542eb002e49baec1a16fdaa5fb, type: 2}
+  - {fileID: 11400000, guid: 63ca598951368514cbf8bafed144636d, type: 2}
+  - {fileID: 11400000, guid: fd0b6ccfdf1583346a6b65a72434c5c4, type: 2}
+  - {fileID: 11400000, guid: 4d456b5235ee1e04085a6de774607bb1, type: 2}
+  - {fileID: 11400000, guid: cdcaabe94efc92c48a11c7616c1afdaa, type: 2}
+  - {fileID: 11400000, guid: 4ea1ec87480c98a4e88c60e0daa12fdf, type: 2}
   - {fileID: 11400000, guid: 6e9fce9baff9e74418fa34488af1ce3a, type: 2}
+  - {fileID: 11400000, guid: abfa19fbd0eadee4f99202672b3648bb, type: 2}
+  - {fileID: 11400000, guid: 0a75ddd65ac8ea847847338b8d434b72, type: 2}
+  - {fileID: 11400000, guid: 8c2007754cc55c4498a02497a61a4c89, type: 2}
+  - {fileID: 11400000, guid: ac0cc1a0f554d4a4e95fe6e3c11439fa, type: 2}
+  - {fileID: 11400000, guid: 7778c02011b513f409f2adf87ff65785, type: 2}
+  - {fileID: 11400000, guid: 724700b4c2094624fbc958c0b1a29a5a, type: 2}
+  - {fileID: 11400000, guid: f52b2e9ad20e0ce448a8662fa4a129ac, type: 2}
+  - {fileID: 11400000, guid: fba165ec8a09c1546aef5c3706079b51, type: 2}
+  - {fileID: 11400000, guid: af4694072ac00404aa044ae1f1ecbfd3, type: 2}
+  - {fileID: 11400000, guid: d6f21a03fe9df2243ad548377624c1fe, type: 2}
+  - {fileID: 11400000, guid: 8e33a325154c28e41bbef1ff902b4fb9, type: 2}
+  - {fileID: 11400000, guid: 78a5ddb56b9a42841a2fcd0da3ec4260, type: 2}
+  - {fileID: 11400000, guid: 7770a4679c067f348944cf5f82a01f62, type: 2}
+  - {fileID: 11400000, guid: a8a1532ca26adf94380f93b27f568515, type: 2}
+  - {fileID: 11400000, guid: 959eb09f52193ca46a7567a88a31c75c, type: 2}
   hullController: {fileID: 7265110495024101949}
   assembly: {fileID: 8174825808691906027}
   ifcsMotor: {fileID: 7394741966040931846}

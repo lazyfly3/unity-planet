@@ -92,6 +92,345 @@ public sealed class ProceduralPlanetLabTests
     }
 
     [Test]
+    public void PlanarPatchIsDeterministicAndSamplesSphereAtItsCenter()
+    {
+        ProceduralPlanetPreset preset =
+            ScriptableObject.CreateInstance<ProceduralPlanetPreset>();
+        preset.ApplyTemplate(ProceduralPlanetLabTemplate.TemperateOcean);
+        preset.radius = 1200f;
+        preset.planar.autoAnchor = false;
+        preset.planar.anchorLatitude = 28f;
+        preset.planar.anchorLongitude = -64f;
+        GalaxyPlanetDefinition definition = preset.CloneDefinition();
+        PlanetLabPlanarPatchBuildResult first =
+            PlanetLabPlanarPatchMeshBuilder.Build(definition, preset.planar, 12);
+        PlanetLabPlanarPatchBuildResult second =
+            PlanetLabPlanarPatchMeshBuilder.Build(definition, preset.planar, 12);
+        try
+        {
+            Assert.AreEqual(
+                first.terrainMesh.vertexCount,
+                second.terrainMesh.vertexCount);
+            CollectionAssert.AreEqual(
+                first.terrainMesh.vertices,
+                second.terrainMesh.vertices);
+            Assert.That(
+                first.terrainMesh.bounds.size.x,
+                Is.EqualTo(PlanetLabPlanarSettings.PatchSize).Within(0.001f));
+            Assert.That(
+                first.terrainMesh.bounds.size.z,
+                Is.EqualTo(PlanetLabPlanarSettings.PatchSize).Within(0.001f));
+
+            float expectedCenterHeight =
+                VoxelQuadSphereTerrain.GetSurfaceNoise(
+                    preset.planar.AnchorDirection * preset.radius,
+                    preset.seed,
+                    preset.terrain);
+            Assert.That(
+                first.centerHeight,
+                Is.EqualTo(expectedCenterHeight).Within(0.0001f));
+            Assert.That(
+                first.spawnPosition.y,
+                Is.GreaterThan(first.centerHeight));
+            Assert.Greater(first.oceanMesh.bounds.size.y, 1f);
+            Assert.IsTrue(first.terrainMesh.vertices.All(vertex =>
+                float.IsFinite(vertex.x)
+                && float.IsFinite(vertex.y)
+                && float.IsFinite(vertex.z)));
+            Assert.IsTrue(first.terrainMesh.normals.All(normal =>
+                float.IsFinite(normal.x)
+                && float.IsFinite(normal.y)
+                && float.IsFinite(normal.z)));
+        }
+        finally
+        {
+            Object.DestroyImmediate(first.terrainMesh);
+            Object.DestroyImmediate(first.oceanMesh);
+            Object.DestroyImmediate(second.terrainMesh);
+            Object.DestroyImmediate(second.oceanMesh);
+            Object.DestroyImmediate(preset);
+        }
+    }
+
+    [Test]
+    public void AutomaticPlanarAnchorIsStableAndSelectsLand()
+    {
+        ProceduralPlanetPreset preset =
+            ScriptableObject.CreateInstance<ProceduralPlanetPreset>();
+        preset.ApplyTemplate(ProceduralPlanetLabTemplate.TemperateOcean);
+        preset.radius = 1200f;
+        GalaxyPlanetDefinition definition = preset.CloneDefinition();
+        try
+        {
+            Vector3 first =
+                PlanetLabPlanarPatchMeshBuilder.FindBestLandAnchor(definition);
+            Vector3 second =
+                PlanetLabPlanarPatchMeshBuilder.FindBestLandAnchor(definition);
+            float height = VoxelQuadSphereTerrain.GetSurfaceNoise(
+                first * preset.radius,
+                preset.seed,
+                preset.terrain);
+            float seaHeight = preset.visual.oceanLevel
+                * preset.maximumTerrainElevation;
+
+            Assert.That(first.magnitude, Is.EqualTo(1f).Within(0.0001f));
+            Assert.That(Vector3.Distance(first, second), Is.LessThan(0.0001f));
+            Assert.That(height, Is.GreaterThan(seaHeight));
+        }
+        finally
+        {
+            Object.DestroyImmediate(preset);
+        }
+    }
+
+    [Test]
+    public void SurfaceModeSwitchBuildsPlanarColliderAndPreservesGlobeMesh()
+    {
+        LabRig rig = CreateRig();
+        try
+        {
+            rig.controller.RebuildNow(12);
+            Mesh globeMesh = rig.controller.TerrainMesh;
+
+            rig.controller.SetSurfaceMode(PlanetLabSurfaceMode.Planar);
+            Assert.AreSame(globeMesh, rig.controller.TerrainMesh);
+            Assert.IsNotNull(rig.controller.PlanarTerrainMesh);
+            Assert.IsNotNull(
+                rig.root.GetComponentInChildren<MeshCollider>(true).sharedMesh);
+            Assert.IsFalse(rig.root.transform.Find("Planet").gameObject.activeSelf);
+            Assert.IsTrue(
+                rig.root.transform.Find("PlanarExperiment").gameObject.activeSelf);
+
+            rig.controller.SetSurfaceMode(PlanetLabSurfaceMode.Globe);
+            Assert.IsTrue(rig.root.transform.Find("Planet").gameObject.activeSelf);
+            Assert.IsFalse(
+                rig.root.transform.Find("PlanarExperiment").gameObject.activeSelf);
+        }
+        finally
+        {
+            DestroyRig(rig);
+        }
+    }
+
+    [Test]
+    public void InfinitePlanarChunksAreDeterministicAndShareSeamHeights()
+    {
+        ProceduralPlanetPreset preset =
+            ScriptableObject.CreateInstance<ProceduralPlanetPreset>();
+        preset.ApplyTemplate(ProceduralPlanetLabTemplate.TemperateOcean);
+        preset.radius = 1200f;
+        preset.planar.autoAnchor = false;
+        preset.planar.anchorLatitude = 28f;
+        preset.planar.anchorLongitude = -64f;
+        GalaxyPlanetDefinition definition = preset.CloneDefinition();
+        Vector3 anchor = preset.planar.AnchorDirection;
+        PlanetLabPlanarPatchMeshBuilder.BuildTangentBasis(
+            anchor,
+            out Vector3 east,
+            out Vector3 north);
+
+        Mesh first = PlanetLabInfiniteTerrainStreamer.BuildInfiniteChunkMesh(
+            definition, anchor, east, north, Vector2Int.zero, 128f, 8);
+        Mesh repeated = PlanetLabInfiniteTerrainStreamer.BuildInfiniteChunkMesh(
+            definition, anchor, east, north, Vector2Int.zero, 128f, 8);
+        Mesh neighbor = PlanetLabInfiniteTerrainStreamer.BuildInfiniteChunkMesh(
+            definition, anchor, east, north, Vector2Int.right, 128f, 8);
+        try
+        {
+            CollectionAssert.AreEqual(first.vertices, repeated.vertices);
+            CollectionAssert.AreEqual(first.normals, repeated.normals);
+
+            const int vertexSide = 9;
+            int center = 4 * vertexSide + 4;
+            float expectedCenter = VoxelQuadSphereTerrain.GetSurfaceNoise(
+                anchor * preset.radius,
+                preset.seed,
+                preset.terrain);
+            Assert.That(
+                first.vertices[center].y,
+                Is.EqualTo(expectedCenter).Within(0.0001f));
+
+            for (int z = 0; z < vertexSide; z++)
+            {
+                Vector3 leftEdge = first.vertices[z * vertexSide + 8];
+                Vector3 rightEdge = neighbor.vertices[z * vertexSide];
+                Assert.That(leftEdge.y, Is.EqualTo(rightEdge.y).Within(0.0001f));
+                Assert.That(
+                    Vector3.Distance(
+                        first.normals[z * vertexSide + 8],
+                        neighbor.normals[z * vertexSide]),
+                    Is.LessThan(0.0001f));
+            }
+        }
+        finally
+        {
+            Object.DestroyImmediate(first);
+            Object.DestroyImmediate(repeated);
+            Object.DestroyImmediate(neighbor);
+            Object.DestroyImmediate(preset);
+        }
+    }
+
+    [Test]
+    public void InfiniteModeBuildsBoundedStreamingGridAndKeepsGlobeMesh()
+    {
+        LabRig rig = CreateRig();
+        try
+        {
+            rig.controller.RebuildNow(12);
+            Mesh globeMesh = rig.controller.TerrainMesh;
+            var orphanedChunk = new GameObject("Chunk");
+            orphanedChunk.transform.SetParent(
+                rig.controller.InfiniteTerrainStreamer.transform,
+                false);
+            rig.controller.SetSurfaceMode(PlanetLabSurfaceMode.InfinitePlanar);
+
+            Assert.AreSame(globeMesh, rig.controller.TerrainMesh);
+            Assert.IsTrue(orphanedChunk == null);
+            Assert.AreEqual(
+                25,
+                rig.controller.InfiniteTerrainStreamer.ActiveChunkCount);
+            Assert.AreEqual(
+                25,
+                rig.controller.InfiniteTerrainStreamer.CreatedChunkCount);
+            Mesh oceanMesh =
+                rig.controller.InfiniteTerrainStreamer.InfiniteOceanMesh;
+            Assert.IsNotNull(oceanMesh);
+            Assert.AreEqual(
+                (PlanetLabPlanarSettings.InfiniteChunkResolution + 1)
+                * (PlanetLabPlanarSettings.InfiniteChunkResolution + 1),
+                oceanMesh.vertexCount);
+            Assert.Greater(oceanMesh.bounds.size.y, 1f);
+            Assert.IsFalse(rig.root.transform.Find("Planet").gameObject.activeSelf);
+            Assert.IsTrue(
+                rig.root.transform.Find("PlanarExperiment").gameObject.activeSelf);
+            Assert.IsTrue(
+                rig.root.transform
+                    .Find("PlanarExperiment/InfiniteTerrain")
+                    .gameObject.activeSelf);
+
+            rig.controller.SetSurfaceMode(PlanetLabSurfaceMode.Planar);
+            Assert.IsFalse(
+                rig.root.transform
+                    .Find("PlanarExperiment/InfiniteTerrain")
+                    .gameObject.activeSelf);
+            Assert.IsTrue(
+                rig.root.transform
+                    .Find("PlanarExperiment/Terrain")
+                    .gameObject.activeSelf);
+        }
+        finally
+        {
+            DestroyRig(rig);
+        }
+    }
+
+    [Test]
+    public void PbrLibraryContainsAllFortyDeterministicMaterialSets()
+    {
+        PlanetLabTerrainPbrLibrary library =
+            PlanetLabTerrainPbrLibraryBuilder.EnsureLibrary();
+
+        Assert.IsNotNull(library);
+        Assert.IsTrue(library.IsReady);
+        Assert.AreEqual(
+            PlanetLabTerrainPbrLibrary.ExpectedMaterialCount,
+            library.entries.Count);
+        Assert.AreEqual(
+            PlanetLabTerrainPbrLibrary.ExpectedMaterialCount,
+            library.entries.Select(entry => entry.id).Distinct().Count());
+        Assert.AreEqual(
+            PlanetLabTerrainPbrLibrary.ExpectedMaterialCount,
+            library.entries.Select(entry => entry.slice).Distinct().Count());
+        Assert.AreEqual(
+            PlanetLabTerrainPbrLibrary.ExpectedMaterialCount,
+            library.albedoArray.depth);
+        Assert.AreEqual(
+            PlanetLabTerrainPbrLibrary.ExpectedMaterialCount,
+            library.normalArray.depth);
+        Assert.AreEqual(
+            PlanetLabTerrainPbrLibrary.ExpectedMaterialCount,
+            library.maskArray.depth);
+
+        foreach (PlanetLabTerrainPbrRole role in new[]
+                 {
+                     PlanetLabTerrainPbrRole.Ground,
+                     PlanetLabTerrainPbrRole.Rock,
+                     PlanetLabTerrainPbrRole.Shore,
+                     PlanetLabTerrainPbrRole.Cold
+                 })
+        {
+            int first = library.SelectSlice(7319, role, 101 + (int)role);
+            int second = library.SelectSlice(7319, role, 101 + (int)role);
+            Assert.AreEqual(first, second);
+            Assert.That(first, Is.InRange(0, library.entries.Count - 1));
+            Assert.AreNotEqual(
+                0,
+                library.entries[first].roles & role,
+                $"Selected slice {first} is not classified for {role}.");
+        }
+    }
+
+    [Test]
+    public void SkyboxLibraryHasFiveDeterministicChoicesPerPlanetTemplate()
+    {
+        PlanetLabSkyboxLibrary library =
+            PlanetLabSkyboxLibraryBuilder.EnsureLibrary();
+
+        Assert.IsNotNull(library);
+        Assert.IsTrue(library.IsReady);
+        Assert.AreEqual(
+            PlanetLabSkyboxLibrary.ExpectedEntryCount,
+            library.entries.Count);
+        Assert.AreEqual(
+            PlanetLabSkyboxLibrary.ExpectedEntryCount,
+            library.entries.Select(entry => entry.id).Distinct().Count());
+        foreach (ProceduralPlanetLabTemplate template
+                 in System.Enum.GetValues(typeof(ProceduralPlanetLabTemplate)))
+        {
+            Assert.AreEqual(
+                PlanetLabSkyboxLibrary.CandidatesPerTemplate,
+                library.entries.Count(entry => entry.template == template));
+            PlanetLabSkyboxEntry first = library.SelectEntry(7319, template);
+            PlanetLabSkyboxEntry second = library.SelectEntry(7319, template);
+            Assert.IsNotNull(first);
+            Assert.AreSame(first, second);
+            Assert.AreEqual(template, first.template);
+            Assert.IsNotNull(first.material);
+        }
+    }
+
+    [Test]
+    public void SkyboxIsSharedByFixedAndInfinitePlanarButNotGlobe()
+    {
+        Material previous = RenderSettings.skybox;
+        LabRig rig = CreateRig();
+        try
+        {
+            PlanetLabSkyboxLibrary library =
+                PlanetLabSkyboxLibraryBuilder.EnsureLibrary();
+            rig.controller.ConfigureSkyboxLibrary(library);
+
+            rig.controller.SetSurfaceMode(PlanetLabSurfaceMode.Planar);
+            Material fixedSkybox = rig.controller.CurrentPlanarSkybox;
+            Assert.IsNotNull(fixedSkybox);
+            Assert.AreSame(fixedSkybox, RenderSettings.skybox);
+
+            rig.controller.SetSurfaceMode(PlanetLabSurfaceMode.InfinitePlanar);
+            Assert.AreSame(fixedSkybox, rig.controller.CurrentPlanarSkybox);
+            Assert.AreSame(fixedSkybox, RenderSettings.skybox);
+
+            rig.controller.SetSurfaceMode(PlanetLabSurfaceMode.Globe);
+            Assert.IsNull(RenderSettings.skybox);
+        }
+        finally
+        {
+            DestroyRig(rig);
+            RenderSettings.skybox = previous;
+        }
+    }
+
+    [Test]
     public void OneHundredRegenerationsDoNotAccumulateTransientResources()
     {
         int meshBaseline = CountLabMeshes();
@@ -145,7 +484,7 @@ public sealed class ProceduralPlanetLabTests
     }
 
     [Test]
-    public void LaboratorySceneContainsOnlyPreviewEquipment()
+    public void LaboratorySceneContainsOnlyIsolatedExperimentEquipment()
     {
         ProceduralPlanetLabAssetBuilder.EnsureLaboratoryAssets();
         bool alreadyLoaded = SceneManager.GetSceneByPath(
@@ -164,14 +503,39 @@ public sealed class ProceduralPlanetLabTests
                 1,
                 roots[0].GetComponentsInChildren<ProceduralPlanetLabController>(
                     true).Length);
-            Assert.AreEqual(1, roots[0].GetComponentsInChildren<Camera>(true).Length);
+            ProceduralPlanetLabController controller =
+                roots[0].GetComponent<ProceduralPlanetLabController>();
+            Assert.IsNotNull(controller.PlanarPbrLibrary);
+            Assert.IsTrue(controller.PlanarPbrLibrary.IsReady);
+            Assert.IsNotNull(controller.PlanarSkyboxLibrary);
+            Assert.IsTrue(controller.PlanarSkyboxLibrary.IsReady);
+            Assert.AreEqual(2, roots[0].GetComponentsInChildren<Camera>(true).Length);
             Assert.AreEqual(2, roots[0].GetComponentsInChildren<Light>(true).Length);
             Assert.AreEqual(
-                2,
-                roots[0].GetComponentsInChildren<MeshFilter>(true).Length);
+                4,
+                roots[0].GetComponentsInChildren<MeshFilter>(true)
+                    .Count(filter =>
+                        filter.GetComponentInParent<
+                            PlanetLabInfiniteTerrainStreamer>(true) == null));
             Assert.AreEqual(
-                0,
-                roots[0].GetComponentsInChildren<Collider>(true).Length);
+                1,
+                roots[0].GetComponentsInChildren<MeshCollider>(true)
+                    .Count(collider =>
+                        collider.GetComponentInParent<
+                            PlanetLabInfiniteTerrainStreamer>(true) == null));
+            Assert.AreEqual(
+                1,
+                roots[0].GetComponentsInChildren<CharacterController>(true).Length);
+            Assert.AreEqual(
+                1,
+                roots[0].GetComponentsInChildren<PlanetLabFirstPersonController>(
+                    true).Length);
+            Assert.AreEqual(
+                1,
+                roots[0].GetComponentsInChildren<PlanetLabInfiniteTerrainStreamer>(
+                    true).Length);
+            Assert.IsNotNull(roots[0].transform.Find("Planet"));
+            Assert.IsNotNull(roots[0].transform.Find("PlanarExperiment"));
             Assert.AreEqual(
                 0,
                 roots[0].GetComponentsInChildren<GalaxyTravelManager>(true).Length);
@@ -217,6 +581,35 @@ public sealed class ProceduralPlanetLabTests
         Light fill = fillObject.AddComponent<Light>();
         fill.type = LightType.Directional;
 
+        var planarRoot = new GameObject("PlanarExperiment");
+        planarRoot.transform.SetParent(root.transform, false);
+        var planarTerrain = new GameObject("Terrain");
+        planarTerrain.transform.SetParent(planarRoot.transform, false);
+        MeshFilter planarTerrainFilter = planarTerrain.AddComponent<MeshFilter>();
+        MeshRenderer planarTerrainRenderer =
+            planarTerrain.AddComponent<MeshRenderer>();
+        MeshCollider planarTerrainCollider =
+            planarTerrain.AddComponent<MeshCollider>();
+        var planarOcean = new GameObject("Ocean");
+        planarOcean.transform.SetParent(planarRoot.transform, false);
+        MeshFilter planarOceanFilter = planarOcean.AddComponent<MeshFilter>();
+        MeshRenderer planarOceanRenderer =
+            planarOcean.AddComponent<MeshRenderer>();
+        var infiniteTerrain = new GameObject("InfiniteTerrain");
+        infiniteTerrain.transform.SetParent(planarRoot.transform, false);
+        PlanetLabInfiniteTerrainStreamer infiniteTerrainStreamer =
+            infiniteTerrain.AddComponent<PlanetLabInfiniteTerrainStreamer>();
+        var player = new GameObject("PlanarPlayer");
+        player.transform.SetParent(planarRoot.transform, false);
+        player.AddComponent<CharacterController>();
+        PlanetLabFirstPersonController playerController =
+            player.AddComponent<PlanetLabFirstPersonController>();
+        var playerCameraObject = new GameObject("FirstPersonCamera");
+        playerCameraObject.transform.SetParent(player.transform, false);
+        Camera playerCamera = playerCameraObject.AddComponent<Camera>();
+        playerCamera.enabled = false;
+        playerController.Configure(playerCameraObject.transform, Vector3.zero);
+
         controller.ConfigureSceneReferences(
             planet.transform,
             terrainFilter,
@@ -226,6 +619,20 @@ public sealed class ProceduralPlanetLabTests
             camera,
             sun,
             fill);
+        controller.ConfigurePlanarReferences(
+            planarRoot,
+            planarTerrainFilter,
+            planarTerrainRenderer,
+            planarTerrainCollider,
+            planarOceanFilter,
+            planarOceanRenderer,
+            player,
+            playerController,
+            playerCamera,
+            infiniteTerrain,
+            infiniteTerrainStreamer);
+        controller.ConfigureSkyboxLibrary(
+            PlanetLabSkyboxLibraryBuilder.EnsureLibrary());
         ProceduralPlanetPreset preset =
             ScriptableObject.CreateInstance<ProceduralPlanetPreset>();
         preset.ApplyTemplate(ProceduralPlanetLabTemplate.TemperateOcean);
@@ -253,7 +660,9 @@ public sealed class ProceduralPlanetLabTests
         return Resources.FindObjectsOfTypeAll<Mesh>()
             .Count(mesh => mesh != null
                 && (mesh.name.StartsWith("PlanetLabTerrain_")
-                    || mesh.name.StartsWith("PlanetLabOcean_")));
+                    || mesh.name.StartsWith("PlanetLabOcean_")
+                    || mesh.name.StartsWith("PlanetLabPlanarTerrain_")
+                    || mesh.name.StartsWith("PlanetLabPlanarOcean_")));
     }
 
     static int CountLabMaterials()
@@ -261,6 +670,8 @@ public sealed class ProceduralPlanetLabTests
         return Resources.FindObjectsOfTypeAll<Material>()
             .Count(material => material != null
                 && (material.name == "PlanetLabTerrainMaterial"
-                    || material.name == "PlanetLabOceanMaterial"));
+                    || material.name == "PlanetLabOceanMaterial"
+                    || material.name == "PlanetLabPlanarTerrainMaterial"
+                    || material.name == "PlanetLabPlanarOceanMaterial"));
     }
 }

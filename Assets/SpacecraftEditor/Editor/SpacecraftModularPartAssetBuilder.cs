@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using KDL.Editor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -41,14 +42,14 @@ namespace SpacecraftEditor.Editor
 
         static readonly PartSpec[] Decorations =
         {
-            Decor("decor.swept_wing", "SweptWing", "后掠机翼", 8f, SpacecraftPartPlacementMode.LateralWing),
-            Decor("decor.delta_wing", "DeltaWing", "三角翼", 12f, SpacecraftPartPlacementMode.LateralWing),
-            Decor("decor.canard", "Canard", "鸭翼", 4f, SpacecraftPartPlacementMode.LateralWing),
-            Decor("decor.vertical_fin", "VerticalFin", "垂直尾翼", 6f),
-            Decor("decor.armor_fairing", "ArmorFairing", "装甲整流罩", 15f),
-            Decor("decor.radiator", "Radiator", "散热器", 9f),
-            Decor("decor.sensor_mast", "SensorMast", "天线传感器桅杆", 3f),
-            Decor("decor.engine_nacelle", "EngineNacelle", "发动机舱外罩", 10f)
+            Decor("decor.swept_wing", "SweptWing", "装甲板", 8f),
+            Decor("decor.delta_wing", "DeltaWing", "侧舱模块", 12f),
+            Decor("decor.canard", "Canard", "管线组", 4f),
+            Decor("decor.vertical_fin", "VerticalFin", "天线阵列", 6f),
+            Decor("decor.armor_fairing", "ArmorFairing", "炮塔座", 15f),
+            Decor("decor.radiator", "Radiator", "散热片组", 9f),
+            Decor("decor.sensor_mast", "SensorMast", "传感器桅杆", 3f),
+            Decor("decor.engine_nacelle", "EngineNacelle", "发动机舱", 10f)
         };
 
         static PartSpec Decor(
@@ -102,16 +103,204 @@ namespace SpacecraftEditor.Editor
             return "Published 8 decorations, 12 fixed-size weapon definitions, combat VFX, hardpoints and the PCG pirate base.";
         }
 
+        [MenuItem("Tools/Spacecraft/Rebuild 8 Metal PBR Materials")]
+        [AICallable(
+            "重建并发布恰好 8 套独立金属 PBR 材质到组装界面、飞行场景和海盗 Prefab。",
+            Category = "Spacecraft.Materials",
+            Kind = ToolKind.Write)]
+        public static string RebuildEightMetalMaterialLibrary()
+        {
+            SpacecraftSurfaceMaterialBuilder.Rebuild();
+            SpacecraftMaterialDefinition[] paints = BuildPaintLibrary();
+            UpdateMaterialCatalogPrefab(WorkshopPrefab, paints);
+            UpdateMaterialCatalogPrefab(
+                PirateResourceRoot + "/ProceduralPirateShip.prefab",
+                paints);
+            UpdateMaterialCatalogScene(WorkshopScene, paints);
+            UpdateMaterialCatalogScene(InterstellarScene, paints);
+            UpdateMaterialCatalogScene(PlanetApproachScene, paints);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            return "Published exactly 8 independent metal PBR material sets.";
+        }
+
+        static void UpdateMaterialCatalogPrefab(
+            string path,
+            SpacecraftMaterialDefinition[] paints)
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) == null)
+                return;
+            GameObject root = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                SpacecraftMaterialCatalog catalog =
+                    root.GetComponentInChildren<SpacecraftMaterialCatalog>(true);
+                if (catalog == null)
+                    return;
+                catalog.Configure(paints, "paint.deep_space_blue");
+                EditorUtility.SetDirty(catalog);
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        static void UpdateMaterialCatalogScene(
+            string path,
+            SpacecraftMaterialDefinition[] paints)
+        {
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(path) == null)
+                return;
+            Scene scene = SceneManager.GetSceneByPath(path);
+            bool openedForBuild = !scene.IsValid() || !scene.isLoaded;
+            if (!openedForBuild && scene.isDirty)
+            {
+                throw new InvalidOperationException(
+                    "Cannot rebuild material catalog while the scene has unsaved changes: " + path);
+            }
+            if (openedForBuild)
+                scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Additive);
+            try
+            {
+                SpacecraftMaterialCatalog catalog =
+                    FindInScene<SpacecraftMaterialCatalog>(scene);
+                if (catalog == null)
+                    return;
+                catalog.Configure(paints, "paint.deep_space_blue");
+                EditorUtility.SetDirty(catalog);
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene);
+            }
+            finally
+            {
+                if (openedForBuild)
+                    EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
         [MenuItem("Tools/Spacecraft/Rebuild Unified Flight HUD %#h")]
         public static string RebuildFlightHudScenes()
         {
+            SpaceflightCockpitAssetBuilder.BuildAssets();
             UpdateFlightHudScene(InterstellarScene);
             UpdateFlightHudScene(PlanetApproachScene);
             AssetDatabase.SaveAssets();
             const string message =
-                "Rebuilt the unified third-person flight HUD in InterstellarFlight and PlanetApproach.";
+                "Rebuilt the unified flight HUD and cockpit integration in InterstellarFlight and PlanetApproach.";
             Debug.Log(message);
             return message;
+        }
+
+        [MenuItem("Tools/Spacecraft/Ensure Interstellar Dual Scale Scene")]
+        [AICallable(
+            "Create and save the astronomical kilometre layer, local metre physics bubble, and astronomical camera in InterstellarFlight without touching the active scene.",
+            Category = "Spacecraft.Build",
+            Kind = ToolKind.Write)]
+        public static string EnsureInterstellarDualScaleScene()
+        {
+            Scene scene = SceneManager.GetSceneByPath(InterstellarScene);
+            bool openedForBuild = !scene.IsValid() || !scene.isLoaded;
+            if (!openedForBuild && scene.isDirty)
+            {
+                return "InterstellarFlight is open with unsaved changes; "
+                    + "the runtime fallback remains active and the scene was not overwritten.";
+            }
+            if (openedForBuild)
+                scene = EditorSceneManager.OpenScene(InterstellarScene, OpenSceneMode.Additive);
+            try
+            {
+                EnsureSpaceScaleHierarchy(scene);
+                EditorSceneManager.SaveScene(scene);
+                return "InterstellarFlight dual-scale hierarchy saved.";
+            }
+            finally
+            {
+                if (openedForBuild)
+                    EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
+        [AICallable(
+            "Validate the saved InterstellarFlight dual-scale roots, layers, camera, and 1U=1km scale without entering Play Mode.",
+            Category = "Spacecraft.Build",
+            Kind = ToolKind.Read)]
+        public static string ValidateInterstellarDualScaleScene()
+        {
+            Scene scene = SceneManager.GetSceneByPath(InterstellarScene);
+            bool openedForValidation = !scene.IsValid() || !scene.isLoaded;
+            if (openedForValidation)
+                scene = EditorSceneManager.OpenScene(InterstellarScene, OpenSceneMode.Additive);
+            try
+            {
+                GameObject astronomicalRoot = FindNamedObjectInScene(
+                    scene,
+                    "AstronomicalRoot");
+                GameObject physicsRoot = FindNamedObjectInScene(
+                    scene,
+                    "SpacePhysicsBubble");
+                GameObject planetRoot = FindNamedObjectInScene(
+                    scene,
+                    "PlanetRuntimeRoot");
+                GameObject astronomicalCamera = FindNamedObjectInScene(
+                    scene,
+                    "AstronomicalCamera");
+                if (astronomicalRoot == null
+                    || physicsRoot == null
+                    || planetRoot == null
+                    || astronomicalCamera == null)
+                {
+                    return "Dual-scale validation failed: a required scene object is missing.";
+                }
+                int kilometerLayer = LayerMask.NameToLayer("SpaceKilometerView");
+                int physicsLayer = LayerMask.NameToLayer("SpacePhysicsBubble");
+                if (astronomicalRoot.layer != kilometerLayer
+                    || planetRoot.layer != kilometerLayer
+                    || astronomicalCamera.layer != kilometerLayer
+                    || physicsRoot.layer != physicsLayer)
+                {
+                    return "Dual-scale validation failed: one or more layers are incorrect.";
+                }
+                if (planetRoot.transform.parent != astronomicalRoot.transform)
+                {
+                    return "Dual-scale validation failed: PlanetRuntimeRoot is not under AstronomicalRoot.";
+                }
+                Camera camera = astronomicalCamera.GetComponent<Camera>();
+                AstronomicalCameraSynchronizer synchronizer =
+                    astronomicalCamera.GetComponent<AstronomicalCameraSynchronizer>();
+                SpaceKilometerScaleValidator validator =
+                    astronomicalRoot.GetComponent<SpaceKilometerScaleValidator>();
+                if (camera == null || synchronizer == null || validator == null)
+                {
+                    return "Dual-scale validation failed: a required component is missing.";
+                }
+                if (!validator.Validate(out string scaleError))
+                    return "Dual-scale validation failed: " + scaleError;
+                if (!Mathf.Approximately(
+                        SpaceKilometerScale.ToKilometerUnits(1000f),
+                        1f)
+                    || !Mathf.Approximately(
+                        (float)SpaceKilometerScale.ToKilometerUnitsPerSecond(250d),
+                        0.25f)
+                    || !Mathf.Approximately(
+                        (float)SpaceKilometerScale.ToKilometerUnitsPerSecondSquared(6d),
+                        0.006f)
+                    || !InterstellarFlightRuntime.ShouldEnterHighSpeed(1000f)
+                    || InterstellarFlightRuntime.ShouldEnterHighSpeed(999f)
+                    || !InterstellarFlightRuntime.CanReturnToTactical(600f)
+                    || InterstellarFlightRuntime.CanReturnToTactical(601f))
+                {
+                    return "Dual-scale validation failed: a conversion or hysteresis invariant changed.";
+                }
+                return "Dual-scale validation passed: 1000m=1U, exact range 100000km, "
+                    + "high-speed hysteresis 1000/600m/s.";
+            }
+            finally
+            {
+                if (openedForValidation)
+                    EditorSceneManager.CloseScene(scene, true);
+            }
         }
 
         [MenuItem("Tools/Spacecraft/Preview Unified Flight HUD %#j")]
@@ -128,17 +317,24 @@ namespace SpacecraftEditor.Editor
             string[] ids =
             {
                 "paint.deep_space_blue", "paint.gunmetal", "paint.ceramic_white",
-                "paint.warning_red", "paint.industrial_copper", "paint.explorer_green"
+                "paint.warning_red", "paint.industrial_copper", "paint.explorer_green",
+                "paint.brushed_brass", "paint.graphite_pitted"
             };
-            string[] labels = { "深空蓝", "枪灰", "陶瓷白", "警戒红", "工业铜", "探索绿" };
+            string[] labels =
+            {
+                "深空钛蓝", "喷砂枪灰", "航空拉丝铝", "红色镀锌钢",
+                "氧化工业铜", "绿色军用钢", "拉丝黄铜", "蚀刻石墨金属"
+            };
             Color[] colors =
             {
-                new Color(0.025f, 0.20f, 0.36f),
-                new Color(0.16f, 0.19f, 0.23f),
-                new Color(0.78f, 0.86f, 0.90f),
-                new Color(0.68f, 0.055f, 0.045f),
-                new Color(0.46f, 0.20f, 0.075f),
-                new Color(0.045f, 0.36f, 0.22f)
+                new Color(0.18f, 0.42f, 0.70f),
+                new Color(0.32f, 0.35f, 0.38f),
+                new Color(0.76f, 0.80f, 0.82f),
+                new Color(0.66f, 0.15f, 0.12f),
+                new Color(0.63f, 0.29f, 0.10f),
+                new Color(0.18f, 0.42f, 0.28f),
+                new Color(0.67f, 0.48f, 0.14f),
+                new Color(0.18f, 0.20f, 0.22f)
             };
 
             var result = new SpacecraftMaterialDefinition[ids.Length];
@@ -152,11 +348,6 @@ namespace SpacecraftEditor.Editor
                     material = new Material(shader) { name = labels[index] };
                     AssetDatabase.CreateAsset(material, path);
                 }
-                material.color = colors[index];
-                material.SetFloat("_Metallic", index == 2 ? 0.2f : 0.72f);
-                material.SetFloat("_Glossiness", index == 2 ? 0.38f : 0.58f);
-                EditorUtility.SetDirty(material);
-
                 var definition = new SpacecraftMaterialDefinition();
                 definition.Configure(ids[index], labels[index], material, colors[index]);
                 result[index] = definition;
@@ -428,6 +619,7 @@ namespace SpacecraftEditor.Editor
                     cruiseSettings.FindProperty("cooldownDuration").floatValue = 0.6f;
                     cruiseSettings.ApplyModifiedPropertiesWithoutUndo();
                 }
+                EnsureSpaceScaleHierarchy(scene);
                 BuildInterstellarWeaponHud(scene);
                 EditorSceneManager.SaveScene(scene);
             }
@@ -445,6 +637,8 @@ namespace SpacecraftEditor.Editor
                 scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
             try
             {
+                if (string.Equals(scenePath, InterstellarScene, StringComparison.Ordinal))
+                    EnsureSpaceScaleHierarchy(scene);
                 BuildInterstellarWeaponHud(scene);
                 EditorSceneManager.SaveScene(scene);
             }
@@ -615,7 +809,7 @@ namespace SpacecraftEditor.Editor
             Material accent = AssetDatabase.LoadAssetAtPath<Material>("Assets/SpacecraftEditor/Art/Materials/BrushedSteel.mat");
             hullController.Configure(hullVisual, collider, mainPaint, accent);
             var assembly = root.AddComponent<ShipAssembly>();
-            assembly.Configure(body, partsRoot, partCatalog, hulls.Length == 0 ? 100f : hulls[0].BaseMass);
+            assembly.Configure(body, partsRoot, partCatalog, hulls.Length == 0 ? 12000f : hulls[0].BaseMass);
             var command = root.AddComponent<PirateCommandBuffer>();
             var ifcs = root.AddComponent<SpacecraftIfcsMotor>();
             ifcs.Configure(body, assembly, hullController, command, false);
@@ -707,6 +901,95 @@ namespace SpacecraftEditor.Editor
             {
                 EditorSceneManager.CloseScene(scene, true);
             }
+        }
+
+        static void EnsureSpaceScaleHierarchy(Scene scene)
+        {
+            int kilometerLayer = LayerMask.NameToLayer("SpaceKilometerView");
+            int physicsLayer = LayerMask.NameToLayer("SpacePhysicsBubble");
+
+            GameObject astronomicalRoot = null;
+            GameObject physicsRoot = null;
+            GameObject planetRoot = null;
+            GameObject astronomicalCamera = null;
+            astronomicalRoot = FindNamedObjectInScene(scene, "AstronomicalRoot");
+            physicsRoot = FindNamedObjectInScene(scene, "SpacePhysicsBubble");
+            planetRoot = FindNamedObjectInScene(scene, "PlanetRuntimeRoot");
+            astronomicalCamera = FindNamedObjectInScene(scene, "AstronomicalCamera");
+
+            if (astronomicalRoot == null)
+            {
+                astronomicalRoot = new GameObject("AstronomicalRoot");
+                SceneManager.MoveGameObjectToScene(astronomicalRoot, scene);
+            }
+            if (kilometerLayer >= 0)
+                astronomicalRoot.layer = kilometerLayer;
+            GameObjectUtility.RemoveMonoBehavioursWithMissingScript(astronomicalRoot);
+            if (astronomicalRoot.GetComponent<SpaceKilometerScaleValidator>() == null)
+                astronomicalRoot.AddComponent<SpaceKilometerScaleValidator>();
+
+            if (planetRoot != null && planetRoot.transform.parent != astronomicalRoot.transform)
+            {
+                planetRoot.transform.SetParent(astronomicalRoot.transform, false);
+                planetRoot.transform.localPosition = Vector3.zero;
+                planetRoot.transform.localRotation = Quaternion.identity;
+                planetRoot.transform.localScale = Vector3.one;
+                if (kilometerLayer >= 0)
+                    planetRoot.layer = kilometerLayer;
+            }
+
+            if (physicsRoot == null)
+            {
+                physicsRoot = new GameObject("SpacePhysicsBubble");
+                SceneManager.MoveGameObjectToScene(physicsRoot, scene);
+            }
+            if (physicsLayer >= 0)
+                physicsRoot.layer = physicsLayer;
+
+            if (astronomicalCamera == null)
+            {
+                astronomicalCamera = new GameObject("AstronomicalCamera");
+                SceneManager.MoveGameObjectToScene(astronomicalCamera, scene);
+            }
+            GameObjectUtility.RemoveMonoBehavioursWithMissingScript(astronomicalCamera);
+            Camera camera = astronomicalCamera.GetComponent<Camera>()
+                ?? astronomicalCamera.AddComponent<Camera>();
+            camera.enabled = false;
+            if (astronomicalCamera.GetComponent<AstronomicalCameraSynchronizer>() == null)
+                astronomicalCamera.AddComponent<AstronomicalCameraSynchronizer>();
+            if (kilometerLayer >= 0)
+                astronomicalCamera.layer = kilometerLayer;
+        }
+
+        static GameObject FindNamedObjectInScene(Scene scene, string objectName)
+        {
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                GameObject match = FindNamedObjectInHierarchy(root, objectName);
+                if (match != null)
+                    return match;
+            }
+            return null;
+        }
+
+        static GameObject FindNamedObjectInHierarchy(
+            GameObject candidate,
+            string objectName)
+        {
+            if (candidate == null)
+                return null;
+            if (string.Equals(candidate.name, objectName, StringComparison.Ordinal))
+                return candidate;
+            Transform root = candidate.transform;
+            for (int index = 0; index < root.childCount; index++)
+            {
+                GameObject match = FindNamedObjectInHierarchy(
+                    root.GetChild(index).gameObject,
+                    objectName);
+                if (match != null)
+                    return match;
+            }
+            return null;
         }
 
         static ShipPartDefinition[] MergeCatalog(
@@ -1009,10 +1292,34 @@ namespace SpacecraftEditor.Editor
                 crosshairProperty.objectReferenceValue = crosshair.gameObject;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             hud.RebuildUnifiedLayout();
+            InterstellarCameraRig cameraRig = FindInScene<InterstellarCameraRig>(scene);
+            if (cameraRig == null)
+                throw new InvalidOperationException(
+                    $"Scene '{scene.path}' has no InterstellarCameraRig.");
+            SerializedObject cameraRigSerialized = new SerializedObject(cameraRig);
+            SerializedProperty cockpitFov =
+                cameraRigSerialized.FindProperty("cockpitFieldOfView");
+            SerializedProperty cockpitSpeedFov =
+                cameraRigSerialized.FindProperty("cockpitSpeedFovAddition");
+            SerializedProperty cockpitRecoil =
+                cameraRigSerialized.FindProperty("cockpitRecoilLimits");
+            if (cockpitFov != null)
+                cockpitFov.floatValue = 66f;
+            if (cockpitSpeedFov != null)
+                cockpitSpeedFov.floatValue = 2f;
+            if (cockpitRecoil != null)
+                cockpitRecoil.vector3Value = new Vector3(0.03f, 0.03f, 0.08f);
+            cameraRigSerialized.ApplyModifiedPropertiesWithoutUndo();
+            SpaceflightCockpitController cockpit =
+                cameraRig.GetComponent<SpaceflightCockpitController>();
+            if (cockpit == null)
+                cockpit = cameraRig.gameObject.AddComponent<SpaceflightCockpitController>();
             if (canvas.transform.Find("UnifiedFlightHud") == null)
                 throw new InvalidOperationException(
                     $"Scene '{scene.path}' did not create UnifiedFlightHud.");
             EditorUtility.SetDirty(hud);
+            EditorUtility.SetDirty(cameraRig);
+            EditorUtility.SetDirty(cockpit);
         }
 
         static void ConfigureInterstellarFlightHudLayout(Transform canvas)

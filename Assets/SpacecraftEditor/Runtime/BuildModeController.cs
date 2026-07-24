@@ -16,6 +16,11 @@ namespace SpacecraftEditor
         [SerializeField, Range(0f, 45f)] private float snapEnterAngle = 22f;
         [SerializeField, Range(0f, 45f)] private float snapReleaseAngle = 28f;
         [SerializeField, Range(0f, 1f)] private float centerSnapNormalizedRadius = 0.20f;
+        [SerializeField, Min(0f)] private float centerSnapWorldDistance = 0.10f;
+        [SerializeField, Min(0.05f)] private float surfaceGridSize = 0.25f;
+        [SerializeField, Min(0f)] private float neighborAlignmentDistance = 0.10f;
+        [SerializeField] private bool gridSnapRequiresControl = true;
+        [SerializeField] private bool allowPartSurfacePlacement = true;
 
         private ShipPartDefinition placingDefinition;
         private GameObject preview;
@@ -164,7 +169,12 @@ namespace SpacecraftEditor
             if (placingDefinition == null || preview == null)
                 return;
             Pose pose;
-            if (!TryGetHullPose(screenPosition, previewTwist, placingDefinition, out pose))
+            if (!TryGetHullPose(
+                    screenPosition,
+                    previewTwist,
+                    placingDefinition,
+                    previewScale,
+                    out pose))
             {
                 preview.SetActive(false);
                 previewValid = false;
@@ -351,7 +361,12 @@ namespace SpacecraftEditor
             if (selectedPart == null)
                 return;
             Pose pose;
-            if (!TryGetHullPose(screenPosition, previewTwist, selectedPart.Definition, out pose))
+            if (!TryGetHullPose(
+                    screenPosition,
+                    previewTwist,
+                    selectedPart.Definition,
+                    selectedPart.UniformScale,
+                    out pose))
                 return;
             var mate = assembly.FindMirrorMate(selectedPart);
             if (!IsPoseValid(selectedPart.Definition, pose, selectedPart.UniformScale, selectedPart, mate))
@@ -413,6 +428,7 @@ namespace SpacecraftEditor
             Vector2 screenPosition,
             float twist,
             ShipPartDefinition definition,
+            float scale,
             out Pose pose)
         {
             pose = default(Pose);
@@ -420,37 +436,140 @@ namespace SpacecraftEditor
             Array.Sort(hits, (left, right) => left.distance.CompareTo(right.distance));
             foreach (var hit in hits)
             {
-                if (hit.collider != hullCollider && !hit.collider.transform.IsChildOf(hullCollider.transform))
+                bool hitHull =
+                    hit.collider == hullCollider ||
+                    hit.collider.transform.IsChildOf(hullCollider.transform);
+                SpacecraftPart hitPart = hit.collider.GetComponentInParent<SpacecraftPart>();
+                SpacecraftPart mirrorMate =
+                    selectedPart == null ? null : assembly.FindMirrorMate(selectedPart);
+                bool hitPlaceablePart =
+                    allowPartSurfacePlacement &&
+                    hitPart != null &&
+                    hitPart != selectedPart &&
+                    hitPart != mirrorMate &&
+                    hitPart.transform.IsChildOf(assembly.PartsRoot);
+                if (!hitHull && !hitPlaceablePart)
                     continue;
 
                 var altHeld = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
                 var localHitPoint = assembly.transform.InverseTransformPoint(hit.point);
                 if (definition != null && definition.PlacementMode == SpacecraftPartPlacementMode.LateralWing)
                     return TryBuildLateralWingPose(hit, localHitPoint, twist, out pose);
-                var snapAxis = ResolveSnapAxis(
-                    localHitPoint,
+                Vector3 localHitNormal =
+                    assembly.transform.InverseTransformDirection(hit.normal).normalized;
+                PlacementSnapAxis snapAxis = ResolveSnapAxis(
+                    localHitNormal,
                     activeSnapAxis,
                     snappingEnabled && !altHeld,
                     snapEnterAngle,
                     snapReleaseAngle);
 
-                if (snapAxis == PlacementSnapAxis.None)
+                Vector3 surfacePoint = hit.point;
+                Vector3 surfaceNormal = hit.normal.normalized;
+                bool isCenterSnap = false;
+                PlacementAlignmentKind alignment = PlacementAlignmentKind.None;
+                Quaternion surfaceRotation = BuildSurfaceRotation(surfaceNormal, twist);
+                if (snapAxis != PlacementSnapAxis.None &&
+                    snappingEnabled &&
+                    !altHeld)
                 {
-                    var freeRotation = BuildSurfaceRotation(hit.normal, twist);
-                    pose = new Pose(hit.point + hit.normal * PlacementSurfaceOffset, freeRotation);
-                    SetSnapState(PlacementSnapAxis.None, false, altHeld);
-                    return true;
+                    Vector3 snappedLocalPoint = localHitPoint;
+                    bool controlHeld =
+                        Input.GetKey(KeyCode.LeftControl) ||
+                        Input.GetKey(KeyCode.RightControl);
+                    if (!gridSnapRequiresControl || controlHeld)
+                    {
+                        snappedLocalPoint =
+                            SnapTangentialToGrid(
+                                snappedLocalPoint,
+                                snapAxis,
+                                surfaceGridSize);
+                        alignment |= PlacementAlignmentKind.Grid;
+                    }
+
+                    SpacecraftPlacementSolver.SurfaceTangents(
+                        snapAxis,
+                        out Vector3 tangentA,
+                        out Vector3 tangentB);
+                    float distanceFromCenter = new Vector2(
+                        Vector3.Dot(localHitPoint, tangentA),
+                        Vector3.Dot(localHitPoint, tangentB)).magnitude;
+                    isCenterSnap =
+                        centerSnapWorldDistance > 0f &&
+                        distanceFromCenter <= centerSnapWorldDistance;
+                    if (isCenterSnap)
+                    {
+                        snappedLocalPoint =
+                            ClearTangentialCoordinates(
+                                snappedLocalPoint,
+                                snapAxis);
+                        alignment |= PlacementAlignmentKind.Center;
+                    }
+
+                    float provisionalOffset =
+                        SpacecraftPlacementSolver.CalculateMountOffset(
+                            definition,
+                            surfaceRotation,
+                            surfaceNormal,
+                            scale,
+                            PlacementSurfaceOffset);
+                    Quaternion localRotation =
+                        Quaternion.Inverse(assembly.transform.rotation) *
+                        surfaceRotation;
+                    alignment |= SpacecraftPlacementSolver.AlignToNeighbors(
+                        assembly.transform,
+                        assembly.Parts,
+                        definition,
+                        scale,
+                        snapAxis,
+                        localRotation,
+                        provisionalOffset,
+                        neighborAlignmentDistance,
+                        ref snappedLocalPoint,
+                        selectedPart,
+                        mirrorMate);
+
+                    if (alignment != PlacementAlignmentKind.None)
+                    {
+                        if (hitHull)
+                        {
+                            if (TryGetHullSurfacePoint(
+                                    snappedLocalPoint,
+                                    snapAxis,
+                                    out Vector3 hullSurfacePoint,
+                                    out Vector3 hullSurfaceNormal))
+                            {
+                                surfacePoint = hullSurfacePoint;
+                                surfaceNormal = hullSurfaceNormal;
+                            }
+                        }
+                        else
+                        {
+                            Plane surfacePlane = new Plane(hit.normal, hit.point);
+                            surfacePoint = surfacePlane.ClosestPointOnPlane(
+                                assembly.transform.TransformPoint(snappedLocalPoint));
+                        }
+                        surfaceRotation =
+                            BuildSurfaceRotation(surfaceNormal, twist);
+                    }
                 }
 
-                var worldAxis = assembly.transform.TransformDirection(GetSnapAxisDirection(snapAxis)).normalized;
-                var isCenterSnap = IsWithinCenterSnap(localHitPoint, snapAxis, hullLocalHalfExtents, centerSnapNormalizedRadius);
-                var position = hit.point + worldAxis * PlacementSurfaceOffset;
-                Vector3 axisSurfacePoint;
-                if (isCenterSnap && TryGetAxisSurfacePoint(worldAxis, out axisSurfacePoint))
-                    position = axisSurfacePoint + worldAxis * PlacementSurfaceOffset;
-
-                pose = new Pose(position, BuildSurfaceRotation(worldAxis, twist));
-                SetSnapState(snapAxis, isCenterSnap, false);
+                float mountOffset =
+                    SpacecraftPlacementSolver.CalculateMountOffset(
+                        definition,
+                        surfaceRotation,
+                        surfaceNormal,
+                        scale,
+                        PlacementSurfaceOffset);
+                pose = new Pose(
+                    surfacePoint + surfaceNormal * mountOffset,
+                    surfaceRotation);
+                SetSnapState(
+                    alignment == PlacementAlignmentKind.None
+                        ? PlacementSnapAxis.None
+                        : snapAxis,
+                    isCenterSnap,
+                    altHeld);
                 return true;
             }
             SetSnapState(PlacementSnapAxis.None, false, false);
@@ -528,44 +647,17 @@ namespace SpacecraftEditor
             float enterAngle = 22f,
             float releaseAngle = 28f)
         {
-            if (!snappingAllowed || localRadialDirection.sqrMagnitude < 0.000001f)
-                return PlacementSnapAxis.None;
-
-            var direction = localRadialDirection.normalized;
-            if (currentAxis != PlacementSnapAxis.None &&
-                Vector3.Angle(direction, GetSnapAxisDirection(currentAxis)) <= releaseAngle)
-            {
-                return currentAxis;
-            }
-
-            var absX = Mathf.Abs(direction.x);
-            var absY = Mathf.Abs(direction.y);
-            var absZ = Mathf.Abs(direction.z);
-            PlacementSnapAxis nearest;
-            if (absX >= absY && absX >= absZ)
-                nearest = direction.x >= 0f ? PlacementSnapAxis.Right : PlacementSnapAxis.Left;
-            else if (absY >= absZ)
-                nearest = direction.y >= 0f ? PlacementSnapAxis.Top : PlacementSnapAxis.Bottom;
-            else
-                nearest = direction.z >= 0f ? PlacementSnapAxis.Forward : PlacementSnapAxis.Rear;
-
-            return Vector3.Angle(direction, GetSnapAxisDirection(nearest)) <= enterAngle
-                ? nearest
-                : PlacementSnapAxis.None;
+            return SpacecraftPlacementSolver.ResolveAxis(
+                localRadialDirection,
+                currentAxis,
+                snappingAllowed,
+                enterAngle,
+                releaseAngle);
         }
 
         public static Vector3 GetSnapAxisDirection(PlacementSnapAxis axis)
         {
-            switch (axis)
-            {
-                case PlacementSnapAxis.Forward: return Vector3.forward;
-                case PlacementSnapAxis.Rear: return Vector3.back;
-                case PlacementSnapAxis.Left: return Vector3.left;
-                case PlacementSnapAxis.Right: return Vector3.right;
-                case PlacementSnapAxis.Top: return Vector3.up;
-                case PlacementSnapAxis.Bottom: return Vector3.down;
-                default: return Vector3.zero;
-            }
+            return SpacecraftPlacementSolver.AxisDirection(axis);
         }
 
         public static bool IsWithinCenterSnap(
@@ -574,51 +666,57 @@ namespace SpacecraftEditor
             Vector3 hullHalfExtents,
             float normalizedRadius = 0.20f)
         {
-            var safeExtents = new Vector3(
-                Mathf.Max(0.0001f, Mathf.Abs(hullHalfExtents.x)),
-                Mathf.Max(0.0001f, Mathf.Abs(hullHalfExtents.y)),
-                Mathf.Max(0.0001f, Mathf.Abs(hullHalfExtents.z)));
-
-            float a;
-            float b;
-            switch (axis)
-            {
-                case PlacementSnapAxis.Forward:
-                case PlacementSnapAxis.Rear:
-                    a = localPoint.x / safeExtents.x;
-                    b = localPoint.y / safeExtents.y;
-                    break;
-                case PlacementSnapAxis.Left:
-                case PlacementSnapAxis.Right:
-                    a = localPoint.y / safeExtents.y;
-                    b = localPoint.z / safeExtents.z;
-                    break;
-                case PlacementSnapAxis.Top:
-                case PlacementSnapAxis.Bottom:
-                    a = localPoint.x / safeExtents.x;
-                    b = localPoint.z / safeExtents.z;
-                    break;
-                default:
-                    return false;
-            }
-
-            return a * a + b * b <= normalizedRadius * normalizedRadius;
+            return SpacecraftPlacementSolver.IsWithinCenter(
+                localPoint,
+                axis,
+                hullHalfExtents,
+                normalizedRadius);
         }
 
-        private bool TryGetAxisSurfacePoint(Vector3 worldAxis, out Vector3 surfacePoint)
+        private bool TryGetHullSurfacePoint(
+            Vector3 localPoint,
+            PlacementSnapAxis axis,
+            out Vector3 surfacePoint,
+            out Vector3 surfaceNormal)
         {
             surfacePoint = Vector3.zero;
+            surfaceNormal = Vector3.zero;
             if (hullCollider == null || assembly == null)
                 return false;
 
-            var center = assembly.transform.position;
-            var distance = hullCollider.bounds.extents.magnitude + 2f;
-            var ray = new Ray(center + worldAxis * distance, -worldAxis);
+            Vector3 localAxis = GetSnapAxisDirection(axis);
+            float distance = hullCollider.bounds.extents.magnitude + 3f;
+            Vector3 localOrigin = localPoint + localAxis * distance;
+            Vector3 worldOrigin = assembly.transform.TransformPoint(localOrigin);
+            Vector3 worldDirection =
+                assembly.transform.TransformDirection(-localAxis).normalized;
+            var ray = new Ray(worldOrigin, worldDirection);
             RaycastHit hit;
             if (!hullCollider.Raycast(ray, out hit, distance * 2f))
                 return false;
             surfacePoint = hit.point;
+            surfaceNormal = hit.normal.normalized;
             return true;
+        }
+
+        public static Vector3 SnapTangentialToGrid(
+            Vector3 localPoint,
+            PlacementSnapAxis axis,
+            float gridSize)
+        {
+            return SpacecraftPlacementSolver.SnapToGrid(
+                localPoint,
+                axis,
+                gridSize);
+        }
+
+        public static Vector3 ClearTangentialCoordinates(
+            Vector3 localPoint,
+            PlacementSnapAxis axis)
+        {
+            return SpacecraftPlacementSolver.ClearTangents(
+                localPoint,
+                axis);
         }
 
         private Vector3 CalculateHullLocalHalfExtents()
@@ -734,22 +832,14 @@ namespace SpacecraftEditor
 
         private bool IsPoseValid(ShipPartDefinition definition, Pose pose, float scale, SpacecraftPart ignoreA, SpacecraftPart ignoreB)
         {
-            var box = definition.Prefab.GetComponent<BoxCollider>();
-            if (box == null)
-                return true;
-            var center = pose.position + pose.rotation * (box.center * scale);
-            var halfExtents = box.size * (scale * 0.47f);
-            // Parts may have been added or moved earlier in this rendered frame. Make
-            // their collider poses visible to the overlap query before validating.
-            Physics.SyncTransforms();
-            var overlaps = Physics.OverlapBox(center, halfExtents, pose.rotation, ~0, QueryTriggerInteraction.Ignore);
-            foreach (var overlap in overlaps)
-            {
-                var part = overlap.GetComponentInParent<SpacecraftPart>();
-                if (part != null && part != ignoreA && part != ignoreB)
-                    return false;
-            }
-            return true;
+            return !SpacecraftPlacementSolver.HasBlockingPartOverlap(
+                assembly,
+                definition,
+                pose,
+                scale,
+                0.012f,
+                ignoreA,
+                ignoreB);
         }
 
         private void SelectPart(SpacecraftPart value)

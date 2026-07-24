@@ -214,6 +214,7 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
                     if (marker == null)
                         marker = instance.AddComponent<PlanetSurfacePropInstance>();
                     marker.Configure(item.catalogId, instanceId, harvestable);
+                    ConfigureBiota(instance, item);
 
                     HarvestableResource resource = instance.GetComponentInChildren<HarvestableResource>(true);
                     if (resource != null)
@@ -359,6 +360,7 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
             if (marker == null)
                 marker = instance.AddComponent<PlanetSurfacePropInstance>();
             marker.Configure(entry.catalogId, entry.instanceId, entry.harvestable);
+            ConfigureBiota(instance, item);
             HarvestableResource resource = instance.GetComponentInChildren<HarvestableResource>(true);
             if (resource != null)
                 resource.AssignStableResourceId(entry.instanceId);
@@ -757,6 +759,34 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
             surfaceContext != null ? surfaceContext.Seed : 0,
             instanceId,
             parent);
+    }
+
+    static void ConfigureBiota(
+        GameObject instance,
+        PlanetSurfacePropSpawnSettings item)
+    {
+        if (instance == null || item == null
+            || (item.role != PlanetDecorationRole.Vegetation
+                && item.role != PlanetDecorationRole.GroundCover))
+        {
+            return;
+        }
+
+        string speciesId = item.proceduralPlantSpecies != null
+            && !string.IsNullOrWhiteSpace(item.proceduralPlantSpecies.speciesId)
+                ? item.proceduralPlantSpecies.speciesId
+                : item.catalogId;
+        string displayName = item.proceduralPlantSpecies != null
+            ? item.proceduralPlantSpecies.name
+            : item.prefab != null
+                ? item.prefab.name
+                : item.catalogId;
+        BiotaScannable.Ensure(
+            instance,
+            BiotaDiscoveryType.Plant,
+            speciesId,
+            displayName,
+            $"星球植物 · {item.role}");
     }
 
     void OnDestroy()

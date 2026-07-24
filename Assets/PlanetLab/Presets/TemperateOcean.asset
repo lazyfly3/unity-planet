@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c21468aaf24f514db40e4c5056d10e8, type: 3}
   m_Name: TemperateOcean
   m_EditorClassIdentifier: 
-  version: 1
+  version: 2
   displayName: Temperate Ocean
   template: 0
-  seed: 7319
-  radius: 1147
-  maximumTerrainElevation: 210.6
-  previewResolution: 128
+  seed: -1446408897
+  radius: 689
+  maximumTerrainElevation: 16
+  previewResolution: 64
   terrain:
     shapeVersion: 2
     continentScale: 0.018
@@ -26,12 +26,12 @@ MonoBehaviour:
     detailScale: 0.065
     detailHeight: 3.6
     ridgeHeight: 7
-    continentThreshold: 0.68
-    continentWarp: 0.706
-    continentSharpness: 0.513
-    mountainMask: 0.706
+    continentThreshold: 0.597
+    continentWarp: 0.6
+    continentSharpness: 1.25
+    mountainMask: 0.52
     oceanFloorDepth: 0.58
-    terraceStrength: 0.384
+    terraceStrength: 0.08
     surfaceLayerDepth: 1
     stoneDepth: 4
     generateCaves: 0
@@ -39,28 +39,34 @@ MonoBehaviour:
     caveThreshold: 0.62
     caveSurfaceClearance: 2
   visual:
-    visualVersion: 2
-    lowlandColor: {r: 1, g: 1, b: 1, a: 1}
-    highlandColor: {r: 0.4716981, g: 0.241189, b: 0.391852, a: 1}
-    cliffColor: {r: 0.5622641, g: 0.3623951, b: 0.06259162, a: 1}
+    visualVersion: 3
+    lowlandColor: {r: 0.12, g: 0.42, b: 0.12, a: 1}
+    highlandColor: {r: 0.45, g: 0.68, b: 0.2, a: 1}
+    cliffColor: {r: 0.2, g: 0.16, b: 0.1, a: 1}
     rockColor: {r: 0.28, g: 0.25, b: 0.18, a: 1}
     accentColor: {r: 0.6, g: 0.82, b: 0.22, a: 1}
     facetStrength: 0.72
     lightingBands: 4
     macroColorSize: 18
-    cliffSlope: 0.784
-    macroVariation: 0
+    cliffSlope: 0.58
+    macroVariation: 0.16
     oceanEnabled: 1
     deepOceanColor: {r: 0.01, g: 0.09, b: 0.2, a: 1}
     shallowOceanColor: {r: 0.02, g: 0.48, b: 0.62, a: 1}
     shoreColor: {r: 0.78, g: 0.68, b: 0.38, a: 1}
     snowColor: {r: 0.94, g: 0.95, b: 0.86, a: 1}
-    oceanLevel: 0.0452
+    oceanLevel: 0.005
     shoreWidth: 0.018
-    snowLine: 0.305
-    snowAmount: 0.696
+    snowLine: 0.72
+    snowAmount: 0.65
     oceanSmoothness: 0.86
     oceanWaveStrength: 0.32
+    oceanWaveScale: 1
+    oceanWaveSpeed: 1
+    oceanNormalStrength: 0.85
+    oceanFoamStrength: 0.62
+    oceanRefractionStrength: 0.012
+    oceanOpacity: 0.82
     forestWeight: 0
     desertWeight: 0
     tundraWeight: 0
@@ -91,6 +97,10 @@ MonoBehaviour:
     fillIntensity: 0.32
     cameraYaw: 35
     cameraPitch: 20
-    cameraDistance: 3.45
+    cameraDistance: 8
     autoRotate: 0
     rotationSpeed: 8
+  planar:
+    autoAnchor: 1
+    anchorLatitude: -53.392017
+    anchorLongitude: 31.079666

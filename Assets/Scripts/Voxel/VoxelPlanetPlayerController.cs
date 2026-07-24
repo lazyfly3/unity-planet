@@ -263,6 +263,11 @@ if (body == null)
         {
             gameObject.AddComponent<SurfaceMultifunctionController>();
         }
+        if (SceneManager.GetActiveScene().name == "star"
+            && GetComponent<SurfaceToolController>() == null)
+        {
+            gameObject.AddComponent<SurfaceToolController>();
+        }
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 

@@ -210,13 +210,95 @@ namespace SpacecraftEditor
                 swatch.gameObject.SetActive(true);
                 if (swatch.targetGraphic is Image image)
                     image.color = definition.PreviewColor;
+                AddSurfacePreview(swatch, definition);
+                AddSurfaceCode(swatch, definition);
                 string materialId = definition.MaterialId;
+                string displayName = definition.DisplayName;
                 swatch.onClick.RemoveAllListeners();
                 swatch.onClick.AddListener(() =>
                 {
                     if (!buildController.ApplySelectedMaterial(materialId))
                         app.ApplyHullMaterial(materialId);
+                    if (hierarchy.SelectionText != null)
+                    {
+                        string target = buildController.SelectedPart == null ? "船体" : "部件";
+                        hierarchy.SelectionText.text = target + "材质：" + displayName;
+                    }
                 });
+            }
+        }
+
+        private static void AddSurfacePreview(
+            Button swatch,
+            SpacecraftMaterialDefinition definition)
+        {
+            if (swatch == null || definition?.Material == null)
+                return;
+            Texture texture = definition.Material.GetTexture("_MainTex");
+            if (texture == null)
+                return;
+            var previewObject = new GameObject(
+                "SurfacePreview",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(RawImage));
+            previewObject.transform.SetParent(swatch.transform, false);
+            var rect = (RectTransform)previewObject.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2(2f, 2f);
+            rect.offsetMax = new Vector2(-2f, -2f);
+            RawImage preview = previewObject.GetComponent<RawImage>();
+            preview.texture = texture;
+            preview.uvRect = new Rect(0f, 0f, 1f, 1f);
+            preview.color = definition.Material.HasProperty("_Color")
+                ? definition.Material.GetColor("_Color")
+                : Color.white;
+            preview.raycastTarget = false;
+        }
+
+        private void AddSurfaceCode(Button swatch, SpacecraftMaterialDefinition definition)
+        {
+            if (swatch == null || definition == null)
+                return;
+            var labelObject = new GameObject(
+                "SurfaceCode",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Text));
+            labelObject.transform.SetParent(swatch.transform, false);
+            var rect = (RectTransform)labelObject.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            Text label = labelObject.GetComponent<Text>();
+            label.font = hierarchy.SelectionText == null ? null : hierarchy.SelectionText.font;
+            label.fontSize = 9;
+            label.fontStyle = FontStyle.Bold;
+            label.alignment = TextAnchor.MiddleCenter;
+            label.raycastTarget = false;
+            label.text = SurfaceCode(definition.MaterialId);
+            Color color = definition.PreviewColor;
+            float luminance = color.r * 0.2126f + color.g * 0.7152f + color.b * 0.0722f;
+            label.color = luminance > 0.55f
+                ? new Color(0.02f, 0.035f, 0.045f, 0.95f)
+                : new Color(0.92f, 0.98f, 1f, 0.95f);
+        }
+
+        private static string SurfaceCode(string materialId)
+        {
+            switch (materialId)
+            {
+                case "paint.deep_space_blue": return "Ti";
+                case "paint.gunmetal": return "GM";
+                case "paint.ceramic_white": return "Al";
+                case "paint.warning_red": return "Zn";
+                case "paint.industrial_copper": return "Cu";
+                case "paint.explorer_green": return "Ag";
+                case "paint.brushed_brass": return "Br";
+                case "paint.graphite_pitted": return "Gr";
+                default: return "M";
             }
         }
 
@@ -298,7 +380,7 @@ namespace SpacecraftEditor
             hierarchy.HullSelectionSummary.text = definition == null
                 ? "请选择船体"
                 : $"<b>{definition.DisplayName}</b>　{definition.Description}\n" +
-                  $"尺寸 {definition.Dimensions.z:0.0} × {definition.Dimensions.x:0.0} × {definition.Dimensions.y:0.0}m　　基础质量 {definition.BaseMass:0}kg";
+                  $"尺寸 {definition.Dimensions.z:0.0} × {definition.Dimensions.x:0.0} × {definition.Dimensions.y:0.0}m　　基础质量 {SpaceflightUnitFormatter.FormatMass(definition.BaseMass)}";
         }
 
         private void HandleSelectionChanged(SpacecraftPart part)
@@ -333,10 +415,10 @@ namespace SpacecraftEditor
         private static string BuildSelectionSummary(SpacecraftPart part)
         {
             if (part is ThrusterPart thruster)
-                return $"{part.Definition.DisplayName}  |  推力 {thruster.ActualThrust:0} N  |  {part.ActualMass:0.0} kg";
+                return $"{part.Definition.DisplayName}  |  推力 {SpaceflightUnitFormatter.FormatForce(thruster.ActualThrust)}  |  {SpaceflightUnitFormatter.FormatMass(part.ActualMass)}";
             if (part is WeaponPart weapon && weapon.Weapon != null)
-                return $"{part.Definition.DisplayName}  |  {weapon.Weapon.MountSize}  |  {weapon.Weapon.Damage:0} 伤害  |  {part.ActualMass:0.0} kg";
-            return $"{part.Definition.DisplayName}  |  装饰  |  {part.ActualMass:0.0} kg";
+                return $"{part.Definition.DisplayName}  |  {weapon.Weapon.MountSize}  |  {weapon.Weapon.Damage:0} 伤害  |  {SpaceflightUnitFormatter.FormatMass(part.ActualMass)}";
+            return $"{part.Definition.DisplayName}  |  装饰  |  {SpaceflightUnitFormatter.FormatMass(part.ActualMass)}";
         }
 
         private void BeginBindingCapture()
@@ -450,7 +532,8 @@ namespace SpacecraftEditor
             var axis = buildController.ActiveSnapAxis;
             if (axis == PlacementSnapAxis.None)
             {
-                hierarchy.SnapStatusText.text = "六方向自动吸附 · 按住 Alt 自由放置";
+                hierarchy.SnapStatusText.text =
+                    "自由表面放置 · Ctrl 网格 · 靠近邻件磁吸 · Alt 关闭磁吸";
                 hierarchy.SnapStatusText.color = new Color(0.58f, 0.72f, 0.78f, 0.95f);
                 return;
             }
@@ -467,7 +550,8 @@ namespace SpacecraftEditor
                 default: location = "下方"; thrustDirection = "+Y"; break;
             }
             var center = buildController.IsCenterSnapped ? "（中心）" : string.Empty;
-            hierarchy.SnapStatusText.text = $"已吸附：{location}{center} · 推力 {thrustDirection} · Alt 自由放置";
+            hierarchy.SnapStatusText.text =
+                $"磁吸：{location}{center} · 推力 {thrustDirection} · Alt 关闭";
             hierarchy.SnapStatusText.color = Cyan;
         }
 
@@ -482,8 +566,11 @@ namespace SpacecraftEditor
             if (assembly == null)
                 return;
             var metrics = assembly.Metrics;
-            hierarchy.StatsText.text = $"部件 {assembly.Parts.Count}    总质量 {metrics.totalMass:0.0} kg    合力 {metrics.localResultantForce.magnitude:0.0} N    " +
-                                       $"转矩 {metrics.localResultantTorque.magnitude:0.0} N·m    理论加速度 {metrics.Acceleration:0.00} m/s²";
+            hierarchy.StatsText.text =
+                $"部件 {assembly.Parts.Count}    总质量 {SpaceflightUnitFormatter.FormatMass(metrics.totalMass)}    " +
+                $"合力 {SpaceflightUnitFormatter.FormatForce(metrics.localResultantForce.magnitude)}    " +
+                $"转矩 {metrics.localResultantTorque.magnitude:0.0} N·m    " +
+                $"理论加速度 {SpaceflightUnitFormatter.FormatAcceleration(metrics.Acceleration)}";
             HandleSelectionChanged(buildController.SelectedPart);
         }
 
@@ -491,7 +578,7 @@ namespace SpacecraftEditor
         {
             if (flight == null)
                 return;
-            hierarchy.FlightStatsText.text = $"试飞模式\n速度  {flight.Speed:0.0} m/s\n角速度  {flight.AngularSpeed:0.0} °/s\n" +
+            hierarchy.FlightStatsText.text = $"试飞模式\n速度  {SpaceflightUnitFormatter.FormatSpeed(flight.Speed)}\n角速度  {flight.AngularSpeed:0.0} °/s\n" +
                                                $"稳定器  {(flight.StabilizationEnabled ? "开启" : "关闭")}\n推进器  {BuildBindingSummary()}";
         }
 

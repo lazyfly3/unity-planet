@@ -21,6 +21,9 @@ public sealed class SpaceflightUnifiedHudLayout : MonoBehaviour
     public RectTransform TargetStrip { get; private set; }
     public RectTransform WarningStack { get; private set; }
     public SpaceflightAimReticleGraphic AimReticle { get; private set; }
+    public RectTransform LeftWing { get; private set; }
+    public RectTransform RightWing { get; private set; }
+    SpaceflightHudPresentationMode presentationMode;
 
     public void Build(
         Canvas canvas,
@@ -75,6 +78,7 @@ public sealed class SpaceflightUnifiedHudLayout : MonoBehaviour
             weaponLockText);
         BuildCenterLayer(root, font, targetText, cruiseText, promptText);
         BuildWarningStack(root, authorityText, speedLimitText);
+        SetPresentationMode(presentationMode);
 
         if (legacyIntegrityFrame != null)
             legacyIntegrityFrame.gameObject.SetActive(false);
@@ -95,6 +99,7 @@ public sealed class SpaceflightUnifiedHudLayout : MonoBehaviour
         Text boostText)
     {
         RectTransform wing = CreateRect("LeftFlightWing", root);
+        LeftWing = wing;
         SetRect(wing, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(600f, 246f), new Vector2(30f, 28f));
 
         RectTransform diagnostic = CreateRect("ShipDiagnostic", wing);
@@ -145,6 +150,7 @@ public sealed class SpaceflightUnifiedHudLayout : MonoBehaviour
         Text weaponLockText)
     {
         RectTransform wing = CreateRect("RightWeaponWing", root);
+        RightWing = wing;
         SetRect(wing, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(560f, 220f), new Vector2(-30f, 28f));
         RectTransform body = CreatePanel("WeaponStatusPanel", wing, Vector2.zero, wing.sizeDelta);
 
@@ -179,8 +185,8 @@ public sealed class SpaceflightUnifiedHudLayout : MonoBehaviour
         Text cruiseText,
         Text promptText)
     {
-        TargetStrip = CreatePanel("TargetStrip", root, Vector2.zero, new Vector2(430f, 48f));
-        SetRect(TargetStrip, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(430f, 48f), new Vector2(0f, -22f));
+        TargetStrip = CreatePanel("TargetStrip", root, Vector2.zero, new Vector2(700f, 48f));
+        SetRect(TargetStrip, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(700f, 48f), new Vector2(0f, -22f));
         SetText(targetText, TargetStrip, font, 19, TextAnchor.MiddleCenter, Cyan, Vector2.zero, TargetStrip.sizeDelta);
 
         SetText(cruiseText, root, font, 19, TextAnchor.MiddleCenter, Pale, new Vector2(0f, -80f), new Vector2(760f, 34f));
@@ -203,8 +209,27 @@ public sealed class SpaceflightUnifiedHudLayout : MonoBehaviour
         SetRect(WarningStack, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(405f, 68f), new Vector2(220f, 282f));
         SetText(authorityText, WarningStack, authorityText == null ? null : authorityText.font, 16, TextAnchor.MiddleLeft, Amber,
             new Vector2(0f, 34f), new Vector2(405f, 30f));
-        SetText(speedLimitText, WarningStack, speedLimitText == null ? null : speedLimitText.font, 16, TextAnchor.MiddleLeft, Amber,
+        SetText(speedLimitText, WarningStack, speedLimitText == null ? null : speedLimitText.font, 16, TextAnchor.MiddleLeft, Cyan,
             new Vector2(0f, 2f), new Vector2(405f, 30f));
+    }
+
+    public void SetPresentationMode(SpaceflightHudPresentationMode mode)
+    {
+        presentationMode = mode;
+        bool cockpit = mode == SpaceflightHudPresentationMode.Cockpit;
+        if (LeftWing != null)
+            LeftWing.gameObject.SetActive(!cockpit);
+        if (RightWing != null)
+            RightWing.gameObject.SetActive(!cockpit);
+        if (WarningStack != null)
+        {
+            SetRect(
+                WarningStack,
+                cockpit ? new Vector2(0.5f, 1f) : new Vector2(0f, 0f),
+                cockpit ? new Vector2(0.5f, 1f) : new Vector2(0f, 0f),
+                new Vector2(405f, 68f),
+                cockpit ? new Vector2(0f, -142f) : new Vector2(220f, 282f));
+        }
     }
 
     RectTransform CreatePanel(string name, Transform parent, Vector2 position, Vector2 size)

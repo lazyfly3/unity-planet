@@ -13,22 +13,24 @@ MonoBehaviour:
   m_Name: hull_spindle
   m_EditorClassIdentifier: 
   hullId: hull.spindle
-  displayName: "\u4FA6\u5BDF\u578B\xB7\u68AD\u5F62"
-  description: "\u8D28\u91CF\u66F4\u8F7B\u3001\u52A0\u901F\u66F4\u5FEB\uFF0C\u524D\u540E\u5B89\u88C5\u7A7A\u95F4\u66F4\u957F\u3002"
-  modelPrefab: {fileID: 919132149155446097, guid: 540d8de11f4d90140ace262a01b80dfc, type: 3}
-  thumbnail: {fileID: 21300000, guid: cbfaf3c3af60b3a4fac43f3f38ed799f, type: 3}
-  collisionMesh: {fileID: 4300000, guid: cf75508cce770ef4cbc0b953982e7d16, type: 2}
-  baseMass: 80
+  displayName: "\u4FA6\u5BDF\u578B PCG 01"
+  description: "\u7531 SpaceshipGenerator \u79CD\u5B50 spindle-00 \u79BB\u7EBF\u751F\u6210\uFF1B\u6027\u80FD\u7EE7\u627F
+    spindle \u539F\u578B\u3002"
+  modelPrefab: {fileID: 354532241867915047, guid: f36bd45da9942284b836616530f1e617, type: 3}
+  thumbnail: {fileID: 21300000, guid: f1e912af9c5003844bda6b500a027834, type: 3}
+  collisionMesh: {fileID: -7461810274146446580, guid: 1e64311827e2c6544b16ac5c7dcc1476, type: 3}
+  baseMass: 9000
   dimensions: {x: 2.2, y: 1.8, z: 7.5}
   flightProfile:
-    rcsAcceleration: {x: 10, y: 10, z: 6}
+    rcsAcceleration: {x: 3.47, y: 3.47, z: 5.87}
+    integratedRcsNozzleForce: {x: 7800, y: 7800, z: 13200}
     maximumAngularSpeed: {x: 95, y: 85, z: 125}
     maximumAngularAcceleration: {x: 240, y: 240, z: 240}
     velocityResponse: 3.2
     angularRateResponse: 7
-    defaultSpeedLimit: 150
-    minimumSpeedLimit: 20
-    maximumSpeedLimit: 340
+    defaultTargetSpeed: 250
+    minimumTargetSpeed: 25
+    maximumTargetSpeed: 10000
     boostMultiplier: 1.5
     boostCapacitySeconds: 4
     boostRegenerationPerSecond: 0.65

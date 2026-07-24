@@ -13,22 +13,24 @@ MonoBehaviour:
   m_Name: hull_balanced
   m_EditorClassIdentifier: 
   hullId: hull.balanced
-  displayName: "\u5747\u8861\u578B\xB7\u692D\u7403"
-  description: "\u7EFC\u5408\u6027\u80FD\u5747\u8861\uFF0C\u9002\u5408\u7B2C\u4E00\u6B21\u8BBE\u8BA1\u98DE\u8239\u3002"
-  modelPrefab: {fileID: 919132149155446097, guid: 0ba6641aebbb68440a4ffa495eca6db1, type: 3}
-  thumbnail: {fileID: 21300000, guid: 4d6e662d876592a458fbf553457ea220, type: 3}
-  collisionMesh: {fileID: 4300000, guid: 79b77c2d9253cda4e88230f8de20a704, type: 2}
-  baseMass: 100
+  displayName: "\u5747\u8861\u578B PCG 01"
+  description: "\u7531 SpaceshipGenerator \u79CD\u5B50 balanced-00 \u79BB\u7EBF\u751F\u6210\uFF1B\u6027\u80FD\u7EE7\u627F
+    balanced \u539F\u578B\u3002"
+  modelPrefab: {fileID: 3469097421063191345, guid: b9471df9e224c094d967e610759219c2, type: 3}
+  thumbnail: {fileID: 21300000, guid: 39edf4d97feaa484ba170b19099ad0f2, type: 3}
+  collisionMesh: {fileID: -7461810274146446580, guid: 6301005af9ff9ac4c97853373ff7a09b, type: 3}
+  baseMass: 12000
   dimensions: {x: 3, y: 2.2, z: 6}
   flightProfile:
-    rcsAcceleration: {x: 8, y: 8, z: 5}
+    rcsAcceleration: {x: 3.5, y: 3.5, z: 6}
+    integratedRcsNozzleForce: {x: 10500, y: 10500, z: 18000}
     maximumAngularSpeed: {x: 75, y: 65, z: 95}
     maximumAngularAcceleration: {x: 180, y: 180, z: 180}
     velocityResponse: 3.2
     angularRateResponse: 7
-    defaultSpeedLimit: 120
-    minimumSpeedLimit: 20
-    maximumSpeedLimit: 300
+    defaultTargetSpeed: 250
+    minimumTargetSpeed: 25
+    maximumTargetSpeed: 10000
     boostMultiplier: 1.5
     boostCapacitySeconds: 4
     boostRegenerationPerSecond: 0.65

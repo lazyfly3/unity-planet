@@ -36,8 +36,13 @@ public sealed class SpacecraftWeaponSystem : MonoBehaviour
     float nextTargetSearchTime;
     bool selectedGroupHasGimbal;
     bool targetLockRequested;
+    bool interactionSuppressed;
 
-    public bool ControlsEnabled { get => controlsEnabled; set => controlsEnabled = value; }
+    public bool ControlsEnabled
+    {
+        get => controlsEnabled && !interactionSuppressed;
+        set => controlsEnabled = value;
+    }
     public float DamageMultiplier => damageMultiplier;
     public int SelectedGroup => selectedGroup;
     public float Capacitor => capacitor;
@@ -70,6 +75,8 @@ public sealed class SpacecraftWeaponSystem : MonoBehaviour
         {
             flightRuntime.OriginShifted += HandleOriginShift;
             flightRuntime.UniverseRelocated += HandleUniverseRelocated;
+            flightRuntime.InteractionModeChanged += HandleInteractionModeChanged;
+            interactionSuppressed = !flightRuntime.LocalInteractionsEnabled;
         }
         ownerCombatant = GetComponent<SpaceCombatant>();
         if (commandSourceComponent == null)
@@ -124,7 +131,7 @@ public sealed class SpacecraftWeaponSystem : MonoBehaviour
         for (int index = 0; index < assembly.Weapons.Count; index++)
             assembly.Weapons[index]?.TickCooling(step);
 
-        bool fire = controlsEnabled && commandSource != null && commandSource.FireCommand.fireHeld;
+        bool fire = ControlsEnabled && commandSource != null && commandSource.FireCommand.fireHeld;
         if (!fire)
             return;
 
@@ -521,11 +528,16 @@ public sealed class SpacecraftWeaponSystem : MonoBehaviour
         energyMaterial = CreateProjectileMaterial("EnergyProjectile", new Color(0.08f, 0.85f, 1f), 4.5f);
         projectileRoot = new GameObject("ProjectilePool").transform;
         projectileRoot.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+        int physicsLayer = LayerMask.NameToLayer("SpacePhysicsBubble");
+        if (physicsLayer >= 0)
+            projectileRoot.gameObject.layer = physicsLayer;
         projectiles = new SpacecraftProjectile[projectilePoolSize];
         for (int index = 0; index < projectiles.Length; index++)
         {
             var instance = new GameObject("Projectile_" + index.ToString("00"), typeof(MeshFilter), typeof(MeshRenderer));
             instance.transform.SetParent(projectileRoot, false);
+            if (physicsLayer >= 0)
+                instance.layer = physicsLayer;
             instance.GetComponent<MeshFilter>().sharedMesh = projectileMesh;
             SpacecraftProjectile projectile = instance.AddComponent<SpacecraftProjectile>();
             projectile.Initialize(instance.GetComponent<MeshRenderer>());
@@ -587,6 +599,7 @@ public sealed class SpacecraftWeaponSystem : MonoBehaviour
         {
             flightRuntime.OriginShifted -= HandleOriginShift;
             flightRuntime.UniverseRelocated -= HandleUniverseRelocated;
+            flightRuntime.InteractionModeChanged -= HandleInteractionModeChanged;
         }
         if (projectileMesh != null)
             Destroy(projectileMesh);
@@ -614,6 +627,13 @@ public sealed class SpacecraftWeaponSystem : MonoBehaviour
     void HandleUniverseRelocated(DoubleVector3 previousPosition, DoubleVector3 currentPosition)
     {
         ReleaseTransientCombatObjects();
+    }
+
+    void HandleInteractionModeChanged(SpaceflightInteractionMode mode)
+    {
+        interactionSuppressed = mode != SpaceflightInteractionMode.TacticalPhysics;
+        if (interactionSuppressed)
+            ReleaseTransientCombatObjects();
     }
 
     public void ReleaseTransientCombatObjects()

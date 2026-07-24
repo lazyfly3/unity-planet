@@ -1,0 +1,90 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c353b21f65a568347937be80f97b8e36, type: 3}
+  m_Name: PlanetLabSkyboxLibrary
+  m_EditorClassIdentifier: 
+  entries:
+  - id: CrimsonOcean/Epic Bright Sunset 6Sided
+    template: 1
+    material: {fileID: 2100000, guid: a0beab77bf8a34a989acb7a1009dcabb, type: 2}
+  - id: CrimsonOcean/Epic_SunsetDark
+    template: 1
+    material: {fileID: 2100000, guid: 7a6bb7a7890faea49913fa53ee2e81e9, type: 2}
+  - id: CrimsonOcean/Epic_SunsetGoldenLayers
+    template: 1
+    material: {fileID: 2100000, guid: 68f14da3462938c448fa4593f0672bd5, type: 2}
+  - id: CrimsonOcean/FantasySky_Fire
+    template: 1
+    material: {fileID: 2100000, guid: edab55bb6e6964f008586faa1062771a, type: 2}
+  - id: CrimsonOcean/Space_Nebula_Red
+    template: 1
+    material: {fileID: 2100000, guid: cc60b7299736c4bacb502dbbee7c16b1, type: 2}
+  - id: Crystal/Epic_GloriousPink
+    template: 4
+    material: {fileID: 2100000, guid: bf043df7ea40be34a863a17aac59d35b, type: 2}
+  - id: Crystal/FantasySky_Night_2
+    template: 4
+    material: {fileID: 2100000, guid: f1d2d2fe97a8c449cba5dcf5d564a2f3, type: 2}
+  - id: Crystal/Space_Nebula_BlueRed
+    template: 4
+    material: {fileID: 2100000, guid: 8ffcf1f9830ce4f56a7a52aa93f579ef, type: 2}
+  - id: Crystal/Space_Nebula_NuminousGlow
+    template: 4
+    material: {fileID: 2100000, guid: 2406aa94d9ec94114a5d530b14dd29e0, type: 2}
+  - id: Crystal/Space_Neon_Starless
+    template: 4
+    material: {fileID: 2100000, guid: 8198728492dfe354fb0bfba0ce8529d0, type: 2}
+  - id: Desert/Day Sun Low Autumnal
+    template: 2
+    material: {fileID: 2100000, guid: 8cfaf3d43f3674765ad696f30178a409, type: 2}
+  - id: Desert/Day Sun Low ClearHazy
+    template: 2
+    material: {fileID: 2100000, guid: ee22ccefc36c34e70aa6b34bfdb213d1, type: 2}
+  - id: Desert/Day Sun Sunset Clear
+    template: 2
+    material: {fileID: 2100000, guid: 12575a14252ba4bd4b4e39f87486e5af, type: 2}
+  - id: Desert/Golden Sunset
+    template: 2
+    material: {fileID: 2100000, guid: a5d4f1df245724f20b5c14f47ec7ead6, type: 2}
+  - id: Desert/The Sky is on Fire
+    template: 2
+    material: {fileID: 2100000, guid: 71719b78b0cc1482b802a1c4d28c034b, type: 2}
+  - id: Frozen/Cold Clouds
+    template: 3
+    material: {fileID: 2100000, guid: 4616234b4f3ff4adf8f2fd69ffc7e1cd, type: 2}
+  - id: Frozen/Cold Night
+    template: 3
+    material: {fileID: 2100000, guid: 7d99f6292f3d646e7b06f27fed608204, type: 2}
+  - id: Frozen/Cold Sunset
+    template: 3
+    material: {fileID: 2100000, guid: c1cca173cde75400983d6319f76e6485, type: 2}
+  - id: Frozen/Haze_ColdIncomingSnow
+    template: 3
+    material: {fileID: 2100000, guid: 745b16f89eb23774d8bc59d82206222c, type: 2}
+  - id: Frozen/Winter Lake
+    template: 3
+    material: {fileID: 2100000, guid: 34e2f213d8cf14886a0a00da893bd18b, type: 2}
+  - id: TemperateOcean/Blue Lagoon
+    template: 0
+    material: {fileID: 2100000, guid: 625187e47b61e45f6a043e0e11ebd308, type: 2}
+  - id: TemperateOcean/Day Sun High SummerSky
+    template: 0
+    material: {fileID: 2100000, guid: 92975f25f84e84919a1dad3465dbdee2, type: 2}
+  - id: TemperateOcean/Day Sun Horizon Summersky
+    template: 0
+    material: {fileID: 2100000, guid: 5270d337eec564c56b07d48bb83195c5, type: 2}
+  - id: TemperateOcean/Day Sun Mid Clear
+    template: 0
+    material: {fileID: 2100000, guid: 40673ea16e93341259946275493773ff, type: 2}
+  - id: TemperateOcean/Sunless_BlueSky_02
+    template: 0
+    material: {fileID: 2100000, guid: 87397ec12f2d59d4da92b69a8e13a1e4, type: 2}

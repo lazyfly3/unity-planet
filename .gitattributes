@@ -1,0 +1,5 @@
+# PlanetLab generated texture arrays exceed GitHub's 100 MB object limit.
+Assets/PlanetLab/Materials/TerrainPbr*Array.asset filter=lfs diff=lfs merge=lfs -text
+
+# Keep imported PlanetLab skybox source textures out of normal Git history.
+Assets/PlanetLab/Skyboxes/AllSkySelected/**/*.png filter=lfs diff=lfs merge=lfs -text

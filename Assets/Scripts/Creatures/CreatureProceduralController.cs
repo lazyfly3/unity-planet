@@ -125,6 +125,15 @@ public sealed class CreatureProceduralController : MonoBehaviour
         body.useGravity = false;
         body.constraints = RigidbodyConstraints.FreezeRotation;
         Reconfigure(sourcePhenotype, true);
+        if (sourceGenome != null)
+        {
+            BiotaScannable.Ensure(
+                gameObject,
+                BiotaDiscoveryType.Creature,
+                $"procedural:{sourceGenome.generatorVersion}:{sourceGenome.seed}",
+                $"{sourceGenome.topology} 生物",
+                $"程序化生物 · {sourceGenome.locomotionArchetype}");
+        }
     }
 
     public void Reconfigure(CreaturePhenotype sourcePhenotype, bool resetMotion = false)

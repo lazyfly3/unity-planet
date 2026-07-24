@@ -6,19 +6,43 @@ namespace SpacecraftEditor
     [DisallowMultipleComponent]
     public sealed class KeyboardMouseFlightInput : MonoBehaviour, ISpacecraftFlightCommandSource, ISpacecraftPilotControlSource
     {
+        const int CaptureMouseWarmupFrames = 2;
+
         [SerializeField, Range(0.005f, 0.2f)] float vjoySensitivity = 0.045f;
         [SerializeField, Range(0f, 0.3f)] float vjoyDeadZone = 0.07f;
         [SerializeField, Range(1f, 3f)] float vjoyExponent = 1.8f;
-        [SerializeField, Min(1f)] float speedLimitStep = 10f;
+        [SerializeField, Min(1f)] float speedLimitStep = 1f;
 
         Vector2 vjoyCursor;
         SpacecraftFlightCommand command;
+        bool captureEnabled;
+        bool pointerInputWasReady;
+        int captureMouseWarmupFrames;
         bool coupledToggleRequested;
         bool directToggleRequested;
         bool cruisePressed;
         float speedLimitDelta;
 
-        public bool CaptureEnabled { get; set; }
+        public bool CaptureEnabled
+        {
+            get => captureEnabled;
+            set
+            {
+                if (captureEnabled == value)
+                    return;
+
+                captureEnabled = value;
+                command = default;
+                FreeLookHeld = false;
+                CruiseHeld = false;
+                ResetVJoy();
+                ClearTransientRequests();
+                pointerInputWasReady = false;
+                captureMouseWarmupFrames = value
+                    ? CaptureMouseWarmupFrames
+                    : 0;
+            }
+        }
         public SpacecraftFlightCommand Command => command;
         public Vector2 VJoyCursor => vjoyCursor;
         public bool FreeLookHeld { get; private set; }
@@ -26,17 +50,36 @@ namespace SpacecraftEditor
 
         void Update()
         {
-            if (!CaptureEnabled)
+            bool pointerInputReady = captureEnabled
+                && Application.isFocused
+                && Cursor.lockState == CursorLockMode.Locked;
+            if (!pointerInputReady)
             {
-                command = default;
-                FreeLookHeld = false;
-                CruiseHeld = false;
+                NeutralizePointerInput();
+                pointerInputWasReady = false;
+                return;
+            }
+
+            // Unity may preserve a large Mouse X/Y delta while the Game view is
+            // unfocused or while a cinematic releases/reacquires the pointer.
+            // Never feed that delta into the sticky virtual joystick.
+            if (!pointerInputWasReady)
+            {
+                pointerInputWasReady = true;
+                NeutralizePointerInput();
+                captureMouseWarmupFrames = CaptureMouseWarmupFrames;
                 return;
             }
 
             FreeLookHeld = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
             bool workshopOrbit = Input.GetMouseButton(1);
-            if (!FreeLookHeld && !workshopOrbit)
+            bool suppressMouseMotion = captureMouseWarmupFrames > 0;
+            if (suppressMouseMotion)
+            {
+                captureMouseWarmupFrames--;
+                vjoyCursor = Vector2.zero;
+            }
+            else if (!FreeLookHeld && !workshopOrbit)
             {
                 vjoyCursor += new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"))
                     * vjoySensitivity;
@@ -65,7 +108,16 @@ namespace SpacecraftEditor
 
             float wheel = Input.GetAxisRaw("Mouse ScrollWheel");
             if (Mathf.Abs(wheel) > 0.0001f)
-                speedLimitDelta += Mathf.Sign(wheel) * speedLimitStep;
+                speedLimitDelta += Mathf.Sign(wheel);
+        }
+
+        void OnApplicationFocus(bool hasFocus)
+        {
+            if (hasFocus)
+                return;
+
+            pointerInputWasReady = false;
+            NeutralizePointerInput();
         }
 
         public bool ConsumeCoupledToggle()
@@ -108,6 +160,15 @@ namespace SpacecraftEditor
             directToggleRequested = false;
             cruisePressed = false;
             speedLimitDelta = 0f;
+        }
+
+        void NeutralizePointerInput()
+        {
+            command = default;
+            FreeLookHeld = false;
+            CruiseHeld = false;
+            ResetVJoy();
+            ClearTransientRequests();
         }
 
         Vector2 ApplyResponseCurve(Vector2 value)

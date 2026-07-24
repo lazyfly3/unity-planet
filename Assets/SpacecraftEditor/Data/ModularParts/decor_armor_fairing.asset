@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: decor_armor_fairing
   m_EditorClassIdentifier: 
   partId: decor.armor_fairing
-  displayName: "\u88C5\u7532\u6574\u6D41\u7F69"
+  displayName: "\u70AE\u5854\u5EA7"
   prefab: {fileID: 4835134609575079548, guid: 375c9fbed03a7854bbb32cd7a2072319, type: 3}
-  thumbnail: {fileID: 21300000, guid: 8d125406601d9cd47be57157c89f2da2, type: 3}
+  thumbnail: {fileID: 21300000, guid: 85c1ae60e4d31e94b97c37f0564839d6, type: 3}
   category: 0
   scaleMode: 0
   placementMode: 0

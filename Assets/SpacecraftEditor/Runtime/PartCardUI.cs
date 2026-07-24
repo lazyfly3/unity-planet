@@ -36,15 +36,15 @@ namespace SpacecraftEditor
         static string BuildStats(ShipPartDefinition value)
         {
             if (value.Category == SpacecraftPartCategory.Decoration)
-                return $"装饰  质量 {value.BaseMass:0.#} kg";
+                return $"装饰  质量 {SpaceflightUnitFormatter.FormatMass(value.BaseMass)}";
             if (value.Category == SpacecraftPartCategory.Weapon)
             {
                 SpacecraftWeaponDefinition weapon = value.Weapon;
                 return weapon == null
-                    ? $"武器  质量 {value.BaseMass:0.#} kg"
+                    ? $"武器  质量 {SpaceflightUnitFormatter.FormatMass(value.BaseMass)}"
                     : $"{weapon.MountSize}  {weapon.Damage:0} 伤害  {weapon.RoundsPerSecond:0.#}/s";
             }
-            return $"推力 {value.BaseThrust:0} N  质量 {value.BaseMass:0.#} kg";
+            return $"推力 {SpaceflightUnitFormatter.FormatForce(value.BaseThrust)}  质量 {SpaceflightUnitFormatter.FormatMass(value.BaseMass)}";
         }
 
         public void OnPointerDown(PointerEventData eventData)

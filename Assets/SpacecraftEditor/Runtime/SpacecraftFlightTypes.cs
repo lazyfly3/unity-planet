@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace SpacecraftEditor
 {
@@ -45,26 +46,42 @@ namespace SpacecraftEditor
     [Serializable]
     public sealed class ShipFlightProfile
     {
-        [SerializeField] Vector3 rcsAcceleration = new Vector3(8f, 8f, 5f);
+        [SerializeField] Vector3 rcsAcceleration = new Vector3(3.5f, 3.5f, 6f);
+        [SerializeField] Vector3 integratedRcsNozzleForce = new Vector3(10500f, 10500f, 18000f);
         [SerializeField] Vector3 maximumAngularSpeed = new Vector3(75f, 65f, 95f);
         [SerializeField] Vector3 maximumAngularAcceleration = new Vector3(180f, 180f, 180f);
         [SerializeField, Min(0.1f)] float velocityResponse = 3.2f;
         [SerializeField, Min(0.1f)] float angularRateResponse = 7f;
-        [SerializeField, Min(1f)] float defaultSpeedLimit = 120f;
-        [SerializeField, Min(1f)] float minimumSpeedLimit = 20f;
-        [SerializeField, Min(1f)] float maximumSpeedLimit = 300f;
+        [FormerlySerializedAs("defaultSpeedLimit")]
+        [SerializeField, Min(1f)] float defaultTargetSpeed = 250f;
+        [FormerlySerializedAs("minimumSpeedLimit")]
+        [SerializeField, Min(1f)] float minimumTargetSpeed = 25f;
+        [FormerlySerializedAs("maximumSpeedLimit")]
+        [SerializeField, Min(1f)] float maximumTargetSpeed = 10000f;
         [SerializeField, Min(1f)] float boostMultiplier = 1.5f;
         [SerializeField, Min(0.1f)] float boostCapacitySeconds = 4f;
         [SerializeField, Min(0.01f)] float boostRegenerationPerSecond = 0.65f;
 
-        public Vector3 RcsAcceleration => Positive(rcsAcceleration, new Vector3(8f, 8f, 5f));
+        public Vector3 RcsAcceleration => Positive(rcsAcceleration, new Vector3(3.5f, 3.5f, 6f));
+        public Vector3 IntegratedRcsNozzleForce => Positive(
+            integratedRcsNozzleForce,
+            new Vector3(10500f, 10500f, 18000f));
         public Vector3 MaximumAngularSpeed => Positive(maximumAngularSpeed, new Vector3(75f, 65f, 95f));
         public Vector3 MaximumAngularAcceleration => Positive(maximumAngularAcceleration, new Vector3(180f, 180f, 180f));
         public float VelocityResponse => Mathf.Max(0.1f, velocityResponse);
         public float AngularRateResponse => Mathf.Max(0.1f, angularRateResponse);
-        public float DefaultSpeedLimit => Mathf.Clamp(defaultSpeedLimit, MinimumSpeedLimit, MaximumSpeedLimit);
-        public float MinimumSpeedLimit => Mathf.Max(1f, minimumSpeedLimit);
-        public float MaximumSpeedLimit => Mathf.Max(MinimumSpeedLimit, maximumSpeedLimit);
+        public float DefaultTargetSpeed => Mathf.Clamp(
+            defaultTargetSpeed,
+            MinimumTargetSpeed,
+            MaximumTargetSpeed);
+        public float MinimumTargetSpeed => Mathf.Max(1f, minimumTargetSpeed);
+        public float MaximumTargetSpeed => Mathf.Max(MinimumTargetSpeed, maximumTargetSpeed);
+        [Obsolete("Use DefaultTargetSpeed.")]
+        public float DefaultSpeedLimit => DefaultTargetSpeed;
+        [Obsolete("Use MinimumTargetSpeed.")]
+        public float MinimumSpeedLimit => MinimumTargetSpeed;
+        [Obsolete("Use MaximumTargetSpeed.")]
+        public float MaximumSpeedLimit => MaximumTargetSpeed;
         public float BoostMultiplier => Mathf.Max(1f, boostMultiplier);
         public float BoostCapacitySeconds => Mathf.Max(0.1f, boostCapacitySeconds);
         public float BoostRegenerationPerSecond => Mathf.Max(0.01f, boostRegenerationPerSecond);
@@ -74,19 +91,21 @@ namespace SpacecraftEditor
             var profile = new ShipFlightProfile();
             if (!string.IsNullOrEmpty(hullId) && hullId.IndexOf("saucer", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                profile.rcsAcceleration = new Vector3(6f, 6f, 4f);
+                profile.rcsAcceleration = new Vector3(3.44f, 3.44f, 6f);
+                profile.integratedRcsNozzleForce = new Vector3(15500f, 15500f, 27000f);
                 profile.maximumAngularSpeed = new Vector3(50f, 45f, 65f);
                 profile.maximumAngularAcceleration = new Vector3(120f, 120f, 120f);
-                profile.defaultSpeedLimit = 100f;
-                profile.maximumSpeedLimit = 240f;
+                profile.defaultTargetSpeed = 250f;
+                profile.maximumTargetSpeed = 10000f;
             }
             else if (!string.IsNullOrEmpty(hullId) && hullId.IndexOf("spindle", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                profile.rcsAcceleration = new Vector3(10f, 10f, 6f);
+                profile.rcsAcceleration = new Vector3(3.47f, 3.47f, 5.87f);
+                profile.integratedRcsNozzleForce = new Vector3(7800f, 7800f, 13200f);
                 profile.maximumAngularSpeed = new Vector3(95f, 85f, 125f);
                 profile.maximumAngularAcceleration = new Vector3(240f, 240f, 240f);
-                profile.defaultSpeedLimit = 150f;
-                profile.maximumSpeedLimit = 340f;
+                profile.defaultTargetSpeed = 250f;
+                profile.maximumTargetSpeed = 10000f;
             }
             return profile;
         }
@@ -134,6 +153,10 @@ namespace SpacecraftEditor
         public Vector3 localAngularVelocity;
         public Vector3 requestedLocalForce;
         public Vector3 requestedLocalTorque;
+        public Vector3 appliedLocalForce;
+        public Vector3 currentAcceleration;
+        public float shipMass;
+        public float targetSpeed;
         public float speedLimit;
         public float controlAuthority;
         public float boostRatio;

@@ -40,7 +40,8 @@ namespace SpacecraftEditor
             if (authorityText != null)
                 authorityText.text = $"控制权威  {telemetry.controlAuthority * 100f:0}%";
             if (speedLimitText != null)
-                speedLimitText.text = $"速度限制  {telemetry.speedLimit:0} m/s";
+                speedLimitText.text =
+                    $"IFCS 设定  {SpaceflightUnitFormatter.FormatSpeed(telemetry.targetSpeed)}";
             if (boostText != null)
                 boostText.text = $"BOOST  {telemetry.boostRatio * 100f:0}%";
             if (vjoyCursor != null && flight.FlightInput != null)

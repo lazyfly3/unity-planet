@@ -23,29 +23,83 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
     [SerializeField] Light sunLight;
     [SerializeField] Light fillLight;
 
+    [Header("Planar Experiment")]
+    [SerializeField] PlanetLabSurfaceMode surfaceMode;
+    [SerializeField] GameObject globeRoot;
+    [SerializeField] GameObject planarRoot;
+    [SerializeField] MeshFilter planarTerrainFilter;
+    [SerializeField] MeshRenderer planarTerrainRenderer;
+    [SerializeField] MeshCollider planarTerrainCollider;
+    [SerializeField] MeshFilter planarOceanFilter;
+    [SerializeField] MeshRenderer planarOceanRenderer;
+    [SerializeField] GameObject planarPlayer;
+    [SerializeField] PlanetLabFirstPersonController planarPlayerController;
+    [SerializeField] Camera planarPlayerCamera;
+    [SerializeField] PlanetLabTerrainPbrLibrary planarPbrLibrary;
+    [SerializeField] PlanetLabSkyboxLibrary planarSkyboxLibrary;
+    [SerializeField] GameObject infiniteTerrainRoot;
+    [SerializeField] PlanetLabInfiniteTerrainStreamer infiniteTerrainStreamer;
+
     [Header("Active Preset")]
     [SerializeField] ProceduralPlanetPreset preset;
 
     Mesh terrainMesh;
     Mesh oceanMesh;
+    Mesh planarTerrainMesh;
+    Mesh planarOceanMesh;
     Material terrainMaterial;
     Material oceanMaterial;
+    Material planarTerrainMaterial;
+    Material planarOceanMaterial;
     RenderTexture previewTexture;
     bool rebuildPending;
     double rebuildAt;
     int terrainBuildRevision;
     float builtOceanRadius = float.NaN;
     int builtOceanResolution;
+    int planarBuildRevision;
+    Vector3 builtPlanarAnchor = Vector3.up;
+    Vector3 planarSpawnPosition;
+    float builtPlanarSeaHeight;
     double lastEditorUpdate;
+    PlanetLabSkyboxEntry selectedPlanarSkybox;
+    Material originalSkybox;
+    bool originalSkyboxCaptured;
 
     public ProceduralPlanetPreset Preset => preset;
     public Camera PreviewCamera => previewCamera;
     public Mesh TerrainMesh => terrainMesh;
     public Mesh OceanMesh => oceanMesh;
     public int TerrainBuildRevision => terrainBuildRevision;
+    public int PlanarBuildRevision => planarBuildRevision;
     public float OceanRadius => builtOceanRadius;
+    public PlanetLabSurfaceMode SurfaceMode => surfaceMode;
+    public Mesh PlanarTerrainMesh => planarTerrainMesh;
+    public Mesh PlanarOceanMesh => planarOceanMesh;
+    public Vector3 PlanarAnchorDirection => builtPlanarAnchor;
+    public Vector3 PlanarSpawnPosition => planarSpawnPosition;
+    public float PlanarSeaHeight => builtPlanarSeaHeight;
+    public PlanetLabTerrainPbrLibrary PlanarPbrLibrary => planarPbrLibrary;
+    public PlanetLabSkyboxLibrary PlanarSkyboxLibrary => planarSkyboxLibrary;
+    public Material CurrentPlanarSkybox
+        => selectedPlanarSkybox != null
+            ? selectedPlanarSkybox.material
+            : null;
+    public string CurrentPlanarSkyboxName
+        => selectedPlanarSkybox != null
+            ? selectedPlanarSkybox.id
+            : "None";
+    public PlanetLabInfiniteTerrainStreamer InfiniteTerrainStreamer
+        => infiniteTerrainStreamer;
+    public int InfiniteActiveChunkCount
+        => infiniteTerrainStreamer != null
+            ? infiniteTerrainStreamer.ActiveChunkCount
+            : 0;
     public int GeneratedSceneObjectCount
-        => (terrainFilter != null ? 1 : 0) + (oceanFilter != null ? 1 : 0);
+        => (terrainFilter != null ? 1 : 0)
+        + (oceanFilter != null ? 1 : 0)
+        + (planarTerrainFilter != null ? 1 : 0)
+        + (planarOceanFilter != null ? 1 : 0);
 
     public void ConfigureSceneReferences(
         Transform valuePlanetRoot,
@@ -65,6 +119,49 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
         previewCamera = valuePreviewCamera;
         sunLight = valueSunLight;
         fillLight = valueFillLight;
+        if (globeRoot == null && valuePlanetRoot != null)
+            globeRoot = valuePlanetRoot.gameObject;
+    }
+
+    public void ConfigurePlanarReferences(
+        GameObject valuePlanarRoot,
+        MeshFilter valueTerrainFilter,
+        MeshRenderer valueTerrainRenderer,
+        MeshCollider valueTerrainCollider,
+        MeshFilter valueOceanFilter,
+        MeshRenderer valueOceanRenderer,
+        GameObject valuePlayer,
+        PlanetLabFirstPersonController valuePlayerController,
+        Camera valuePlayerCamera,
+        GameObject valueInfiniteTerrainRoot = null,
+        PlanetLabInfiniteTerrainStreamer valueInfiniteTerrainStreamer = null)
+    {
+        planarRoot = valuePlanarRoot;
+        planarTerrainFilter = valueTerrainFilter;
+        planarTerrainRenderer = valueTerrainRenderer;
+        planarTerrainCollider = valueTerrainCollider;
+        planarOceanFilter = valueOceanFilter;
+        planarOceanRenderer = valueOceanRenderer;
+        planarPlayer = valuePlayer;
+        planarPlayerController = valuePlayerController;
+        planarPlayerCamera = valuePlayerCamera;
+        infiniteTerrainRoot = valueInfiniteTerrainRoot;
+        infiniteTerrainStreamer = valueInfiniteTerrainStreamer;
+        ApplySurfaceModeState();
+    }
+
+    public void ConfigurePbrLibrary(PlanetLabTerrainPbrLibrary value)
+    {
+        planarPbrLibrary = value;
+        ApplyPlanarMaterialProperties();
+    }
+
+    public void ConfigureSkyboxLibrary(PlanetLabSkyboxLibrary value)
+    {
+        planarSkyboxLibrary = value;
+        SelectPlanarSkybox();
+        ApplySurfaceModeState();
+        ApplyPreviewSettings();
     }
 
     public void ApplyPreset(ProceduralPlanetPreset value, bool rebuildShape)
@@ -78,13 +175,19 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
 
         preset.ClampValues();
         EnsureRuntimeMaterials();
+        SelectPlanarSkybox();
         ApplyMaterialProperties();
         ApplyPreviewSettings();
 
         if (rebuildShape || terrainMesh == null)
             RequestRebuild();
         else
+        {
             RebuildOceanIfNeeded(preset.previewResolution);
+            if (planarTerrainMesh != null)
+                ApplyPlanarMaterialProperties();
+        }
+        ApplySurfaceModeState();
     }
 
     public void RequestRebuild()
@@ -120,9 +223,171 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
         terrainBuildRevision++;
 
         RebuildOcean(resolution);
+        if (surfaceMode == PlanetLabSurfaceMode.Planar
+            || planarTerrainMesh != null)
+        {
+            RebuildPlanarNow();
+        }
+        if (surfaceMode == PlanetLabSurfaceMode.InfinitePlanar
+            || InfiniteActiveChunkCount > 0)
+        {
+            RebuildInfinitePlanarNow();
+        }
         ApplyMaterialProperties();
         ApplyPreviewSettings();
         SetRenderersEnabled(true);
+        ApplySurfaceModeState();
+    }
+
+    public void SetSurfaceMode(PlanetLabSurfaceMode value)
+    {
+        if (surfaceMode == value)
+        {
+            ApplySurfaceModeState();
+            return;
+        }
+
+        surfaceMode = value;
+        if (surfaceMode == PlanetLabSurfaceMode.Planar
+            && planarTerrainMesh == null
+            && preset != null)
+        {
+            RebuildPlanarNow();
+        }
+        if (surfaceMode == PlanetLabSurfaceMode.InfinitePlanar
+            && InfiniteActiveChunkCount == 0
+            && preset != null)
+        {
+            RebuildInfinitePlanarNow();
+        }
+        ApplySurfaceModeState();
+        ApplyPreviewSettings();
+    }
+
+    public void RebuildPlanarNow()
+    {
+        if (preset == null
+            || planarTerrainFilter == null
+            || planarTerrainRenderer == null)
+        {
+            return;
+        }
+
+        preset.ClampValues();
+        EnsurePlanarRuntimeMaterials();
+        GalaxyPlanetDefinition definition = preset.CloneDefinition();
+        PlanetLabPlanarPatchBuildResult result =
+            PlanetLabPlanarPatchMeshBuilder.Build(
+                definition,
+                preset.planar,
+                PlanetLabPlanarSettings.PatchResolution);
+
+        Mesh previousTerrain = planarTerrainMesh;
+        Mesh previousOcean = planarOceanMesh;
+        planarTerrainMesh = result.terrainMesh;
+        planarOceanMesh = result.oceanMesh;
+        planarTerrainFilter.sharedMesh = planarTerrainMesh;
+        if (planarOceanFilter != null)
+            planarOceanFilter.sharedMesh = planarOceanMesh;
+        if (planarTerrainCollider != null)
+        {
+            planarTerrainCollider.sharedMesh = null;
+            planarTerrainCollider.sharedMesh = planarTerrainMesh;
+        }
+
+        builtPlanarAnchor = result.anchorDirection;
+        planarSpawnPosition = result.spawnPosition;
+        builtPlanarSeaHeight = result.seaHeight;
+        if (preset.planar.autoAnchor)
+            preset.planar.SetAnchorDirection(result.anchorDirection);
+        planarPlayerController?.SetSpawnPosition(planarSpawnPosition, false);
+        if (Application.isPlaying
+            && surfaceMode == PlanetLabSurfaceMode.Planar
+            && planarPlayerController != null)
+        {
+            planarPlayerController.ResetToSpawn();
+        }
+
+        DestroyTransient(previousTerrain);
+        DestroyTransient(previousOcean);
+        planarBuildRevision++;
+        ApplyPlanarMaterialProperties();
+        ApplySurfaceModeState();
+        ApplyPreviewSettings();
+    }
+
+    public void RebuildInfinitePlanarNow()
+    {
+        if (preset == null || infiniteTerrainStreamer == null)
+            return;
+
+        preset.ClampValues();
+        EnsurePlanarRuntimeMaterials();
+        GalaxyPlanetDefinition definition = preset.CloneDefinition();
+        Vector3 anchor = preset.planar.autoAnchor
+            ? PlanetLabPlanarPatchMeshBuilder.FindBestLandAnchor(definition)
+            : preset.planar.AnchorDirection;
+        if (preset.planar.autoAnchor)
+            preset.planar.SetAnchorDirection(anchor);
+
+        PlanetLabPlanarPatchMeshBuilder.BuildTangentBasis(
+            anchor,
+            out Vector3 east,
+            out Vector3 north);
+        float spawnHeight = PlanetLabInfiniteTerrainStreamer.SampleInfiniteHeight(
+            definition,
+            anchor,
+            east,
+            north,
+            0f,
+            0f);
+        builtPlanarAnchor = anchor;
+        builtPlanarSeaHeight = preset.visual.oceanLevel
+            * Mathf.Max(1f, preset.maximumTerrainElevation);
+        planarSpawnPosition = new Vector3(0f, spawnHeight + 1.15f, 0f);
+        planarPlayerController?.SetSpawnPosition(planarSpawnPosition, false);
+
+        infiniteTerrainStreamer.Configure(
+            definition,
+            preset.planar,
+            planarPlayer != null ? planarPlayer.transform : null,
+            planarTerrainMaterial,
+            planarOceanMaterial,
+            preset.visual.oceanEnabled);
+        if (Application.isPlaying
+            && surfaceMode == PlanetLabSurfaceMode.InfinitePlanar
+            && planarPlayerController != null)
+        {
+            planarPlayerController.ResetToSpawn();
+        }
+
+        planarBuildRevision++;
+        ApplyPlanarMaterialProperties();
+        ApplySurfaceModeState();
+        ApplyPreviewSettings();
+    }
+
+    public void AutoLocatePlanarAnchor()
+    {
+        if (preset == null)
+            return;
+
+        preset.planar = preset.planar ?? new PlanetLabPlanarSettings();
+        preset.planar.autoAnchor = true;
+        Vector3 anchor = PlanetLabPlanarPatchMeshBuilder.FindBestLandAnchor(
+            preset.CloneDefinition());
+        preset.planar.SetAnchorDirection(anchor);
+        if (surfaceMode == PlanetLabSurfaceMode.InfinitePlanar)
+            RebuildInfinitePlanarNow();
+        else
+            RebuildPlanarNow();
+    }
+
+    public void ResetPlanarPlayerToSpawn()
+    {
+        planarPlayerController?.ResetToSpawn();
+        if (surfaceMode == PlanetLabSurfaceMode.InfinitePlanar)
+            infiniteTerrainStreamer?.RebuildImmediate();
     }
 
     public RenderTexture RenderPreview(int width, int height)
@@ -244,6 +509,7 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
             return;
         preset.ClampValues();
         EnsureRuntimeMaterials();
+        SelectPlanarSkybox();
         RebuildOceanIfNeeded(preset.previewResolution);
         ApplyMaterialProperties();
         ApplyPreviewSettings();
@@ -251,6 +517,8 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
 
     void OnEnable()
     {
+        CaptureOriginalSkybox();
+        SelectPlanarSkybox();
 #if UNITY_EDITOR
         EditorApplication.update -= EditorTick;
         EditorApplication.update += EditorTick;
@@ -258,6 +526,7 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
 #endif
         if (preset != null && terrainFilter != null)
             RebuildNow(preset.previewResolution);
+        ApplySurfaceModeState();
     }
 
     void OnDisable()
@@ -265,6 +534,7 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
 #if UNITY_EDITOR
         EditorApplication.update -= EditorTick;
 #endif
+        RestoreOriginalSkybox();
         CleanupTransientResources();
     }
 
@@ -301,8 +571,13 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
 
     void TickAutoRotation(float deltaTime)
     {
-        if (preset == null || planetRoot == null || !preset.preview.autoRotate)
+        if (surfaceMode != PlanetLabSurfaceMode.Globe
+            || preset == null
+            || planetRoot == null
+            || !preset.preview.autoRotate)
+        {
             return;
+        }
         planetRoot.Rotate(Vector3.up, preset.preview.rotationSpeed * deltaTime, Space.Self);
     }
 
@@ -337,6 +612,39 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
         }
         if (oceanRenderer != null)
             oceanRenderer.sharedMaterial = oceanMaterial;
+    }
+
+    void EnsurePlanarRuntimeMaterials()
+    {
+        if (planarTerrainMaterial == null)
+        {
+            Shader shader = Shader.Find("VoxelPlanet/PlanetLabPlanarSurface");
+            if (shader == null)
+                throw new InvalidOperationException(
+                    "Missing shader: VoxelPlanet/PlanetLabPlanarSurface");
+            planarTerrainMaterial = new Material(shader)
+            {
+                name = "PlanetLabPlanarTerrainMaterial",
+                hideFlags = HideFlags.HideAndDontSave
+            };
+        }
+        if (planarTerrainRenderer != null)
+            planarTerrainRenderer.sharedMaterial = planarTerrainMaterial;
+
+        if (planarOceanMaterial == null)
+        {
+            Shader shader = Shader.Find("VoxelPlanet/PlanetLabPlanarOcean");
+            if (shader == null)
+                throw new InvalidOperationException(
+                    "Missing shader: VoxelPlanet/PlanetLabPlanarOcean");
+            planarOceanMaterial = new Material(shader)
+            {
+                name = "PlanetLabPlanarOceanMaterial",
+                hideFlags = HideFlags.HideAndDontSave
+            };
+        }
+        if (planarOceanRenderer != null)
+            planarOceanRenderer.sharedMaterial = planarOceanMaterial;
     }
 
     void ApplyMaterialProperties()
@@ -394,7 +702,282 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
 
         if (oceanRenderer != null)
             oceanRenderer.enabled = visual.oceanEnabled && oceanMesh != null;
+        ApplyPlanarMaterialProperties();
         ApplyRuntimeCenters();
+    }
+
+    void ApplyPlanarMaterialProperties()
+    {
+        if (preset == null)
+            return;
+
+        PlanetLowPolyVisualProfile visual = preset.visual;
+        if (planarTerrainMaterial != null)
+        {
+            planarTerrainMaterial.SetColor("_LowlandColor", visual.lowlandColor);
+            planarTerrainMaterial.SetColor("_HighlandColor", visual.highlandColor);
+            planarTerrainMaterial.SetColor("_CliffColor", visual.cliffColor);
+            planarTerrainMaterial.SetColor("_RockColor", visual.rockColor);
+            planarTerrainMaterial.SetColor("_AccentColor", visual.accentColor);
+            planarTerrainMaterial.SetColor("_ShoreColor", visual.shoreColor);
+            planarTerrainMaterial.SetColor("_SnowColor", visual.snowColor);
+            planarTerrainMaterial.SetFloat("_FacetStrength", visual.facetStrength);
+            planarTerrainMaterial.SetFloat("_LightingBands", visual.lightingBands);
+            planarTerrainMaterial.SetFloat("_MacroColorSize", visual.macroColorSize);
+            planarTerrainMaterial.SetFloat("_MacroVariation", visual.macroVariation);
+            planarTerrainMaterial.SetFloat("_CliffSlope", visual.cliffSlope);
+            planarTerrainMaterial.SetFloat(
+                "_HeightScale",
+                Mathf.Max(1f, preset.maximumTerrainElevation));
+            planarTerrainMaterial.SetFloat(
+                "_SeaHeight",
+                visual.oceanLevel * Mathf.Max(1f, preset.maximumTerrainElevation));
+            planarTerrainMaterial.SetFloat(
+                "_ShoreWidth",
+                visual.shoreWidth * Mathf.Max(1f, preset.maximumTerrainElevation));
+            planarTerrainMaterial.SetFloat("_SnowLine", visual.snowLine);
+            planarTerrainMaterial.SetFloat("_SnowAmount", visual.snowAmount);
+            planarTerrainMaterial.SetFloat("_MinimumAmbient", 0.16f);
+            ApplyPlanarPbrProperties();
+        }
+
+        if (planarOceanMaterial != null)
+        {
+            planarOceanMaterial.SetColor("_DeepColor", visual.deepOceanColor);
+            planarOceanMaterial.SetColor("_ShallowColor", visual.shallowOceanColor);
+            planarOceanMaterial.SetFloat("_WaveStrength", visual.oceanWaveStrength);
+            planarOceanMaterial.SetFloat("_WaveScale", visual.oceanWaveScale);
+            planarOceanMaterial.SetFloat("_WaveSpeed", visual.oceanWaveSpeed);
+            planarOceanMaterial.SetFloat("_Opacity", visual.oceanOpacity);
+        }
+        if (planarOceanRenderer != null)
+        {
+            planarOceanRenderer.enabled = visual.oceanEnabled
+                && planarOceanMesh != null
+                && surfaceMode == PlanetLabSurfaceMode.Planar;
+        }
+        infiniteTerrainStreamer?.RefreshAppearance(
+            planarTerrainMaterial,
+            planarOceanMaterial,
+            visual.oceanEnabled);
+    }
+
+    void ApplyPlanarPbrProperties()
+    {
+        if (planarTerrainMaterial == null)
+            return;
+
+        bool ready = planarPbrLibrary != null && planarPbrLibrary.IsReady;
+        planarTerrainMaterial.SetFloat("_UsePbrLibrary", ready ? 1f : 0f);
+        if (!ready || preset == null)
+            return;
+
+        planarTerrainMaterial.SetTexture(
+            "_PbrAlbedoArray",
+            planarPbrLibrary.albedoArray);
+        planarTerrainMaterial.SetTexture(
+            "_PbrNormalArray",
+            planarPbrLibrary.normalArray);
+        planarTerrainMaterial.SetTexture(
+            "_PbrMaskArray",
+            planarPbrLibrary.maskArray);
+        planarTerrainMaterial.SetFloat(
+            "_GroundSlice",
+            planarPbrLibrary.SelectSlice(
+                preset.seed,
+                PlanetLabTerrainPbrRole.Ground,
+                101,
+                GetPreferredPbrIds(PlanetLabTerrainPbrRole.Ground)));
+        planarTerrainMaterial.SetFloat(
+            "_RockSlice",
+            planarPbrLibrary.SelectSlice(
+                preset.seed,
+                PlanetLabTerrainPbrRole.Rock,
+                211,
+                GetPreferredPbrIds(PlanetLabTerrainPbrRole.Rock)));
+        planarTerrainMaterial.SetFloat(
+            "_ShoreSlice",
+            planarPbrLibrary.SelectSlice(
+                preset.seed,
+                PlanetLabTerrainPbrRole.Shore,
+                307,
+                GetPreferredPbrIds(PlanetLabTerrainPbrRole.Shore)));
+        planarTerrainMaterial.SetFloat(
+            "_ColdSlice",
+            planarPbrLibrary.SelectSlice(
+                preset.seed,
+                PlanetLabTerrainPbrRole.Cold,
+                401,
+                GetPreferredPbrIds(PlanetLabTerrainPbrRole.Cold)));
+        planarTerrainMaterial.SetFloat("_PbrTiling", 0.22f);
+        planarTerrainMaterial.SetFloat("_PbrNormalStrength", 0.52f);
+        float colorStrength = preset.template switch
+        {
+            ProceduralPlanetLabTemplate.Frozen => 0.72f,
+            ProceduralPlanetLabTemplate.Crystal => 0.66f,
+            ProceduralPlanetLabTemplate.CrimsonOcean => 0.58f,
+            _ => 0.46f
+        };
+        planarTerrainMaterial.SetFloat("_PbrColorStrength", colorStrength);
+    }
+
+    string[] GetPreferredPbrIds(PlanetLabTerrainPbrRole role)
+    {
+        switch (preset.template)
+        {
+            case ProceduralPlanetLabTemplate.Frozen:
+                return role switch
+                {
+                    PlanetLabTerrainPbrRole.Ground => new[]
+                    {
+                        "frozen_earth",
+                        "grass_snow",
+                        "stone_grass_snow"
+                    },
+                    PlanetLabTerrainPbrRole.Rock => new[]
+                    {
+                        "ice_crack",
+                        "cliff_stone_01",
+                        "cliff_stone_02",
+                        "rock_stone"
+                    },
+                    PlanetLabTerrainPbrRole.Shore => new[]
+                    {
+                        "ice",
+                        "ice_crack",
+                        "frozen_earth"
+                    },
+                    _ => new[]
+                    {
+                        "snow",
+                        "snow_drift",
+                        "ice",
+                        "ice_crack",
+                        "grass_snow",
+                        "stone_grass_snow"
+                    }
+                };
+            case ProceduralPlanetLabTemplate.Desert:
+                return role switch
+                {
+                    PlanetLabTerrainPbrRole.Ground => new[]
+                    {
+                        "sand_01",
+                        "sand_02",
+                        "sand_03",
+                        "dry_grass",
+                        "ground_crack_01",
+                        "ground_crack_02"
+                    },
+                    PlanetLabTerrainPbrRole.Rock => new[]
+                    {
+                        "rock_sand",
+                        "cliff_01",
+                        "cliff_02",
+                        "breakstone",
+                        "cracks"
+                    },
+                    PlanetLabTerrainPbrRole.Shore => new[]
+                    {
+                        "sand_01",
+                        "sand_02",
+                        "sand_03",
+                        "rock_sand"
+                    },
+                    _ => new[] { "snow_drift", "snow" }
+                };
+            case ProceduralPlanetLabTemplate.CrimsonOcean:
+                return role switch
+                {
+                    PlanetLabTerrainPbrRole.Ground => new[]
+                    {
+                        "mud_01",
+                        "mud_02",
+                        "mud_03",
+                        "ground_crack_01",
+                        "ground_crack_02"
+                    },
+                    PlanetLabTerrainPbrRole.Rock => new[]
+                    {
+                        "cracks",
+                        "breakstone",
+                        "broken_stones",
+                        "cliff_02",
+                        "rock"
+                    },
+                    PlanetLabTerrainPbrRole.Shore => new[]
+                    {
+                        "mud_01",
+                        "mud_02",
+                        "rock_sand",
+                        "sand_03"
+                    },
+                    _ => new[] { "snow", "snow_drift" }
+                };
+            case ProceduralPlanetLabTemplate.Crystal:
+                return role switch
+                {
+                    PlanetLabTerrainPbrRole.Ground => new[]
+                    {
+                        "ground_stone_01",
+                        "ground_stone_02",
+                        "frozen_earth",
+                        "ground_rock"
+                    },
+                    PlanetLabTerrainPbrRole.Rock => new[]
+                    {
+                        "ice_crack",
+                        "cracks",
+                        "cliff_stone_01",
+                        "cliff_stone_02",
+                        "stones_02"
+                    },
+                    PlanetLabTerrainPbrRole.Shore => new[]
+                    {
+                        "ice",
+                        "ice_crack",
+                        "sand_02"
+                    },
+                    _ => new[] { "ice", "ice_crack", "snow" }
+                };
+            default:
+                return role switch
+                {
+                    PlanetLabTerrainPbrRole.Ground => new[]
+                    {
+                        "grass_01",
+                        "grass_02",
+                        "ground_grass_01",
+                        "ground_grass_02",
+                        "ground_foliage_01",
+                        "ground_foliage_02",
+                        "grass_stones"
+                    },
+                    PlanetLabTerrainPbrRole.Rock => new[]
+                    {
+                        "ground_rock",
+                        "ground_stone_01",
+                        "ground_stone_02",
+                        "cliff_stone_01",
+                        "cliff_stone_02",
+                        "rock_stone"
+                    },
+                    PlanetLabTerrainPbrRole.Shore => new[]
+                    {
+                        "sand_01",
+                        "sand_02",
+                        "mud_01",
+                        "rock_sand"
+                    },
+                    _ => new[]
+                    {
+                        "snow",
+                        "snow_drift",
+                        "grass_snow",
+                        "stone_grass_snow"
+                    }
+                };
+        }
     }
 
     void ApplyPreviewSettings()
@@ -405,18 +988,33 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
         ProceduralPlanetLabPreviewSettings settings = preset.preview;
         if (previewCamera != null)
         {
-            previewCamera.clearFlags = CameraClearFlags.SolidColor;
+            bool useSkybox =
+                surfaceMode != PlanetLabSurfaceMode.Globe
+                && CurrentPlanarSkybox != null;
+            previewCamera.clearFlags = useSkybox
+                ? CameraClearFlags.Skybox
+                : CameraClearFlags.SolidColor;
             previewCamera.backgroundColor = settings.backgroundColor;
             previewCamera.fieldOfView = 40f;
-            previewCamera.nearClipPlane = Mathf.Max(0.03f, preset.radius * 0.01f);
-            previewCamera.farClipPlane = Mathf.Max(1000f, preset.radius * 20f);
             Quaternion orbit = Quaternion.Euler(
                 settings.cameraPitch,
                 settings.cameraYaw,
                 0f);
-            Vector3 center = transform.position;
-            previewCamera.transform.position = center
-                + orbit * (Vector3.back * preset.radius * settings.cameraDistance);
+            bool planar = surfaceMode != PlanetLabSurfaceMode.Globe;
+            Vector3 center = planar
+                ? transform.TransformPoint(new Vector3(0f, builtPlanarSeaHeight, 0f))
+                : transform.position;
+            float distance = planar
+                ? PlanetLabPlanarSettings.PatchSize
+                    * Mathf.Lerp(0.55f, 1.1f, settings.cameraDistance / 8f)
+                : preset.radius * settings.cameraDistance;
+            previewCamera.nearClipPlane = planar
+                ? 0.1f
+                : Mathf.Max(0.03f, preset.radius * 0.01f);
+            previewCamera.farClipPlane = planar
+                ? 3000f
+                : Mathf.Max(1000f, preset.radius * 20f);
+            previewCamera.transform.position = center + orbit * (Vector3.back * distance);
             previewCamera.transform.rotation = Quaternion.LookRotation(
                 center - previewCamera.transform.position,
                 Vector3.up);
@@ -493,6 +1091,89 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
             oceanMaterial.SetVector("_PlanetCenter", shaderCenter);
     }
 
+    void ApplySurfaceModeState()
+    {
+        bool planar = surfaceMode != PlanetLabSurfaceMode.Globe;
+        bool fixedPlanar = surfaceMode == PlanetLabSurfaceMode.Planar;
+        bool infinitePlanar = surfaceMode == PlanetLabSurfaceMode.InfinitePlanar;
+        ApplyPlanarSkyboxState(planar);
+        if (globeRoot == null && planetRoot != null)
+            globeRoot = planetRoot.gameObject;
+        if (globeRoot != null)
+            globeRoot.SetActive(!planar);
+        if (planarRoot != null)
+            planarRoot.SetActive(planar);
+        if (planarTerrainFilter != null)
+            planarTerrainFilter.gameObject.SetActive(fixedPlanar);
+        if (planarOceanFilter != null)
+            planarOceanFilter.gameObject.SetActive(fixedPlanar);
+        if (infiniteTerrainRoot != null)
+            infiniteTerrainRoot.SetActive(infinitePlanar);
+
+        bool planarPlay = planar && Application.isPlaying;
+        if (previewCamera != null)
+            previewCamera.enabled = !planarPlay;
+        if (planarPlayer != null)
+            planarPlayer.SetActive(planar);
+        if (planarPlayerCamera != null)
+        {
+            planarPlayerCamera.clearFlags =
+                planar && CurrentPlanarSkybox != null
+                    ? CameraClearFlags.Skybox
+                    : CameraClearFlags.SolidColor;
+            planarPlayerCamera.enabled = planarPlay;
+        }
+        if (planarPlayerController != null)
+        {
+            planarPlayerController.SetInfiniteWorld(infinitePlanar);
+            planarPlayerController.enabled = planarPlay;
+        }
+        if (planarTerrainRenderer != null)
+            planarTerrainRenderer.enabled = fixedPlanar
+                && planarTerrainMesh != null;
+        if (planarOceanRenderer != null)
+        {
+            planarOceanRenderer.enabled = fixedPlanar
+                && planarOceanMesh != null
+                && preset != null
+                && preset.visual.oceanEnabled;
+        }
+    }
+
+    void SelectPlanarSkybox()
+    {
+        selectedPlanarSkybox =
+            preset != null && planarSkyboxLibrary != null
+                ? planarSkyboxLibrary.SelectEntry(preset.seed, preset.template)
+                : null;
+    }
+
+    void ApplyPlanarSkyboxState(bool planar)
+    {
+        CaptureOriginalSkybox();
+        RenderSettings.skybox =
+            planar && CurrentPlanarSkybox != null
+                ? CurrentPlanarSkybox
+                : null;
+    }
+
+    void CaptureOriginalSkybox()
+    {
+        if (originalSkyboxCaptured)
+            return;
+        originalSkybox = RenderSettings.skybox;
+        originalSkyboxCaptured = true;
+    }
+
+    void RestoreOriginalSkybox()
+    {
+        if (!originalSkyboxCaptured)
+            return;
+        RenderSettings.skybox = originalSkybox;
+        originalSkybox = null;
+        originalSkyboxCaptured = false;
+    }
+
     void SetRenderersEnabled(bool value)
     {
         if (terrainRenderer != null)
@@ -513,16 +1194,49 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
             terrainRenderer.sharedMaterial = null;
         if (oceanRenderer != null && oceanRenderer.sharedMaterial == oceanMaterial)
             oceanRenderer.sharedMaterial = null;
+        if (planarTerrainFilter != null
+            && planarTerrainFilter.sharedMesh == planarTerrainMesh)
+        {
+            planarTerrainFilter.sharedMesh = null;
+        }
+        if (planarOceanFilter != null
+            && planarOceanFilter.sharedMesh == planarOceanMesh)
+        {
+            planarOceanFilter.sharedMesh = null;
+        }
+        if (planarTerrainCollider != null
+            && planarTerrainCollider.sharedMesh == planarTerrainMesh)
+        {
+            planarTerrainCollider.sharedMesh = null;
+        }
+        if (planarTerrainRenderer != null
+            && planarTerrainRenderer.sharedMaterial == planarTerrainMaterial)
+        {
+            planarTerrainRenderer.sharedMaterial = null;
+        }
+        if (planarOceanRenderer != null
+            && planarOceanRenderer.sharedMaterial == planarOceanMaterial)
+        {
+            planarOceanRenderer.sharedMaterial = null;
+        }
 
         DestroyTransient(terrainMesh);
         DestroyTransient(oceanMesh);
+        DestroyTransient(planarTerrainMesh);
+        DestroyTransient(planarOceanMesh);
         DestroyTransient(terrainMaterial);
         DestroyTransient(oceanMaterial);
+        DestroyTransient(planarTerrainMaterial);
+        DestroyTransient(planarOceanMaterial);
         DestroyPreviewTexture();
         terrainMesh = null;
         oceanMesh = null;
+        planarTerrainMesh = null;
+        planarOceanMesh = null;
         terrainMaterial = null;
         oceanMaterial = null;
+        planarTerrainMaterial = null;
+        planarOceanMaterial = null;
         builtOceanRadius = float.NaN;
         builtOceanResolution = 0;
     }

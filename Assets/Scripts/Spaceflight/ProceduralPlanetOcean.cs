@@ -82,6 +82,7 @@ public sealed class ProceduralPlanetOcean : MonoBehaviour, IPlanetWaterSampler
         {
             hideFlags = HideFlags.DontSave
         };
+        oceanObject.layer = gameObject.layer;
         oceanObject.transform.SetParent(transform, false);
         oceanObject.transform.localPosition = localCenter;
         MeshFilter filter = oceanObject.AddComponent<MeshFilter>();

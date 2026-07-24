@@ -81,7 +81,9 @@ public sealed class HarvestableResource : MonoBehaviour
     {
         UpdateHitPulse();
 
-        if (!Input.GetMouseButtonDown(0) || InventoryUI.BlocksGameplayInput)
+        if (!Input.GetMouseButtonDown(0)
+            || InventoryUI.BlocksGameplayInput
+            || !SurfaceToolInputRouter.CanWorldInteractionUsePrimary)
             return;
 
         HarvestableResource target = GetResourceUnderCrosshair(out float hitDistance);

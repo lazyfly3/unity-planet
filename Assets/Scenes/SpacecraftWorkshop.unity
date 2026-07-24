@@ -20,11 +20,11 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.075, g: 0.11, b: 0.14, a: 1}
-  m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
-  m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
-  m_AmbientIntensity: 1
-  m_AmbientMode: 3
+  m_AmbientSkyColor: {r: 0.34, g: 0.42, b: 0.5, a: 1}
+  m_AmbientEquatorColor: {r: 0.24, g: 0.29, b: 0.34, a: 1}
+  m_AmbientGroundColor: {r: 0.12, g: 0.14, b: 0.17, a: 1}
+  m_AmbientIntensity: 1.25
+  m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
   m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
   m_HaloStrength: 0.5
@@ -35,7 +35,7 @@ RenderSettings:
   m_DefaultReflectionMode: 0
   m_DefaultReflectionResolution: 128
   m_ReflectionBounces: 1
-  m_ReflectionIntensity: 1
+  m_ReflectionIntensity: 1.35
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
   m_UseRadianceAmbientProbe: 0
@@ -404,9 +404,14 @@ MonoBehaviour:
   hullCollider: {fileID: 0}
   mirrorEnabled: 1
   snappingEnabled: 1
-  snapEnterAngle: 22
-  snapReleaseAngle: 28
-  centerSnapNormalizedRadius: 0.2
+  snapEnterAngle: 24
+  snapReleaseAngle: 32
+  centerSnapNormalizedRadius: 0.16
+  centerSnapWorldDistance: 0.1
+  surfaceGridSize: 0.25
+  neighborAlignmentDistance: 0.1
+  gridSnapRequiresControl: 1
+  allowPartSurfacePlacement: 1
 --- !u!114 &52408167
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -421,29 +426,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   definitions:
   - materialId: paint.deep_space_blue
-    displayName: "\u6DF1\u7A7A\u84DD"
+    displayName: "\u6DF1\u7A7A\u949B\u84DD"
     material: {fileID: 2100000, guid: cd2c25d143d1e1c4eb2c60a2b929bac5, type: 2}
-    previewColor: {r: 0.025, g: 0.2, b: 0.36, a: 1}
+    previewColor: {r: 0.18, g: 0.42, b: 0.7, a: 1}
   - materialId: paint.gunmetal
-    displayName: "\u67AA\u7070"
+    displayName: "\u55B7\u7802\u67AA\u7070"
     material: {fileID: 2100000, guid: 2a533289e43dc5d45b715206fcf81088, type: 2}
-    previewColor: {r: 0.16, g: 0.19, b: 0.23, a: 1}
+    previewColor: {r: 0.32, g: 0.35, b: 0.38, a: 1}
   - materialId: paint.ceramic_white
-    displayName: "\u9676\u74F7\u767D"
+    displayName: "\u822A\u7A7A\u62C9\u4E1D\u94DD"
     material: {fileID: 2100000, guid: 7d51f7999275d5d459a1d1756a44b25b, type: 2}
-    previewColor: {r: 0.78, g: 0.86, b: 0.9, a: 1}
+    previewColor: {r: 0.76, g: 0.8, b: 0.82, a: 1}
   - materialId: paint.warning_red
-    displayName: "\u8B66\u6212\u7EA2"
+    displayName: "\u7EA2\u8272\u9540\u950C\u94A2"
     material: {fileID: 2100000, guid: b632582e73e26c84aa552c5483d77231, type: 2}
-    previewColor: {r: 0.68, g: 0.055, b: 0.045, a: 1}
+    previewColor: {r: 0.66, g: 0.15, b: 0.12, a: 1}
   - materialId: paint.industrial_copper
-    displayName: "\u5DE5\u4E1A\u94DC"
+    displayName: "\u6C27\u5316\u5DE5\u4E1A\u94DC"
     material: {fileID: 2100000, guid: 0887fa0151e13194e8b2d31b3d63ae51, type: 2}
-    previewColor: {r: 0.46, g: 0.2, b: 0.075, a: 1}
+    previewColor: {r: 0.63, g: 0.29, b: 0.1, a: 1}
   - materialId: paint.explorer_green
-    displayName: "\u63A2\u7D22\u7EFF"
+    displayName: "\u7EFF\u8272\u519B\u7528\u94A2"
     material: {fileID: 2100000, guid: 990692263329afe4886cc9d2386e4183, type: 2}
-    previewColor: {r: 0.045, g: 0.36, b: 0.22, a: 1}
+    previewColor: {r: 0.18, g: 0.42, b: 0.28, a: 1}
+  - materialId: paint.brushed_brass
+    displayName: "\u62C9\u4E1D\u9EC4\u94DC"
+    material: {fileID: 2100000, guid: a40f780fd15cafc4eaccc6c958a09af3, type: 2}
+    previewColor: {r: 0.67, g: 0.48, b: 0.14, a: 1}
+  - materialId: paint.graphite_pitted
+    displayName: "\u8680\u523B\u77F3\u58A8\u91D1\u5C5E"
+    material: {fileID: 2100000, guid: 76fe4bc9c29e97440b33df109635179b, type: 2}
+    previewColor: {r: 0.18, g: 0.2, b: 0.22, a: 1}
   defaultMaterialId: paint.deep_space_blue
 --- !u!1 &69160120
 GameObject:
@@ -1779,8 +1792,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b57c5fd218924920937840f2e6678c7d, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   surfaceSceneName: star
   mapSceneName: GalaxyMap
   interstellarSceneName: InterstellarFlight
@@ -1792,6 +1805,16 @@ MonoBehaviour:
   planets:
   - planetId: origin
     displayName: Aster
+    systemId: 
+    orbitIndex: 0
+    orbit:
+      semiMajorAxisMeters: 149597870700
+      eccentricity: 0
+      inclinationDegrees: 0
+      longitudeAscendingNodeDegrees: 0
+      argumentOfPeriapsisDegrees: 0
+      meanAnomalyAtEpochDegrees: 0
+      epochSeconds: 0
     seed: 12345
     climate: 0
     mapColor: {r: 0.85, g: 0.53, b: 0.24, a: 1}
@@ -1801,11 +1824,18 @@ MonoBehaviour:
     tintMapIcon: 0
     iconResourcePath: Galaxy/planet_amber
     terrain:
+      shapeVersion: 2
       continentScale: 0.022
       continentHeight: 7
       detailScale: 0.075
       detailHeight: 3
       ridgeHeight: 2
+      continentThreshold: 0.5
+      continentWarp: 0.55
+      continentSharpness: 1.2
+      mountainMask: 0.5
+      oceanFloorDepth: 0.55
+      terraceStrength: 0
       surfaceLayerDepth: 1
       stoneDepth: 4
       generateCaves: 1
@@ -1938,8 +1968,84 @@ MonoBehaviour:
         scatteringStrength: 0.8
         cloudCoverage: 0.45
         cloudRotationMultiplier: 1.08
+      physical:
+        radiusMeters: 6371000
+        meanDensityKgPerCubicMeter: 5514
+        massKg: 5.97219e+24
+        gravitationalParameter: 398600441800000
+        surfaceGravity: 9.80665
+        rotationPeriodSeconds: 86164
+        atmosphereSurfaceDensityKgPerCubicMeter: 1.225
+        atmosphereScaleHeightMeters: 8500
+        atmosphereTopAltitudeMeters: 100000
+        visualExosphereAltitudeMeters: 600000
+      presentation:
+        surfaceProxyRadius: 2000
+        atmosphereProxyTopAltitude: 780
+        visualRotationPeriodSeconds: 900
+        preferredOrbitalProxyDistance: 8000
+        minimumProxyRadius: 0.00001
+        maximumProxyRadius: 3200
+    lowPolyVisual:
+      visualVersion: 3
+      lowlandColor: {r: 0.22, g: 0.42, b: 0.24, a: 1}
+      highlandColor: {r: 0.42, g: 0.5, b: 0.3, a: 1}
+      cliffColor: {r: 0.24, g: 0.24, b: 0.22, a: 1}
+      rockColor: {r: 0.32, g: 0.3, b: 0.28, a: 1}
+      accentColor: {r: 0.55, g: 0.68, b: 0.34, a: 1}
+      facetStrength: 0.72
+      lightingBands: 4
+      macroColorSize: 18
+      cliffSlope: 0.58
+      macroVariation: 0.16
+      oceanEnabled: 1
+      deepOceanColor: {r: 0.015, g: 0.12, b: 0.22, a: 1}
+      shallowOceanColor: {r: 0.03, g: 0.52, b: 0.62, a: 1}
+      shoreColor: {r: 0.72, g: 0.68, b: 0.42, a: 1}
+      snowColor: {r: 0.9, g: 0.92, b: 0.84, a: 1}
+      oceanLevel: 0
+      shoreWidth: 0.018
+      snowLine: 0.68
+      snowAmount: 0.55
+      oceanSmoothness: 0.86
+      oceanWaveStrength: 0.32
+      oceanWaveScale: 1
+      oceanWaveSpeed: 1
+      oceanNormalStrength: 0.85
+      oceanFoamStrength: 0.62
+      oceanRefractionStrength: 0.012
+      oceanOpacity: 0.82
+      forestWeight: 0
+      desertWeight: 0
+      tundraWeight: 0
+      volcanicWeight: 0
+      crystalWeight: 0
+      tropicalWeight: 0
+      decorationSeed: 0
+      decorationDensity: 1
+      decorationScale: 1
+      clusterStrength: 0.5
+      landmarkStyle: 0
+      horizonColor: {r: 0.42, g: 0.68, b: 0.9, a: 1}
+      zenithColor: {r: 0.08, g: 0.22, b: 0.42, a: 1}
+      sunsetColor: {r: 1, g: 0.35, b: 0.12, a: 1}
+      groundAmbientColor: {r: 0.08, g: 0.09, b: 0.08, a: 1}
+      atmosphereThickness: 0.65
+      cloudCoverage: 0.35
+      hazeStrength: 0.22
+      cloudSeed: 0
   - planetId: verdant
     displayName: Viridia
+    systemId: 
+    orbitIndex: 0
+    orbit:
+      semiMajorAxisMeters: 149597870700
+      eccentricity: 0
+      inclinationDegrees: 0
+      longitudeAscendingNodeDegrees: 0
+      argumentOfPeriapsisDegrees: 0
+      meanAnomalyAtEpochDegrees: 0
+      epochSeconds: 0
     seed: 24680
     climate: 1
     mapColor: {r: 0.3, g: 0.82, b: 0.5, a: 1}
@@ -1949,11 +2055,18 @@ MonoBehaviour:
     tintMapIcon: 0
     iconResourcePath: Galaxy/planet_green
     terrain:
+      shapeVersion: 2
       continentScale: 0.012
       continentHeight: 10
       detailScale: 0.045
       detailHeight: 1.5
       ridgeHeight: 0.5
+      continentThreshold: 0.5
+      continentWarp: 0.55
+      continentSharpness: 1.2
+      mountainMask: 0.5
+      oceanFloorDepth: 0.55
+      terraceStrength: 0
       surfaceLayerDepth: 1.5
       stoneDepth: 5
       generateCaves: 1
@@ -2121,8 +2234,84 @@ MonoBehaviour:
         scatteringStrength: 0.8
         cloudCoverage: 0.45
         cloudRotationMultiplier: 1.08
+      physical:
+        radiusMeters: 6371000
+        meanDensityKgPerCubicMeter: 5514
+        massKg: 5.97219e+24
+        gravitationalParameter: 398600441800000
+        surfaceGravity: 9.80665
+        rotationPeriodSeconds: 86164
+        atmosphereSurfaceDensityKgPerCubicMeter: 1.225
+        atmosphereScaleHeightMeters: 8500
+        atmosphereTopAltitudeMeters: 100000
+        visualExosphereAltitudeMeters: 600000
+      presentation:
+        surfaceProxyRadius: 2000
+        atmosphereProxyTopAltitude: 780
+        visualRotationPeriodSeconds: 900
+        preferredOrbitalProxyDistance: 8000
+        minimumProxyRadius: 0.00001
+        maximumProxyRadius: 3200
+    lowPolyVisual:
+      visualVersion: 3
+      lowlandColor: {r: 0.22, g: 0.42, b: 0.24, a: 1}
+      highlandColor: {r: 0.42, g: 0.5, b: 0.3, a: 1}
+      cliffColor: {r: 0.24, g: 0.24, b: 0.22, a: 1}
+      rockColor: {r: 0.32, g: 0.3, b: 0.28, a: 1}
+      accentColor: {r: 0.55, g: 0.68, b: 0.34, a: 1}
+      facetStrength: 0.72
+      lightingBands: 4
+      macroColorSize: 18
+      cliffSlope: 0.58
+      macroVariation: 0.16
+      oceanEnabled: 1
+      deepOceanColor: {r: 0.015, g: 0.12, b: 0.22, a: 1}
+      shallowOceanColor: {r: 0.03, g: 0.52, b: 0.62, a: 1}
+      shoreColor: {r: 0.72, g: 0.68, b: 0.42, a: 1}
+      snowColor: {r: 0.9, g: 0.92, b: 0.84, a: 1}
+      oceanLevel: 0
+      shoreWidth: 0.018
+      snowLine: 0.68
+      snowAmount: 0.55
+      oceanSmoothness: 0.86
+      oceanWaveStrength: 0.32
+      oceanWaveScale: 1
+      oceanWaveSpeed: 1
+      oceanNormalStrength: 0.85
+      oceanFoamStrength: 0.62
+      oceanRefractionStrength: 0.012
+      oceanOpacity: 0.82
+      forestWeight: 0
+      desertWeight: 0
+      tundraWeight: 0
+      volcanicWeight: 0
+      crystalWeight: 0
+      tropicalWeight: 0
+      decorationSeed: 0
+      decorationDensity: 1
+      decorationScale: 1
+      clusterStrength: 0.5
+      landmarkStyle: 0
+      horizonColor: {r: 0.42, g: 0.68, b: 0.9, a: 1}
+      zenithColor: {r: 0.08, g: 0.22, b: 0.42, a: 1}
+      sunsetColor: {r: 1, g: 0.35, b: 0.12, a: 1}
+      groundAmbientColor: {r: 0.08, g: 0.09, b: 0.08, a: 1}
+      atmosphereThickness: 0.65
+      cloudCoverage: 0.35
+      hazeStrength: 0.22
+      cloudSeed: 0
   - planetId: crimson
     displayName: Cinder
+    systemId: 
+    orbitIndex: 0
+    orbit:
+      semiMajorAxisMeters: 149597870700
+      eccentricity: 0
+      inclinationDegrees: 0
+      longitudeAscendingNodeDegrees: 0
+      argumentOfPeriapsisDegrees: 0
+      meanAnomalyAtEpochDegrees: 0
+      epochSeconds: 0
     seed: 97531
     climate: 5
     mapColor: {r: 0.9, g: 0.3, b: 0.2, a: 1}
@@ -2132,11 +2321,18 @@ MonoBehaviour:
     tintMapIcon: 0
     iconResourcePath: Galaxy/planet_red
     terrain:
+      shapeVersion: 2
       continentScale: 0.025
       continentHeight: 9
       detailScale: 0.085
       detailHeight: 4.5
       ridgeHeight: 7
+      continentThreshold: 0.5
+      continentWarp: 0.55
+      continentSharpness: 1.2
+      mountainMask: 0.5
+      oceanFloorDepth: 0.55
+      terraceStrength: 0
       surfaceLayerDepth: 0.6
       stoneDepth: 2.5
       generateCaves: 1
@@ -2282,8 +2478,84 @@ MonoBehaviour:
         scatteringStrength: 0.8
         cloudCoverage: 0.45
         cloudRotationMultiplier: 1.08
+      physical:
+        radiusMeters: 6371000
+        meanDensityKgPerCubicMeter: 5514
+        massKg: 5.97219e+24
+        gravitationalParameter: 398600441800000
+        surfaceGravity: 9.80665
+        rotationPeriodSeconds: 86164
+        atmosphereSurfaceDensityKgPerCubicMeter: 1.225
+        atmosphereScaleHeightMeters: 8500
+        atmosphereTopAltitudeMeters: 100000
+        visualExosphereAltitudeMeters: 600000
+      presentation:
+        surfaceProxyRadius: 2000
+        atmosphereProxyTopAltitude: 780
+        visualRotationPeriodSeconds: 900
+        preferredOrbitalProxyDistance: 8000
+        minimumProxyRadius: 0.00001
+        maximumProxyRadius: 3200
+    lowPolyVisual:
+      visualVersion: 3
+      lowlandColor: {r: 0.22, g: 0.42, b: 0.24, a: 1}
+      highlandColor: {r: 0.42, g: 0.5, b: 0.3, a: 1}
+      cliffColor: {r: 0.24, g: 0.24, b: 0.22, a: 1}
+      rockColor: {r: 0.32, g: 0.3, b: 0.28, a: 1}
+      accentColor: {r: 0.55, g: 0.68, b: 0.34, a: 1}
+      facetStrength: 0.72
+      lightingBands: 4
+      macroColorSize: 18
+      cliffSlope: 0.58
+      macroVariation: 0.16
+      oceanEnabled: 1
+      deepOceanColor: {r: 0.015, g: 0.12, b: 0.22, a: 1}
+      shallowOceanColor: {r: 0.03, g: 0.52, b: 0.62, a: 1}
+      shoreColor: {r: 0.72, g: 0.68, b: 0.42, a: 1}
+      snowColor: {r: 0.9, g: 0.92, b: 0.84, a: 1}
+      oceanLevel: 0
+      shoreWidth: 0.018
+      snowLine: 0.68
+      snowAmount: 0.55
+      oceanSmoothness: 0.86
+      oceanWaveStrength: 0.32
+      oceanWaveScale: 1
+      oceanWaveSpeed: 1
+      oceanNormalStrength: 0.85
+      oceanFoamStrength: 0.62
+      oceanRefractionStrength: 0.012
+      oceanOpacity: 0.82
+      forestWeight: 0
+      desertWeight: 0
+      tundraWeight: 0
+      volcanicWeight: 0
+      crystalWeight: 0
+      tropicalWeight: 0
+      decorationSeed: 0
+      decorationDensity: 1
+      decorationScale: 1
+      clusterStrength: 0.5
+      landmarkStyle: 0
+      horizonColor: {r: 0.42, g: 0.68, b: 0.9, a: 1}
+      zenithColor: {r: 0.08, g: 0.22, b: 0.42, a: 1}
+      sunsetColor: {r: 1, g: 0.35, b: 0.12, a: 1}
+      groundAmbientColor: {r: 0.08, g: 0.09, b: 0.08, a: 1}
+      atmosphereThickness: 0.65
+      cloudCoverage: 0.35
+      hazeStrength: 0.22
+      cloudSeed: 0
   - planetId: azure
     displayName: Pelagos
+    systemId: 
+    orbitIndex: 0
+    orbit:
+      semiMajorAxisMeters: 149597870700
+      eccentricity: 0
+      inclinationDegrees: 0
+      longitudeAscendingNodeDegrees: 0
+      argumentOfPeriapsisDegrees: 0
+      meanAnomalyAtEpochDegrees: 0
+      epochSeconds: 0
     seed: 48127
     climate: 3
     mapColor: {r: 0.25, g: 0.65, b: 0.95, a: 1}
@@ -2293,11 +2565,18 @@ MonoBehaviour:
     tintMapIcon: 0
     iconResourcePath: Galaxy/planet_blue
     terrain:
+      shapeVersion: 2
       continentScale: 0.01
       continentHeight: 6
       detailScale: 0.035
       detailHeight: 0.8
       ridgeHeight: 0.2
+      continentThreshold: 0.5
+      continentWarp: 0.55
+      continentSharpness: 1.2
+      mountainMask: 0.5
+      oceanFloorDepth: 0.55
+      terraceStrength: 0
       surfaceLayerDepth: 2
       stoneDepth: 6
       generateCaves: 1
@@ -2443,8 +2722,84 @@ MonoBehaviour:
         scatteringStrength: 0.8
         cloudCoverage: 0.45
         cloudRotationMultiplier: 1.08
+      physical:
+        radiusMeters: 6371000
+        meanDensityKgPerCubicMeter: 5514
+        massKg: 5.97219e+24
+        gravitationalParameter: 398600441800000
+        surfaceGravity: 9.80665
+        rotationPeriodSeconds: 86164
+        atmosphereSurfaceDensityKgPerCubicMeter: 1.225
+        atmosphereScaleHeightMeters: 8500
+        atmosphereTopAltitudeMeters: 100000
+        visualExosphereAltitudeMeters: 600000
+      presentation:
+        surfaceProxyRadius: 2000
+        atmosphereProxyTopAltitude: 780
+        visualRotationPeriodSeconds: 900
+        preferredOrbitalProxyDistance: 8000
+        minimumProxyRadius: 0.00001
+        maximumProxyRadius: 3200
+    lowPolyVisual:
+      visualVersion: 3
+      lowlandColor: {r: 0.22, g: 0.42, b: 0.24, a: 1}
+      highlandColor: {r: 0.42, g: 0.5, b: 0.3, a: 1}
+      cliffColor: {r: 0.24, g: 0.24, b: 0.22, a: 1}
+      rockColor: {r: 0.32, g: 0.3, b: 0.28, a: 1}
+      accentColor: {r: 0.55, g: 0.68, b: 0.34, a: 1}
+      facetStrength: 0.72
+      lightingBands: 4
+      macroColorSize: 18
+      cliffSlope: 0.58
+      macroVariation: 0.16
+      oceanEnabled: 1
+      deepOceanColor: {r: 0.015, g: 0.12, b: 0.22, a: 1}
+      shallowOceanColor: {r: 0.03, g: 0.52, b: 0.62, a: 1}
+      shoreColor: {r: 0.72, g: 0.68, b: 0.42, a: 1}
+      snowColor: {r: 0.9, g: 0.92, b: 0.84, a: 1}
+      oceanLevel: 0
+      shoreWidth: 0.018
+      snowLine: 0.68
+      snowAmount: 0.55
+      oceanSmoothness: 0.86
+      oceanWaveStrength: 0.32
+      oceanWaveScale: 1
+      oceanWaveSpeed: 1
+      oceanNormalStrength: 0.85
+      oceanFoamStrength: 0.62
+      oceanRefractionStrength: 0.012
+      oceanOpacity: 0.82
+      forestWeight: 0
+      desertWeight: 0
+      tundraWeight: 0
+      volcanicWeight: 0
+      crystalWeight: 0
+      tropicalWeight: 0
+      decorationSeed: 0
+      decorationDensity: 1
+      decorationScale: 1
+      clusterStrength: 0.5
+      landmarkStyle: 0
+      horizonColor: {r: 0.42, g: 0.68, b: 0.9, a: 1}
+      zenithColor: {r: 0.08, g: 0.22, b: 0.42, a: 1}
+      sunsetColor: {r: 1, g: 0.35, b: 0.12, a: 1}
+      groundAmbientColor: {r: 0.08, g: 0.09, b: 0.08, a: 1}
+      atmosphereThickness: 0.65
+      cloudCoverage: 0.35
+      hazeStrength: 0.22
+      cloudSeed: 0
   - planetId: violet
     displayName: Nyx
+    systemId: 
+    orbitIndex: 0
+    orbit:
+      semiMajorAxisMeters: 149597870700
+      eccentricity: 0
+      inclinationDegrees: 0
+      longitudeAscendingNodeDegrees: 0
+      argumentOfPeriapsisDegrees: 0
+      meanAnomalyAtEpochDegrees: 0
+      epochSeconds: 0
     seed: 86420
     climate: 6
     mapColor: {r: 0.65, g: 0.35, b: 0.9, a: 1}
@@ -2454,11 +2809,18 @@ MonoBehaviour:
     tintMapIcon: 0
     iconResourcePath: Galaxy/planet_violet
     terrain:
+      shapeVersion: 2
       continentScale: 0.03
       continentHeight: 6
       detailScale: 0.11
       detailHeight: 5.5
       ridgeHeight: 6
+      continentThreshold: 0.5
+      continentWarp: 0.55
+      continentSharpness: 1.2
+      mountainMask: 0.5
+      oceanFloorDepth: 0.55
+      terraceStrength: 0
       surfaceLayerDepth: 0.7
       stoneDepth: 3
       generateCaves: 1
@@ -2604,6 +2966,72 @@ MonoBehaviour:
         scatteringStrength: 0.8
         cloudCoverage: 0.45
         cloudRotationMultiplier: 1.08
+      physical:
+        radiusMeters: 6371000
+        meanDensityKgPerCubicMeter: 5514
+        massKg: 5.97219e+24
+        gravitationalParameter: 398600441800000
+        surfaceGravity: 9.80665
+        rotationPeriodSeconds: 86164
+        atmosphereSurfaceDensityKgPerCubicMeter: 1.225
+        atmosphereScaleHeightMeters: 8500
+        atmosphereTopAltitudeMeters: 100000
+        visualExosphereAltitudeMeters: 600000
+      presentation:
+        surfaceProxyRadius: 2000
+        atmosphereProxyTopAltitude: 780
+        visualRotationPeriodSeconds: 900
+        preferredOrbitalProxyDistance: 8000
+        minimumProxyRadius: 0.00001
+        maximumProxyRadius: 3200
+    lowPolyVisual:
+      visualVersion: 3
+      lowlandColor: {r: 0.22, g: 0.42, b: 0.24, a: 1}
+      highlandColor: {r: 0.42, g: 0.5, b: 0.3, a: 1}
+      cliffColor: {r: 0.24, g: 0.24, b: 0.22, a: 1}
+      rockColor: {r: 0.32, g: 0.3, b: 0.28, a: 1}
+      accentColor: {r: 0.55, g: 0.68, b: 0.34, a: 1}
+      facetStrength: 0.72
+      lightingBands: 4
+      macroColorSize: 18
+      cliffSlope: 0.58
+      macroVariation: 0.16
+      oceanEnabled: 1
+      deepOceanColor: {r: 0.015, g: 0.12, b: 0.22, a: 1}
+      shallowOceanColor: {r: 0.03, g: 0.52, b: 0.62, a: 1}
+      shoreColor: {r: 0.72, g: 0.68, b: 0.42, a: 1}
+      snowColor: {r: 0.9, g: 0.92, b: 0.84, a: 1}
+      oceanLevel: 0
+      shoreWidth: 0.018
+      snowLine: 0.68
+      snowAmount: 0.55
+      oceanSmoothness: 0.86
+      oceanWaveStrength: 0.32
+      oceanWaveScale: 1
+      oceanWaveSpeed: 1
+      oceanNormalStrength: 0.85
+      oceanFoamStrength: 0.62
+      oceanRefractionStrength: 0.012
+      oceanOpacity: 0.82
+      forestWeight: 0
+      desertWeight: 0
+      tundraWeight: 0
+      volcanicWeight: 0
+      crystalWeight: 0
+      tropicalWeight: 0
+      decorationSeed: 0
+      decorationDensity: 1
+      decorationScale: 1
+      clusterStrength: 0.5
+      landmarkStyle: 0
+      horizonColor: {r: 0.42, g: 0.68, b: 0.9, a: 1}
+      zenithColor: {r: 0.08, g: 0.22, b: 0.42, a: 1}
+      sunsetColor: {r: 1, g: 0.35, b: 0.12, a: 1}
+      groundAmbientColor: {r: 0.08, g: 0.09, b: 0.08, a: 1}
+      atmosphereThickness: 0.65
+      cloudCoverage: 0.35
+      hazeStrength: 0.22
+      cloudSeed: 0
   resourceCatalog: []
   decorationCatalog: {fileID: 11400000, guid: bfc1507753c20c54f89990af172b4bb7, type: 2}
 --- !u!4 &454491678
@@ -2689,6 +3117,165 @@ MonoBehaviour:
   m_FirstSelected: {fileID: 0}
   m_sendNavigationEvents: 1
   m_DragThreshold: 10
+--- !u!1 &521102072
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 521102073}
+  - component: {fileID: 521102074}
+  m_Layer: 0
+  m_Name: WorkshopReflectionProbe
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &521102073
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 521102072}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1858737548}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!215 &521102074
+ReflectionProbe:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 521102072}
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Type: 0
+  m_Mode: 1
+  m_RefreshMode: 2
+  m_TimeSlicingMode: 2
+  m_Resolution: 128
+  m_UpdateFrequency: 0
+  m_BoxSize: {x: 30, y: 20, z: 30}
+  m_BoxOffset: {x: 0, y: 0, z: 0}
+  m_NearClip: 0.3
+  m_FarClip: 1000
+  m_ShadowDistance: 100
+  m_ClearFlags: 1
+  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IntensityMultiplier: 1.2
+  m_BlendDistance: 1
+  m_HDR: 1
+  m_BoxProjection: 1
+  m_RenderDynamicObjects: 0
+  m_UseOcclusionCulling: 1
+  m_Importance: 1
+  m_CustomBakedTexture: {fileID: 0}
+--- !u!1 &524890771
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 524890772}
+  - component: {fileID: 524890773}
+  m_Layer: 0
+  m_Name: TopLight
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &524890772
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 524890771}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 6.5, z: -1.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1858737548}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!108 &524890773
+Light:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 524890771}
+  m_Enabled: 1
+  serializedVersion: 10
+  m_Type: 2
+  m_Shape: 0
+  m_Color: {r: 0.82, g: 0.91, b: 1, a: 1}
+  m_Intensity: 5.2
+  m_Range: 18
+  m_SpotAngle: 30
+  m_InnerSpotAngle: 21.80208
+  m_CookieSize: 10
+  m_Shadows:
+    m_Type: 0
+    m_Resolution: -1
+    m_CustomResolution: -1
+    m_Strength: 1
+    m_Bias: 0.05
+    m_NormalBias: 0.4
+    m_NearPlane: 0.2
+    m_CullingMatrixOverride:
+      e00: 1
+      e01: 0
+      e02: 0
+      e03: 0
+      e10: 0
+      e11: 1
+      e12: 0
+      e13: 0
+      e20: 0
+      e21: 0
+      e22: 1
+      e23: 0
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    m_UseCullingMatrixOverride: 0
+  m_Cookie: {fileID: 0}
+  m_DrawHalo: 0
+  m_Flare: {fileID: 0}
+  m_RenderMode: 0
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RenderingLayerMask: 1
+  m_Lightmapping: 4
+  m_LightShadowCasterMode: 0
+  m_AreaSize: {x: 1, y: 1}
+  m_BounceIntensity: 1
+  m_ColorTemperature: 6570
+  m_UseColorTemperature: 0
+  m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_UseBoundingSphereOverride: 0
+  m_UseViewFrustumForShadowCasterCull: 1
+  m_ShadowRadius: 0
+  m_ShadowAngle: 0
 --- !u!1 &551260606
 GameObject:
   m_ObjectHideFlags: 0
@@ -4779,7 +5366,7 @@ Transform:
   m_GameObject: {fileID: 1178245858}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4, y: 3, z: 2}
+  m_LocalPosition: {x: -4.5, y: 2.5, z: 3.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4796,9 +5383,9 @@ Light:
   serializedVersion: 10
   m_Type: 2
   m_Shape: 0
-  m_Color: {r: 0.08, g: 0.72, b: 1, a: 1}
-  m_Intensity: 3.2
-  m_Range: 14
+  m_Color: {r: 0.3, g: 0.72, b: 1, a: 1}
+  m_Intensity: 4.8
+  m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10
@@ -7496,7 +8083,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.003, g: 0.012, b: 0.023, a: 1}
+  m_BackGroundColor: {r: 0.018, g: 0.035, b: 0.052, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -8310,6 +8897,100 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1849668297}
   m_CullTransparentMesh: 1
+--- !u!1 &1855343362
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1855343363}
+  - component: {fileID: 1855343364}
+  m_Layer: 0
+  m_Name: FillLight
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1855343363
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1855343362}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.09042401, y: -0.909576, z: -0.28678828, w: -0.28678823}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1858737548}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!108 &1855343364
+Light:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1855343362}
+  m_Enabled: 1
+  serializedVersion: 10
+  m_Type: 1
+  m_Shape: 0
+  m_Color: {r: 0.65, g: 0.82, b: 1, a: 1}
+  m_Intensity: 0.82
+  m_Range: 10
+  m_SpotAngle: 30
+  m_InnerSpotAngle: 21.80208
+  m_CookieSize: 10
+  m_Shadows:
+    m_Type: 0
+    m_Resolution: -1
+    m_CustomResolution: -1
+    m_Strength: 1
+    m_Bias: 0.05
+    m_NormalBias: 0.4
+    m_NearPlane: 0.2
+    m_CullingMatrixOverride:
+      e00: 1
+      e01: 0
+      e02: 0
+      e03: 0
+      e10: 0
+      e11: 1
+      e12: 0
+      e13: 0
+      e20: 0
+      e21: 0
+      e22: 1
+      e23: 0
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    m_UseCullingMatrixOverride: 0
+  m_Cookie: {fileID: 0}
+  m_DrawHalo: 0
+  m_Flare: {fileID: 0}
+  m_RenderMode: 0
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RenderingLayerMask: 1
+  m_Lightmapping: 4
+  m_LightShadowCasterMode: 0
+  m_AreaSize: {x: 1, y: 1}
+  m_BounceIntensity: 1
+  m_ColorTemperature: 6570
+  m_UseColorTemperature: 0
+  m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_UseBoundingSphereOverride: 0
+  m_UseViewFrustumForShadowCasterCull: 1
+  m_ShadowRadius: 0
+  m_ShadowAngle: 0
 --- !u!1 &1858737547
 GameObject:
   m_ObjectHideFlags: 0
@@ -8319,6 +9000,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1858737548}
+  - component: {fileID: 1858737549}
   m_Layer: 0
   m_Name: Lights
   m_TagString: Untagged
@@ -8341,8 +9023,28 @@ Transform:
   m_Children:
   - {fileID: 2113477191}
   - {fileID: 1178245859}
+  - {fileID: 1855343363}
+  - {fileID: 524890772}
+  - {fileID: 521102073}
   m_Father: {fileID: 962477342}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1858737549
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1858737547}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23eb655e44fa5de4e8c1e76b34af8c72, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ambientSky: {r: 0.34, g: 0.42, b: 0.5, a: 1}
+  ambientEquator: {r: 0.24, g: 0.29, b: 0.34, a: 1}
+  ambientGround: {r: 0.12, g: 0.14, b: 0.17, a: 1}
+  ambientIntensity: 1.25
+  reflectionIntensity: 1.35
 --- !u!1 &1947138210
 GameObject:
   m_ObjectHideFlags: 0
@@ -8458,7 +9160,7 @@ MonoBehaviour:
   shipBody: {fileID: 0}
   partsRoot: {fileID: 0}
   catalog: {fileID: 0}
-  hullMass: 100
+  hullMass: 12000
 --- !u!114 &1975299681
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8484,7 +9186,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1975299679}
   serializedVersion: 4
-  m_Mass: 100
+  m_Mass: 12000
   m_Drag: 0
   m_AngularDrag: 0
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -9138,7 +9840,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2113477190}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.26062024, y: -0.31295618, z: 0.08973874, w: 0.9088908}
+  m_LocalRotation: {x: 0.2998379, y: -0.23008141, z: 0.07475798, w: 0.9228061}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -9156,14 +9858,14 @@ Light:
   serializedVersion: 10
   m_Type: 1
   m_Shape: 0
-  m_Color: {r: 0.72, g: 0.88, b: 1, a: 1}
-  m_Intensity: 1.1
+  m_Color: {r: 1, g: 0.91, b: 0.8, a: 1}
+  m_Intensity: 1.75
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10
   m_Shadows:
-    m_Type: 0
+    m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1

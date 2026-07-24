@@ -15,7 +15,7 @@ namespace SpacecraftEditor
         }
 
         const int RcsActuatorCount = 24;
-        const int SolverIterations = 10;
+        const int SolverIterations = 18;
         const float SolutionRegularization = 0.015f;
         const float RiseTime = 0.12f;
         const float FallTime = 0.08f;
@@ -32,6 +32,8 @@ namespace SpacecraftEditor
         public int ActuatorCount => actuators.Length;
         public float ControlAuthority { get; private set; } = 1f;
         public float MaximumAppliedThrottle { get; private set; }
+        public Vector3 AppliedLocalForce { get; private set; }
+        public Vector3 AppliedLocalTorque { get; private set; }
 
         public void Rebuild(ShipAssembly assembly, ShipHullDefinition hull)
         {
@@ -78,6 +80,8 @@ namespace SpacecraftEditor
             referenceLength = hull == null ? 1f : Mathf.Max(0.5f, hull.Dimensions.magnitude * 0.25f);
             ControlAuthority = 1f;
             MaximumAppliedThrottle = 0f;
+            AppliedLocalForce = Vector3.zero;
+            AppliedLocalTorque = Vector3.zero;
         }
 
         public float SolveAndApply(
@@ -112,6 +116,8 @@ namespace SpacecraftEditor
                     actuators[index].part.SetExhaust(0f);
             }
             MaximumAppliedThrottle = 0f;
+            AppliedLocalForce = Vector3.zero;
+            AppliedLocalTorque = Vector3.zero;
             ControlAuthority = 1f;
         }
 
@@ -134,8 +140,7 @@ namespace SpacecraftEditor
         void AppendBuiltInRcs(ShipHullDefinition hull, ref int cursor)
         {
             Vector3 halfSize = Vector3.Scale(hull.Dimensions, new Vector3(0.42f, 0.42f, 0.42f));
-            Vector3 acceleration = hull.FlightProfile.RcsAcceleration;
-            Vector3 perNozzleForce = hull.BaseMass * acceleration * 0.25f;
+            Vector3 perNozzleForce = hull.FlightProfile.IntegratedRcsNozzleForce;
             for (int x = -1; x <= 1; x += 2)
             for (int y = -1; y <= 1; y += 2)
             for (int z = -1; z <= 1; z += 2)
@@ -251,17 +256,33 @@ namespace SpacecraftEditor
         void Apply(Rigidbody body, Transform shipTransform, float thrustMultiplier, float deltaTime)
         {
             MaximumAppliedThrottle = 0f;
+            AppliedLocalForce = Vector3.zero;
+            AppliedLocalTorque = Vector3.zero;
             for (int index = 0; index < actuators.Length; index++)
             {
                 float duration = targetThrottles[index] > appliedThrottles[index] ? RiseTime : FallTime;
-                appliedThrottles[index] = Mathf.MoveTowards(
+                // All nozzles that are rising from rest must preserve the ratios
+                // produced by the wrench solver. An absolute MoveTowards step
+                // saturates small throttle targets first and temporarily breaks
+                // paired RCS symmetry, which turns a pure translation request
+                // into a large unintended torque. A common exponential response
+                // keeps proportional targets proportional throughout spool-up.
+                float response = 1f - Mathf.Exp(-deltaTime / duration);
+                appliedThrottles[index] = Mathf.Lerp(
                     appliedThrottles[index],
                     targetThrottles[index],
-                    deltaTime / duration);
+                    response);
+                if (Mathf.Abs(appliedThrottles[index] - targetThrottles[index]) < 0.0001f)
+                    appliedThrottles[index] = targetThrottles[index];
                 float throttle = appliedThrottles[index];
                 MaximumAppliedThrottle = Mathf.Max(MaximumAppliedThrottle, throttle);
 
                 Actuator actuator = actuators[index];
+                Vector3 appliedForce = localForces[index] * throttle;
+                AppliedLocalForce += appliedForce;
+                AppliedLocalTorque += Vector3.Cross(
+                    actuator.localPosition - body.centerOfMass,
+                    appliedForce);
                 if (actuator.builtIn)
                 {
                     if (throttle <= 0.0001f)

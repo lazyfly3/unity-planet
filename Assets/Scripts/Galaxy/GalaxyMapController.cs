@@ -790,10 +790,27 @@ public sealed class GalaxyMapController : MonoBehaviour
             "WASD / 方向键选择　　F / Enter 前往　　右键更多操作　　Esc / M 返回";
         VisitedPlanetRecord selected = travelManager.VisitedPlanets[visitedSelectionIndex];
         string displayName = travelManager.GetPlanetDisplayName(selected);
+        GalaxyPlanetDefinition selectedDefinition = travelManager.GetPlanetAt(selected.Coordinate);
+        UniversePosition selectedAddress = travelManager.GetInterstellarPlanetAddress(selected.Coordinate);
+        double physicalDistance = UniversePosition.Distance(
+            travelManager.SavedUniversePosition,
+            selectedAddress);
+        string orbitalDistance = selectedDefinition?.orbit == null
+            ? "--"
+            : SpaceflightUnitFormatter.FormatDistance(
+                selectedDefinition.orbit.semiMajorAxisMeters);
         locationText.text =
-            $"{displayName}　//　坐标 {selected.coordinateX}:{selected.coordinateY}:{selected.coordinateZ}";
+            $"{displayName}　//　轨道 {orbitalDistance}　//　距离 {SpaceflightUnitFormatter.FormatDistance(physicalDistance)}";
         if (mandatoryMessageUntil <= 0f)
-            actionText.text = "按 F 或 Enter 前往星球";
+        {
+            PlanetPhysicalProfile physical = selectedDefinition?.celestial?.Physical;
+            actionText.text = physical == null
+                ? "按 F 或 Enter 前往星球"
+                : $"半径 {SpaceflightUnitFormatter.FormatDistance(physical.radiusMeters)}　" +
+                    $"表面重力 {SpaceflightUnitFormatter.FormatAcceleration(physical.surfaceGravity)}　" +
+                    $"自转 {SpaceflightUnitFormatter.FormatDuration(physical.rotationPeriodSeconds)}　" +
+                    "按 F 或 Enter 前往";
+        }
     }
 
     bool IsContextMenuOpen => contextRoot != null && contextRoot.gameObject.activeSelf;

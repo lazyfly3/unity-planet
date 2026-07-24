@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7d5097404570fe47a547343b2238334, type: 3}
+  m_Name: balanced_02
+  m_EditorClassIdentifier: 
+  hullId: hull.balanced.pcg.02
+  displayName: "\u5747\u8861\u578B PCG 03"
+  description: "\u7531 SpaceshipGenerator \u79CD\u5B50 balanced-02 \u79BB\u7EBF\u751F\u6210\uFF1B\u6027\u80FD\u7EE7\u627F
+    balanced \u539F\u578B\u3002"
+  modelPrefab: {fileID: 5013555883838687030, guid: 5aaafc443cb89c04fa4b7f77f0a43c6f, type: 3}
+  thumbnail: {fileID: 21300000, guid: 1ca153ece0eb2ba44ac350e33c8cea3d, type: 3}
+  collisionMesh: {fileID: -7461810274146446580, guid: 2ffb3e03de2372e43a408c7c55bf6225, type: 3}
+  baseMass: 12000
+  dimensions: {x: 3, y: 2.2, z: 6}
+  flightProfile:
+    rcsAcceleration: {x: 3.5, y: 3.5, z: 6}
+    integratedRcsNozzleForce: {x: 10500, y: 10500, z: 18000}
+    maximumAngularSpeed: {x: 75, y: 65, z: 95}
+    maximumAngularAcceleration: {x: 180, y: 180, z: 180}
+    velocityResponse: 3.2
+    angularRateResponse: 7
+    defaultTargetSpeed: 250
+    minimumTargetSpeed: 25
+    maximumTargetSpeed: 10000
+    boostMultiplier: 1.5
+    boostCapacitySeconds: 4
+    boostRegenerationPerSecond: 0.65

@@ -13,22 +13,24 @@ MonoBehaviour:
   m_Name: hull_saucer
   m_EditorClassIdentifier: 
   hullId: hull.saucer
-  displayName: "\u91CD\u8F7D\u578B\xB7\u789F\u5F62"
-  description: "\u6A2A\u5411\u5B89\u88C5\u9762\u79EF\u66F4\u5927\uFF0C\u8D28\u91CF\u548C\u8F6C\u52A8\u60EF\u91CF\u66F4\u9AD8\u3002"
-  modelPrefab: {fileID: 919132149155446097, guid: 940944eb225f2824e8c622407df1cc76, type: 3}
-  thumbnail: {fileID: 21300000, guid: 9e5dcd55065f14440a01e4d66c89ac38, type: 3}
-  collisionMesh: {fileID: 4300000, guid: 0a345be82d350fc4c8e88b1802d1fb07, type: 2}
-  baseMass: 130
+  displayName: "\u91CD\u8F7D\u578B PCG 01"
+  description: "\u7531 SpaceshipGenerator \u79CD\u5B50 saucer-00 \u79BB\u7EBF\u751F\u6210\uFF1B\u6027\u80FD\u7EE7\u627F
+    saucer \u539F\u578B\u3002"
+  modelPrefab: {fileID: 2597399706802398643, guid: e6a19cba1e7ada9478f0c348f9e079ce, type: 3}
+  thumbnail: {fileID: 21300000, guid: 4d1d14aacef3e2a4993ad47dd7ecd4ff, type: 3}
+  collisionMesh: {fileID: -7461810274146446580, guid: 449cddfb2676dc04f9a5a291437bace1, type: 3}
+  baseMass: 18000
   dimensions: {x: 5.2, y: 1.4, z: 4.6}
   flightProfile:
-    rcsAcceleration: {x: 6, y: 6, z: 4}
+    rcsAcceleration: {x: 3.44, y: 3.44, z: 6}
+    integratedRcsNozzleForce: {x: 15500, y: 15500, z: 27000}
     maximumAngularSpeed: {x: 50, y: 45, z: 65}
     maximumAngularAcceleration: {x: 120, y: 120, z: 120}
     velocityResponse: 3.2
     angularRateResponse: 7
-    defaultSpeedLimit: 100
-    minimumSpeedLimit: 20
-    maximumSpeedLimit: 240
+    defaultTargetSpeed: 250
+    minimumTargetSpeed: 25
+    maximumTargetSpeed: 10000
     boostMultiplier: 1.5
     boostCapacitySeconds: 4
     boostRegenerationPerSecond: 0.65

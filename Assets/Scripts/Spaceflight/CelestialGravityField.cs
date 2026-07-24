@@ -32,14 +32,23 @@ public sealed class CelestialGravityField : MonoBehaviour
     public Vector3 SampleGravity(Vector3 position)
     {
         Vector3 offset = position - Center;
-        float squaredRadius = Mathf.Max(1f, offset.sqrMagnitude);
-        return -offset.normalized * (profile.gravitationalParameter / squaredRadius);
+        if (offset.sqrMagnitude < 0.000001f)
+            return Vector3.zero;
+        double altitude = PlanetScaleMapping.PhysicalAltitudeFromPresentation(
+            profile,
+            offset.magnitude);
+        double acceleration = profile.Physical.GravityAtAltitude(altitude);
+        return -offset.normalized * (float)acceleration;
     }
 
     public Vector3 SampleAtmosphereVelocity(Vector3 position)
     {
-        float radiansPerSecond = Mathf.PI * 2f / Mathf.Max(1f, profile.rotationPeriod);
-        return Vector3.Cross(profile.rotationAxis * radiansPerSecond, position - Center);
+        Vector3 offset = position - Center;
+        if (offset.sqrMagnitude < 0.000001f)
+            return Vector3.zero;
+        return Vector3.Cross(
+            PlanetReferenceFrame.AngularVelocity(profile),
+            offset);
     }
 
     public float SampleAtmosphereDensity(Vector3 position)
@@ -55,9 +64,16 @@ public sealed class CelestialGravityField : MonoBehaviour
 
     public OrbitalState CalculateOrbit(Vector3 position, Vector3 inertialVelocity)
     {
-        Vector3 radiusVector = position - Center;
-        float radius = Mathf.Max(0.01f, radiusVector.magnitude);
-        float mu = profile.gravitationalParameter;
+        Vector3 presentationRadiusVector = position - Center;
+        float presentationRadius = Mathf.Max(0.01f, presentationRadiusVector.magnitude);
+        double altitude = PlanetScaleMapping.PhysicalAltitudeFromPresentation(
+            profile,
+            presentationRadius);
+        float radius = (float)System.Math.Max(
+            1d,
+            profile.Physical.radiusMeters + altitude);
+        Vector3 radiusVector = presentationRadiusVector.normalized * radius;
+        float mu = (float)profile.Physical.gravitationalParameter;
         float speedSquared = inertialVelocity.sqrMagnitude;
         float energy = speedSquared * 0.5f - mu / radius;
         Vector3 angularMomentum = Vector3.Cross(radiusVector, inertialVelocity);
@@ -68,14 +84,18 @@ public sealed class CelestialGravityField : MonoBehaviour
         float semiMajorAxis = bound ? -mu / (2f * energy) : float.PositiveInfinity;
         return new OrbitalState
         {
-            altitude = radius - profile.radius,
+            altitude = (float)altitude,
             speed = Mathf.Sqrt(speedSquared),
             circularSpeed = Mathf.Sqrt(mu / radius),
             escapeSpeed = Mathf.Sqrt(2f * mu / radius),
             specificEnergy = energy,
             eccentricity = eccentricity,
-            periapsisAltitude = bound ? semiMajorAxis * (1f - eccentricity) - profile.radius : float.NegativeInfinity,
-            apoapsisAltitude = bound ? semiMajorAxis * (1f + eccentricity) - profile.radius : float.PositiveInfinity,
+            periapsisAltitude = bound
+                ? semiMajorAxis * (1f - eccentricity) - (float)profile.Physical.radiusMeters
+                : float.NegativeInfinity,
+            apoapsisAltitude = bound
+                ? semiMajorAxis * (1f + eccentricity) - (float)profile.Physical.radiusMeters
+                : float.PositiveInfinity,
             isBound = bound
         };
     }

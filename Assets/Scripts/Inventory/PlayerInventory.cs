@@ -42,7 +42,8 @@ public sealed class PlayerInventory : MonoBehaviour
         if (wheel != 0f && HotbarSize > 0)
             SelectSlot((SelectedSlotIndex + (wheel > 0f ? -1 : 1) + HotbarSize) % HotbarSize);
 
-        if (Input.GetMouseButtonDown(1))
+        if (Input.GetMouseButtonDown(1)
+            && SurfaceToolInputRouter.CanInventoryUseSecondary)
             UseSelectedItem();
     }
 
@@ -131,6 +132,36 @@ int total = 0;
         return total;
     
 }
+
+    public int CountById(string itemId)
+    {
+        if (string.IsNullOrWhiteSpace(itemId))
+            return 0;
+
+        int total = 0;
+        foreach (InventorySlot slot in slots)
+        {
+            if (slot == null || slot.IsEmpty || slot.item == null
+                || !string.Equals(
+                    slot.item.ItemId,
+                    itemId,
+                    StringComparison.Ordinal))
+            {
+                continue;
+            }
+            total += slot.amount;
+        }
+        return total;
+    }
+
+    public bool TryAddUniqueById(InventoryItem item)
+    {
+        if (item == null)
+            return false;
+        if (CountById(item.ItemId) > 0)
+            return true;
+        return Add(item, 1) == 0;
+    }
 
     public List<InventorySlot> CreateSnapshot()
     {

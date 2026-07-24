@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: decor_canard
   m_EditorClassIdentifier: 
   partId: decor.canard
-  displayName: "\u9E2D\u7FFC"
+  displayName: "\u7BA1\u7EBF\u7EC4"
   prefab: {fileID: 2110849864949549121, guid: 49a5842094d77fc47bf120ac4afb94db, type: 3}
-  thumbnail: {fileID: 21300000, guid: 120ccf0105f25ff4e881674833704369, type: 3}
+  thumbnail: {fileID: 21300000, guid: bffd43a0eecdbe241be5d9948cd2b2af, type: 3}
   category: 0
   scaleMode: 0
-  placementMode: 1
+  placementMode: 0
   baseMass: 4
   baseThrust: 0
   minimumScale: 0.6

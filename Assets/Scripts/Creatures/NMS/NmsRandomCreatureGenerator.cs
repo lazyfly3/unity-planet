@@ -207,6 +207,16 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
             currentCreature = Instantiate(currentFamily.RuntimePrefab, transform);
         }
         currentCreature.name = $"NMS_{currentFamily.FamilyId}_{seed}";
+        string discoveryId = currentSpecies != null
+            && !string.IsNullOrWhiteSpace(currentSpecies.signature)
+                ? currentSpecies.signature
+                : $"{currentFamily.FamilyId}:{seed}";
+        BiotaScannable.Ensure(
+            currentCreature,
+            BiotaDiscoveryType.Creature,
+            "nms:" + discoveryId,
+            currentFamily.FamilyId + " 生物",
+            $"生成物种 · Seed {seed}");
         SetLayerRecursively(currentCreature.transform, 2);
         currentCreature.transform.SetPositionAndRotation(
             surface + up * currentFamily.SurfaceClearance,

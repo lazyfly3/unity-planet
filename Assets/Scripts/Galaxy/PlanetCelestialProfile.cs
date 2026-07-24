@@ -50,22 +50,52 @@ public sealed class PlanetCelestialProfile
     public float editableDepth = 64f;
     public double rotationEpochSeconds;
     public AtmosphereVisualProfile atmosphereVisual = new AtmosphereVisualProfile();
+    [Header("Canonical Physical Scale")]
+    public PlanetPhysicalProfile physical;
+    [Header("Presentation Scale")]
+    public PlanetPresentationProfile presentation;
 
-    public bool HasAtmosphere => atmosphereSurfaceDensity > 0.0001f
-        && atmosphereScaleHeight > 0.01f
-        && atmosphereTopAltitude > 0.01f;
+    public PlanetPhysicalProfile Physical
+    {
+        get
+        {
+            EnsureScaleProfiles();
+            return physical;
+        }
+    }
+
+    public PlanetPresentationProfile Presentation
+    {
+        get
+        {
+            EnsureScaleProfiles();
+            return presentation;
+        }
+    }
+
+    public bool HasAtmosphere
+    {
+        get
+        {
+            EnsureScaleProfiles();
+            return physical.HasAtmosphere;
+        }
+    }
 
     public void ClampValues()
     {
+        EnsureScaleProfiles();
         radius = surfaceGenerationMode == PlanetSurfaceGenerationMode.StreamingLargeSphere
             ? Mathf.Clamp(radius, 1000f, 4000f)
             : CompatibleRadius;
-        surfaceGravity = Mathf.Clamp(surfaceGravity, 0.5f, 20f);
+        presentation.surfaceProxyRadius = radius;
+        presentation.atmosphereProxyTopAltitude = atmosphereTopAltitude;
+        presentation.ClampValues(surfaceGenerationMode);
+        physical.ClampValues();
+        surfaceGravity = Mathf.Clamp((float)physical.surfaceGravity, 0.5f, 20f);
         gravitationalParameter = surfaceGravity * radius * radius;
         rotationAxis = rotationAxis.sqrMagnitude > 0.0001f ? rotationAxis.normalized : Vector3.up;
-        rotationPeriod = surfaceGenerationMode == PlanetSurfaceGenerationMode.StreamingLargeSphere
-            ? Mathf.Clamp(rotationPeriod, 600f, 1200f)
-            : Mathf.Max(30f, rotationPeriod);
+        rotationPeriod = presentation.visualRotationPeriodSeconds;
         atmosphereSurfaceDensity = Mathf.Max(0f, atmosphereSurfaceDensity);
         atmosphereScaleHeight = Mathf.Max(0.1f, atmosphereScaleHeight);
         atmosphereTopAltitude = atmosphereSurfaceDensity > 0.0001f
@@ -78,6 +108,7 @@ public sealed class PlanetCelestialProfile
             atmosphereScaleHeight = Mathf.Max(90f, atmosphereScaleHeight);
             atmosphereTopAltitude = Mathf.Max(700f, atmosphereTopAltitude);
         }
+        presentation.atmosphereProxyTopAltitude = atmosphereTopAltitude;
         maximumTerrainElevation = Mathf.Max(2f, maximumTerrainElevation);
         editableDepth = Mathf.Max(16f, editableDepth);
         atmosphereVisual = atmosphereVisual ?? new AtmosphereVisualProfile();
@@ -89,6 +120,8 @@ public sealed class PlanetCelestialProfile
     {
         var copy = (PlanetCelestialProfile)MemberwiseClone();
         copy.atmosphereVisual = atmosphereVisual != null ? atmosphereVisual.Clone() : new AtmosphereVisualProfile();
+        copy.physical = physical != null ? physical.Clone() : null;
+        copy.presentation = presentation != null ? presentation.Clone() : null;
         copy.ClampValues();
         return copy;
     }
@@ -98,7 +131,14 @@ public sealed class PlanetCelestialProfile
         var profile = new PlanetCelestialProfile
         {
             surfaceGenerationMode = PlanetSurfaceGenerationMode.LegacyFullSphere,
-            radius = CompatibleRadius
+            radius = CompatibleRadius,
+            physical = PlanetPhysicalProfile.CreateEarthLike(),
+            presentation = new PlanetPresentationProfile
+            {
+                surfaceProxyRadius = CompatibleRadius,
+                atmosphereProxyTopAltitude = 20f,
+                visualRotationPeriodSeconds = 180f
+            }
         };
         profile.ClampValues();
         return profile;
@@ -116,10 +156,37 @@ public sealed class PlanetCelestialProfile
             atmosphereScaleHeight = 120f,
             atmosphereTopAltitude = 780f,
             maximumTerrainElevation = 160f,
-            editableDepth = 96f
+            editableDepth = 96f,
+            physical = PlanetPhysicalProfile.CreateEarthLike(),
+            presentation = new PlanetPresentationProfile
+            {
+                surfaceProxyRadius = LargePlanetRadius,
+                atmosphereProxyTopAltitude = 780f,
+                visualRotationPeriodSeconds = 900f
+            }
         };
         profile.ClampValues();
         return profile;
+    }
+
+    void EnsureScaleProfiles()
+    {
+        if (physical == null)
+        {
+            physical = PlanetPhysicalProfile.FromLegacy(
+                surfaceGravity,
+                rotationPeriod,
+                atmosphereSurfaceDensity);
+        }
+        if (presentation == null)
+        {
+            presentation = new PlanetPresentationProfile
+            {
+                surfaceProxyRadius = radius,
+                atmosphereProxyTopAltitude = atmosphereTopAltitude,
+                visualRotationPeriodSeconds = Mathf.Max(180f, rotationPeriod)
+            };
+        }
     }
 }
 
@@ -130,7 +197,7 @@ public static class PlanetReferenceFrame
         if (profile == null)
             return Vector3.zero;
         return profile.rotationAxis.normalized
-            * (Mathf.PI * 2f / Mathf.Max(1f, profile.rotationPeriod));
+            * (Mathf.PI * 2f / Mathf.Max(1f, profile.Presentation.visualRotationPeriodSeconds));
     }
 
     public static Quaternion RotationAtTime(PlanetCelestialProfile profile, double universeTimeSeconds)
@@ -138,7 +205,9 @@ public static class PlanetReferenceFrame
         if (profile == null)
             return Quaternion.identity;
         double phaseSeconds = universeTimeSeconds - profile.rotationEpochSeconds;
-        float degrees = (float)(phaseSeconds / Math.Max(1d, profile.rotationPeriod) * 360d % 360d);
+        float degrees = (float)(phaseSeconds
+            / Math.Max(1d, profile.Presentation.visualRotationPeriodSeconds)
+            * 360d % 360d);
         return Quaternion.AngleAxis(degrees, profile.rotationAxis);
     }
 
