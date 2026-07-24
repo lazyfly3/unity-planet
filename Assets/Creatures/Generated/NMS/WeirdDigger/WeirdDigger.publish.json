@@ -1,0 +1,54 @@
+{
+  "pipelineVersion": 10,
+  "familyId": "WeirdDigger",
+  "skeletonHash": "19f3b7303e2856b44f3ddc1eb0ce92e92bc9de3ba75b695a4fe4850351c70a33",
+  "validationHash": "2649d732d8d1e44220b64d299e386ae4b6a4e430a859cfc2b1c3ef09271a0079",
+  "sourceKind": "Fbx",
+  "sourceModelAsset": "Assets/Creatures/Generated/NMS/WeirdDigger/WeirdDigger.fbx",
+  "sourcePrefabAsset": "",
+  "familyManifestAsset": "Assets/Creatures/Generated/NMS/WeirdDigger/WeirdDigger_family.json",
+  "skeletonManifestAsset": "Assets/Creatures/Generated/NMS/WeirdDigger/WeirdDigger_skeleton.json",
+  "materialManifestAsset": "Assets/Creatures/Generated/NMS/WeirdDigger/WeirdDigger_materials.json",
+  "locomotionType": "Ground",
+  "surfaceMode": "Ground",
+  "variantIds": [
+    "WeirdDigger"
+  ],
+  "supportsRun": false,
+  "legCount": 0,
+  "allowRareModules": false,
+  "excludedModulePrefixes": [],
+  "selectionWeight": 1,
+  "walkSpeed": 0.75,
+  "surfaceRootOffset": -1.0,
+  "hoverClearance": 0.0,
+  "importScale": 1.0,
+  "importEuler": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "localForwardAxis": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -1.0
+  },
+  "actions": [
+    {
+      "key": "idle",
+      "clipName": "WeirdDigger_IDLE_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/WeirdDigger/WeirdDigger.fbx",
+      "frames": 161,
+      "loop": true
+    },
+    {
+      "key": "walk",
+      "clipName": "WeirdDigger_WALK_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/WeirdDigger/WeirdDigger.fbx",
+      "frames": 81,
+      "loop": true
+    }
+  ],
+  "loadBearingChains": [],
+  "sourceFbxSha256": "222110134396464ee1571e93a8b31ca16fbcb841bb3b7470af13d75777615320"
+}

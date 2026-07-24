@@ -42,6 +42,7 @@ public sealed class GalaxySaveSlotMetadata
     public double spacePositionX;
     public double spacePositionY;
     public double spacePositionZ;
+    public string nearObservationPlanetId;
     public float spacecraftHullIntegrity = 100f;
     public VisitedPlanetRecord[] visitedPlanets = Array.Empty<VisitedPlanetRecord>();
 }

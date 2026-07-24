@@ -12,6 +12,14 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
     static readonly int PrimaryColorId = Shader.PropertyToID("_PrimaryColor");
     static readonly int SecondaryColorId = Shader.PropertyToID("_SecondaryColor");
     static readonly int AccentColorId = Shader.PropertyToID("_AccentColor");
+    static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
+    static readonly int MainTexId = Shader.PropertyToID("_MainTex");
+    static readonly int NormalMapId = Shader.PropertyToID("_NormalMap");
+    static readonly int MaskMapId = Shader.PropertyToID("_MaskMap");
+    static readonly int EmissionMapId = Shader.PropertyToID("_EmissionMap");
+    static readonly int PaletteStrengthId = Shader.PropertyToID("_PaletteStrength");
+    static readonly int NormalStrengthId = Shader.PropertyToID("_NormalStrength");
+    static readonly int EmissionStrengthId = Shader.PropertyToID("_EmissionStrength");
 
     [Header("Catalog")]
     [SerializeField] NmsCreatureFamilyCatalog catalog;
@@ -24,6 +32,10 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
 
     [Header("Imported Walk")]
     [SerializeField, Range(0.5f, 3f)] float importedWalkPlaybackSpeed = 1.8f;
+
+    [Header("Organic Material Fallback")]
+    [SerializeField] NmsOrganicMaterialCatalog organicMaterialCatalog;
+    [SerializeField] bool preferOrganicMaterialTextures;
 
     [Header("Spherical Test")]
     [SerializeField] SphericalGravitySource gravitySource;
@@ -68,6 +80,13 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
     public bool CurrentVariantValidated { get; private set; }
     public string LastValidationResult { get; private set; } = "Not generated";
     public event Action<NmsCreatureSpawnContext> CreatureReady;
+
+    void Awake()
+    {
+        if (organicMaterialCatalog == null)
+            organicMaterialCatalog =
+                Resources.Load<NmsOrganicMaterialCatalog>("Creatures/NmsOrganicMaterialCatalog");
+    }
 
     void Start()
     {
@@ -135,8 +154,8 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
             return;
         }
 
-        var familyRandom =
-            new StableRandom(unchecked((ulong)(uint)seed) ^ 0xA0761D6478BD642FUL);
+        var familyRandom = new NmsStableRandom(
+            unchecked((ulong)(uint)seed) ^ 0xA0761D6478BD642FUL);
         currentFamily = SelectFamily(ref familyRandom);
         if (currentFamily == null
             || currentFamily.RuntimePrefab == null
@@ -147,39 +166,19 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
             return;
         }
 
-        var descriptorRandom =
-            new StableRandom(unchecked((ulong)(uint)seed) ^ 0xE7037ED1A0B428DBUL);
-        var colorRandom =
-            new StableRandom(unchecked((ulong)(uint)seed) ^ StableHash(currentFamily.FamilyId));
-        HashSet<string> selected = SelectModules(
-            manifest.descriptorGroups,
-            currentFamily.AllowRareModules,
-            currentFamily.ExcludedModulePrefixes,
-            BuildIncompatibleModuleSet(manifest.modules),
-            ref descriptorRandom);
-        if (forceStandardVariant)
+        if (!NmsCreatureVariantSampler.TrySample(
+            currentFamily, seed, out currentSpecies, out string sampleError,
+            forceStandardVariant))
         {
-            selected.Clear();
-            selected.Add("_Body_Deer");
-            selected.Add("_Head_Deer");
-            selected.Add("DeerEyes");
-            selected.Add("_HDEars_1");
+            Debug.LogError("NMS species sampling failed. " + sampleError, this);
+            currentFamily = null;
+            return;
         }
-        CreatePalette(
-            ref colorRandom,
-            out Color primary,
-            out Color secondary,
-            out Color accent);
-        currentSpecies = new NmsCreatureSpeciesDefinition
-        {
-            seed = seed,
-            familyId = currentFamily.FamilyId,
-            selectedModules = Sorted(selected),
-            primaryColor = primary,
-            secondaryColor = secondary,
-            accentColor = accent,
-            signature = BuildSignature(currentFamily.FamilyId, seed, selected, primary, accent)
-        };
+        var selected = new HashSet<string>(
+            currentSpecies.selectedModules, StringComparer.Ordinal);
+        Color primary = currentSpecies.primaryColor;
+        Color secondary = currentSpecies.secondaryColor;
+        Color accent = currentSpecies.accentColor;
 
         Vector3 direction = spawnDirection.sqrMagnitude > 0.0001f
             ? spawnDirection.normalized
@@ -452,7 +451,7 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
                 activeRenderers[i].forceRenderingOff = value;
     }
 
-    NmsCreatureFamilyDefinition SelectFamily(ref StableRandom random)
+    NmsCreatureFamilyDefinition SelectFamily(ref NmsStableRandom random)
     {
         if (!string.IsNullOrWhiteSpace(forcedFamilyId))
         {
@@ -506,7 +505,7 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
 
     NmsCreatureFamilyDefinition SelectVariantForSkeleton(
         string skeletonKey,
-        ref StableRandom random)
+        ref NmsStableRandom random)
     {
         int total = 0;
         for (int i = 0; i < catalog.Families.Count; i++)
@@ -777,14 +776,205 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
         for (int i = 0; i < activeRenderers.Count; i++)
         {
             Renderer renderer = activeRenderers[i];
+            string rendererPath = RelativePath(currentCreature.transform, renderer.transform);
+            if (TryGetRendererMaterialBinding(
+                    rendererPath,
+                    out NmsCreatureRendererMaterialBinding binding)
+                && binding.materialIds != null
+                && binding.materialIds.Length > 0)
+            {
+                int materialCount = renderer.sharedMaterials != null
+                    ? renderer.sharedMaterials.Length
+                    : binding.materialIds.Length;
+                for (int materialIndex = 0; materialIndex < materialCount; materialIndex++)
+                {
+                    string materialId = materialIndex < binding.materialIds.Length
+                        ? binding.materialIds[materialIndex]
+                        : null;
+                    renderer.GetPropertyBlock(propertyBlock, materialIndex);
+                    ApplyMaterialPropertyBlock(
+                        propertyBlock,
+                        primary,
+                        secondary,
+                        accent,
+                        materialId,
+                        rendererPath,
+                        i,
+                        materialIndex);
+                    renderer.SetPropertyBlock(propertyBlock, materialIndex);
+                    propertyBlock.Clear();
+                }
+                continue;
+            }
+
             renderer.GetPropertyBlock(propertyBlock);
-            propertyBlock.SetColor(ColorId, primary);
-            propertyBlock.SetColor(BaseColorId, primary);
-            propertyBlock.SetColor(PrimaryColorId, primary);
-            propertyBlock.SetColor(SecondaryColorId, secondary);
-            propertyBlock.SetColor(AccentColorId, accent);
+            ApplyMaterialPropertyBlock(
+                propertyBlock,
+                primary,
+                secondary,
+                accent,
+                null,
+                rendererPath,
+                i,
+                0);
             renderer.SetPropertyBlock(propertyBlock);
             propertyBlock.Clear();
+        }
+    }
+
+    void ApplyMaterialPropertyBlock(
+        MaterialPropertyBlock block,
+        Color primary,
+        Color secondary,
+        Color accent,
+        string materialId,
+        string rendererPath,
+        int rendererIndex,
+        int materialIndex)
+    {
+        // Keep imported albedo neutral. Species tinting is handled by the
+        // dedicated palette channels in NmsCreatureUber.
+        block.SetColor(ColorId, Color.white);
+        block.SetColor(BaseColorId, Color.white);
+        block.SetColor(PrimaryColorId, primary);
+        block.SetColor(SecondaryColorId, secondary);
+        block.SetColor(AccentColorId, accent);
+        block.SetColor(EmissionColorId, Color.Lerp(accent, Color.cyan, 0.35f));
+
+        if (!preferOrganicMaterialTextures
+            || organicMaterialCatalog == null
+            || string.IsNullOrEmpty(materialId)
+            || !TryGetMaterialDefinition(materialId, out NmsCreatureMaterialDefinition materialDefinition)
+            || !organicMaterialCatalog.TrySelect(
+                ResolveSemanticMaterialPreset(rendererPath, materialId, materialDefinition.materialPreset),
+                seed,
+                StableStringHash(rendererPath) ^ StableStringHash(materialId)
+                    ^ rendererIndex ^ (materialIndex << 8),
+                out NmsOrganicTextureSet textureSet))
+            return;
+
+        if (textureSet.BaseColor != null)
+            block.SetTexture(MainTexId, textureSet.BaseColor);
+        if (textureSet.Normal != null)
+            block.SetTexture(NormalMapId, textureSet.Normal);
+        if (textureSet.Mask != null)
+            block.SetTexture(MaskMapId, textureSet.Mask);
+        if (textureSet.Emission != null)
+            block.SetTexture(EmissionMapId, textureSet.Emission);
+        block.SetFloat(PaletteStrengthId, textureSet.PaletteStrength);
+        block.SetFloat(NormalStrengthId, textureSet.NormalStrength);
+        block.SetFloat(EmissionStrengthId, Mathf.Max(
+            textureSet.EmissionStrength,
+            materialDefinition.emissionStrength));
+    }
+
+    bool TryGetRendererMaterialBinding(
+        string rendererPath,
+        out NmsCreatureRendererMaterialBinding binding)
+    {
+        IReadOnlyList<NmsCreatureRendererMaterialBinding> bindings =
+            currentFamily.RendererMaterialBindings;
+        for (int i = 0; i < bindings.Count; i++)
+        {
+            if (!string.Equals(
+                    bindings[i].rendererPath,
+                    rendererPath,
+                    StringComparison.Ordinal))
+                continue;
+            binding = bindings[i];
+            return true;
+        }
+        binding = null;
+        return false;
+    }
+
+    bool TryGetMaterialDefinition(
+        string materialId,
+        out NmsCreatureMaterialDefinition definition)
+    {
+        IReadOnlyList<NmsCreatureMaterialDefinition> definitions =
+            currentFamily.MaterialDefinitions;
+        for (int i = 0; i < definitions.Count; i++)
+        {
+            if (!string.Equals(
+                    definitions[i].materialId,
+                    materialId,
+                    StringComparison.Ordinal))
+                continue;
+            definition = definitions[i];
+            return true;
+        }
+        definition = null;
+        return false;
+    }
+
+    static string ResolveSemanticMaterialPreset(
+        string rendererPath,
+        string materialId,
+        string materialPreset)
+    {
+        string combined = ((rendererPath ?? string.Empty) + " " +
+            (materialId ?? string.Empty) + " " + (materialPreset ?? string.Empty))
+            .ToLowerInvariant();
+
+        if (ContainsAny(combined, "eye", "pupil", "iris", "conjunctiva"))
+            return "Eye";
+        if (ContainsAny(combined, "mouth", "jaw", "tongue", "gums", "lip", "beak"))
+            return "Mouth";
+        if (ContainsAny(combined, "teeth", "tooth", "bone", "skull", "rib"))
+            return "Bone";
+        if (ContainsAny(combined, "horn", "antler", "tusk", "claw", "talon", "hoof", "spike"))
+            return "Horn";
+        if (ContainsAny(combined, "shell", "plate", "armor", "carapace", "backplate", "shield"))
+            return "Armor";
+        if (ContainsAny(combined, "fin", "scale", "lizard", "snake", "reptile", "fish"))
+            return "Scale";
+        if (ContainsAny(combined, "fur", "hair", "mane"))
+            return "Fur";
+        if (ContainsAny(combined, "flesh", "wound", "guts", "goo", "brain", "meat"))
+            return "Flesh";
+        if (ContainsAny(combined, "glow", "emiss", "lamp", "light"))
+            return "Emissive";
+        if (ContainsAny(combined, "robot", "metal", "mechanic", "tech"))
+            return "Mechanical";
+        if (ContainsAny(combined, "tail"))
+            return "Scale";
+        if (ContainsAny(combined, "ear", "nose", "head", "body", "leg", "arm", "skin"))
+            return "Skin";
+        return materialPreset;
+    }
+
+    static bool ContainsAny(string value, params string[] tokens)
+    {
+        for (int i = 0; i < tokens.Length; i++)
+            if (value.IndexOf(tokens[i], StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+        return false;
+    }
+
+    static string RelativePath(Transform root, Transform target)
+    {
+        if (root == null || target == null || target == root)
+            return string.Empty;
+        var parts = new List<string>(8);
+        Transform cursor = target;
+        while (cursor != null && cursor != root)
+        {
+            parts.Add(cursor.name);
+            cursor = cursor.parent;
+        }
+        parts.Reverse();
+        return string.Join("/", parts);
+    }
+
+    static int StableStringHash(string value)
+    {
+        unchecked
+        {
+            uint hash = 2166136261u;
+            for (int i = 0; i < value.Length; i++)
+                hash = (hash ^ value[i]) * 16777619u;
+            return (int)(hash & 0x7fffffffu);
         }
     }
 
@@ -960,7 +1150,7 @@ public sealed class NmsRandomCreatureGenerator : MonoBehaviour
         int failedSeed = seed;
         string failedFamily = currentFamily != null ? currentFamily.FamilyId : "<missing>";
         string failedSignature = currentSpecies != null ? currentSpecies.signature : "<missing>";
-        Debug.LogError(
+        Debug.LogWarning(
             $"NMS species rejected. Family={failedFamily}, Seed={failedSeed}, " +
             $"Signature={failedSignature}. {failure}",
             currentCreature != null ? currentCreature : gameObject);

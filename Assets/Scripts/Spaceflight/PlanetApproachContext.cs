@@ -93,6 +93,8 @@ public sealed class PendingPlanetLandingContext
     public Vector3 landingPointLocal;
     public Vector3 landingGroundNormal = Vector3.up;
     public float hullIntegrity = 100f;
+    public PlanetLandingMode landingMode = PlanetLandingMode.Auto;
+    public bool restoreSavedSpacecraftState;
 
     public static bool HasPending => pending != null;
     public static PendingPlanetLandingContext Peek() => pending;

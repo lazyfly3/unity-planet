@@ -10,6 +10,42 @@ public sealed class NmsCreatureModuleBinding
 }
 
 [Serializable]
+public sealed class NmsCreatureMaterialDefinition
+{
+    public string materialId;
+    public string materialPreset;
+    public string sourceMxmlPath;
+    public string sourceMxmlSha256;
+    public string mainTextureSourcePath;
+    public string mainTextureSourceSha256;
+    public string normalTextureSourcePath;
+    public string normalTextureSourceSha256;
+    public string maskTextureSourcePath;
+    public string maskTextureSourceSha256;
+    public string emissionTextureSourcePath;
+    public string emissionTextureSourceSha256;
+    public string transparencyMode;
+    public string maskChannelLayout;
+    public Material material;
+    public bool hasMainTexture;
+    public bool hasNormalTexture;
+    public bool hasMaskTexture;
+    public bool hasEmissionTexture;
+    public float metallic;
+    public float smoothness;
+    public float paletteStrength;
+    public float emissionStrength;
+    public string[] warnings = Array.Empty<string>();
+}
+
+[Serializable]
+public sealed class NmsCreatureRendererMaterialBinding
+{
+    public string rendererPath;
+    public string[] materialIds = Array.Empty<string>();
+}
+
+[Serializable]
 public sealed class NmsCreatureLegChain
 {
     public string id;

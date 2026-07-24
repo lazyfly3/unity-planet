@@ -44,6 +44,31 @@ def ensure_camera_and_lights(center, size):
     return camera
 
 
+def render_six_views(scene, camera, center, size, output):
+    distance = max(size.length * 1.4, 12.0)
+    views = (
+        ("front", Vector((0.0, -1.0, 0.0)), Vector((0.0, 0.0, 1.0))),
+        ("back", Vector((0.0, 1.0, 0.0)), Vector((0.0, 0.0, 1.0))),
+        ("left", Vector((-1.0, 0.0, 0.0)), Vector((0.0, 0.0, 1.0))),
+        ("right", Vector((1.0, 0.0, 0.0)), Vector((0.0, 0.0, 1.0))),
+        ("top", Vector((0.0, 0.0, 1.0)), Vector((0.0, 1.0, 0.0))),
+        ("bottom", Vector((0.0, 0.0, -1.0)), Vector((0.0, -1.0, 0.0))),
+    )
+    rendered = []
+    camera.data.type = "ORTHO"
+    camera.data.ortho_scale = max(size.x, size.y, size.z) * 1.18
+    for name, direction, up in views:
+        camera.location = center + direction * distance
+        camera.rotation_euler = (
+            center - camera.location
+        ).to_track_quat("-Z", "Y" if abs(up.z) > 0.5 else "X").to_euler()
+        path = output / f"material_{name}.png"
+        scene.render.filepath = str(path)
+        bpy.ops.render.render(write_still=True)
+        rendered.append(str(path))
+    return rendered
+
+
 def review_stage(family, action_records):
     showcase = family["outputRoot"] / f"{family['familyId']}SpeciesShowcase.blend"
     bpy.ops.wm.open_mainfile(filepath=str(showcase))
@@ -56,7 +81,7 @@ def review_stage(family, action_records):
     minimum, maximum = scene_bounds(meshes)
     center = (minimum + maximum) * 0.5
     size = maximum - minimum
-    ensure_camera_and_lights(center, size)
+    camera = ensure_camera_and_lights(center, size)
     scene = bpy.context.scene
     scene.world.color = (0.035, 0.045, 0.06)
     scene.render.engine = "BLENDER_EEVEE"
@@ -75,6 +100,8 @@ def review_stage(family, action_records):
         scene.render.filepath = str(path)
         bpy.ops.render.render(write_still=True)
         rendered.append(str(path))
+    scene.frame_set(0)
+    rendered.extend(render_six_views(scene, camera, center, size, output))
     scene.frame_set(0)
     for armature in (obj for obj in scene.objects if obj.type == "ARMATURE"):
         armature.hide_set(False)

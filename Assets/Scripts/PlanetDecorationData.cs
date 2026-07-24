@@ -67,6 +67,8 @@ public sealed class PlanetDecorationEntry
 {
     public string stableId;
     public GameObject prefab;
+    public ProceduralPlantSpecies proceduralPlantSpecies;
+    [Range(1, 24)] public int variantPoolSize = 12;
     public PlanetClimateMask climates = PlanetClimateMask.All;
     public PlanetDecorationRole role = PlanetDecorationRole.Vegetation;
     [Min(0.01f)] public float weight = 1f;
@@ -86,8 +88,9 @@ public sealed class PlanetDecorationEntry
     [Tooltip("Vegetation is not generated until its natural up axis and ground pivot have been checked.")]
     public bool orientationVerified;
 
-    public bool IsHarvestable => prefab != null
+    public bool IsHarvestable => proceduralPlantSpecies == null && prefab != null
         && prefab.GetComponentInChildren<HarvestableResource>(true) != null;
+    public bool HasValidSource => (prefab != null) ^ (proceduralPlantSpecies != null);
 
     public bool Matches(PlanetClimate climate)
     {
@@ -108,6 +111,7 @@ public sealed class PlanetDecorationEntry
         waterClearance = Mathf.Max(0f, waterClearance);
         clusterRadius = Mathf.Max(0f, clusterRadius);
         clusterSize = Mathf.Max(1, clusterSize);
+        variantPoolSize = Mathf.Clamp(variantPoolSize, 1, 24);
     }
 }
 
@@ -116,6 +120,8 @@ public sealed class PlanetSurfacePropSpawnSettings
 {
     public string catalogId;
     public GameObject prefab;
+    public ProceduralPlantSpecies proceduralPlantSpecies;
+    [Range(1, 24)] public int variantPoolSize = 12;
     public PlanetDecorationRole role;
     public int count;
     public int seedOffset;
@@ -134,8 +140,9 @@ public sealed class PlanetSurfacePropSpawnSettings
     public bool randomizeYaw = true;
     public bool orientationVerified;
 
-    public bool IsHarvestable => prefab != null
+    public bool IsHarvestable => proceduralPlantSpecies == null && prefab != null
         && prefab.GetComponentInChildren<HarvestableResource>(true) != null;
+    public bool HasValidSource => (prefab != null) ^ (proceduralPlantSpecies != null);
 
     public void ClampValues()
     {
@@ -151,6 +158,7 @@ public sealed class PlanetSurfacePropSpawnSettings
         waterClearance = Mathf.Max(0f, waterClearance);
         clusterRadius = Mathf.Max(0f, clusterRadius);
         clusterSize = Mathf.Max(1, clusterSize);
+        variantPoolSize = Mathf.Clamp(variantPoolSize, 1, 24);
     }
 }
 
@@ -185,7 +193,7 @@ public abstract class PlanetDecorationCatalogData : ScriptableObject
         var harvestable = new List<PlanetDecorationEntry>();
         foreach (PlanetDecorationEntry entry in entries)
         {
-            if (entry == null || entry.prefab == null || string.IsNullOrWhiteSpace(entry.stableId)
+            if (entry == null || !entry.HasValidSource || string.IsNullOrWhiteSpace(entry.stableId)
                 || !entry.Matches(climate))
                 continue;
 
@@ -198,6 +206,73 @@ public abstract class PlanetDecorationCatalogData : ScriptableObject
         var result = new List<PlanetSurfacePropSpawnSettings>(decorative.Count + harvestable.Count);
         AppendWeightedEntries(result, decorative, decorationTarget, planetSeed);
         AppendWeightedEntries(result, harvestable, harvestableTarget, planetSeed);
+        return result;
+    }
+
+    public List<PlanetSurfacePropSpawnSettings> BuildSpawnPlan(
+        PlanetLowPolyVisualProfile visual,
+        PlanetClimate fallbackClimate,
+        int planetSeed)
+    {
+        if (visual == null)
+            return BuildSpawnPlan(fallbackClimate, planetSeed);
+
+        visual.ClampValues();
+        var scores = new Dictionary<PlanetDecorationEntry, float>();
+        var decorative = new List<PlanetDecorationEntry>();
+        var harvestable = new List<PlanetDecorationEntry>();
+        foreach (PlanetDecorationEntry entry in entries)
+        {
+            if (entry == null || !entry.HasValidSource || string.IsNullOrWhiteSpace(entry.stableId))
+                continue;
+            if (entry.role == PlanetDecorationRole.Vegetation && !entry.orientationVerified)
+                continue;
+
+            float score = CalculateEcosystemScore(entry.climates, visual);
+            if (entry.Matches(fallbackClimate))
+                score = Mathf.Max(score, 0.16f);
+            if (score < 0.08f)
+                continue;
+
+            scores[entry] = score;
+            (entry.IsHarvestable ? harvestable : decorative).Add(entry);
+        }
+
+        decorative.Sort((a, b) => CompareVisualCandidates(a, b, scores, visual.decorationSeed));
+        harvestable.Sort((a, b) => CompareVisualCandidates(a, b, scores, visual.decorationSeed ^ 0x5f356495));
+        if (decorative.Count > 12)
+            decorative.RemoveRange(12, decorative.Count - 12);
+        if (harvestable.Count > 4)
+            harvestable.RemoveRange(4, harvestable.Count - 4);
+
+        PlanetClimateProfile fallback = FindProfile(fallbackClimate);
+        int baseDecorations = fallback != null
+            ? fallback.decorationCount
+            : GetDefaultDecorationCount(fallbackClimate);
+        int baseHarvestables = fallback != null
+            ? fallback.harvestableCount
+            : GetDefaultHarvestableCount(fallbackClimate);
+        int decorationTarget = Mathf.Clamp(
+            Mathf.RoundToInt(baseDecorations * visual.decorationDensity),
+            180,
+            1200);
+        int harvestableTarget = Mathf.Clamp(
+            Mathf.RoundToInt(baseHarvestables * Mathf.Lerp(0.75f, 1.25f, visual.crystalWeight)),
+            0,
+            120);
+
+        var result = new List<PlanetSurfacePropSpawnSettings>(decorative.Count + harvestable.Count);
+        AppendWeightedEntries(result, decorative, decorationTarget, planetSeed ^ visual.decorationSeed, scores);
+        AppendWeightedEntries(result, harvestable, harvestableTarget, planetSeed ^ visual.decorationSeed, scores);
+        foreach (PlanetSurfacePropSpawnSettings settings in result)
+        {
+            settings.minimumScale *= visual.decorationScale;
+            settings.maximumScale *= visual.decorationScale;
+            settings.clusterRadius *= Mathf.Lerp(0.72f, 1.35f, visual.clusterStrength);
+            settings.clusterSize = Mathf.Max(1,
+                Mathf.RoundToInt(settings.clusterSize * Mathf.Lerp(0.75f, 1.35f, visual.clusterStrength)));
+            settings.ClampValues();
+        }
         return result;
     }
 
@@ -216,6 +291,10 @@ public abstract class PlanetDecorationCatalogData : ScriptableObject
                     continue;
                 hash = hash * 31 + StableHash(entry.stableId ?? string.Empty);
                 hash = hash * 31 + StableHash(entry.prefab != null ? entry.prefab.name : string.Empty);
+                hash = hash * 31 + (entry.proceduralPlantSpecies != null
+                    ? entry.proceduralPlantSpecies.StableRecipeHash()
+                    : 0);
+                hash = hash * 31 + entry.variantPoolSize;
                 hash = hash * 31 + (int)entry.role;
                 hash = hash * 31 + entry.weight.GetHashCode();
                 hash = hash * 31 + entry.minimumScale.GetHashCode();
@@ -248,7 +327,7 @@ public abstract class PlanetDecorationCatalogData : ScriptableObject
             bool hasHarvestable = false;
             foreach (PlanetDecorationEntry entry in entries)
             {
-                if (entry == null || entry.prefab == null || !entry.Matches(climate))
+                if (entry == null || !entry.HasValidSource || !entry.Matches(climate))
                     continue;
                 hasHarvestable |= entry.IsHarvestable;
                 hasDecoration |= !entry.IsHarvestable;
@@ -271,8 +350,8 @@ public abstract class PlanetDecorationCatalogData : ScriptableObject
                 errors.Add("Catalog entry has no stable ID.");
             else if (!ids.Add(entry.stableId))
                 errors.Add($"Duplicate catalog ID: {entry.stableId}.");
-            if (entry.prefab == null)
-                errors.Add($"Catalog entry {entry.stableId} has no prefab.");
+            if (!entry.HasValidSource)
+                errors.Add($"Catalog entry {entry.stableId} must use exactly one prefab or procedural plant species.");
             if (entry.role == PlanetDecorationRole.Vegetation && !entry.orientationVerified)
                 errors.Add($"Vegetation {entry.stableId} has not had its up axis verified.");
         }
@@ -299,14 +378,15 @@ public abstract class PlanetDecorationCatalogData : ScriptableObject
         List<PlanetSurfacePropSpawnSettings> output,
         List<PlanetDecorationEntry> source,
         int targetCount,
-        int planetSeed)
+        int planetSeed,
+        Dictionary<PlanetDecorationEntry, float> visualScores = null)
     {
         if (targetCount <= 0 || source.Count == 0)
             return;
 
         float totalWeight = 0f;
         foreach (PlanetDecorationEntry entry in source)
-            totalWeight += Mathf.Max(0.01f, entry.weight);
+            totalWeight += GetWeightedEntryValue(entry, visualScores);
 
         double cumulative = 0d;
         int assigned = 0;
@@ -314,7 +394,7 @@ public abstract class PlanetDecorationCatalogData : ScriptableObject
         {
             PlanetDecorationEntry entry = source[i];
             entry.ClampValues();
-            cumulative += targetCount * (double)Mathf.Max(0.01f, entry.weight) / totalWeight;
+            cumulative += targetCount * (double)GetWeightedEntryValue(entry, visualScores) / totalWeight;
             int nextAssigned = i == source.Count - 1 ? targetCount : Mathf.FloorToInt((float)cumulative);
             int count = Mathf.Max(0, nextAssigned - assigned);
             assigned += count;
@@ -325,6 +405,8 @@ public abstract class PlanetDecorationCatalogData : ScriptableObject
             {
                 catalogId = entry.stableId,
                 prefab = entry.prefab,
+                proceduralPlantSpecies = entry.proceduralPlantSpecies,
+                variantPoolSize = entry.variantPoolSize,
                 role = entry.role,
                 count = count,
                 seedOffset = StableHash(entry.stableId) ^ planetSeed,
@@ -343,6 +425,64 @@ public abstract class PlanetDecorationCatalogData : ScriptableObject
                 randomizeYaw = entry.randomizeYaw,
                 orientationVerified = entry.orientationVerified
             });
+        }
+    }
+
+    static float GetWeightedEntryValue(
+        PlanetDecorationEntry entry,
+        Dictionary<PlanetDecorationEntry, float> visualScores)
+    {
+        float visualWeight = visualScores != null && visualScores.TryGetValue(entry, out float score)
+            ? score
+            : 1f;
+        return Mathf.Max(0.01f, entry.weight) * Mathf.Max(0.05f, visualWeight);
+    }
+
+    static int CompareVisualCandidates(
+        PlanetDecorationEntry a,
+        PlanetDecorationEntry b,
+        Dictionary<PlanetDecorationEntry, float> scores,
+        int seed)
+    {
+        float scoreA = scores[a] + Hash01(StableHash(a.stableId) ^ seed) * 0.22f;
+        float scoreB = scores[b] + Hash01(StableHash(b.stableId) ^ seed) * 0.22f;
+        int comparison = scoreB.CompareTo(scoreA);
+        return comparison != 0
+            ? comparison
+            : string.CompareOrdinal(a.stableId, b.stableId);
+    }
+
+    static float CalculateEcosystemScore(
+        PlanetClimateMask climates,
+        PlanetLowPolyVisualProfile visual)
+    {
+        float score = 0f;
+        if ((climates & PlanetClimateMask.Barren) != 0)
+            score = Mathf.Max(score, 0.12f + (1f - visual.decorationDensity / 1.8f) * 0.45f);
+        if ((climates & PlanetClimateMask.TemperateForest) != 0)
+            score = Mathf.Max(score, visual.forestWeight);
+        if ((climates & PlanetClimateMask.Desert) != 0)
+            score = Mathf.Max(score, visual.desertWeight);
+        if ((climates & PlanetClimateMask.Tropical) != 0)
+            score = Mathf.Max(score, visual.tropicalWeight);
+        if ((climates & PlanetClimateMask.Tundra) != 0)
+            score = Mathf.Max(score, visual.tundraWeight);
+        if ((climates & PlanetClimateMask.Volcanic) != 0)
+            score = Mathf.Max(score, visual.volcanicWeight);
+        if ((climates & PlanetClimateMask.Crystal) != 0)
+            score = Mathf.Max(score, visual.crystalWeight);
+        return score;
+    }
+
+    static float Hash01(int value)
+    {
+        unchecked
+        {
+            uint hash = (uint)value;
+            hash ^= hash >> 16;
+            hash *= 0x7feb352du;
+            hash ^= hash >> 15;
+            return (hash & 0x00ffffffu) / 16777215f;
         }
     }
 

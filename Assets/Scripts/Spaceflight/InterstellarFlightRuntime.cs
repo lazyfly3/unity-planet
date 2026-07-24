@@ -58,7 +58,17 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
             ? manager.SavedSpacePosition
             : DoubleVector3.Zero;
         if (shipBody != null)
+        {
             shipBody.position = Vector3.zero;
+            if (PendingSurfaceDepartureContext.TryConsume(
+                out Quaternion departureRotation,
+                out Vector3 departureVelocity))
+            {
+                shipBody.rotation = departureRotation;
+                shipBody.velocity = departureVelocity;
+                shipBody.angularVelocity = Vector3.zero;
+            }
+        }
         initialized = true;
     }
 

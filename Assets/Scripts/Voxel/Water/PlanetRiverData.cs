@@ -131,6 +131,15 @@ public struct WaterSample
     public Vector3 flowVelocity;
     public float depth;
     public float signedDistance;
+    public Color tint;
+    public PlanetWaterKind kind;
 
     public float Submersion => Mathf.Clamp01(-signedDistance / Mathf.Max(0.1f, depth));
+}
+
+public enum PlanetWaterKind
+{
+    River,
+    Lake,
+    Ocean
 }

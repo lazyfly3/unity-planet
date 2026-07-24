@@ -38,8 +38,13 @@ public sealed class InterstellarFlightHud : MonoBehaviour
 
     const int MaximumThreatArrows = 3;
     const int MaximumPlanetLights = 16;
+    static readonly Color HudCyan = new Color(0.08f, 0.86f, 1f, 1f);
+    static readonly Color HudMuted = new Color(0.42f, 0.75f, 0.84f, 1f);
+    static readonly Color HudAmber = new Color(1f, 0.58f, 0.12f, 1f);
+    static readonly Color HudDanger = new Color(1f, 0.18f, 0.08f, 1f);
     float damageFlashUntil;
     SpaceTargetLockGraphic weaponTargetGraphic;
+    SpaceflightUnifiedHudLayout unifiedLayout;
     readonly PirateShipAiController[] threatQueryBuffer = new PirateShipAiController[MaximumThreatArrows];
     readonly ThreatSlot[] threatSlots = new ThreatSlot[MaximumThreatArrows];
     readonly Text[] threatArrowTexts = new Text[MaximumThreatArrows];
@@ -99,6 +104,58 @@ public sealed class InterstellarFlightHud : MonoBehaviour
             integrityFill = GameObject.Find("IntegrityFill")?.GetComponent<Image>();
         if (integrityFrame == null)
             integrityFrame = GameObject.Find("IntegrityFrame")?.GetComponent<Image>();
+        RebuildUnifiedLayout();
+    }
+
+    public void RebuildUnifiedLayout()
+    {
+        Canvas canvas = GetComponent<Canvas>();
+        if (canvas == null)
+            canvas = GetComponentInParent<Canvas>(true);
+        if (canvas == null)
+            return;
+        unifiedLayout = GetComponent<SpaceflightUnifiedHudLayout>();
+        if (unifiedLayout == null)
+            unifiedLayout = gameObject.AddComponent<SpaceflightUnifiedHudLayout>();
+        Font font = integrityText != null
+            ? integrityText.font
+            : weaponGroupText != null
+                ? weaponGroupText.font
+                : null;
+        unifiedLayout.Build(
+            canvas,
+            font,
+            integrityFrame,
+            integrityFill,
+            integrityText,
+            speedText,
+            flightModeText,
+            authorityText,
+            speedLimitText,
+            boostText,
+            weaponGroupText,
+            weaponAmmoText,
+            weaponCapacitorText,
+            weaponHeatText,
+            weaponMountText,
+            weaponLockText,
+            targetText,
+            cruiseText,
+            promptText);
+        if (weaponTargetMarker != null)
+            weaponTargetMarker.SetAsLastSibling();
+        if (enemyThreatArrows != null)
+        {
+            foreach (RectTransform arrow in enemyThreatArrows)
+                if (arrow != null)
+                    arrow.SetAsLastSibling();
+            if (enemyThreatArrows.Length > 0
+                && enemyThreatArrows[0] != null
+                && enemyThreatArrows[0].parent != null)
+            {
+                enemyThreatArrows[0].parent.SetAsLastSibling();
+            }
+        }
     }
 
     void OnEnable()
@@ -123,22 +180,34 @@ public sealed class InterstellarFlightHud : MonoBehaviour
         SpacecraftControlTelemetry telemetry = ship == null ? default : ship.Telemetry;
         if (targetText != null)
             targetText.text = navigation != null && navigation.HasLockedTarget
-                ? $"目标  {navigation.TargetName}\n距离  {FormatDistance(navigation.TargetDistance)}"
-                : navigation != null && navigation.TargetCount > 0
-                    ? "目标  未锁定"
-                    : "目标  未发现星球";
+                ? $"{navigation.TargetName}　　{FormatDistance(navigation.TargetDistance)}"
+                : string.Empty;
+        if (unifiedLayout != null && unifiedLayout.TargetStrip != null)
+            unifiedLayout.TargetStrip.gameObject.SetActive(
+                navigation != null && navigation.HasLockedTarget);
         if (speedText != null)
             speedText.text = $"速度  {(ship == null ? 0f : ship.Speed):0} m/s";
         if (flightModeText != null)
             flightModeText.text = telemetry.assistMode == SpacecraftAssistMode.Decoupled
-                ? "DECOUPLED  惯性模式"
-                : "COUPLED  辅助模式";
+                ? "惯性模式"
+                : "辅助模式";
         if (authorityText != null)
+        {
             authorityText.text = $"控制权威  {telemetry.controlAuthority * 100f:0}%";
+            authorityText.gameObject.SetActive(telemetry.controlAuthority < 0.98f);
+        }
         if (speedLimitText != null)
+        {
             speedLimitText.text = $"速度限制  {telemetry.speedLimit:0} m/s";
+            float speedRatio = telemetry.speedLimit <= 0f
+                ? 0f
+                : (ship == null ? 0f : ship.Speed) / telemetry.speedLimit;
+            speedLimitText.gameObject.SetActive(speedRatio >= 0.85f);
+        }
         if (boostText != null)
             boostText.text = $"BOOST  {telemetry.boostRatio * 100f:0}%";
+        if (unifiedLayout != null && unifiedLayout.BoostBar != null)
+            unifiedLayout.BoostBar.SetValue(telemetry.boostRatio, HudCyan);
         UpdateIntegrity();
         UpdateWeapons();
         UpdateCruiseText();
@@ -153,15 +222,22 @@ public sealed class InterstellarFlightHud : MonoBehaviour
     {
         SpacecraftWeaponSystem weapons = ship == null ? null : ship.WeaponSystem;
         if (weaponGroupText != null)
-            weaponGroupText.text = weapons == null ? "武器组 --" : $"武器组 {weapons.SelectedGroup}";
+            weaponGroupText.text = "武器组";
         if (weaponAmmoText != null)
-            weaponAmmoText.text = weapons == null ? "弹药 --" : $"弹药 {weapons.SelectedAmmunition}";
+            weaponAmmoText.text = weapons == null
+                ? "弹药 --"
+                : weapons.SelectedAmmunitionCapacity <= 0
+                    ? "弹药 ∞"
+                    : $"弹药 {weapons.SelectedAmmunition}";
         if (weaponCapacitorText != null)
             weaponCapacitorText.text = weapons == null ? "电容 --" : $"电容 {weapons.CapacitorRatio * 100f:0}%";
         if (weaponHeatText != null)
             weaponHeatText.text = weapons == null ? "热量 --" : $"热量 {weapons.SelectedHeat * 100f:0}%";
         if (weaponMountText != null)
-            weaponMountText.text = weapons == null ? "挂载 --" : $"挂载 {weapons.SelectedMountLabel}";
+            weaponMountText.text = weapons == null
+                ? "挂载离线"
+                : LocalizedMountLabel(weapons.SelectedMountLabel);
+        UpdateWeaponBars(weapons);
         if (weaponLockText != null)
         {
             SpaceWeaponTargetKind kind = weapons == null
@@ -179,8 +255,61 @@ public sealed class InterstellarFlightHud : MonoBehaviour
                                 ? "陨石锁定"
                                 : "搜索目标";
             weaponLockText.color = TargetColor(kind);
+            if (unifiedLayout != null && unifiedLayout.AimReticle != null)
+                unifiedLayout.AimReticle.color = TargetColor(kind);
         }
         UpdateWeaponTargetMarker(weapons);
+    }
+
+    void UpdateWeaponBars(SpacecraftWeaponSystem weapons)
+    {
+        if (unifiedLayout == null)
+            return;
+        float ammunitionRatio = weapons == null
+            ? 0f
+            : weapons.SelectedAmmunitionCapacity <= 0
+                ? 1f
+                : Mathf.Clamp01(
+                    weapons.SelectedAmmunition
+                    / (float)Mathf.Max(1, weapons.SelectedAmmunitionCapacity));
+        Color ammunitionColor = weapons != null
+            && weapons.SelectedAmmunitionCapacity > 0
+            && weapons.SelectedAmmunition == 0
+                ? HudDanger
+                : ammunitionRatio < 0.2f ? HudAmber : HudCyan;
+        unifiedLayout.AmmunitionBar?.SetValue(ammunitionRatio, ammunitionColor);
+
+        float capacitorRatio = weapons == null ? 0f : weapons.CapacitorRatio;
+        unifiedLayout.CapacitorBar?.SetValue(
+            capacitorRatio,
+            capacitorRatio < 0.2f ? HudAmber : HudCyan);
+        float heatRatio = weapons == null ? 0f : weapons.SelectedHeat;
+        unifiedLayout.HeatBar?.SetValue(
+            heatRatio,
+            heatRatio >= 0.95f ? HudDanger : heatRatio >= 0.72f ? HudAmber : HudCyan);
+
+        if (unifiedLayout.WeaponGroupOneTab != null)
+        {
+            unifiedLayout.WeaponGroupOneTab.gameObject.SetActive(
+                weapons == null || weapons.GroupOneAvailable);
+            unifiedLayout.WeaponGroupOneTab.color = weapons != null && weapons.SelectedGroup == 1
+                ? Color.white
+                : HudMuted;
+            unifiedLayout.WeaponGroupOneTab.fontStyle = weapons != null && weapons.SelectedGroup == 1
+                ? FontStyle.Bold
+                : FontStyle.Normal;
+        }
+        if (unifiedLayout.WeaponGroupTwoTab != null)
+        {
+            unifiedLayout.WeaponGroupTwoTab.gameObject.SetActive(
+                weapons != null && weapons.GroupTwoAvailable);
+            unifiedLayout.WeaponGroupTwoTab.color = weapons != null && weapons.SelectedGroup == 2
+                ? Color.white
+                : HudMuted;
+            unifiedLayout.WeaponGroupTwoTab.fontStyle = weapons != null && weapons.SelectedGroup == 2
+                ? FontStyle.Bold
+                : FontStyle.Normal;
+        }
     }
 
     void UpdateWeaponTargetMarker(SpacecraftWeaponSystem weapons)
@@ -219,10 +348,23 @@ public sealed class InterstellarFlightHud : MonoBehaviour
     void UpdateIntegrity()
     {
         if (integrityText != null)
-            integrityText.text = $"船体完整度  {(damageReceiver == null ? 100f : damageReceiver.Integrity):0}%";
+            integrityText.text = "船体";
         float ratio = damageReceiver == null
             ? 1f
             : Mathf.Clamp01(damageReceiver.Integrity / damageReceiver.MaximumIntegrity);
+        if (unifiedLayout != null && unifiedLayout.HullValueText != null)
+            unifiedLayout.HullValueText.text = $"{ratio * 100f:0}%";
+        Color hullColor = ratio < 0.3f
+            ? HudDanger
+            : ratio < 0.6f
+                ? HudAmber
+                : HudCyan;
+        if (damageFlashUntil > Time.unscaledTime
+            && Mathf.FloorToInt(Time.unscaledTime * 18f) % 2 == 0)
+        {
+            hullColor = Color.white;
+        }
+        unifiedLayout?.HullBar?.SetValue(ratio, hullColor);
         if (integrityFill != null)
         {
             integrityFill.fillAmount = ratio;
@@ -240,43 +382,61 @@ public sealed class InterstellarFlightHud : MonoBehaviour
         }
     }
 
+    static string LocalizedMountLabel(string value)
+    {
+        switch (value)
+        {
+            case "GIMBAL":
+                return "云台挂载";
+            case "MIXED":
+                return "混合挂载";
+            case "FIXED":
+                return "固定挂载";
+            default:
+                return "挂载 --";
+        }
+    }
+
     void UpdateCruiseText()
     {
         if (cruiseText != null)
             cruiseText.text = WarpStatusText();
         if (promptText != null)
-        {
-            promptText.text = navigation != null && navigation.CanEnterSelected
-                ? "正在进入星球引力范围"
-                : "L 全自动着陆 | B 锁定/跃迁 | N 切换星球 | 1/2 武器组 | 左键开火 | Tab 云台锁定 | C 模式 | X 刹车 | Q/E 横滚";
-        }
+            promptText.text = ship != null && (ship.CruiseActive || ship.SurfaceEntryActive)
+                ? "跃迁演出进行中"
+                : navigation != null && navigation.IsNearLockedPlanet
+                    ? "对准星球按 B 进入地表"
+                    : "对准星球按 B 开启近星跃迁  |  N 切换目标";
     }
 
     string WarpStatusText()
     {
-        if (ship == null)
-            return "B  锁定星球";
-        switch (ship.WarpState)
+        if (ship != null && ship.WarpCancelReason == InterstellarWarpCancelReason.NoReticleTarget)
+            return "请将准星对准星球";
+        if (ship != null)
         {
-            case InterstellarWarpState.Locked:
-                return ship.AutomaticLandingActive
-                    ? $"自动驾驶接近星球  |  距离 {FormatDistance(navigation == null ? 0d : navigation.TargetDistance)}  |  L 取消"
-                    : "B  启动跃迁  |  L 全自动着陆";
-            case InterstellarWarpState.Aligning:
-                return $"{(ship.AutomaticLandingActive ? "L 取消自动着陆" : "B 取消跃迁")}  |  对准误差 {ship.WarpAlignmentError:0.0}°";
-            case InterstellarWarpState.Spooling:
-                return $"{(ship.AutomaticLandingActive ? "L 取消自动着陆" : "B 取消跃迁")}  |  预热 {ship.WarpProgress * 100f:0}%";
-            case InterstellarWarpState.Transit:
-                return $"星际跃迁  {ship.WarpProgress * 100f:0}%";
-            case InterstellarWarpState.Exiting:
-                return $"跃迁退出  |  距目标 {ship.WarpExitDistance / 1000f:0.0} km";
-            case InterstellarWarpState.Cooldown:
-                return "跃迁系统冷却";
-            default:
-                return ship.WarpCancelReason == InterstellarWarpCancelReason.NoReticleTarget
-                    ? "准星对准星球光点后按 B"
-                    : "B  锁定星球";
+            switch (ship.WarpState)
+            {
+                case InterstellarWarpState.Aligning:
+                    return "自动对准";
+                case InterstellarWarpState.Spooling:
+                    return "跃迁门充能";
+                case InterstellarWarpState.Transit:
+                    return "加速穿越";
+                case InterstellarWarpState.Exiting:
+                    return "近星抵达";
+            }
+            if (ship.SurfaceEntryActive)
+                return "进入地表";
         }
+        if (navigation != null && navigation.HasLockedTarget)
+        {
+            string action = navigation.IsNearLockedPlanet
+                ? "B 进入地表"
+                : "B 开启近星跃迁";
+            return $"{action}  {navigation.TargetName}  |  距离 {FormatDistance(navigation.TargetDistance)}";
+        }
+        return "对准星球按 B";
     }
 
     void BuildPlanetLightPool()

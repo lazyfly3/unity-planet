@@ -238,15 +238,58 @@ public static class VoxelQuadSphereMapping
     static Vector2 DirectionToFaceUV(Vector3 dir, QuadSphereFace face)
     {
         dir = dir.normalized;
+        float first;
+        float second;
         switch (face)
         {
-            case QuadSphereFace.PosX: return new Vector2(dir.z / dir.x, dir.y / dir.x);
-            case QuadSphereFace.NegX: return new Vector2(-dir.z / dir.x, dir.y / dir.x);
-            case QuadSphereFace.PosY: return new Vector2(dir.x / dir.y, dir.z / dir.y);
-            case QuadSphereFace.NegY: return new Vector2(dir.x / dir.y, -dir.z / dir.y);
-            case QuadSphereFace.PosZ: return new Vector2(dir.x / dir.z, -dir.y / dir.z);
-            default: return new Vector2(-dir.x / dir.z, -dir.y / dir.z);
+            case QuadSphereFace.PosX:
+                SolveSpherifiedCubeVariables(dir.z, dir.y, out first, out second);
+                return new Vector2(first, second);
+            case QuadSphereFace.NegX:
+                SolveSpherifiedCubeVariables(dir.z, dir.y, out first, out second);
+                return new Vector2(first, -second);
+            case QuadSphereFace.PosY:
+                SolveSpherifiedCubeVariables(dir.x, dir.z, out first, out second);
+                return new Vector2(first, second);
+            case QuadSphereFace.NegY:
+                SolveSpherifiedCubeVariables(dir.x, dir.z, out first, out second);
+                return new Vector2(-first, second);
+            case QuadSphereFace.PosZ:
+                SolveSpherifiedCubeVariables(dir.x, dir.y, out first, out second);
+                return new Vector2(first, -second);
+            default:
+                SolveSpherifiedCubeVariables(dir.x, dir.y, out first, out second);
+                return new Vector2(first, second);
         }
+    }
+
+    static void SolveSpherifiedCubeVariables(
+        float firstSphereComponent,
+        float secondSphereComponent,
+        out float firstCubeComponent,
+        out float secondCubeComponent)
+    {
+        // CubeToSphere fixes one cube component at +/-1. For the remaining
+        // squared components A and B:
+        // sphereA^2 = A * (1/2 - B/6)
+        // sphereB^2 = B * (1/2 - A/6)
+        // Solving this pair makes direction-to-cell the exact inverse of the
+        // geometry mapping instead of the incompatible normalized-cube ratio.
+        float firstSquared = firstSphereComponent * firstSphereComponent;
+        float secondSquared = secondSphereComponent * secondSphereComponent;
+        float difference = 2f * (firstSquared - secondSquared);
+        float coefficient = 3f + difference;
+        float discriminant = Mathf.Max(
+            0f,
+            coefficient * coefficient - 24f * firstSquared);
+        float firstCubeSquared = Mathf.Clamp01(
+            (coefficient - Mathf.Sqrt(discriminant)) * 0.5f);
+        float secondCubeSquared = Mathf.Clamp01(firstCubeSquared - difference);
+
+        firstCubeComponent = Mathf.Sign(firstSphereComponent)
+            * Mathf.Sqrt(firstCubeSquared);
+        secondCubeComponent = Mathf.Sign(secondSphereComponent)
+            * Mathf.Sqrt(secondCubeSquared);
     }
 
     static float CellToNormalized(int cell, int gridSize)

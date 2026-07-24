@@ -195,10 +195,31 @@ def visible_bounds(objects):
 
 
 def library_stage(family, armature, meshes, action_records):
-    descriptor_path = family["extractedRoot"] / family["descriptor"]
-    if not descriptor_path.is_file():
-        raise RuntimeError(f"Descriptor is missing: {descriptor_path}")
-    groups = parse_groups(ET.parse(descriptor_path).getroot())
+    descriptor_relative = family.get("descriptor")
+    descriptor_path = (
+        family["extractedRoot"] / descriptor_relative
+        if descriptor_relative else None
+    )
+    if descriptor_path is not None and descriptor_path.is_file():
+        groups = parse_groups(ET.parse(descriptor_path).getroot())
+    elif family.get("fixedModules", False):
+        fixed_name = f"{family['familyId']}_Fixed"
+        groups = [{
+            "typeId": "FIXED_ROOT",
+            "path": [],
+            "candidates": [{
+                "id": fixed_name.upper(),
+                "name": fixed_name,
+                "chance": 1.0,
+                "path": ["FIXED_ROOT", fixed_name],
+                "children": [],
+            }],
+        }]
+        for obj in meshes:
+            obj["nms_source_ancestry"] = json.dumps([fixed_name])
+    else:
+        raise RuntimeError(
+            f"Descriptor is missing and fixedModules is disabled: {descriptor_path}")
     flat_groups = flatten_groups(groups)
     descriptor_names = {
         candidate["name"] for group in flat_groups
@@ -315,6 +336,7 @@ def library_stage(family, armature, meshes, action_records):
         "rngAlgorithm": "SplitMix64-v1",
         "familyId": family["familyId"],
         "variantIds": list(family.get("variantIds", [family["familyId"]])),
+        "supportsRun": bool(family.get("supportsRun", "run" in action_records)),
         "skeletonHash": bpy.context.scene["nms_skeleton_hash"],
         "sourceScene": str(family["extractedRoot"] / family["sourceScene"]),
         "locomotionType": family["locomotionType"],

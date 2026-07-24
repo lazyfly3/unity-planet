@@ -1,0 +1,645 @@
+{
+  "pipelineVersion": 10,
+  "familyId": "WeirdGroundCreature",
+  "skeletonHash": "217d727b206a68af9e5e0971eaebe96de702f1676a5583597fc8f8932e227b11",
+  "materials": [
+    {
+      "materialId": "EyeStalkMaT_9bce3188e6",
+      "sourceMaterialName": "EyeStalkMaT",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\groundcreature\\eyestalkmat.material.MXML",
+      "sourceMxmlSha256": "9bce3188e68e905b7da74bea0936c5b023b74cdb77eb4f6c5ebdde997fe2ffd8",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/87c59666b9b1_eyestalk.base54.tga",
+      "normalTexture": "Textures/c01ed5f169e9_eyestalk.base54.normal.tga",
+      "maskTexture": "Textures/b5d9a5cb83cb_eyestalk.base54.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\eyestalk.base54.dds",
+      "mainTextureSourceSha256": "87c59666b9b1a3e608247c921844b9bd9a57d277a0b5cb45f74ef7f07fbfdb48",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\eyestalk.base54.normal.dds",
+      "normalTextureSourceSha256": "c01ed5f169e933d9d1796aa71c1db3d85f3537e19a52540b8b89911cc49409cf",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\eyestalk.base54.masks.dds",
+      "maskTextureSourceSha256": "b5d9a5cb83cb96d8b732ea572c7936a7ab6438651ca14c5630d841c23b9b7233",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "FlintRock_mat_dc3b6ef612",
+      "sourceMaterialName": "FlintRock_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\groundcreature\\flintrock_mat.material.MXML",
+      "sourceMxmlSha256": "dc3b6ef612f850a6a07fa51c9a098266184b9f3b4d32f8e1fb26990b278ed32b",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/c92e393ab58c_stone.base5.1.tga",
+      "normalTexture": "Textures/6690449ecb82_stone.base5.1.normal.tga",
+      "maskTexture": "Textures/10cd12da4940_stone.base5.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\biomes\\weird\\beamstone\\stone.base5.1.dds",
+      "mainTextureSourceSha256": "c92e393ab58c6d2a4789c7261c1612f3ea94b94fc14ed69d2327936b5bcd42fc",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\biomes\\weird\\beamstone\\stone.base5.1.normal.dds",
+      "normalTextureSourceSha256": "6690449ecb826ceeafc8249b02d007168aa9ce605de96f41df8f80a79fe75d94",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\biomes\\weird\\beamstone\\stone.base5.1.masks.dds",
+      "maskTextureSourceSha256": "10cd12da4940f11b084c0a0d9fb867440c2b0f876c98e60cbc5256ffe2de29fe",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "GrassTendrilMat_63ff6b6664",
+      "sourceMaterialName": "GrassTendrilMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\groundcreature\\grasstendrilmat.material.MXML",
+      "sourceMxmlSha256": "63ff6b666447c4d0b07c6d14edc1bfb79aba5b81d882b6f1b6a8b52f3b6406b2",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/385cf40768b8_eyefish.base54.tga",
+      "normalTexture": "Textures/2874ee7631af_eyefish.base54.normal.tga",
+      "maskTexture": "Textures/b20f1517c462_eyefish.base54.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\eyefish.base54.dds",
+      "mainTextureSourceSha256": "385cf40768b8a2550e689644a477a05f97014f3d248f9bc1782ff052f9a41800",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\eyefish.base54.normal.dds",
+      "normalTextureSourceSha256": "2874ee7631af65fb86df88c1f5e80c7310ecff39bbd4cfd53c0da7e1bb8244ee",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\eyefish.base54.masks.dds",
+      "maskTextureSourceSha256": "b20f1517c462837758f836d804f2500ac09263796b5ffde1e31671690450c91f",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "PlayerEye_mat8_e6f8c74352",
+      "sourceMaterialName": "PlayerEye_mat8",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\groundcreature\\playereye_mat8.material.MXML",
+      "sourceMxmlSha256": "e6f8c74352432d371e78c82603ea242bdad6d6c715bd8deabca13282ba60990b",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/16afa117c4de_playereye.base.1.tga",
+      "normalTexture": "Textures/f73f0c9b4a0e_playereye.pupils.3.normal.tga",
+      "maskTexture": "Textures/5937784c9236_playereye.base.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 1.0,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\common\\player\\playercharacter\\playereye.base.1.dds",
+      "mainTextureSourceSha256": "16afa117c4de11da10da199c40118942c79a40e59da252039a1c116972385606",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\common\\player\\playercharacter\\playereye.pupils.3.normal.dds",
+      "normalTextureSourceSha256": "f73f0c9b4a0e22b48eb5d2723a754fae6bf8c6c78251b01dcecc71f9f3ce46e9",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\common\\player\\playercharacter\\playereye.base.1.masks.dds",
+      "maskTextureSourceSha256": "5937784c9236c6b0da7bf6c35757daff1d82972b48642af8f9cde782ae495e2b",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "PlowMat_4d1fab86b5",
+      "sourceMaterialName": "PlowMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\groundcreature\\plowmat.material.MXML",
+      "sourceMxmlSha256": "4d1fab86b52123113178e85aef2a4c2af81258d504f47ae3cf98dedba76db2eb",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/a8632a2b01b3_ugroundplow.base54.tga",
+      "normalTexture": "Textures/386311555ee9_ugroundplow.base54.normal.tga",
+      "maskTexture": "",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugroundplow.base54.dds",
+      "mainTextureSourceSha256": "a8632a2b01b3b30abd3aa6bc104de2aeaf962c1f28589c06ff6cd87534157b9b",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugroundplow.base54.normal.dds",
+      "normalTextureSourceSha256": "386311555ee9e3152a6df3dcb14bc9fc5893c508119ab67e48f987db1a2d4a27",
+      "maskTextureSourcePath": "",
+      "maskTextureSourceSha256": "",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "PlowSquidMat_553a2c0900",
+      "sourceMaterialName": "PlowSquidMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\groundcreature\\plowsquidmat.material.MXML",
+      "sourceMxmlSha256": "553a2c0900b1f4305f7594896389016b318b1107998101acfc8ba68ccf6877de",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/a8632a2b01b3_ugroundplow.base54.tga",
+      "normalTexture": "Textures/386311555ee9_ugroundplow.base54.normal.tga",
+      "maskTexture": "Textures/d6dd9140f05c_ugroundplow.base54.masks.tga",
+      "emissionTexture": "",
+      "metallic": 1.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugroundplow.base54.dds",
+      "mainTextureSourceSha256": "a8632a2b01b3b30abd3aa6bc104de2aeaf962c1f28589c06ff6cd87534157b9b",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugroundplow.base54.normal.dds",
+      "normalTextureSourceSha256": "386311555ee9e3152a6df3dcb14bc9fc5893c508119ab67e48f987db1a2d4a27",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugroundplow.base54.masks.dds",
+      "maskTextureSourceSha256": "d6dd9140f05ca35d2e99f78f56508f96fb685bbd85900a703ede9e8f868c94d4",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "TentacleMat_Skinned_e3b50cedbc",
+      "sourceMaterialName": "TentacleMat_Skinned",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\groundcreature\\tentaclemat_skinned.material.MXML",
+      "sourceMxmlSha256": "e3b50cedbc88facdaa03e8be0cbb5c8b2500bf48688997c0cde4f552b56713b5",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/eac5b53a8292_tentacle.base54.tga",
+      "normalTexture": "Textures/74ad2d1df7fb_tentacle.base54.normal.tga",
+      "maskTexture": "Textures/856d9a8d4604_tentacle.base54.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\tentacle.base54.dds",
+      "mainTextureSourceSha256": "eac5b53a8292c22e960c155856939bb60ef912e9d1607418afe9fb3f2da7ed4b",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\tentacle.base54.normal.dds",
+      "normalTextureSourceSha256": "74ad2d1df7fb3ba61c543a81e202e6cc0cbd7e0073b0d140102145fae5b9c920",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\tentacle.base54.masks.dds",
+      "maskTextureSourceSha256": "856d9a8d46041a82dc3f384237b5003bc010b3ee81df0c1b1e5d2d7dd7bd0312",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "UGroundDiggerMat_7dc2357914",
+      "sourceMaterialName": "UGroundDiggerMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\digger\\ugrounddiggermat.material.MXML",
+      "sourceMxmlSha256": "7dc235791481d37447aa8cca9bc47869f068fa8c502196d5d3d03961e7ad5302",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/01ac0ab4c252_ugrounddigger.base66.1.tga",
+      "normalTexture": "Textures/f3b2b7b82365_ugrounddigger.base66.1.normal.tga",
+      "maskTexture": "Textures/d8afbc3e8649_ugrounddigger.base66.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugrounddigger.base66.1.dds",
+      "mainTextureSourceSha256": "01ac0ab4c252ea2816eaa4f4d77d8fee61bae5002bb3096019381c830d2fa751",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugrounddigger.base66.1.normal.dds",
+      "normalTextureSourceSha256": "f3b2b7b82365b994cff80373ab2b0c787760f336f58a8578d0a7623f58d22ddf",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugrounddigger.base66.1.masks.dds",
+      "maskTextureSourceSha256": "d8afbc3e86499df2f019a507cef0fae2ec509b658db54edd8f646541d592aee9",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "UGroundRodentMat_632911f80a",
+      "sourceMaterialName": "UGroundRodentMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\groundcreature\\ugroundrodentmat.material.MXML",
+      "sourceMxmlSha256": "632911f80a72fcd30d18ef03c31dcceee2eb6a4390533ff38b32136c25eb9217",
+      "materialPreset": "Fur",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/d85eecbbedc4_ugroundrodent.base888.tga",
+      "normalTexture": "Textures/30edf1fa514d_ugroundrodent.base888.normal.tga",
+      "maskTexture": "Textures/59fbf5c88115_ugroundrodent.base888.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.18,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugroundrodent.base888.dds",
+      "mainTextureSourceSha256": "d85eecbbedc46b2c9017ef1334e291d7b34d918b40c15105bba8aaa7283562cc",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugroundrodent.base888.normal.dds",
+      "normalTextureSourceSha256": "30edf1fa514d391bb5e211a6ff20612064079b43fc466af705b763111325865c",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugroundrodent.base888.masks.dds",
+      "maskTextureSourceSha256": "59fbf5c88115cffc5e886d1f49919301d5e9c466c24549ed687723b87b80d70c",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "WormDrillMat_5cdc001fef",
+      "sourceMaterialName": "WormDrillMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\drill\\wormdrillmat.material.MXML",
+      "sourceMxmlSha256": "5cdc001fef4d120c90649d3f12fd03e47bb1c818764bad2b71c865f931644898",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/384ee0ce16b5_ugrounddrill.base54.tga",
+      "normalTexture": "Textures/069fa2680839_ugrounddrill.base54.normal.tga",
+      "maskTexture": "Textures/8fe924cf2e17_ugrounddrill.base54.masks.tga",
+      "emissionTexture": "",
+      "metallic": 1.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugrounddrill.base54.dds",
+      "mainTextureSourceSha256": "384ee0ce16b5950b09e950b2a8cc5574c7c71b15f671903c02f3aff822cc7e04",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugrounddrill.base54.normal.dds",
+      "normalTextureSourceSha256": "069fa2680839c1a28aaf6afdddd8e146a5f32057c7a8b51bc2998cd95b80967b",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\textures\\planets\\creatures\\weird\\ugrounddrill.base54.masks.dds",
+      "maskTextureSourceSha256": "8fe924cf2e17c547d32ea980eb6a4094cc88a66c82124961adaacb7598e2eb3c",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    }
+  ],
+  "renderers": [
+    {
+      "rendererName": "Arms1",
+      "modules": [],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PlowSquidMat_553a2c0900"
+        }
+      ]
+    },
+    {
+      "rendererName": "Digger",
+      "modules": [],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "UGroundDiggerMat_7dc2357914"
+        }
+      ]
+    },
+    {
+      "rendererName": "DiggerROOT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Drill",
+      "modules": [],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "WormDrillMat_5cdc001fef"
+        }
+      ]
+    },
+    {
+      "rendererName": "EndJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "EyeJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "EyeLidBottomJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "EyeLidTopJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "EyeStalkJNT1",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "EyeStalkJNT2",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "EyeStalkJNT3",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "EyeStalkJNT4",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "EyeStalkROOT",
+      "modules": [
+        "_Ground_EyeStalk"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "Eyestalk5",
+      "modules": [
+        "_Ground_EyeStalk"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "EyeStalkMaT_9bce3188e6"
+        }
+      ]
+    },
+    {
+      "rendererName": "FrontHeadJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "HeadJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "HipJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LAnkleJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LArmJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LClawbackJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LClawfrontJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LElbowJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LKneeJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LShoulderJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LThighJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RAnkleJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RArmJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RClawbackJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RClawfrontJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RElbowJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RKneeJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RShoulderJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RThighJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Rodent",
+      "modules": [
+        "_Ground_Rodent"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "UGroundRodentMat_632911f80a"
+        }
+      ]
+    },
+    {
+      "rendererName": "RodentROOT",
+      "modules": [
+        "_Ground_Rodent"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "SUB1Digger",
+      "modules": [],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "UGroundDiggerMat_7dc2357914"
+        }
+      ]
+    },
+    {
+      "rendererName": "Smoke",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "SmokeBurst",
+      "modules": [
+        "_Ground_SmokeBurst"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "SpineJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TailEndJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TailJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TentacleJNT1",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TentacleJNT2",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TentacleJNT3",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TentacleJNT4",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TentacleJNT5",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TentacleROOT",
+      "modules": [
+        "_Ground_Tentacles"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "Tentacles",
+      "modules": [
+        "_Ground_Tentacles"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "TentacleMat_Skinned_e3b50cedbc"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Ground_Digger",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "_Ground_Drill",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "_Ground_EyeStalk",
+      "modules": [
+        "_Ground_EyeStalk"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "_Ground_Plow",
+      "modules": [],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PlowMat_4d1fab86b5"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Ground_Rodent",
+      "modules": [
+        "_Ground_Rodent"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "_Ground_SmokeBurst",
+      "modules": [
+        "_Ground_SmokeBurst"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "FlintRock_mat_dc3b6ef612"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Ground_Spore",
+      "modules": [
+        "_Ground_Spore"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "GrassTendrilMat_63ff6b6664"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Ground_Tentacles",
+      "modules": [
+        "_Ground_Tentacles"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "ball",
+      "modules": [
+        "_Ground_EyeStalk"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PlayerEye_mat8_e6f8c74352"
+        }
+      ]
+    },
+    {
+      "rendererName": "locator1",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "models\\planets\\creatures\\weird\\groundcreature",
+      "modules": [],
+      "slots": []
+    }
+  ]
+}

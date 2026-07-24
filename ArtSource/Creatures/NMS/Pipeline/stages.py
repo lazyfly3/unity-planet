@@ -164,6 +164,7 @@ def write_manifest(family, records, meshes, actions=None):
         "vertexCount": sum(len(mesh.data.vertices) for mesh in meshes),
         "locomotionType": family["locomotionType"],
         "legCount": family["legCount"],
+        "supportsRun": bool(family.get("supportsRun", "run" in (actions or {}))),
         "joints": records,
         "availableActions": actions or {},
     }

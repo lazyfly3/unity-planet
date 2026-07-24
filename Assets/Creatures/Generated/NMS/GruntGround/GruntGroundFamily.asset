@@ -209,6 +209,974 @@ MonoBehaviour:
   - moduleId: _Wing_6
     rendererPaths:
     - ImportSpace/CanonicalRig/_Wing_6
+  materialDefinitions:
+  - materialId: BackShell_mat
+    materialPreset: Shell
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 0c886c1b86dd7bb43abe2b519f309564, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.52
+    paletteStrength: 0.16
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: Beak_mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: b9bbb855cf11b1547a18de95f140caca, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: BodyTurtle_TurtleShell_mat
+    materialPreset: Shell
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: a0794cba791b64340a3e578d5560e717, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.52
+    paletteStrength: 0.16
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: BodyTurtle_TurtleVariant_TurtleGrunt_Mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 2646d9b8cf65b1243aa295df245753bd, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: CatTongue_mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 9f31930a1852b57449b0484aa1ff1772, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: Default-Material
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: efcf68d5cbdc45647b4cf79ade085e85, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: FacePlates_mat
+    materialPreset: Shell
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: ba46f23984b692c4e971b8ba60b67aea, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.52
+    paletteStrength: 0.16
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: Feathers_mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 6f2ac152114f72f4eb5b8b4d521b611d, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntBodyAccs_RhinoMat1
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: c65fedf1bacf0e74da8dabd49800fe60, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntBodyAccs_ShawlMat1
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: a4ffee4985de39c47affc66d7bc1e50d, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntClaws_Mat
+    materialPreset: Bone
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: bddbfcf8d35368e4a991960e56df5c01, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.31
+    paletteStrength: 0.08
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntEar_mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 202ae1d02cd6a1241b5e0969509940bf, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntEars_Mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 41f21b1702271a94ca0c6e55bc1430ed, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntEye_mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: d90eea3a0d96bbd4585a96464ff70148, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntHeadAccs_Acc_HeadTendrills1
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 665179e704972844bbba4e185cb8922c, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntHeadAccs_Acc_LongSpine
+    materialPreset: Horn
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: a22ed3efab8a6a8439bbd79be0fb0a68, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.42
+    paletteStrength: 0.12
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntHeadAccs_Accs_2exp_GruntHairMat
+    materialPreset: Fur
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 5e00909018fbbc243a680e5e03548a11, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.18
+    paletteStrength: 0.18
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntHeadAccs_GruntHairMat
+    materialPreset: Fur
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 81821059331ba5c44b31a7b4937191ad, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.18
+    paletteStrength: 0.18
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntHeadAccs_RhinoMat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 47ac2f615d54dea4385d6a16b9902fc9, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntHeadAccs_TuskAntler_Mat
+    materialPreset: Horn
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: a38d000daf177d1488b44734e94d462b, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.42
+    paletteStrength: 0.12
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntHeadAccs_phong12
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 09d807f40bde5d245b1e9955ed46f98a, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntHead_Mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 56cca8a46152f4a4e83cf4de64a525f3, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntWings_Wings1_Mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: e623dee714c29534fb59adbc1510e27f, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: GruntWings_Wings2_Mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 928aada45e26f2e48981af7a246c4013, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: MoseNose_Mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: bd599bc2d34c6ae4b9e0c04de5424489, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: PetHarnessMat2
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: be4d5621cb9a0cb4ca3173fa43d79814, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: RexBoneHorn_Mat
+    materialPreset: Bone
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 372bb7ae2de9d1b45a8452edfe02713e, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.31
+    paletteStrength: 0.08
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: RexEars_Mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 6f446ee37ceab3e439213af9eb4ee23f, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: TurtleBody_Mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: bcc5c74b044a48242aa01b2bcb261e9d, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  - materialId: TurtleGruntHead_Mat
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 7e06f93e529c4b942a0415fe7d603707, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 0
+    hasMaskTexture: 0
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  rendererMaterialBindings:
+  - rendererPath: ImportSpace/CanonicalRig/GBottomTeeth
+    materialIds:
+    - CatTongue_mat
+  - rendererPath: ImportSpace/CanonicalRig/GTopTeeth
+    materialIds:
+    - CatTongue_mat
+  - rendererPath: ImportSpace/CanonicalRig/GruntEyes
+    materialIds:
+    - GruntEye_mat
+  - rendererPath: ImportSpace/CanonicalRig/PETACC_turtleShell1
+    materialIds:
+    - PetHarnessMat2
+  - rendererPath: ImportSpace/CanonicalRig/PETACC_turtleShell2
+    materialIds:
+    - PetHarnessMat2
+  - rendererPath: ImportSpace/CanonicalRig/PETACC_turtlenone
+    materialIds:
+    - PetHarnessMat2
+  - rendererPath: ImportSpace/CanonicalRig/RightClaw
+    materialIds:
+    - BodyTurtle_TurtleVariant_TurtleGrunt_Mat
+  - rendererPath: ImportSpace/CanonicalRig/SUB1_AcB_Ears
+    materialIds:
+    - GruntEars_Mat
+  - rendererPath: ImportSpace/CanonicalRig/SUB1_GH1Accs_D
+    materialIds:
+    - RexEars_Mat
+  - rendererPath: ImportSpace/CanonicalRig/SUB1_GH1Accs_E
+    materialIds:
+    - GruntEars_Mat
+  - rendererPath: ImportSpace/CanonicalRig/TTongue
+    materialIds:
+    - CatTongue_mat
+  - rendererPath: ImportSpace/CanonicalRig/TurtleEyes
+    materialIds:
+    - GruntEye_mat
+  - rendererPath: ImportSpace/CanonicalRig/_A_1
+    materialIds:
+    - Beak_mat
+  - rendererPath: ImportSpace/CanonicalRig/_A_2
+    materialIds:
+    - Beak_mat
+  - rendererPath: ImportSpace/CanonicalRig/_AcB_Ears
+    materialIds:
+    - GruntHeadAccs_GruntHairMat
+  - rendererPath: ImportSpace/CanonicalRig/_AcB_Ears2
+    materialIds:
+    - GruntEar_mat
+  - rendererPath: ImportSpace/CanonicalRig/_AcB_Ears3
+    materialIds:
+    - GruntEar_mat
+  - rendererPath: ImportSpace/CanonicalRig/_AcB_none
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/_Acc2_1
+    materialIds:
+    - FacePlates_mat
+  - rendererPath: ImportSpace/CanonicalRig/_Acc2_none
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/_Acc3_1
+    materialIds:
+    - FacePlates_mat
+  - rendererPath: ImportSpace/CanonicalRig/_Acc3_none
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/_AccB_BFeathers
+    materialIds:
+    - Feathers_mat
+  - rendererPath: ImportSpace/CanonicalRig/_AccB_BLongClw
+    materialIds:
+    - GruntClaws_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_AccB_Feathers
+    materialIds:
+    - Feathers_mat
+  - rendererPath: ImportSpace/CanonicalRig/_AccB_none
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/_Acc_1
+    materialIds:
+    - FacePlates_mat
+  - rendererPath: ImportSpace/CanonicalRig/_Acc_2
+    materialIds:
+    - FacePlates_mat
+  - rendererPath: ImportSpace/CanonicalRig/_Acc_2Shape
+    materialIds:
+    - FacePlates_mat
+  - rendererPath: ImportSpace/CanonicalRig/_Acc_3
+    materialIds:
+    - Feathers_mat
+  - rendererPath: ImportSpace/CanonicalRig/_Acc_4
+    materialIds:
+    - Feathers_mat
+  - rendererPath: ImportSpace/CanonicalRig/_Acc_5
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/_Acc_Shape1
+    materialIds:
+    - FacePlates_mat
+  - rendererPath: ImportSpace/CanonicalRig/_Acc_none
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/_BGF_ClawsLong
+    materialIds:
+    - GruntClaws_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_BGF_ClawsShort
+    materialIds:
+    - GruntClaws_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_BGH_ClawsLong
+    materialIds:
+    - GruntClaws_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_BGH_ClawsShort
+    materialIds:
+    - GruntClaws_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_BGM_Shawl
+    materialIds:
+    - GruntBodyAccs_ShawlMat1
+  - rendererPath: ImportSpace/CanonicalRig/_BGM_ShoulderSpikesxRARE
+    materialIds:
+    - GruntBodyAccs_RhinoMat1
+  - rendererPath: ImportSpace/CanonicalRig/_BGM_none
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/_Body_Grunt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/_Body_GruntFloatxRARE
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/_GH1Accs_A
+    materialIds:
+    - GruntHeadAccs_TuskAntler_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_GH1Accs_B
+    materialIds:
+    - GruntHeadAccs_phong12
+  - rendererPath: ImportSpace/CanonicalRig/_GH1Accs_C
+    materialIds:
+    - RexBoneHorn_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_GH1Accs_D
+    materialIds:
+    - GruntHeadAccs_Accs_2exp_GruntHairMat
+  - rendererPath: ImportSpace/CanonicalRig/_GH1Accs_E
+    materialIds:
+    - GruntHeadAccs_GruntHairMat
+  - rendererPath: ImportSpace/CanonicalRig/_GH1Accs_F
+    materialIds:
+    - GruntEar_mat
+  - rendererPath: ImportSpace/CanonicalRig/_GH1Accs_G
+    materialIds:
+    - GruntEar_mat
+  - rendererPath: ImportSpace/CanonicalRig/_GH2Accs_A
+    materialIds:
+    - GruntHeadAccs_RhinoMat
+  - rendererPath: ImportSpace/CanonicalRig/_GH2Accs_B
+    materialIds:
+    - MoseNose_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_GH2Accs_C
+    materialIds:
+    - GruntHeadAccs_Acc_HeadTendrills1
+  - rendererPath: ImportSpace/CanonicalRig/_GH2Accs_D
+    materialIds:
+    - GruntHeadAccs_Acc_LongSpine
+  - rendererPath: ImportSpace/CanonicalRig/_GH2Accs_E
+    materialIds:
+    - Beak_mat
+  - rendererPath: ImportSpace/CanonicalRig/_GHAccs_1
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/_GHAccs_2
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/_Head_Grunt
+    materialIds:
+    - GruntHead_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_Head_Turtle
+    materialIds:
+    - TurtleGruntHead_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_Mesh_Turtle
+    materialIds:
+    - TurtleBody_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_TBAcc_1
+    materialIds:
+    - BodyTurtle_TurtleShell_mat
+  - rendererPath: ImportSpace/CanonicalRig/_TBAcc_1Shape
+    materialIds:
+    - BodyTurtle_TurtleShell_mat
+  - rendererPath: ImportSpace/CanonicalRig/_TBAcc_2
+    materialIds:
+    - BackShell_mat
+  - rendererPath: ImportSpace/CanonicalRig/_TBAcc_Shape2
+    materialIds:
+    - BackShell_mat
+  - rendererPath: ImportSpace/CanonicalRig/_TBAcc_none
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/_Wing_1
+    materialIds:
+    - GruntWings_Wings1_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_Wing_2
+    materialIds:
+    - GruntWings_Wings1_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_Wing_3
+    materialIds:
+    - GruntWings_Wings1_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_Wing_4
+    materialIds:
+    - GruntWings_Wings2_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_Wing_5
+    materialIds:
+    - GruntWings_Wings2_Mat
+  - rendererPath: ImportSpace/CanonicalRig/_Wing_6
+    materialIds:
+    - GruntWings_Wings2_Mat
+  - rendererPath: ImportSpace/CanonicalRig/leftclaw
+    materialIds:
+    - BodyTurtle_TurtleVariant_TurtleGrunt_Mat
   loadBearingChains:
   - id: Leg1
     bones:
@@ -227,3 +1195,4 @@ MonoBehaviour:
   idleState: Idle
   walkState: Walk
   runState: Run
+  supportsRun: 1

@@ -1,0 +1,300 @@
+{
+  "pipelineVersion": 10,
+  "rngAlgorithm": "SplitMix64-v1",
+  "familyId": "WeirdGroundCreature",
+  "variantIds": [
+    "WeirdGroundCreature"
+  ],
+  "supportsRun": true,
+  "skeletonHash": "217d727b206a68af9e5e0971eaebe96de702f1676a5583597fc8f8932e227b11",
+  "sourceScene": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\groundcreature.scene.mbin",
+  "locomotionType": "Ground",
+  "legCount": 4,
+  "descriptorGroups": [
+    {
+      "typeId": "_GROUND_",
+      "path": [],
+      "candidates": [
+        {
+          "id": "_GROUND_EYESTALK",
+          "name": "_Ground_EyeStalk",
+          "chance": 0.0,
+          "path": [
+            "_GROUND_",
+            "_Ground_EyeStalk"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GROUND_RODENT",
+          "name": "_Ground_Rodent",
+          "chance": 0.0,
+          "path": [
+            "_GROUND_",
+            "_Ground_Rodent"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GROUND_SMOKEBURST",
+          "name": "_Ground_SmokeBurst",
+          "chance": 0.0,
+          "path": [
+            "_GROUND_",
+            "_Ground_SmokeBurst"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GROUND_SPORE",
+          "name": "_Ground_Spore",
+          "chance": 0.0,
+          "path": [
+            "_GROUND_",
+            "_Ground_Spore"
+          ],
+          "children": []
+        },
+        {
+          "id": "_GROUND_TENTACLES",
+          "name": "_Ground_Tentacles",
+          "chance": 0.0,
+          "path": [
+            "_GROUND_",
+            "_Ground_Tentacles"
+          ],
+          "children": []
+        }
+      ]
+    }
+  ],
+  "availableActions": {
+    "idle": {
+      "name": "WeirdGroundCreature_IDLE_InvBind",
+      "source": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\anims\\octoidle.anim.mbin",
+      "frames": 301,
+      "maximumScaleDelta": 0.0,
+      "animatedScaleFrozenAtFirstFrame": true
+    },
+    "walk": {
+      "name": "WeirdGroundCreature_WALK_InvBind",
+      "source": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\anims\\octowalk.anim.mbin",
+      "frames": 1001,
+      "maximumScaleDelta": 0.0,
+      "animatedScaleFrozenAtFirstFrame": true
+    },
+    "run": {
+      "name": "WeirdGroundCreature_RUN_InvBind",
+      "source": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\anims\\octospringwalk.anim.mbin",
+      "frames": 201,
+      "maximumScaleDelta": 0.0,
+      "animatedScaleFrozenAtFirstFrame": true
+    }
+  },
+  "validationInput": {
+    "pipelineVersion": 10,
+    "animationTransformPolicy": "freeze_first_frame_and_lock_load_bearing_pose_v2",
+    "loadBearingChains": [],
+    "animationTransformCorrectionScope": "allWeighted",
+    "actions": {
+      "idle": {
+        "source": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\anims\\octoidle.anim.mbin",
+        "frames": 301
+      },
+      "run": {
+        "source": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\anims\\octospringwalk.anim.mbin",
+        "frames": 201
+      },
+      "walk": {
+        "source": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Weird\\Extracted\\models\\planets\\creatures\\weird\\anims\\octowalk.anim.mbin",
+        "frames": 1001
+      }
+    }
+  },
+  "modules": [
+    {
+      "name": "_Ground_EyeStalk",
+      "objects": [
+        "_Ground_EyeStalk",
+        "ball",
+        "Eyestalk5",
+        "EyeStalkROOT"
+      ],
+      "materials": [
+        "EyeStalkMaT",
+        "PlayerEye_mat8"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "ball": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0,
+          "maximumEdgeStretch": 1.0,
+          "maximumTriangleAreaStretch": 1.0,
+          "maximumNormalizedEdgeDelta": 0.0,
+          "maximumNormalizedTriangleAreaDelta": 0.0,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        },
+        "Eyestalk5": {
+          "restPoseMaximumVertexError": 0.0,
+          "maximumBoundsRatio": 1.0,
+          "maximumEdgeStretch": 1.0,
+          "maximumTriangleAreaStretch": 1.0,
+          "maximumNormalizedEdgeDelta": 0.0,
+          "maximumNormalizedTriangleAreaDelta": 0.0,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Ground_Rodent",
+      "objects": [
+        "_Ground_Rodent",
+        "Rodent",
+        "RodentROOT"
+      ],
+      "materials": [
+        "UGroundRodentMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "Rodent": {
+          "restPoseMaximumVertexError": 5.960464477539063e-08,
+          "maximumBoundsRatio": 1.0,
+          "maximumEdgeStretch": 1.0000013143986457,
+          "maximumTriangleAreaStretch": 1.0000008522118249,
+          "maximumNormalizedEdgeDelta": 1.9625573822975583e-08,
+          "maximumNormalizedTriangleAreaDelta": 1.9015962548437523e-10,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Ground_SmokeBurst",
+      "objects": [
+        "_Ground_SmokeBurst",
+        "SmokeBurst"
+      ],
+      "materials": [
+        "FlintRock_mat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Ground_SmokeBurst": {
+          "restPoseMaximumVertexError": 2.3283064365386963e-10,
+          "maximumBoundsRatio": 1.0,
+          "maximumEdgeStretch": 1.0,
+          "maximumTriangleAreaStretch": 1.0,
+          "maximumNormalizedEdgeDelta": 0.0,
+          "maximumNormalizedTriangleAreaDelta": 0.0,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Ground_Spore",
+      "objects": [
+        "_Ground_Spore"
+      ],
+      "materials": [
+        "GrassTendrilMat"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "_Ground_Spore": {
+          "restPoseMaximumVertexError": 6.155189738369847e-08,
+          "maximumBoundsRatio": 1.0,
+          "maximumEdgeStretch": 1.000002170963197,
+          "maximumTriangleAreaStretch": 1.0000024975466588,
+          "maximumNormalizedEdgeDelta": 7.60131314744901e-08,
+          "maximumNormalizedTriangleAreaDelta": 5.681104638737858e-10,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "name": "_Ground_Tentacles",
+      "objects": [
+        "_Ground_Tentacles",
+        "TentacleROOT",
+        "Tentacles"
+      ],
+      "materials": [
+        "TentacleMat_Skinned"
+      ],
+      "unknownWeightGroups": [],
+      "compatible": true,
+      "validationFailures": [],
+      "meshValidation": {
+        "Tentacles": {
+          "restPoseMaximumVertexError": 2.9802322387695312e-08,
+          "maximumBoundsRatio": 1.0,
+          "maximumEdgeStretch": 1.0000010837418256,
+          "maximumTriangleAreaStretch": 1.000002779204363,
+          "maximumNormalizedEdgeDelta": 3.6334575729580025e-09,
+          "maximumNormalizedTriangleAreaDelta": 9.857140523778384e-12,
+          "maximumSignificantEdgeStretch": 0.0,
+          "maximumSignificantTriangleAreaStretch": 0.0,
+          "worstTriangleClip": "idle",
+          "worstTriangleFrame": 0,
+          "nonFiniteVertexCount": 0,
+          "failures": [],
+          "passed": true
+        }
+      }
+    }
+  ],
+  "excludedMeshObjects": [],
+  "baselineSeed": 0,
+  "baselineChoices": [
+    {
+      "typeId": "_GROUND_",
+      "id": "_GROUND_EYESTALK",
+      "name": "_Ground_EyeStalk",
+      "path": [
+        "_GROUND_",
+        "_Ground_EyeStalk"
+      ]
+    }
+  ],
+  "showcaseSignatureCount": 5,
+  "limitedDiversity": true
+}

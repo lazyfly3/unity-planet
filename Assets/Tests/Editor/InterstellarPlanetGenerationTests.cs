@@ -1,4 +1,8 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Text;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -83,6 +87,321 @@ public sealed class InterstellarPlanetGenerationTests
         {
             UnityEngine.Object.DestroyImmediate(worldObject);
         }
+    }
+
+    [Test]
+    public void LargePlanetBuildsARealColliderAtTheRequestedLandingDirection()
+    {
+        GameObject worldObject = new GameObject("VoxelWorld");
+        try
+        {
+            VoxelQuadSphereWorld world = worldObject.AddComponent<VoxelQuadSphereWorld>();
+            PlanetCelestialProfile large = PlanetCelestialProfile.CreateLargeDefault();
+            Vector3 landingDirection = new Vector3(0.31f, 0.83f, -0.46f).normalized;
+            world.ConfigurePlanet(
+                24680,
+                null,
+                Color.green,
+                Color.gray,
+                new PlanetTerrainSettings(),
+                false,
+                null,
+                null,
+                new PlanetRiverSettings(),
+                null,
+                large);
+
+            bool found = world.PrepareLandingSurface(
+                landingDirection,
+                out RaycastHit hit);
+
+            string diagnostics = BuildSurfaceDiagnostics(world);
+            Assert.That(found, Is.True,
+                "The requested landing column must synchronously create high-detail terrain collision.\n"
+                + diagnostics);
+            Assert.That(hit.collider, Is.Not.Null);
+            Assert.That(world.IsTerrainCollider(hit.collider), Is.True);
+            Assert.That(world.IsInitialSurfaceReady, Is.True,
+                "A live landing collider must make the high-detail surface ready.");
+            Assert.That(world.PinnedLandingChunkCount, Is.GreaterThan(0),
+                "The landing terrain must remain pinned after the initial surface is prepared.\n"
+                + diagnostics);
+            Assert.That(
+                world.TryGetReadySurfaceCutout(out Vector3 cutoutCenter, out float cutoutRadius),
+                Is.True,
+                "Far LOD must not remain over the prepared high-detail landing terrain.\n"
+                + diagnostics);
+            Assert.That(cutoutRadius, Is.GreaterThan(0f));
+            Assert.That(
+                Vector3.Angle(
+                    (cutoutCenter - world.GetPlanetCenterWorld()).normalized,
+                    landingDirection),
+                Is.LessThan(1f));
+            Assert.That(
+                Vector3.Angle(hit.point.normalized, landingDirection),
+                Is.LessThan(1f));
+            Assert.That(
+                hit.point.magnitude,
+                Is.InRange(
+                    world.PlanetRadius - large.maximumTerrainElevation,
+                    world.VoxelOuterRadius + 1f));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(worldObject);
+        }
+    }
+
+    [Test]
+    public void CurrentSaveTerrainBuildsARealColliderAtItsLandingDirection()
+    {
+        GameObject worldObject = new GameObject("VoxelWorld");
+        try
+        {
+            VoxelQuadSphereWorld world = worldObject.AddComponent<VoxelQuadSphereWorld>();
+            var terrain = new PlanetTerrainSettings
+            {
+                continentScale = 0.000800157f,
+                continentHeight = 78.8388f,
+                detailScale = 0.009093739f,
+                detailHeight = 17.6671f,
+                ridgeHeight = 8.35927f,
+                surfaceLayerDepth = 0.62038f,
+                stoneDepth = 11.90096f,
+                generateCaves = true,
+                caveScale = 0.0289118f,
+                caveThreshold = 0.704483f,
+                caveSurfaceClearance = 8.65368f
+            };
+            PlanetCelestialProfile celestial = PlanetCelestialProfile.CreateLargeDefault();
+            celestial.radius = 2000f;
+            celestial.surfaceGravity = 3.87118f;
+            celestial.maximumTerrainElevation = 92.16296f;
+            celestial.editableDepth = 96f;
+            celestial.ClampValues();
+            Vector3 landingDirection = new Vector3(
+                719.8912f,
+                -724.0453f,
+                -1729.424f).normalized;
+
+            world.ConfigurePlanet(
+                523540906,
+                null,
+                new Color(0.3f, 0.2f, 0.45f),
+                Color.gray,
+                terrain,
+                false,
+                null,
+                null,
+                new PlanetRiverSettings(),
+                null,
+                celestial);
+
+            bool found = world.PrepareLandingSurface(
+                landingDirection,
+                out RaycastHit hit);
+
+            string diagnostics = BuildSurfaceDiagnostics(world);
+            Assert.That(found, Is.True,
+                "The current save's landing column must create high-detail terrain collision.\n"
+                + diagnostics);
+            Assert.That(hit.collider, Is.Not.Null);
+            Assert.That(world.IsTerrainCollider(hit.collider), Is.True);
+            Assert.That(world.IsInitialSurfaceReady, Is.True,
+                "The current save must expose its live high-detail landing collider.");
+            Assert.That(world.PinnedLandingChunkCount, Is.GreaterThan(0),
+                "The current save's landing terrain must stay loaded while the player is on it.\n"
+                + diagnostics);
+            Assert.That(
+                world.TryGetReadySurfaceCutout(out Vector3 cutoutCenter, out float cutoutRadius),
+                Is.True,
+                "The current save must replace far LOD with high-detail terrain at landing.\n"
+                + diagnostics);
+            Assert.That(cutoutRadius, Is.GreaterThan(0f));
+            Assert.That(
+                Vector3.Angle(
+                    (cutoutCenter - world.GetPlanetCenterWorld()).normalized,
+                    landingDirection),
+                Is.LessThan(1f));
+            Assert.That(
+                Vector3.Angle(hit.point.normalized, landingDirection),
+                Is.LessThan(1f));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(worldObject);
+        }
+    }
+
+    [Test]
+    public void CurrentSaveStartupPublishesReadyOnlyAfterHighDetailColliderExists()
+    {
+        GameObject worldObject = new GameObject("VoxelWorldStartup");
+        try
+        {
+            VoxelQuadSphereWorld world = worldObject.AddComponent<VoxelQuadSphereWorld>();
+            var terrain = new PlanetTerrainSettings
+            {
+                continentScale = 0.000800157f,
+                continentHeight = 78.8388f,
+                detailScale = 0.009093739f,
+                detailHeight = 17.6671f,
+                ridgeHeight = 8.35927f,
+                surfaceLayerDepth = 0.62038f,
+                stoneDepth = 11.90096f,
+                generateCaves = true,
+                caveScale = 0.0289118f,
+                caveThreshold = 0.704483f,
+                caveSurfaceClearance = 8.65368f
+            };
+            PlanetCelestialProfile celestial = PlanetCelestialProfile.CreateLargeDefault();
+            celestial.radius = 2000f;
+            celestial.surfaceGravity = 3.87118f;
+            celestial.maximumTerrainElevation = 92.16296f;
+            celestial.editableDepth = 96f;
+            celestial.ClampValues();
+            Vector3 landingDirection = new Vector3(
+                719.8912f,
+                -724.0453f,
+                -1729.424f).normalized;
+
+            world.ConfigurePlanet(
+                523540906,
+                null,
+                new Color(0.3f, 0.2f, 0.45f),
+                Color.gray,
+                terrain,
+                false,
+                null,
+                null,
+                new PlanetRiverSettings(),
+                null,
+                celestial);
+            world.SetSurfaceSpawnDirection(landingDirection);
+
+            // The test only verifies startup ownership. Avoid launching the later
+            // background expansion coroutine from an EditMode test.
+            SetPrivateField(world, "streamingSurfaceCompletionStarted", true);
+            MethodInfo startMethod = typeof(VoxelQuadSphereWorld).GetMethod(
+                "Start",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(startMethod, Is.Not.Null);
+            RunCoroutineSynchronously((IEnumerator)startMethod.Invoke(world, null));
+
+            string diagnostics = BuildSurfaceDiagnostics(world);
+            Assert.That(world.HasStartedSurfaceGeneration, Is.True);
+            Assert.That(world.HasFinishedSurfaceGeneration, Is.True);
+            Assert.That(world.InitialSurfaceGenerationFailed, Is.False, diagnostics);
+            Assert.That(world.IsInitialSurfaceReady, Is.True, diagnostics);
+            Assert.That(
+                world.IsSurfaceEntryVisualReady,
+                Is.True,
+                "The entry blackout may only lift after the contiguous initial visual region is ready.\n"
+                + diagnostics);
+            Assert.That(world.TryFindInitialSurface(out RaycastHit hit), Is.True, diagnostics);
+            Assert.That(world.IsTerrainCollider(hit.collider), Is.True, diagnostics);
+            Assert.That(
+                world.TryGetReadySurfaceCutout(out _, out float cutoutRadius),
+                Is.True,
+                diagnostics);
+            Assert.That(cutoutRadius, Is.GreaterThan(0f));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(worldObject);
+        }
+    }
+
+    [Test]
+    public void QuadSphereDirectionMappingRoundTripsSpherifiedCubeDirections()
+    {
+        const int gridSize = 2048;
+        Vector3[] directions =
+        {
+            Vector3.right,
+            Vector3.left,
+            Vector3.up,
+            Vector3.down,
+            Vector3.forward,
+            Vector3.back,
+            new Vector3(0.31f, 0.83f, -0.46f).normalized,
+            new Vector3(-0.71f, 0.49f, 0.50f).normalized,
+            new Vector3(1f, 0.99f, 0.98f).normalized,
+            new Vector3(-1f, -0.98f, 0.99f).normalized
+        };
+
+        foreach (Vector3 direction in directions)
+        {
+            VoxelQuadSphereMapping.DirectionToFaceCell(
+                direction,
+                gridSize,
+                out QuadSphereFace face,
+                out int cellU,
+                out int cellV);
+            Vector3 reconstructed = VoxelQuadSphereMapping.GetRadialDirection(
+                face,
+                cellU,
+                cellV,
+                gridSize);
+
+            Assert.That(
+                Vector3.Angle(direction, reconstructed),
+                Is.LessThan(0.1f),
+                $"Direction {direction} mapped to {face} ({cellU}, {cellV}) " +
+                $"but reconstructed as {reconstructed}.");
+        }
+    }
+
+    static string BuildSurfaceDiagnostics(VoxelQuadSphereWorld world)
+    {
+        FieldInfo chunksField = typeof(VoxelQuadSphereWorld).GetField(
+            "chunks",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        var chunks = chunksField?.GetValue(world)
+            as Dictionary<QuadSphereChunkKey, VoxelQuadSphereChunk>;
+        if (chunks == null)
+            return "Chunk diagnostics unavailable.";
+
+        var result = new StringBuilder();
+        result.Append("Loaded chunks: ").Append(chunks.Count);
+        foreach (KeyValuePair<QuadSphereChunkKey, VoxelQuadSphereChunk> pair in chunks)
+        {
+            int solidCount = 0;
+            byte[] voxels = pair.Value.Voxels;
+            for (int i = 0; i < voxels.Length; i++)
+            {
+                if (VoxelTypes.IsSolid(voxels[i]))
+                    solidCount++;
+            }
+
+            result.Append("\n")
+                .Append(pair.Key)
+                .Append(" solids=").Append(solidCount)
+                .Append(" vertices=").Append(pair.Value.MeshVertexCount)
+                .Append(" collider=").Append(pair.Value.HasCollider)
+                .Append(" baked=").Append(pair.Value.HasBakedCollider);
+        }
+
+        return result.ToString();
+    }
+
+    static void RunCoroutineSynchronously(IEnumerator routine)
+    {
+        Assert.That(routine, Is.Not.Null);
+        while (routine.MoveNext())
+        {
+            if (routine.Current is IEnumerator nested)
+                RunCoroutineSynchronously(nested);
+        }
+    }
+
+    static void SetPrivateField(object target, string fieldName, object value)
+    {
+        FieldInfo field = target.GetType().GetField(
+            fieldName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(field, Is.Not.Null, $"Missing private field {fieldName}.");
+        field.SetValue(target, value);
     }
 
     [Test]

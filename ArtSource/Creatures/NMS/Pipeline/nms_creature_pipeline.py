@@ -60,7 +60,17 @@ def load_configuration(family_id: str):
         family["variantIds"] = [
             variant["variantId"] for variant in variants if variant.get("variantId")
         ]
-    for key in ("extractedRoot", "outputRoot", "mbinCompiler", "gamePakRoot", "hgpakTool", "unityProjectRoot"):
+    family["supportsRun"] = bool(family.get(
+        "supportsRun", "run" in family.get("actions", {})))
+    for key in (
+        "extractedRoot",
+        "outputRoot",
+        "mbinCompiler",
+        "gamePakRoot",
+        "hgpakTool",
+        "texconv",
+        "unityProjectRoot",
+    ):
         value = family.get(key, config.get(key))
         if value:
             family[key] = Path(value)
@@ -278,4 +288,3 @@ def rebind_meshes(armature):
         obj.hide_render = False
         obj.hide_set(False)
     return meshes
-

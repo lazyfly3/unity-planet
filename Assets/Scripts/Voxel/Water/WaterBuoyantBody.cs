@@ -24,7 +24,7 @@ public sealed class WaterBuoyantBody : MonoBehaviour
             Vector3 point = samplePoints != null && samplePoints.Length > 0
                 ? samplePoints[i].position
                 : body.worldCenterOfMass;
-            if (!PlanetRiverSystem.TrySampleAny(point, out WaterSample water) || water.signedDistance >= 0f)
+            if (!PlanetWaterRegistry.TrySampleAny(point, out WaterSample water) || water.signedDistance >= 0f)
                 continue;
             float submerged = water.Submersion;
             Vector3 relativeVelocity = body.GetPointVelocity(point) - water.flowVelocity;
@@ -33,7 +33,8 @@ public sealed class WaterBuoyantBody : MonoBehaviour
                 + water.flowVelocity * flowInfluence * submerged;
             body.AddForceAtPosition(force / count, point, ForceMode.Acceleration);
             Vector3 reactionImpulse = -force * (body.mass / count) * Time.fixedDeltaTime;
-            PlanetRiverSystem.ApplyImpulseAny(point, reactionImpulse);
+            if (water.kind != PlanetWaterKind.Ocean)
+                PlanetRiverSystem.ApplyImpulseAny(point, reactionImpulse);
         }
     }
 }

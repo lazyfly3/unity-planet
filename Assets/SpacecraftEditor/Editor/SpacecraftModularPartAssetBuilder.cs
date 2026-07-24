@@ -24,6 +24,7 @@ namespace SpacecraftEditor.Editor
         const string WorkshopPrefab = "Assets/Resources/Spacecraft/SpacecraftWorkshopRoot.prefab";
         const string WorkshopScene = "Assets/Scenes/SpacecraftWorkshop.unity";
         const string InterstellarScene = "Assets/Scenes/InterstellarFlight.unity";
+        const string PlanetApproachScene = "Assets/Scenes/PlanetApproach.unity";
         const string SpaceflightResourceRoot = "Assets/Resources/Spaceflight";
         const string PirateResourceRoot = SpaceflightResourceRoot + "/Pirates";
         const string CombatVfxCatalogPath = SpaceflightResourceRoot + "/SpaceCombatVfxCatalog.asset";
@@ -93,11 +94,33 @@ namespace SpacecraftEditor.Editor
             UpdateWorkshopPrefab(definitions.ToArray(), paints);
             UpdateWorkshopScene(definitions.ToArray(), paints);
             UpdateInterstellarScene(definitions.ToArray(), paints);
+            UpdateFlightHudScene(PlanetApproachScene);
             BuildCombatVfxCatalog();
             BuildPirateAssets(definitions.ToArray(), paints);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             return "Published 8 decorations, 12 fixed-size weapon definitions, combat VFX, hardpoints and the PCG pirate base.";
+        }
+
+        [MenuItem("Tools/Spacecraft/Rebuild Unified Flight HUD %#h")]
+        public static string RebuildFlightHudScenes()
+        {
+            UpdateFlightHudScene(InterstellarScene);
+            UpdateFlightHudScene(PlanetApproachScene);
+            AssetDatabase.SaveAssets();
+            const string message =
+                "Rebuilt the unified third-person flight HUD in InterstellarFlight and PlanetApproach.";
+            Debug.Log(message);
+            return message;
+        }
+
+        [MenuItem("Tools/Spacecraft/Preview Unified Flight HUD %#j")]
+        public static void PreviewUnifiedFlightHud()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                return;
+            EditorSceneManager.OpenScene(InterstellarScene, OpenSceneMode.Single);
+            EditorApplication.isPlaying = true;
         }
 
         static SpacecraftMaterialDefinition[] BuildPaintLibrary()
@@ -376,12 +399,59 @@ namespace SpacecraftEditor.Editor
                 InterstellarShipController controller = FindInScene<InterstellarShipController>(scene);
                 if (controller != null && controller.GetComponent<SpacecraftWeaponSystem>() == null)
                     controller.gameObject.AddComponent<SpacecraftWeaponSystem>();
+                InterstellarWarpGateController warpGate =
+                    FindInScene<InterstellarWarpGateController>(scene);
+                if (warpGate == null)
+                {
+                    var gateSystem = new GameObject("WarpGateSystem");
+                    SceneManager.MoveGameObjectToScene(gateSystem, scene);
+                    gateSystem.AddComponent<InterstellarWarpGateController>();
+                }
+                PersistentSpaceflightFade transition =
+                    FindInScene<PersistentSpaceflightFade>(scene);
+                if (transition == null)
+                {
+                    var transitionObject =
+                        new GameObject("SpaceflightTransitionOverlay");
+                    SceneManager.MoveGameObjectToScene(transitionObject, scene);
+                    transitionObject.AddComponent<PersistentSpaceflightFade>();
+                }
+                InterstellarCruiseController cruise =
+                    FindInScene<InterstellarCruiseController>(scene);
+                if (cruise != null)
+                {
+                    var cruiseSettings = new SerializedObject(cruise);
+                    cruiseSettings.FindProperty("alignmentDuration").floatValue = 0.65f;
+                    cruiseSettings.FindProperty("spoolDuration").floatValue = 1.15f;
+                    cruiseSettings.FindProperty("transitDuration").floatValue = 0.9f;
+                    cruiseSettings.FindProperty("exitDuration").floatValue = 0.65f;
+                    cruiseSettings.FindProperty("cooldownDuration").floatValue = 0.6f;
+                    cruiseSettings.ApplyModifiedPropertiesWithoutUndo();
+                }
                 BuildInterstellarWeaponHud(scene);
                 EditorSceneManager.SaveScene(scene);
             }
             finally
             {
                 EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
+        static void UpdateFlightHudScene(string scenePath)
+        {
+            Scene scene = SceneManager.GetSceneByPath(scenePath);
+            bool openedForBuild = !scene.IsValid() || !scene.isLoaded;
+            if (openedForBuild)
+                scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+            try
+            {
+                BuildInterstellarWeaponHud(scene);
+                EditorSceneManager.SaveScene(scene);
+            }
+            finally
+            {
+                if (openedForBuild)
+                    EditorSceneManager.CloseScene(scene, true);
             }
         }
 
@@ -848,10 +918,14 @@ namespace SpacecraftEditor.Editor
         {
             InterstellarFlightHud hud = FindInScene<InterstellarFlightHud>(scene);
             if (hud == null)
-                return;
-            Canvas canvas = hud.GetComponentInParent<Canvas>();
+                throw new InvalidOperationException(
+                    $"Scene '{scene.path}' has no InterstellarFlightHud.");
+            Canvas canvas = hud.GetComponent<Canvas>();
             if (canvas == null)
-                return;
+                canvas = hud.GetComponentInParent<Canvas>(true);
+            if (canvas == null)
+                throw new InvalidOperationException(
+                    $"Scene '{scene.path}' flight HUD has no Canvas.");
             RemoveDirectChild(canvas.transform, "VJoyBoundary");
             RemoveDirectChild(canvas.transform, "VJoyCursor");
             ConfigureInterstellarFlightHudLayout(canvas.transform);
@@ -934,6 +1008,11 @@ namespace SpacecraftEditor.Editor
             if (crosshairProperty != null)
                 crosshairProperty.objectReferenceValue = crosshair.gameObject;
             serialized.ApplyModifiedPropertiesWithoutUndo();
+            hud.RebuildUnifiedLayout();
+            if (canvas.transform.Find("UnifiedFlightHud") == null)
+                throw new InvalidOperationException(
+                    $"Scene '{scene.path}' did not create UnifiedFlightHud.");
+            EditorUtility.SetDirty(hud);
         }
 
         static void ConfigureInterstellarFlightHudLayout(Transform canvas)

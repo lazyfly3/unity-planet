@@ -3,6 +3,7 @@
   "mbinCompiler": "D:/blender/creature/Tools/Downloads/MBINCompiler.exe",
   "gamePakRoot": "D:/SteamLibrary/steamapps/common/No Man's Sky/GAMEDATA/PCBANKS",
   "hgpakTool": "D:/blender/creature/Tools/HGPAKtool",
+  "texconv": "D:/blender/creature/Tools/NMSDK/src/addon/nmsdk/utils/DirectXTex/texconv.exe",
   "families": {
     "CatQuadruped": {
       "extractedRoot": "D:/blender/creature/NMSImport/CatRig/Extracted",
@@ -1193,6 +1194,231 @@
       },
       "stripAnimatedBoneScale": true,
       "animationTransformCorrectionScope": "loadBearing"
+    },
+    "ArthropodGround": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RemainingLand/Arthropod/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RemainingLand/ArthropodGround",
+      "familyFilter": "models/planets/creatures/arthropod/*",
+      "textureFilters": ["textures/planets/creatures/arthropod/*"],
+      "extractionPaks": ["NMSARC.MeshPlanetCREATURES.pak", "NMSARC.AnimMBIN.pak", "NMSARC.EntitySceneMBIN.pak", "NMSARC.Precache.pak", "NMSARC.TexCreatureARTHROPOD.pak"],
+      "texturePaks": ["NMSARC.TexCreatureARTHROPOD.pak", "NMSARC.TexCreatureSHARED.pak"],
+      "sourceScene": "models/planets/creatures/arthropod/arthropod.scene.mbin",
+      "descriptorSource": "models/planets/creatures/arthropod/arthropod.descriptor.mbin",
+      "descriptor": "models/planets/creatures/arthropod/arthropod.descriptor.MXML",
+      "actions": {
+        "idle": "models/planets/creatures/arthropod/anims/arthropodidle.anim.mbin",
+        "walk": "models/planets/creatures/arthropod/anims/arthropodwalk.anim.mbin",
+        "run": "models/planets/creatures/arthropod/anims/arthropodrun.anim.mbin"
+      },
+      "locomotionType": "Arthropod", "legCount": 6, "loadBearingChains": [],
+      "stripAnimatedBoneScale": true, "reviewBatch": "RemainingLandCreatures",
+      "unity": {"selectionWeight": 1, "walkSpeed": 1.1, "importScale": 1, "importEuler": [0,0,0], "localForwardAxis": [0,0,-1], "allowRareModules": false}
+    },
+    "ArthropodGrub": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RemainingLand/Arthropod/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RemainingLand/ArthropodGrub",
+      "familyFilter": "models/planets/creatures/arthropod/*",
+      "textureFilters": ["textures/planets/creatures/arthropod/*"],
+      "extractionPaks": ["NMSARC.MeshPlanetCREATURES.pak", "NMSARC.AnimMBIN.pak", "NMSARC.EntitySceneMBIN.pak", "NMSARC.Precache.pak", "NMSARC.TexCreatureARTHROPOD.pak"],
+      "texturePaks": ["NMSARC.TexCreatureARTHROPOD.pak", "NMSARC.TexCreatureSHARED.pak"],
+      "sourceScene": "models/planets/creatures/arthropod/arthropodgrub.scene.mbin",
+      "fixedModules": true,
+      "actions": {
+        "idle": "models/planets/creatures/arthropod/anims/arthropodidle.anim.mbin",
+        "walk": "models/planets/creatures/arthropod/anims/arthropodwalk.anim.mbin",
+        "run": "models/planets/creatures/arthropod/anims/arthropodrun.anim.mbin"
+      },
+      "locomotionType": "Arthropod", "legCount": 0, "loadBearingChains": [],
+      "stripAnimatedBoneScale": true, "reviewBatch": "RemainingLandCreatures",
+      "unity": {"selectionWeight": 1, "walkSpeed": 0.8, "importScale": 1, "importEuler": [0,0,0], "localForwardAxis": [0,0,-1], "allowRareModules": false}
+    },
+    "ArthropodQueen": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RemainingLand/Arthropod/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RemainingLand/ArthropodQueen",
+      "familyFilter": "models/planets/creatures/arthropod/*",
+      "textureFilters": ["textures/planets/creatures/arthropod/*"],
+      "extractionPaks": ["NMSARC.MeshPlanetCREATURES.pak", "NMSARC.AnimMBIN.pak", "NMSARC.EntitySceneMBIN.pak", "NMSARC.Precache.pak", "NMSARC.TexCreatureARTHROPOD.pak"],
+      "texturePaks": ["NMSARC.TexCreatureARTHROPOD.pak", "NMSARC.TexCreatureSHARED.pak"],
+      "sourceScene": "models/planets/creatures/arthropod/arthropodqueen.scene.mbin",
+      "fixedModules": true,
+      "actions": {
+        "idle": "models/planets/creatures/arthropod/anims/arthropodidle.anim.mbin",
+        "walk": "models/planets/creatures/arthropod/anims/arthropodwalk.anim.mbin",
+        "run": "models/planets/creatures/arthropod/anims/arthropodrun.anim.mbin"
+      },
+      "locomotionType": "Arthropod", "legCount": 6, "loadBearingChains": [],
+      "stripAnimatedBoneScale": true, "reviewBatch": "RemainingLandCreatures",
+      "unity": {"selectionWeight": 1, "walkSpeed": 0.9, "importScale": 1, "importEuler": [0,0,0], "localForwardAxis": [0,0,-1], "allowRareModules": false}
+    },
+    "ArthropodBugFiend": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RemainingLand/Arthropod/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RemainingLand/ArthropodBugFiend",
+      "familyFilter": "models/planets/creatures/arthropod/*",
+      "textureFilters": ["textures/planets/creatures/arthropod/*"],
+      "extractionPaks": ["NMSARC.MeshPlanetCREATURES.pak", "NMSARC.AnimMBIN.pak", "NMSARC.EntitySceneMBIN.pak", "NMSARC.Precache.pak", "NMSARC.TexCreatureARTHROPOD.pak"],
+      "texturePaks": ["NMSARC.TexCreatureARTHROPOD.pak", "NMSARC.TexCreatureSHARED.pak"],
+      "sourceScene": "models/planets/creatures/arthropod/bugfiend.scene.mbin",
+      "descriptorSource": "models/planets/creatures/arthropod/bugfiend.descriptor.mbin",
+      "descriptor": "models/planets/creatures/arthropod/bugfiend.descriptor.MXML",
+      "actions": {
+        "idle": "models/planets/creatures/arthropod/anims/arthropodidle.anim.mbin",
+        "walk": "models/planets/creatures/arthropod/anims/arthropodwalk.anim.mbin",
+        "run": "models/planets/creatures/arthropod/anims/arthropodrun.anim.mbin"
+      },
+      "locomotionType": "Arthropod", "legCount": 6, "loadBearingChains": [],
+      "stripAnimatedBoneScale": true, "reviewBatch": "RemainingLandCreatures",
+      "unity": {"selectionWeight": 1, "walkSpeed": 1.15, "importScale": 1, "importEuler": [0,0,0], "localForwardAxis": [0,0,-1], "allowRareModules": false}
+    },
+    "BeetleGround": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RemainingLand/Beetle/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RemainingLand/BeetleGround",
+      "familyFilter": "models/planets/creatures/beetlerig/*",
+      "textureFilters": ["textures/planets/creatures/beetlerig/*"],
+      "extractionPaks": ["NMSARC.MeshPlanetCREATURES.pak", "NMSARC.AnimMBIN.pak", "NMSARC.EntitySceneMBIN.pak", "NMSARC.Precache.pak", "NMSARC.TexCreatureBEETLERIG.pak"],
+      "texturePaks": ["NMSARC.TexCreatureBEETLERIG.pak", "NMSARC.TexCreatureSHARED.pak"],
+      "sourceScene": "models/planets/creatures/beetlerig/beetle.scene.mbin",
+      "descriptorSource": "models/planets/creatures/beetlerig/beetle.descriptor.mbin",
+      "descriptor": "models/planets/creatures/beetlerig/beetle.descriptor.MXML",
+      "actions": {
+        "idle": "models/planets/creatures/beetlerig/anims/beetlegroundidle.anim.mbin",
+        "walk": "models/planets/creatures/beetlerig/anims/beetlegroundwalk.anim.mbin"
+      },
+      "supportsRun": false,
+      "locomotionType": "Hexapod", "legCount": 6, "loadBearingChains": [],
+      "stripAnimatedBoneScale": true, "reviewBatch": "RemainingLandCreatures",
+      "unity": {"selectionWeight": 1, "walkSpeed": 0.9, "importScale": 1, "importEuler": [0,0,0], "localForwardAxis": [0,0,-1], "allowRareModules": false}
+    },
+    "BlobGround": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RemainingLand/Blob/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RemainingLand/BlobGround",
+      "familyFilter": "models/planets/creatures/blobrig/*",
+      "textureFilters": ["textures/planets/creatures/blobrig/*"],
+      "extractionPaks": ["NMSARC.MeshPlanetCREATURES.pak", "NMSARC.AnimMBIN.pak", "NMSARC.EntitySceneMBIN.pak", "NMSARC.Precache.pak", "NMSARC.TexCreatureBLOBRIG.pak"],
+      "texturePaks": ["NMSARC.TexCreatureBLOBRIG.pak", "NMSARC.TexCreatureSHARED.pak"],
+      "sourceScene": "models/planets/creatures/blobrig/blob.scene.mbin",
+      "descriptorSource": "models/planets/creatures/blobrig/blob.descriptor.mbin",
+      "descriptor": "models/planets/creatures/blobrig/blob.descriptor.MXML",
+      "actions": {
+        "idle": "models/planets/creatures/blobrig/anims/blobidle.anim.mbin",
+        "walk": "models/planets/creatures/blobrig/anims/blobwalk.anim.mbin",
+        "run": "models/planets/creatures/blobrig/anims/blobrun.anim.mbin"
+      },
+      "locomotionType": "Blob", "legCount": 0, "loadBearingChains": [],
+      "stripAnimatedBoneScale": true, "reviewBatch": "RemainingLandCreatures",
+      "unity": {"selectionWeight": 1, "walkSpeed": 0.85, "importScale": 1, "importEuler": [0,0,0], "localForwardAxis": [0,0,-1], "allowRareModules": false}
+    },
+    "SlugGround": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RemainingLand/Slug/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RemainingLand/SlugGround",
+      "familyFilter": "models/planets/creatures/slug/*",
+      "textureFilters": ["textures/planets/creatures/slug/*"],
+      "extractionPaks": ["NMSARC.MeshPlanetCREATURES.pak", "NMSARC.AnimMBIN.pak", "NMSARC.EntitySceneMBIN.pak", "NMSARC.Precache.pak", "NMSARC.TexCreatureSHARED.pak"],
+      "texturePaks": ["NMSARC.TexCreatureSHARED.pak"],
+      "sourceScene": "models/planets/creatures/slug/slug.scene.mbin",
+      "fixedModules": true,
+      "actions": {
+        "idle": "models/planets/creatures/slug/anim/slugidle.anim.mbin",
+        "walk": "models/planets/creatures/slug/anim/slugwalk.anim.mbin"
+      },
+      "supportsRun": false,
+      "locomotionType": "Serpentine", "legCount": 0, "loadBearingChains": [],
+      "stripAnimatedBoneScale": true, "reviewBatch": "RemainingLandCreatures",
+      "unity": {"selectionWeight": 1, "walkSpeed": 0.65, "importScale": 1, "importEuler": [0,0,0], "localForwardAxis": [0,0,-1], "allowRareModules": false}
+    },
+    "WeirdDigger": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RemainingLand/Weird/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RemainingLand/WeirdDigger",
+      "familyFilter": "models/planets/creatures/weird/*",
+      "textureFilters": ["textures/planets/creatures/weird/*"],
+      "extractionPaks": ["NMSARC.MeshPlanetCREATURES.pak", "NMSARC.AnimMBIN.pak", "NMSARC.EntitySceneMBIN.pak", "NMSARC.Precache.pak", "NMSARC.TexCreatureWEIRD.pak"],
+      "texturePaks": ["NMSARC.TexCreatureWEIRD.pak", "NMSARC.TexCreatureSHARED.pak"],
+      "sourceScene": "models/planets/creatures/weird/digger.scene.mbin",
+      "descriptorSource": "models/planets/creatures/weird/digger.descriptor.mbin",
+      "descriptor": "models/planets/creatures/weird/digger.descriptor.MXML",
+      "actions": {
+        "idle": "models/planets/creatures/weird/anims/ugdiggeridle.anim.mbin",
+        "walk": "models/planets/creatures/weird/anims/ugdiggerwalk.anim.mbin"
+      },
+      "supportsRun": false,
+      "locomotionType": "Ground", "legCount": 0, "loadBearingChains": [],
+      "stripAnimatedBoneScale": true, "reviewBatch": "RemainingLandCreatures",
+      "unity": {"selectionWeight": 1, "walkSpeed": 0.75, "importScale": 1, "importEuler": [0,0,0], "localForwardAxis": [0,0,-1], "allowRareModules": false}
+    },
+    "WeirdGroundCreature": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RemainingLand/Weird/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RemainingLand/WeirdGroundCreature",
+      "familyFilter": "models/planets/creatures/weird/*",
+      "textureFilters": ["textures/planets/creatures/weird/*"],
+      "extractionPaks": ["NMSARC.MeshPlanetCREATURES.pak", "NMSARC.AnimMBIN.pak", "NMSARC.EntitySceneMBIN.pak", "NMSARC.Precache.pak", "NMSARC.TexCreatureWEIRD.pak"],
+      "texturePaks": ["NMSARC.TexCreatureWEIRD.pak", "NMSARC.TexCreatureSHARED.pak"],
+      "sourceScene": "models/planets/creatures/weird/groundcreature.scene.mbin",
+      "descriptorSource": "models/planets/creatures/weird/groundcreature.descriptor.mbin",
+      "descriptor": "models/planets/creatures/weird/groundcreature.descriptor.MXML",
+      "actions": {
+        "idle": "models/planets/creatures/weird/anims/octoidle.anim.mbin",
+        "walk": "models/planets/creatures/weird/anims/octowalk.anim.mbin",
+        "run": "models/planets/creatures/weird/anims/octospringwalk.anim.mbin"
+      },
+      "locomotionType": "Ground", "legCount": 4, "loadBearingChains": [],
+      "stripAnimatedBoneScale": true, "reviewBatch": "RemainingLandCreatures",
+      "unity": {"selectionWeight": 1, "walkSpeed": 0.9, "importScale": 1, "importEuler": [0,0,0], "localForwardAxis": [0,0,-1], "allowRareModules": false}
+    },
+    "WeirdRoller": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RemainingLand/Weird/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RemainingLand/WeirdRoller",
+      "familyFilter": "models/planets/creatures/weird/*",
+      "textureFilters": ["textures/planets/creatures/weird/*"],
+      "extractionPaks": ["NMSARC.MeshPlanetCREATURES.pak", "NMSARC.AnimMBIN.pak", "NMSARC.EntitySceneMBIN.pak", "NMSARC.Precache.pak", "NMSARC.TexCreatureWEIRD.pak"],
+      "texturePaks": ["NMSARC.TexCreatureWEIRD.pak", "NMSARC.TexCreatureSHARED.pak"],
+      "sourceScene": "models/planets/creatures/weird/rollercreature.scene.mbin",
+      "descriptorSource": "models/planets/creatures/weird/rollercreature.descriptor.mbin",
+      "descriptor": "models/planets/creatures/weird/rollercreature.descriptor.MXML",
+      "actions": {
+        "idle": "models/planets/creatures/weird/anims/weirdidle.anim.mbin",
+        "walk": "models/planets/creatures/weird/anims/weirdwalk.anim.mbin",
+        "run": "models/planets/creatures/weird/anims/weirdrun.anim.mbin"
+      },
+      "locomotionType": "Ground", "legCount": 0, "loadBearingChains": [],
+      "stripAnimatedBoneScale": true, "reviewBatch": "RemainingLandCreatures",
+      "unity": {"selectionWeight": 1, "walkSpeed": 1.0, "importScale": 1, "importEuler": [0,0,0], "localForwardAxis": [0,0,-1], "allowRareModules": false}
+    },
+    "WeirdDiggerVariant": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RemainingLand/Weird/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RemainingLand/WeirdDiggerVariant",
+      "familyFilter": "models/planets/creatures/weird/*",
+      "textureFilters": ["textures/planets/creatures/weird/*"],
+      "extractionPaks": ["NMSARC.MeshPlanetCREATURES.pak", "NMSARC.AnimMBIN.pak", "NMSARC.EntitySceneMBIN.pak", "NMSARC.Precache.pak", "NMSARC.TexCreatureWEIRD.pak"],
+      "texturePaks": ["NMSARC.TexCreatureWEIRD.pak", "NMSARC.TexCreatureSHARED.pak"],
+      "sourceScene": "models/planets/creatures/weird/weirddigger.scene.mbin",
+      "descriptorSource": "models/planets/creatures/weird/weirddigger.descriptor.mbin",
+      "descriptor": "models/planets/creatures/weird/weirddigger.descriptor.MXML",
+      "actions": {
+        "idle": "models/planets/creatures/weird/anims/ugdiggeridle.anim.mbin",
+        "walk": "models/planets/creatures/weird/anims/ugdiggerwalk.anim.mbin"
+      },
+      "supportsRun": false,
+      "locomotionType": "Ground", "legCount": 0, "loadBearingChains": [],
+      "stripAnimatedBoneScale": true, "reviewBatch": "RemainingLandCreatures",
+      "unity": {"selectionWeight": 1, "walkSpeed": 0.75, "importScale": 1, "importEuler": [0,0,0], "localForwardAxis": [0,0,-1], "allowRareModules": false}
+    },
+    "WeirdRigGround": {
+      "extractedRoot": "D:/blender/creature/NMSImport/RemainingLand/Weird/Extracted",
+      "outputRoot": "D:/blender/creature/NMSImport/RemainingLand/WeirdRigGround",
+      "familyFilter": "models/planets/creatures/weird/*",
+      "textureFilters": ["textures/planets/creatures/weird/*"],
+      "extractionPaks": ["NMSARC.MeshPlanetCREATURES.pak", "NMSARC.AnimMBIN.pak", "NMSARC.EntitySceneMBIN.pak", "NMSARC.Precache.pak", "NMSARC.TexCreatureWEIRD.pak"],
+      "texturePaks": ["NMSARC.TexCreatureWEIRD.pak", "NMSARC.TexCreatureSHARED.pak"],
+      "sourceScene": "models/planets/creatures/weird/weirdrigground.scene.mbin",
+      "descriptorSource": "models/planets/creatures/weird/weirdrigground.descriptor.mbin",
+      "descriptor": "models/planets/creatures/weird/weirdrigground.descriptor.MXML",
+      "actions": {
+        "idle": "models/planets/creatures/weird/anims/weirdidle.anim.mbin",
+        "walk": "models/planets/creatures/weird/anims/weirdwalk.anim.mbin",
+        "run": "models/planets/creatures/weird/anims/weirdrun.anim.mbin"
+      },
+      "locomotionType": "Ground", "legCount": 2, "loadBearingChains": [],
+      "stripAnimatedBoneScale": true, "reviewBatch": "RemainingLandCreatures",
+      "unity": {"selectionWeight": 1, "walkSpeed": 1.0, "importScale": 1, "importEuler": [0,0,0], "localForwardAxis": [0,0,-1], "allowRareModules": false}
     }
   },
   "unityProjectRoot": "D:/unity planet/unity-planet",

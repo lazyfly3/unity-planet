@@ -44,7 +44,10 @@ public sealed class SpacecraftWeaponSystem : MonoBehaviour
     public float CapacitorCapacity => capacitorCapacity;
     public float CapacitorRatio => capacitorCapacity <= 0f ? 0f : capacitor / capacitorCapacity;
     public int SelectedAmmunition { get; private set; }
+    public int SelectedAmmunitionCapacity { get; private set; }
     public float SelectedHeat { get; private set; }
+    public bool GroupOneAvailable { get; private set; }
+    public bool GroupTwoAvailable { get; private set; }
     public ISpaceWeaponTarget CurrentTarget => currentTarget;
     public bool HasTargetLock => IsTargetAlive(currentTarget);
     public SpaceWeaponTargetKind CurrentTargetKind => HasTargetLock
@@ -194,17 +197,29 @@ public sealed class SpacecraftWeaponSystem : MonoBehaviour
     void RefreshTelemetry()
     {
         SelectedAmmunition = 0;
+        SelectedAmmunitionCapacity = 0;
         SelectedHeat = 0f;
+        GroupOneAvailable = false;
+        GroupTwoAvailable = false;
         int heatCount = 0;
         if (assembly == null)
             return;
         for (int index = 0; index < assembly.Weapons.Count; index++)
         {
             WeaponPart weapon = assembly.Weapons[index];
-            if (weapon == null || weapon.FireGroup != selectedGroup)
+            if (weapon == null)
+                continue;
+            if (weapon.FireGroup == 1)
+                GroupOneAvailable = true;
+            else if (weapon.FireGroup == 2)
+                GroupTwoAvailable = true;
+            if (weapon.FireGroup != selectedGroup)
                 continue;
             if (weapon.Weapon != null && weapon.Weapon.UsesAmmunition)
+            {
                 SelectedAmmunition += weapon.CurrentAmmunition;
+                SelectedAmmunitionCapacity += weapon.Weapon.AmmunitionCapacity;
+            }
             SelectedHeat += weapon.Heat;
             heatCount++;
         }

@@ -1,0 +1,1861 @@
+{
+  "pipelineVersion": 10,
+  "familyId": "BlobGround",
+  "skeletonHash": "5dd39517aa7cd79fe9f758f2fe924983eb5d916c0bb08f3d75aacccc05382f07",
+  "materials": [
+    {
+      "materialId": "Acc_LongSpine_7e67713690",
+      "sourceMaterialName": "Acc_LongSpine",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\acc_longspine.material.MXML",
+      "sourceMxmlSha256": "7e67713690b771846793e5a000c3cdb29df8259b9d30bba0f9e796c3ae529f90",
+      "materialPreset": "Horn",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/1805a9e9566f_acc_sharkspine.base.scale.tga",
+      "normalTexture": "Textures/705e89899454_acc_sharkspine.base.fur.normal.tga",
+      "maskTexture": "",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.12,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\sharkrig\\acc_sharkspine.base.scale.dds",
+      "mainTextureSourceSha256": "1805a9e9566fd4cb261bae7da6b070ad917172d36a90444f6993ec5850f645a3",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\sharkrig\\acc_sharkspine.base.fur.normal.dds",
+      "normalTextureSourceSha256": "705e898994548b586a874485252f01df27889e8ea7846a2aec78d419cf19e3bb",
+      "maskTextureSourcePath": "",
+      "maskTextureSourceSha256": "",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "Antennas_mat_6e7c73f50f",
+      "sourceMaterialName": "Antennas_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\antennas_mat.material.MXML",
+      "sourceMxmlSha256": "6e7c73f50f99bdeb2143b72d50a47bd8338a69e3a727aff52332cd539d6563e0",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/4f7201146489_antennas.base.1.tga",
+      "normalTexture": "Textures/cd15e47c4e59_antennas.base.1.normal.tga",
+      "maskTexture": "Textures/d39ff4c3ae9e_antennas.base.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\antennas.base.1.dds",
+      "mainTextureSourceSha256": "4f7201146489e3e73949a70de626ec111bd425f7a1544b3c1beeb8ca325f51bc",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\antennas.base.1.normal.dds",
+      "normalTextureSourceSha256": "cd15e47c4e590f143c4126717e4c661ab9cd8a15900b53c995dd1425d5ca5e2f",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\antennas.base.1.masks.dds",
+      "maskTextureSourceSha256": "d39ff4c3ae9e713c9c77e37db00b9e2843d7c48207a1f4535c99d371ffa7674f",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "BlobEel_mat_77a60c0e8f",
+      "sourceMaterialName": "BlobEel_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\blobeel_mat.material.MXML",
+      "sourceMxmlSha256": "77a60c0e8fe66fd94cc0cc6d66c50e2de0eac946aae3d9abc25c0373b086a5b5",
+      "materialPreset": "Fur",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/5a1400d6c2a6_blobeel.base.fur1.tga",
+      "normalTexture": "Textures/5d221630d867_blobeel.base.fur1.normal.tga",
+      "maskTexture": "Textures/d6e83b283f7e_blobeel.base.fur1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.18,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\blobeel.base.fur1.dds",
+      "mainTextureSourceSha256": "5a1400d6c2a672f487fb7cbe1272defafb466735fa2b915f21134f5f3a00aa89",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\blobeel.base.fur1.normal.dds",
+      "normalTextureSourceSha256": "5d221630d867b7cd85363e8ed56ecb14bf2ae79c9c459179105b6d2980b17b0e",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\blobeel.base.fur1.masks.dds",
+      "maskTextureSourceSha256": "d6e83b283f7e57e09a3365c8adefa818a27e7a894974f01e5faef57e4750b06e",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "BlowfishMat_c4159070e3",
+      "sourceMaterialName": "BlowfishMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\blowfishmat.material.MXML",
+      "sourceMxmlSha256": "c4159070e368a6ff38ee2fdfdfa3966bfb5a2c2bc15c94f68e8a5b1d238be0b5",
+      "materialPreset": "Fur",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/2c2ec240c507_blowfish.base.fur.tga",
+      "normalTexture": "Textures/487118495310_blowfish.base.fur.normal.tga",
+      "maskTexture": "Textures/79cb617fd72c_blowfish.base.fur.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.18,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\blowfish.base.fur.dds",
+      "mainTextureSourceSha256": "2c2ec240c50704d4eed3d36ec0ff1eda883c5e9e62f1e33c9f498cca343e966f",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\blowfish.base.fur.normal.dds",
+      "normalTextureSourceSha256": "487118495310b6d40f58f3fd7d47f8e3923bd8352c7d5d667f289f02dd3aecec",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\blowfish.base.fur.masks.dds",
+      "maskTextureSourceSha256": "79cb617fd72c376a82787ab37fdbd13e75311060b3f743cc22f425468bc0ed86",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "DragonSpine_Mat_9b06eaed64",
+      "sourceMaterialName": "DragonSpine_Mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\dragonspine_mat.material.MXML",
+      "sourceMxmlSha256": "9b06eaed647754e2e4beed7057b8a8c8905899bc024bdf24ca92338ddfe27260",
+      "materialPreset": "Horn",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/5ddacef7d97a_accfleshyspine.base.fur.tga",
+      "normalTexture": "Textures/98ed143f10f1_accfleshyspine.base.fur.normal.tga",
+      "maskTexture": "Textures/07bd78eee05b_accfleshyspine.base.fur.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.12,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\triceratopsrig\\accfleshyspine.base.fur.dds",
+      "mainTextureSourceSha256": "5ddacef7d97a2d1cf1d8fb8f05c5afbe9d9f86640907e29224f8a4ecefc42a84",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\triceratopsrig\\accfleshyspine.base.fur.normal.dds",
+      "normalTextureSourceSha256": "98ed143f10f1b02e9340afc3f4913231ecbf129e4c4684bbc81eac3e64e2475e",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\triceratopsrig\\accfleshyspine.base.fur.masks.dds",
+      "maskTextureSourceSha256": "07bd78eee05b3849222a8b695c0ce40c3cdbce715806ebfc4bc29625627d151a",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "Eye_mat_e5d2e63aec",
+      "sourceMaterialName": "Eye_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\eye_mat.material.MXML",
+      "sourceMxmlSha256": "e5d2e63aec8ee1c5b30a6bae977b460ad7cf68a2dd06140086581f34435659a2",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/cf8ff79637c4_spidereye.base.1.tga",
+      "normalTexture": "Textures/24656560ee52_spidereye.base.1.normal.tga",
+      "maskTexture": "Textures/fd92c7e1cdf6_spidereye.base.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\spiderrig\\spidereye.base.1.dds",
+      "mainTextureSourceSha256": "cf8ff79637c4e4a38bf23ccb4cc50da41a9570729b1a8a7a361ff3b463eac8a7",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\spiderrig\\spidereye.base.1.normal.dds",
+      "normalTextureSourceSha256": "24656560ee52bed72e2ed874b0124d0bc2b8ec822e46049853625b3793762e9a",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\spiderrig\\spidereye.base.1.masks.dds",
+      "maskTextureSourceSha256": "fd92c7e1cdf60f532820d24ae9f249d3a0c91870c168d3100738d48137a7a28c",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "EyeballPlantMat_ac1622bebb",
+      "sourceMaterialName": "EyeballPlantMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\eyeballplantmat.material.MXML",
+      "sourceMxmlSha256": "ac1622bebb250b5cc57f13cbdde21cbfec9f23bddef697adcb2ba6862d3a7d32",
+      "materialPreset": "Fur",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/f0ba58867efd_eyeballplant.base.fur.tga",
+      "normalTexture": "Textures/45238d0aaeb0_eyeballplant.base.fur.normal.tga",
+      "maskTexture": "Textures/b8a39c78ff5f_eyeballplant.base.fur.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.18,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\eyeballplant.base.fur.dds",
+      "mainTextureSourceSha256": "f0ba58867efd88c96edf308e3178e53ba1e44a1c11394e6611da4c999b668e85",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\eyeballplant.base.fur.normal.dds",
+      "normalTextureSourceSha256": "45238d0aaeb047bad238cf1935192f102a9c929a110555245aa7d2242191dc21",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\eyeballplant.base.fur.masks.dds",
+      "maskTextureSourceSha256": "b8a39c78ff5f89e3930fc771954a9c76a482a19841eed0528086019a31a9d601",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "Flatmouth_mat1_68a240e124",
+      "sourceMaterialName": "Flatmouth_mat1",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\flatmouth_mat1.material.MXML",
+      "sourceMxmlSha256": "68a240e12403641de04bdcd50d9ea8ac2edf681370f9dee1c6140d461fa09406",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/3ef4a449c4e2_tileableskin.baseh.1.tga",
+      "normalTexture": "Textures/333eccb2ab98_tileableskin.baseh.1.normal.tga",
+      "maskTexture": "Textures/49dcae97c35b_tileableskin.baseh.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\triceratopsrig\\tileableskin.baseh.1.dds",
+      "mainTextureSourceSha256": "3ef4a449c4e2c83fa91e2d8f9cd0fe8dd15986ce18a7125ee06e5615314c3081",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\triceratopsrig\\tileableskin.baseh.1.normal.dds",
+      "normalTextureSourceSha256": "333eccb2ab9843842fe9641b01cb02f1f6b1872a2fd3c4d3753161ef978c6da6",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\triceratopsrig\\tileableskin.baseh.1.masks.dds",
+      "maskTextureSourceSha256": "49dcae97c35beb5ce17948b8c52069bb643da0da589d76df3c6f4ebdefbf68aa",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "Flatmouth_mat_047bd6079c",
+      "sourceMaterialName": "Flatmouth_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\flatmouth_mat.material.MXML",
+      "sourceMxmlSha256": "047bd6079cb0358b31f2d0d16d74e301da3872e47a313130a706559a39cb5f4b",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/3ef4a449c4e2_tileableskin.baseh.1.tga",
+      "normalTexture": "Textures/333eccb2ab98_tileableskin.baseh.1.normal.tga",
+      "maskTexture": "Textures/49dcae97c35b_tileableskin.baseh.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\triceratopsrig\\tileableskin.baseh.1.dds",
+      "mainTextureSourceSha256": "3ef4a449c4e2c83fa91e2d8f9cd0fe8dd15986ce18a7125ee06e5615314c3081",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\triceratopsrig\\tileableskin.baseh.1.normal.dds",
+      "normalTextureSourceSha256": "333eccb2ab9843842fe9641b01cb02f1f6b1872a2fd3c4d3753161ef978c6da6",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\triceratopsrig\\tileableskin.baseh.1.masks.dds",
+      "maskTextureSourceSha256": "49dcae97c35beb5ce17948b8c52069bb643da0da589d76df3c6f4ebdefbf68aa",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "FlowerHead_mat_b180b55813",
+      "sourceMaterialName": "FlowerHead_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\flowerhead_mat.material.MXML",
+      "sourceMxmlSha256": "b180b55813808cb990fed95a1b5a70c81f800dc2abb12eca91abb8b136c96b13",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/55d656dd2084_flowerhead.base.1.tga",
+      "normalTexture": "Textures/bcc7dd1b408c_flowerhead.base.1.normal.tga",
+      "maskTexture": "Textures/6dce9c6266f5_flowerhead.base.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\common\\plants\\flowerhead.base.1.dds",
+      "mainTextureSourceSha256": "55d656dd2084a5fa04421a26229876e1a5451a25a4aca92abc2da1f95845a2f3",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\common\\plants\\flowerhead.base.1.normal.dds",
+      "normalTextureSourceSha256": "bcc7dd1b408cf4551e619f2f9b400855a6a9fda537e792793c18448fd35b928d",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\common\\plants\\flowerhead.base.1.masks.dds",
+      "maskTextureSourceSha256": "6dce9c6266f548e3748357bd3aa98f2080b2c77e932572b3ffb6e88777bee24e",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "FrillFlap_mat_f43c9e22db",
+      "sourceMaterialName": "FrillFlap_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\frillflap_mat.material.MXML",
+      "sourceMxmlSha256": "f43c9e22dbe602d80a5d13675038836bbf2c4a2db5f90c5fd09002c324a7984a",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/db4bd094847a_frillflap.base.1.tga",
+      "normalTexture": "Textures/76b1675027b9_frillflap.base.1.normal.tga",
+      "maskTexture": "Textures/678ab5ea5d6e_frillflap.base.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\frillflap.base.1.dds",
+      "mainTextureSourceSha256": "db4bd094847a36f9ee8db6a5cd216b19e8d3bb255120dcadd69e2f11f7c2f3cf",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\frillflap.base.1.normal.dds",
+      "normalTextureSourceSha256": "76b1675027b919a8a0f2b908a8faa995d9d2617281a9b71f866adef232ea05c6",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\frillflap.base.1.masks.dds",
+      "maskTextureSourceSha256": "678ab5ea5d6e48a090a287b65e7de637d2e656eab7ae19f80ae018d1a26ca7bd",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "Frond_mat_625d212787",
+      "sourceMaterialName": "Frond_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\frond_mat.material.MXML",
+      "sourceMxmlSha256": "625d2127872b40ee81ed56224b7911e7c8de94b7a62724436aa4f75af59967be",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/7ea106f79dde_frond.base.1.tga",
+      "normalTexture": "Textures/70d3e85b76f4_frond.base.1.normal.tga",
+      "maskTexture": "Textures/782952bc60ce_frond.base.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\common\\leaves\\fronds\\frond.base.1.dds",
+      "mainTextureSourceSha256": "7ea106f79dde09cc265976ea7ac7c75728c0aefa25b0a0102243abde078de345",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\common\\leaves\\fronds\\frond.base.1.normal.dds",
+      "normalTextureSourceSha256": "70d3e85b76f4b7a37bf593eba05d294549d06973be66b7403cf39505d5e09543",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\common\\leaves\\fronds\\frond.base.1.masks.dds",
+      "maskTextureSourceSha256": "782952bc60ce831f0aaf4236d7d592e912ab596813bbc002d7cb5b434a144cc9",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "Gills_mat_78a4cace03",
+      "sourceMaterialName": "Gills_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\gills_mat.material.MXML",
+      "sourceMxmlSha256": "78a4cace031ce545c94737eecc546cbc21f6d980d77a8a0aba12f0f28315fb27",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/56c037b3ce73_gills.basee7.1.tga",
+      "normalTexture": "Textures/2047df6ad574_gills.basee7.1.normal.tga",
+      "maskTexture": "Textures/cbca56cc3aea_gills.basee7.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\gills.basee7.1.dds",
+      "mainTextureSourceSha256": "56c037b3ce731e82617ad45cf1ba97d97107e64d49d7bcdcbb243e4068e6b4ef",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\gills.basee7.1.normal.dds",
+      "normalTextureSourceSha256": "2047df6ad574b46efae3cad16cf5b429a42da0783219394e5c892bc965792477",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\gills.basee7.1.masks.dds",
+      "maskTextureSourceSha256": "cbca56cc3aeafb2e7f7b178bba92133dcc70f0ee84a375c68ce028d35ef146a4",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "HardScalpEyes_mat_b06473ed52",
+      "sourceMaterialName": "HardScalpEyes_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\hardscalpeyes_mat.material.MXML",
+      "sourceMxmlSha256": "b06473ed52405b14e1bd024696c8a5aee307ae9d8c8e3a5c6f56cc306aeeeeec",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/aa44c831a24b_hardscalpeyes.base.1.tga",
+      "normalTexture": "Textures/d927ba2059e7_hardscalpeyes.base.1.normal.tga",
+      "maskTexture": "Textures/7153e6ab4649_hardscalpeyes.base.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\hardscalpeyes.base.1.dds",
+      "mainTextureSourceSha256": "aa44c831a24be2f002f7eedabe56441deabd11d0d7f1d9645133b823cb8e8d7c",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\hardscalpeyes.base.1.normal.dds",
+      "normalTextureSourceSha256": "d927ba2059e7327da2399f2be9e0291c018b05b9fa0739458ef71f5b7f263a0d",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\hardscalpeyes.base.1.masks.dds",
+      "maskTextureSourceSha256": "7153e6ab46491edb83eb1a4703d5dd5b9d3612ff884633bc406d047f5e0034ad",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "JellyFingers_mat_b35c464b31",
+      "sourceMaterialName": "JellyFingers_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\jellyfingers_mat.material.MXML",
+      "sourceMxmlSha256": "b35c464b31c63f802be40c2fbff3d241fcc95ea1d002bbe2702b26fae7edd81a",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/5d9aa742a7b3_jellyfingers.base.1.tga",
+      "normalTexture": "Textures/6d3454d336b4_jellyfingers.base.1.normal.tga",
+      "maskTexture": "Textures/a17d30f9db20_jellyfingers.base.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\spiderrig\\jellyfingers.base.1.dds",
+      "mainTextureSourceSha256": "5d9aa742a7b3c2b9372ab7cb16e9b87f8fc6574aca4baa7b1c9841e8052e72c3",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\spiderrig\\jellyfingers.base.1.normal.dds",
+      "normalTextureSourceSha256": "6d3454d336b4a2d840985543a915c8099cd5a4eded2bf3cf97e3689bb3ae4d2d",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\spiderrig\\jellyfingers.base.1.masks.dds",
+      "maskTextureSourceSha256": "a17d30f9db20cabb8ee070ee28eb669756536cb38d067c71d9abd607d370bd54",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "Lava_mat_a78bf727ce",
+      "sourceMaterialName": "Lava_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\lava_mat.material.MXML",
+      "sourceMxmlSha256": "a78bf727ce988962ee7fffed6027dc8a1b4c7ca87602c73e06092da0ac351231",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/8c087cc4858a_liquidscroll.basek.1.tga",
+      "normalTexture": "Textures/d217dd1a374e_liquidscroll.basek.1.normal.tga",
+      "maskTexture": "Textures/dfaf3cb638e1_liquidscroll.basek.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\underwater\\largeprop\\liquidscroll.basek.1.dds",
+      "mainTextureSourceSha256": "8c087cc4858a0bd91cb1e22cf3b6209946513b3cafdd19005421a3028f1ddd68",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\underwater\\largeprop\\liquidscroll.basek.1.normal.dds",
+      "normalTextureSourceSha256": "d217dd1a374ef56d299b50189d48172be89e602af0fd6cf2880eaf18c337dfc5",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\underwater\\largeprop\\liquidscroll.basek.1.masks.dds",
+      "maskTextureSourceSha256": "dfaf3cb638e1027a3d7024f6fd4dd569d2b0a91ca5fd228a6514fd2c4e7ec8b1",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "Mushroom_mat_e403483f09",
+      "sourceMaterialName": "Mushroom_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\mushroom_mat.material.MXML",
+      "sourceMxmlSha256": "e403483f0901c52edb9b70d69bb7cbd385664cbe1155086831d03b8a6715e3df",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/9834ad9db816_mushroom.basep.1.tga",
+      "normalTexture": "Textures/6f3bc14b86a9_mushroom.basep.1.normal.tga",
+      "maskTexture": "Textures/14e59d0bba45_mushroom.basep.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\toxic\\large\\mushroom.basep.1.dds",
+      "mainTextureSourceSha256": "9834ad9db8162a2a0941d26ee004c06c9dae257af23ee7e5eb2a41795ab45935",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\toxic\\large\\mushroom.basep.1.normal.dds",
+      "normalTextureSourceSha256": "6f3bc14b86a960885e4d7c8253268bcd0a7a06b66f93ff0deab8fa9239829465",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\toxic\\large\\mushroom.basep.1.masks.dds",
+      "maskTextureSourceSha256": "14e59d0bba459ca038f5f7d2ec63d34f5efae4cdd9a5e50f4c0c805dc78c5929",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "OctoHead_mat_54714df189",
+      "sourceMaterialName": "OctoHead_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\octohead_mat.material.MXML",
+      "sourceMxmlSha256": "54714df1893ba21795f0939416b142cb914e9afeb1ec5e5a18e3ba6513b9e3ce",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/ba6e14d2b98f_octohead.base.1.tga",
+      "normalTexture": "Textures/37c1695dbb4d_octohead.base.1.normal.tga",
+      "maskTexture": "Textures/fd17f0d32dc9_octohead.base.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\octohead.base.1.dds",
+      "mainTextureSourceSha256": "ba6e14d2b98f8cb53052a02e6152941496ddd2a22cfb1273e1ff85ae0de20731",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\octohead.base.1.normal.dds",
+      "normalTextureSourceSha256": "37c1695dbb4d6fab77fd00f96c14848498a98b2f80442347a0bd488912e60c6b",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\octohead.base.1.masks.dds",
+      "maskTextureSourceSha256": "fd17f0d32dc9b57fe8b757f4bbe0e9114c6eb82fa661dfea7efb5ae37a97f2a7",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "OctoMat_b90e310d74",
+      "sourceMaterialName": "OctoMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\octomat.material.MXML",
+      "sourceMxmlSha256": "b90e310d747d5fca8015df2c739df298ef95868948755c3d56c03c71c0816494",
+      "materialPreset": "Fur",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/b11d6acb2173_octo.base.fur.tga",
+      "normalTexture": "Textures/c6d435cd7bac_octo.base.fur.normal.tga",
+      "maskTexture": "Textures/e93036f9feb3_octo.base.fur.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.18,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\octo.base.fur.dds",
+      "mainTextureSourceSha256": "b11d6acb21731b59f89e3edd9b1781de33498a113b36aae46e5baaa8be11bbe4",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\octo.base.fur.normal.dds",
+      "normalTextureSourceSha256": "c6d435cd7bac287d9e0a6eec210b61bd8889db0a04fc93b9e0ade027009d4bac",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\octo.base.fur.masks.dds",
+      "maskTextureSourceSha256": "e93036f9feb30f46b963267ccae1365637d1474b8d97c3c4620945ac5540ca45",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "PetHarnessMat_2eed48fef5",
+      "sourceMaterialName": "PetHarnessMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\petharnessmat.material.MXML",
+      "sourceMxmlSha256": "2eed48fef5d5862b2429cf202062a6e9d6253a88560d21d8aea365ec9c6740fe",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/b1f60d317c84_petharness.base.tga",
+      "normalTexture": "Textures/cb8fe3dfa842_petharness.base.normal.tga",
+      "maskTexture": "Textures/e9aadb9f05f9_petharness.base.masks.tga",
+      "emissionTexture": "",
+      "metallic": 1.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\shared\\petharness.base.dds",
+      "mainTextureSourceSha256": "b1f60d317c843216d9e6681b6c47985bfa803b23daae3d012496c4b2b5a83c08",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\shared\\petharness.base.normal.dds",
+      "normalTextureSourceSha256": "cb8fe3dfa842964be1b4e03210d948079c678d16df0151d9aa7774401e182188",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\shared\\petharness.base.masks.dds",
+      "maskTextureSourceSha256": "e9aadb9f05f95cd185e59e0123c6f654aff8df687db43a246b189f51cdb0e1fd",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "PetalsB_mat_c29d89fe83",
+      "sourceMaterialName": "PetalsB_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\petalsb_mat.material.MXML",
+      "sourceMxmlSha256": "c29d89fe83d99e0f216e11a0756f30509b7dc924fd93ecfd7cb159a61e3525b6",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/d316ffdc8cf0_largeflowerhead.baseu.1.tga",
+      "normalTexture": "Textures/deac2a49db98_largeflowerhead.baseu.1.normal.tga",
+      "maskTexture": "Textures/99f0d01259e0_largeflowerhead.baseu.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\common\\interactiveflora\\largeflowerhead.baseu.1.dds",
+      "mainTextureSourceSha256": "d316ffdc8cf00944503916cd875a64fdbf4f605f32bf6950a4152eca0bc782f6",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\common\\interactiveflora\\largeflowerhead.baseu.1.normal.dds",
+      "normalTextureSourceSha256": "deac2a49db984bd3fdce5a015b8e18a1871684effae3f336954a1fc9a52e315d",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\common\\interactiveflora\\largeflowerhead.baseu.1.masks.dds",
+      "maskTextureSourceSha256": "99f0d01259e09554feebb1c5ab3527ccd35c9e9aea0b5b3be15d6791e2ba7c7d",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "PlantBase_mat_c2c22fcde6",
+      "sourceMaterialName": "PlantBase_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\plantbase_mat.material.MXML",
+      "sourceMxmlSha256": "c2c22fcde6eb4251da43adf1b6c7b28a4d2a3130baa95062bbf779a55a5b44de",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/048c7f3a6595_plantbase.baseo.1.tga",
+      "normalTexture": "Textures/3ae7447e9473_plantbase.baseo.1.normal.tga",
+      "maskTexture": "Textures/9484b4729fee_plantbase.baseo.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\plantbase.baseo.1.dds",
+      "mainTextureSourceSha256": "048c7f3a6595f38fcb5a89dccebb127223ca46d843f1655de2774c1711150517",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\plantbase.baseo.1.normal.dds",
+      "normalTextureSourceSha256": "3ae7447e94739defc15daf6482a21e3d7531ff016573f97a9885b7df6eb79ecb",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\plantbase.baseo.1.masks.dds",
+      "maskTextureSourceSha256": "9484b4729fee8e3e94d86235f404e7e3d0de4cf5285781321be387fbf6941f76",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "RoundTeethMouth_mat_93cfc5e5ad",
+      "sourceMaterialName": "RoundTeethMouth_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\roundteethmouth_mat.material.MXML",
+      "sourceMxmlSha256": "93cfc5e5adb7282d3c1fc0a6a8711075d10ebdf281b4daf52b232eae703f9177",
+      "materialPreset": "Bone",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/5e7c510ee79e_roundteethmouth.base.1.tga",
+      "normalTexture": "Textures/65f1f05ac303_roundteethmouth.base.1.normal.tga",
+      "maskTexture": "Textures/09bda817db89_roundteethmouth.base.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.08,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\roundteethmouth.base.1.dds",
+      "mainTextureSourceSha256": "5e7c510ee79ea89f9fc4f6cceded5a99665f09300476f7ab7ae9c9a9c2a705ed",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\roundteethmouth.base.1.normal.dds",
+      "normalTextureSourceSha256": "65f1f05ac30342a8668e2bad8d7f571d30d4c6b3d966575dadc4d4464b8c1839",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\roundteethmouth.base.1.masks.dds",
+      "maskTextureSourceSha256": "09bda817db892718130c832026d9fc078a4bcc1e688732533df412ddbbe83470",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "SmallPlantB_mat_61af4d1c6e",
+      "sourceMaterialName": "SmallPlantB_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\smallplantb_mat.material.MXML",
+      "sourceMxmlSha256": "61af4d1c6efddd65807f5ed2317712f9fb5e45a1ea435425b6494cfb63b3869d",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/5e1231e01456_smallplantb.base.1.tga",
+      "normalTexture": "Textures/7af339705512_smallplantb.base.1.normal.tga",
+      "maskTexture": "Textures/374675f38ad5_smallplantb.base.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\common\\plants\\smallplantb.base.1.dds",
+      "mainTextureSourceSha256": "5e1231e014560fa3bd2b1ee2a65812aad1a0713f7192ebe05678140b8aea18f4",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\common\\plants\\smallplantb.base.1.normal.dds",
+      "normalTextureSourceSha256": "7af3397055127cfdd8ed971154b2ebc0c6b44c228fb6015ce6772e115dc05347",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\biomes\\common\\plants\\smallplantb.base.1.masks.dds",
+      "maskTextureSourceSha256": "374675f38ad59ffebf4a345e267deff97484b2691a8f87dceb79bf2d031b5f62",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "TentacleMat_33636a2f09",
+      "sourceMaterialName": "TentacleMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\tentaclemat.material.MXML",
+      "sourceMxmlSha256": "33636a2f09e4c3de4a15e032f63bb8bd7d3e1cd0f5a2f223ffc4cf61368f6e99",
+      "materialPreset": "Fur",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/2d44e3cd0158_tentacle.base.fur.tga",
+      "normalTexture": "Textures/585b95638d7d_tentacle.base.fur.normal.tga",
+      "maskTexture": "Textures/bcb2505c15b7_tentacle.base.fur.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.18,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\tentacle.base.fur.dds",
+      "mainTextureSourceSha256": "2d44e3cd0158fcf8fbe184e4bb83ff757a7c5924f0b81218d03c57c6b80d5e71",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\tentacle.base.fur.normal.dds",
+      "normalTextureSourceSha256": "585b95638d7d67d5f798da5e467208e3e16c5f2a2154f99a53e515d3b28bd094",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\blobrig\\tentacle.base.fur.masks.dds",
+      "maskTextureSourceSha256": "bcb2505c15b775277631d8c56bc26790a450d9a1c3d4e3b46ed456656f4a051e",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "TileableB_mat_6f1685e409",
+      "sourceMaterialName": "TileableB_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\tileableb_mat.material.MXML",
+      "sourceMxmlSha256": "6f1685e40937799e38719b0f2afbb2bd284a4a7b85eb3a4af29c2abdc7bfb5b3",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/b96c7dc1f62c_tileableb.base.1.tga",
+      "normalTexture": "Textures/1c323a197f88_tileableb.base.1.normal.tga",
+      "maskTexture": "Textures/8798feda98a0_tileableb.base.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\triceratopsrig\\tileableb.base.1.dds",
+      "mainTextureSourceSha256": "b96c7dc1f62c7b2bee9098259bac8357055941c92c7a209bb4ec4c2366fc0d92",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\triceratopsrig\\tileableb.base.1.normal.dds",
+      "normalTextureSourceSha256": "1c323a197f88e12640fe598121b99bd2a0530a42505e6732ca208b0ba0e591b9",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\creatures\\triceratopsrig\\tileableb.base.1.masks.dds",
+      "maskTextureSourceSha256": "8798feda98a03bfb1f204290ebae911b50e4d320ffe605071d94bf4b31e67fdd",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "TilingA_mat_f334234a0f",
+      "sourceMaterialName": "TilingA_mat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\models\\planets\\creatures\\blobrig\\blob\\tilinga_mat.material.MXML",
+      "sourceMxmlSha256": "f334234a0fec31bb5f510dec60d4a4eb93a98c70d94db04805984365f23a2729",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/07c6dd1f277e_eyestalks.base2.1.tga",
+      "normalTexture": "Textures/630fdb0a3032_eyestalks.base2.1.normal.tga",
+      "maskTexture": "Textures/e4782c267fe1_eyestalks.base2.1.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\npcs\\lowerorder\\eyestalks.base2.1.dds",
+      "mainTextureSourceSha256": "07c6dd1f277e80b65ca8b57f82a6bfe0d6298467f55cabd06aa14b06fe9536f4",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\npcs\\lowerorder\\eyestalks.base2.1.normal.dds",
+      "normalTextureSourceSha256": "630fdb0a3032706e16442356b96a26fb50fb0160c5217c7b87aac541a19918bb",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Blob\\Extracted\\textures\\planets\\npcs\\lowerorder\\eyestalks.base2.1.masks.dds",
+      "maskTextureSourceSha256": "e4782c267fe1f0ccb035a3a9087e910481a470502c056607ebfb2a5e3632b2b8",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    }
+  ],
+  "renderers": [
+    {
+      "rendererName": "Back1JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Back2JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Back3JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "BackEND",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Eyes",
+      "modules": [
+        "_Body_Blob"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Eye_mat_e5d2e63aec"
+        }
+      ]
+    },
+    {
+      "rendererName": "LArm1JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LArm2JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LArm3JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LArm4JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LArmEND",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LEyeBottomJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LEyeTopJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "MouthBottomJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "MouthTopJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "PETACC_Eel",
+      "modules": [
+        "_Body_Eel"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PetHarnessMat_2eed48fef5"
+        }
+      ]
+    },
+    {
+      "rendererName": "PETACC_EelF",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "PETACC_blob",
+      "modules": [
+        "_Body_Blob"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PetHarnessMat_2eed48fef5"
+        }
+      ]
+    },
+    {
+      "rendererName": "PETACC_blobB",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "PETACC_blobby",
+      "modules": [
+        "_Body_blobby"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PetHarnessMat_2eed48fef5"
+        }
+      ]
+    },
+    {
+      "rendererName": "PETACC_blobbyB",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "PETACC_eyeballPlant",
+      "modules": [
+        "_Body_EyeballPlant"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PetHarnessMat_2eed48fef5"
+        }
+      ]
+    },
+    {
+      "rendererName": "PETACC_eyeballPlantB",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "PETACC_fingers",
+      "modules": [
+        "_Body_Fingers"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PetHarnessMat_2eed48fef5"
+        }
+      ]
+    },
+    {
+      "rendererName": "PETACC_fingersB",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "PETACC_octo",
+      "modules": [
+        "_Body_Octo"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PetHarnessMat_2eed48fef5"
+        }
+      ]
+    },
+    {
+      "rendererName": "PETACC_octoB",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "PETACC_plant",
+      "modules": [
+        "_Body_Plant"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PetHarnessMat_2eed48fef5"
+        }
+      ]
+    },
+    {
+      "rendererName": "PETACC_plantB",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "PETACC_shroom",
+      "modules": [
+        "_Body_Shroom"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PetHarnessMat_2eed48fef5"
+        }
+      ]
+    },
+    {
+      "rendererName": "PETACC_shroomB",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RArm1JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RArm2JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RArm3JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RArm4JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RArmEND",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "REyeBottomJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "REyeTopJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RootJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "SpikeJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Tail1JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Tail2JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Tail3JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Tail4JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TailEND",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TeethEND",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TeethJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TeethJNT1",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TeethJNT2",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "TeethJNT3",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Tentacles1",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Tentacles2",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Tentacles3",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Tentacles4",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Tentacles5",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "_Acc2_Antennas",
+      "modules": [
+        "_Acc2_Antennas"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Antennas_mat_6e7c73f50f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Acc2_EelEyes",
+      "modules": [
+        "_Acc2_EelEyes"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "BlobEel_mat_77a60c0e8f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_AccX_1",
+      "modules": [
+        "_AccX_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "JellyFingers_mat_b35c464b31"
+        }
+      ]
+    },
+    {
+      "rendererName": "_AccX_none",
+      "modules": [
+        "_AccX_none"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "_Acc_EarFlaps",
+      "modules": [
+        "_Acc_EarFlaps"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "BlobEel_mat_77a60c0e8f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Acc_Ears",
+      "modules": [
+        "_Acc_Ears"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "BlobEel_mat_77a60c0e8f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Acc_Fins",
+      "modules": [
+        "_Acc_Fins"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Acc_LongSpine_7e67713690"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Acc_Fins2",
+      "modules": [
+        "_Acc_Fins2"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "DragonSpine_Mat_9b06eaed64"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Acc_FrillFlaps",
+      "modules": [
+        "_Acc_FrillFlaps"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "FrillFlap_mat_f43c9e22db"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Acc_Gills",
+      "modules": [
+        "_Acc_Gills"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Gills_mat_78a4cace03"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Acc_Gills2",
+      "modules": [
+        "_Acc_Gills2"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "OctoMat_b90e310d74"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Acc_SnailJaw",
+      "modules": [
+        "_Acc_SnailJaw"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "BlobEel_mat_77a60c0e8f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Acc_Tentacles",
+      "modules": [
+        "_Acc_Tentacles"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "TentacleMat_33636a2f09"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BEA_ArmTent",
+      "modules": [
+        "_BEA_ArmTent"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "TentacleMat_33636a2f09"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BEA_Null",
+      "modules": [
+        "_BEA_Null"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "EyeballPlantMat_ac1622bebb"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BE_Null",
+      "modules": [
+        "_BE_Null"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "EyeballPlantMat_ac1622bebb"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOA2_0",
+      "modules": [
+        "_BOA2_0"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "_BOA2_ArmTent",
+      "modules": [
+        "_BOA2_ArmTent"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "TentacleMat_33636a2f09"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOA_0",
+      "modules": [
+        "_BOA_0"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "_BOA_Gills",
+      "modules": [
+        "_BOA_Gills"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "OctoMat_b90e310d74"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOA_Head",
+      "modules": [
+        "_BOA_Head"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "OctoHead_mat_54714df189"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOA_HeadShape",
+      "modules": [
+        "_Body_Octo"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "OctoHead_mat_54714df189"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOB_Ears",
+      "modules": [
+        "_BOB_Ears"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "BlobEel_mat_77a60c0e8f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOB_EarsShape",
+      "modules": [
+        "_Body_Blob"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "BlobEel_mat_77a60c0e8f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOB_Eyes2",
+      "modules": [
+        "_BOB_Eyes2"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Flatmouth_mat_047bd6079c"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOB_Eyes2Shape",
+      "modules": [
+        "_Body_Blob"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Flatmouth_mat_047bd6079c"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOB_FrillFlaps",
+      "modules": [
+        "_BOB_FrillFlaps"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "FrillFlap_mat_f43c9e22db"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOB_Gills",
+      "modules": [
+        "_BOB_Gills"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Gills_mat_78a4cace03"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOB_HardScalp",
+      "modules": [
+        "_BOB_HardScalp"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "HardScalpEyes_mat_b06473ed52"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOB_Mhawk",
+      "modules": [
+        "_BOB_Mhawk"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "TileableB_mat_6f1685e409"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOB_Null2",
+      "modules": [
+        "_BOB_Null2"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "_BOB_brows",
+      "modules": [
+        "_BOB_brows"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Flatmouth_mat1_68a240e124"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOC_ArmTent",
+      "modules": [
+        "_BOC_ArmTent"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "TentacleMat_33636a2f09"
+        }
+      ]
+    },
+    {
+      "rendererName": "_BOC_Null2",
+      "modules": [
+        "_BOC_Null2"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "_Belly_1",
+      "modules": [
+        "_Belly_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "TilingA_mat_f334234a0f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Body_Blob",
+      "modules": [
+        "_Body_Blob"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "BlowfishMat_c4159070e3"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Body_Eel",
+      "modules": [
+        "_Body_Eel"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "BlobEel_mat_77a60c0e8f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Body_EyeballPlant",
+      "modules": [
+        "_Body_EyeballPlant"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "EyeballPlantMat_ac1622bebb"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Body_Fingers",
+      "modules": [
+        "_Body_Fingers"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "JellyFingers_mat_b35c464b31"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Body_Jelly",
+      "modules": [
+        "_Body_Jelly"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "_Body_Octo",
+      "modules": [
+        "_Body_Octo"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "OctoMat_b90e310d74"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Body_Plant",
+      "modules": [
+        "_Body_Plant"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PlantBase_mat_c2c22fcde6"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Body_Shroom",
+      "modules": [
+        "_Body_Shroom"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Mushroom_mat_e403483f09"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Body_blobby",
+      "modules": [
+        "_Body_blobby"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Lava_mat_a78bf727ce"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Eyebs_1",
+      "modules": [
+        "_Eyebs_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Eye_mat_e5d2e63aec"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Eyes_1",
+      "modules": [
+        "_Eyes_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Eye_mat_e5d2e63aec"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Eyes_2",
+      "modules": [
+        "_Eyes_2"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "TilingA_mat_f334234a0f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Eyess_1",
+      "modules": [
+        "_Eyess_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Eye_mat_e5d2e63aec"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Flower_1",
+      "modules": [
+        "_Flower_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "FlowerHead_mat_b180b55813"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Flower_2",
+      "modules": [
+        "_Flower_2"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "FlowerHead_mat_b180b55813"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Flower_3",
+      "modules": [
+        "_Flower_3"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "FlowerHead_mat_b180b55813"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Flower_4",
+      "modules": [
+        "_Flower_4"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "FlowerHead_mat_b180b55813"
+        }
+      ]
+    },
+    {
+      "rendererName": "_HAT_1",
+      "modules": [
+        "_HAT_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Gills_mat_78a4cace03"
+        }
+      ]
+    },
+    {
+      "rendererName": "_HAT_Antennas",
+      "modules": [
+        "_HAT_Antennas"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Antennas_mat_6e7c73f50f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_HAT_none",
+      "modules": [
+        "_HAT_none"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "_Hats_1",
+      "modules": [
+        "_Hats_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "PetalsB_mat_c29d89fe83"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Hats_2",
+      "modules": [
+        "_Hats_2"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Mushroom_mat_e403483f09"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Hats_none",
+      "modules": [
+        "_Hats_none"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "_Legs_1",
+      "modules": [
+        "_Legs_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "TilingA_mat_f334234a0f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_PlantTeeth_1",
+      "modules": [
+        "_PlantTeeth_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "EyeballPlantMat_ac1622bebb"
+        }
+      ]
+    },
+    {
+      "rendererName": "_PlantTeeth_2",
+      "modules": [
+        "_PlantTeeth_2"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "RoundTeethMouth_mat_93cfc5e5ad"
+        }
+      ]
+    },
+    {
+      "rendererName": "_PlantTeeth_3",
+      "modules": [
+        "_PlantTeeth_3"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Mushroom_mat_e403483f09"
+        }
+      ]
+    },
+    {
+      "rendererName": "_PlantTeeth_4",
+      "modules": [
+        "_PlantTeeth_4"
+      ],
+      "slots": []
+    },
+    {
+      "rendererName": "_Plant_1",
+      "modules": [
+        "_Plant_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "SmallPlantB_mat_61af4d1c6e"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Plant_2",
+      "modules": [
+        "_Plant_2"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Frond_mat_625d212787"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Plant_3",
+      "modules": [
+        "_Plant_3"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "SmallPlantB_mat_61af4d1c6e"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Plant_4",
+      "modules": [
+        "_Plant_4"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "SmallPlantB_mat_61af4d1c6e"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Plant_5",
+      "modules": [
+        "_Plant_5"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "SmallPlantB_mat_61af4d1c6e"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Plant_6",
+      "modules": [
+        "_Plant_6"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Frond_mat_625d212787"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Stashe_1",
+      "modules": [
+        "_Stashe_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Antennas_mat_6e7c73f50f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_eyes2_1",
+      "modules": [
+        "_eyes2_1"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "Eye_mat_e5d2e63aec"
+        }
+      ]
+    },
+    {
+      "rendererName": "models\\planets\\creatures\\blobrig\\blob",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "pCylinder7",
+      "modules": [],
+      "slots": []
+    }
+  ]
+}

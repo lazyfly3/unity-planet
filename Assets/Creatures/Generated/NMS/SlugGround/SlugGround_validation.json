@@ -1,0 +1,68 @@
+{
+  "pipelineVersion": 10,
+  "familyId": "SlugGround",
+  "meshCount": 1,
+  "vertexCount": 4379,
+  "restPoseMaximumVertexError": 6.828569911354542e-08,
+  "unknownWeightGroups": [],
+  "moduleValidation": {
+    "objectCount": 1,
+    "quarantinedModuleCount": 0,
+    "quarantinedModules": [],
+    "objects": {
+      "Slug": {
+        "restPoseMaximumVertexError": 6.828569911354542e-08,
+        "maximumBoundsRatio": 1.0010734793396165,
+        "maximumEdgeStretch": 1.0873846942013439,
+        "maximumTriangleAreaStretch": 1.1803086978871593,
+        "maximumNormalizedEdgeDelta": 0.001931780555861405,
+        "maximumNormalizedTriangleAreaDelta": 7.514752571604043e-05,
+        "maximumSignificantEdgeStretch": 0.0,
+        "maximumSignificantTriangleAreaStretch": 0.0,
+        "worstTriangleClip": "idle",
+        "worstTriangleFrame": 57,
+        "nonFiniteVertexCount": 0,
+        "failures": [],
+        "passed": true
+      }
+    }
+  },
+  "clips": {
+    "idle": {
+      "action": "SlugGround_IDLE_InvBind",
+      "frameCount": 121,
+      "minimumLoadBearingBoneLengthRatio": Infinity,
+      "maximumLoadBearingBoneLengthRatio": 0.0,
+      "maximumBoundsRatio": 1.0010553066282426,
+      "maximumEdgeStretch": 1.140947433777602,
+      "maximumTriangleAreaStretch": 1.1836079807920368,
+      "maximumNormalizedEdgeDelta": 0.0027017928309749964,
+      "maximumNormalizedTriangleAreaDelta": 8.823160280372178e-05,
+      "maximumSignificantEdgeStretch": 0.0,
+      "maximumSignificantTriangleAreaStretch": 0.0,
+      "worstEdgeFrame": 59,
+      "nonFiniteVertexCount": 0,
+      "passed": true,
+      "failures": []
+    },
+    "walk": {
+      "action": "SlugGround_WALK_InvBind",
+      "frameCount": 61,
+      "minimumLoadBearingBoneLengthRatio": Infinity,
+      "maximumLoadBearingBoneLengthRatio": 0.0,
+      "maximumBoundsRatio": 1.0,
+      "maximumEdgeStretch": 1.0004210072382258,
+      "maximumTriangleAreaStretch": 1.0004891003461123,
+      "maximumNormalizedEdgeDelta": 9.152199433431746e-06,
+      "maximumNormalizedTriangleAreaDelta": 1.939190557429996e-07,
+      "maximumSignificantEdgeStretch": 0.0,
+      "maximumSignificantTriangleAreaStretch": 0.0,
+      "worstEdgeFrame": 0,
+      "nonFiniteVertexCount": 0,
+      "passed": true,
+      "failures": []
+    }
+  },
+  "passed": true,
+  "failures": []
+}

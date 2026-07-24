@@ -92,7 +92,7 @@ public sealed class GalaxyGeneratedResourceRecord
 [Serializable]
 public sealed class GalaxyGeneratedPlanetRecord
 {
-    public int formatVersion = 5;
+    public int formatVersion = 6;
     public int generatorVersion;
     public string planetId;
     public string displayName;
@@ -111,6 +111,7 @@ public sealed class GalaxyGeneratedPlanetRecord
     public PlanetRiverSettings rivers;
     public PlanetWeatherSettings weather;
     public PlanetCelestialProfile celestial;
+    public PlanetLowPolyVisualProfile lowPolyVisual;
 }
 
 public sealed class ProceduralGalaxyGenerator
@@ -195,6 +196,11 @@ if (!HasPlanet(coordinate))
 
         int seed = random.NextNonZeroInt();
         PlanetCelestialProfile celestial = CreateCelestialProfile(ref random, atmosphere);
+        PlanetTerrainSettings terrain = CreateTerrain(
+            ref random,
+            temperature,
+            moisture,
+            geology);
         var definition = new GalaxyPlanetDefinition
         {
             planetId = planetId,
@@ -208,12 +214,23 @@ if (!HasPlanet(coordinate))
             hasExplicitPalette = true,
             tintMapIcon = true,
             iconResourcePath = IconPaths[Mathf.Clamp((int)(hue * IconPaths.Length), 0, IconPaths.Length - 1)],
-            terrain = CreateTerrain(ref random, temperature, moisture, geology),
+            terrain = terrain,
             // Interstellar PCG planets deliberately omit generated rivers. Existing
             // frozen definitions still load their original river data unchanged.
             rivers = CreateDisabledRivers(),
             weather = CreateWeather(ref random, temperature, moisture, geology, atmosphere, crystal),
-            celestial = celestial
+            celestial = celestial,
+            lowPolyVisual = CreateVisualProfile(
+                seed,
+                temperature,
+                moisture,
+                geology,
+                atmosphere,
+                crystal,
+                surfaceColor,
+                rockColor,
+                celestial.atmosphereVisual,
+                terrain)
         };
         definition.resourceSpawnSettings = CreateResources(ref random, geology, crystal);
         definition.spawnHarvestableResources = definition.resourceSpawnSettings.Count > 0;
@@ -291,6 +308,111 @@ if (!HasPlanet(coordinate))
         };
     }
 
+    public static PlanetLowPolyVisualProfile CreateVisualProfile(
+        int planetSeed,
+        float temperature,
+        float moisture,
+        float geology,
+        float atmosphere,
+        float crystal,
+        Color surfaceColor,
+        Color rockColor,
+        AtmosphereVisualProfile atmosphereVisual,
+        PlanetTerrainSettings terrain = null)
+    {
+        ulong seed = Mix(unchecked((ulong)(uint)planetSeed) ^ 0xD6E8FEB86659FD93UL);
+        var random = new StableRandom(seed);
+        float heat = Mathf.Clamp01(temperature);
+        float wet = Mathf.Clamp01(moisture);
+        float geo = Mathf.Clamp01(geology);
+        float air = Mathf.Clamp01(atmosphere);
+        float crystals = Mathf.Clamp01(crystal);
+        float tropical = wet * Mathf.SmoothStep(0.35f, 1f, heat);
+        float forest = wet * (1f - Mathf.Abs(heat - 0.58f) * 1.3f);
+        float desert = (1f - wet) * Mathf.Lerp(0.45f, 1f, heat);
+        float tundra = (1f - heat) * Mathf.Lerp(0.35f, 1f, 1f - wet * 0.4f);
+        float volcanic = geo * geo * Mathf.Lerp(0.55f, 1f, heat);
+
+        Color lowland = Color.Lerp(surfaceColor, new Color(0.08f, 0.16f, 0.1f), 0.16f + wet * 0.08f);
+        Color highland = Color.Lerp(surfaceColor, Color.white, Mathf.Lerp(0.08f, 0.24f, 1f - heat));
+        Color cliff = Color.Lerp(rockColor, surfaceColor, 0.12f + (1f - geo) * 0.12f);
+        Color.RGBToHSV(surfaceColor, out float surfaceHue, out _, out _);
+        Color accent = Color.HSVToRGB(
+            Mathf.Repeat(surfaceHue + 0.08f + random.Value() * 0.16f, 1f),
+            Mathf.Lerp(0.42f, 0.82f, random.Value()),
+            Mathf.Lerp(0.62f, 0.96f, random.Value()));
+        AtmosphereVisualProfile sky = atmosphereVisual ?? new AtmosphereVisualProfile();
+        float alienOcean = Mathf.Clamp01(volcanic * 0.62f + crystals * 0.44f);
+        float oceanHue = Mathf.Repeat(
+            Mathf.Lerp(0.56f, surfaceHue + 0.34f, alienOcean)
+            + (random.Value() - 0.5f) * 0.18f,
+            1f);
+        Color deepOcean = Color.HSVToRGB(
+            oceanHue,
+            Mathf.Lerp(0.68f, 0.92f, alienOcean),
+            Mathf.Lerp(0.16f, 0.34f, crystals));
+        Color shallowOcean = Color.HSVToRGB(
+            Mathf.Repeat(oceanHue + Mathf.Lerp(0.015f, 0.055f, random.Value()), 1f),
+            Mathf.Lerp(0.48f, 0.86f, alienOcean),
+            Mathf.Lerp(0.55f, 0.82f, air));
+        bool hasOcean = air > 0.12f
+            && (wet > 0.13f || random.Value() > 0.48f)
+            && volcanic < 0.97f;
+        float snowLine = Mathf.Lerp(0.38f, 0.9f, heat);
+        snowLine = Mathf.Clamp01(snowLine + volcanic * 0.12f - tundra * 0.08f);
+
+        var profile = new PlanetLowPolyVisualProfile
+        {
+            lowlandColor = lowland,
+            highlandColor = highland,
+            cliffColor = cliff,
+            rockColor = rockColor,
+            accentColor = accent,
+            facetStrength = Mathf.Lerp(0.58f, 0.86f, random.Value()),
+            lightingBands = random.Range(3, 6),
+            macroColorSize = Mathf.Lerp(12f, 34f, random.Value()),
+            cliffSlope = Mathf.Lerp(0.48f, 0.72f, 1f - geo * 0.45f),
+            macroVariation = Mathf.Lerp(0.09f, 0.2f, random.Value()),
+            oceanEnabled = hasOcean,
+            deepOceanColor = deepOcean,
+            shallowOceanColor = shallowOcean,
+            shoreColor = Color.Lerp(
+                lowland,
+                desert > forest
+                    ? new Color(0.72f, 0.48f, 0.31f, 1f)
+                    : new Color(0.78f, 0.72f, 0.48f, 1f),
+                0.62f),
+            snowColor = Color.Lerp(Color.white, sky.horizonColor, alienOcean * 0.12f),
+            oceanLevel = 0f,
+            shoreWidth = Mathf.Lerp(0.008f, 0.035f, 1f - geo),
+            snowLine = snowLine,
+            snowAmount = Mathf.Clamp01((1f - heat) * 0.8f + geo * 0.28f),
+            oceanSmoothness = Mathf.Lerp(0.72f, 0.94f, air),
+            oceanWaveStrength = Mathf.Lerp(0.12f, 0.58f, air * (0.5f + wet * 0.5f)),
+            forestWeight = Mathf.Clamp01(forest),
+            desertWeight = Mathf.Clamp01(desert),
+            tundraWeight = Mathf.Clamp01(tundra),
+            volcanicWeight = Mathf.Clamp01(volcanic),
+            crystalWeight = crystals,
+            tropicalWeight = Mathf.Clamp01(tropical),
+            decorationSeed = random.NextNonZeroInt(),
+            decorationDensity = Mathf.Lerp(0.55f, 1.4f, Mathf.Max(wet, crystals * 0.7f)),
+            decorationScale = Mathf.Lerp(0.82f, 1.28f, random.Value()),
+            clusterStrength = Mathf.Lerp(0.25f, 0.85f, random.Value()),
+            landmarkStyle = random.Range(0, 5),
+            horizonColor = sky.horizonColor,
+            zenithColor = sky.zenithColor,
+            sunsetColor = sky.sunsetColor,
+            groundAmbientColor = Color.Lerp(rockColor, Color.black, 0.68f),
+            atmosphereThickness = Mathf.Clamp01(air),
+            cloudCoverage = sky.cloudCoverage,
+            hazeStrength = Mathf.Lerp(0.04f, 0.42f, air),
+            cloudSeed = random.NextNonZeroInt()
+        };
+        profile.ClampValues();
+        return profile;
+    }
+
     List<HarvestableResourceSpawnSettings> CreateResources(ref StableRandom random, float geology, float crystal)
     {
         var available = new List<GalaxyResourceCatalogEntry>();
@@ -323,13 +445,26 @@ if (!HasPlanet(coordinate))
 
     static PlanetTerrainSettings CreateTerrain(ref StableRandom random, float temperature, float moisture, float geology)
     {
+        float oceanBias = Mathf.Clamp01(
+            moisture * 0.52f
+            + random.Value() * 0.38f
+            + (1f - temperature) * 0.1f);
         return new PlanetTerrainSettings
         {
+            shapeVersion = PlanetTerrainSettings.CurrentShapeVersion,
             continentScale = Mathf.Lerp(0.00055f, 0.0018f, random.Value()),
             continentHeight = Mathf.Lerp(55f, 125f, Mathf.Lerp(random.Value(), geology, 0.5f)),
             detailScale = Mathf.Lerp(0.004f, 0.014f, random.Value()),
             detailHeight = Mathf.Lerp(8f, 34f, geology),
             ridgeHeight = Mathf.Lerp(2f, 48f, geology * geology),
+            continentThreshold = Mathf.Lerp(0.43f, 0.61f, oceanBias),
+            continentWarp = Mathf.Lerp(0.2f, 1.15f, random.Value()),
+            continentSharpness = Mathf.Lerp(0.72f, 1.8f, geology),
+            mountainMask = Mathf.Lerp(0.38f, 0.66f, random.Value()),
+            oceanFloorDepth = Mathf.Lerp(0.32f, 0.92f, geology),
+            terraceStrength = random.Value() > 0.72f
+                ? Mathf.Lerp(0.08f, 0.46f, geology)
+                : 0f,
             surfaceLayerDepth = Mathf.Lerp(0.6f, 2.2f, moisture),
             stoneDepth = Mathf.Lerp(4f, 12f, 1f - temperature * 0.35f),
             generateCaves = geology > 0.18f,

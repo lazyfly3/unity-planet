@@ -18,12 +18,32 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
         }
     }
 
+    struct StreamedDecoration
+    {
+        public GameObject instance;
+        public float activationDistance;
+
+        public StreamedDecoration(GameObject valueInstance, float valueActivationDistance)
+        {
+            instance = valueInstance;
+            activationDistance = valueActivationDistance;
+        }
+    }
+
+    [Header("Low Poly Visual Streaming")]
+    [SerializeField, Min(40f)] float decorationActivationDistance = 280f;
+    [SerializeField, Min(10f)] float decorationHysteresis = 35f;
+    [SerializeField, Range(16, 256)] int streamingChecksPerFrame = 64;
+    [SerializeField, Min(0f)] float buildingExclusionRadius = 5f;
+
     VoxelQuadSphereWorld world;
+    IPlanetSurfacePlacementContext surfaceContext;
     List<PlanetSurfacePropSpawnSettings> settings = new List<PlanetSurfacePropSpawnSettings>();
     readonly HashSet<string> harvestedIds = new HashSet<string>(StringComparer.Ordinal);
     readonly List<Placement> placements = new List<Placement>();
     readonly List<GalaxySurfacePropSaveEntry> snapshots = new List<GalaxySurfacePropSaveEntry>();
     readonly List<Vector3> rejectedCandidates = new List<Vector3>();
+    readonly List<StreamedDecoration> streamedDecorations = new List<StreamedDecoration>();
     readonly Dictionary<string, int> rejectionCounts = new Dictionary<string, int>(StringComparer.Ordinal);
     GalaxySurfacePropSaveEntry[] savedSnapshot;
     Transform decorationsRoot;
@@ -33,6 +53,9 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
     bool showRejectedCandidates;
     bool generationComplete;
     int configurationHash;
+    ProceduralPlantFactory plantFactory;
+    ProceduralPlantFactory pendingPlantFactory;
+    int streamingCursor;
 
     public bool IsGenerationComplete => generationComplete;
     public int ConfigurationHash => configurationHash;
@@ -49,11 +72,33 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
         GalaxyPlanetSaveData save)
     {
         world = valueWorld;
+        ConfigureInternal(
+            valueWorld != null ? new VoxelPlanetSurfacePlacementContext(valueWorld) : null,
+            valueSettings,
+            save);
+    }
+
+    public void Configure(
+        IPlanetSurfacePlacementContext valueContext,
+        List<PlanetSurfacePropSpawnSettings> valueSettings,
+        GalaxyPlanetSaveData save = null)
+    {
+        world = null;
+        ConfigureInternal(valueContext, valueSettings, save);
+    }
+
+    void ConfigureInternal(
+        IPlanetSurfacePlacementContext valueContext,
+        List<PlanetSurfacePropSpawnSettings> valueSettings,
+        GalaxyPlanetSaveData save)
+    {
+        surfaceContext = valueContext;
         settings = valueSettings ?? new List<PlanetSurfacePropSpawnSettings>();
         foreach (PlanetSurfacePropSpawnSettings item in settings)
             item?.ClampValues();
 
         configurationHash = CalculateConfigurationHash(settings);
+        PreparePendingPlantFactory();
         harvestedIds.Clear();
         if (save?.harvestedSurfacePropIds != null)
         {
@@ -76,13 +121,14 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
         rejectedCandidates.Clear();
         rejectionCounts.Clear();
 
-        if (world == null || settings == null || settings.Count == 0)
+        if (surfaceContext == null || settings == null || settings.Count == 0)
         {
             generationComplete = true;
             yield break;
         }
 
         CreateRoots();
+        SwapPlantFactories();
         Physics.SyncTransforms();
         if (TryRestoreSnapshot())
         {
@@ -94,7 +140,7 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
         float frameStartedAt = Time.realtimeSinceStartup;
         foreach (PlanetSurfacePropSpawnSettings item in settings)
         {
-            if (item == null || item.prefab == null || item.count <= 0
+            if (item == null || !item.HasValidSource || item.count <= 0
                 || string.IsNullOrWhiteSpace(item.catalogId))
                 continue;
             if (item.role == PlanetDecorationRole.Vegetation && !item.orientationVerified)
@@ -104,22 +150,22 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
             }
 
             item.ClampValues();
-            var random = new System.Random(unchecked(world.Seed + item.seedOffset));
+            var random = new System.Random(unchecked(surfaceContext.Seed + item.seedOffset));
             List<Vector3> clusterCenters = CreateClusterCenters(item, random);
             int spawnedCount = 0;
             int maximumAttempts = item.count * item.placementAttempts;
             for (int attempt = 0; attempt < maximumAttempts && spawnedCount < item.count; attempt++)
             {
-                Vector3 direction = world.IsStreamingLargePlanet
-                    ? world.GetStreamingSurfaceDirection(random)
+                Vector3 direction = surfaceContext.IsStreamingLargePlanet
+                    ? surfaceContext.GetStreamingSurfaceDirection(random)
                     : GetCandidateDirection(item, clusterCenters, random);
-                if (!world.TryFindPlanetSurface(direction, out RaycastHit surfaceHit))
+                if (!surfaceContext.TryFindPlanetSurface(direction, out RaycastHit surfaceHit))
                 {
-                    AddRejection(nameof(surfaceHit), world.GetPlanetCenterWorld() + direction * world.PlanetRadius);
+                    AddRejection(nameof(surfaceHit), surfaceContext.PlanetCenter + direction * surfaceContext.PlanetRadius);
                     continue;
                 }
 
-                Vector3 radialUp = (surfaceHit.point - world.GetPlanetCenterWorld()).normalized;
+                Vector3 radialUp = (surfaceHit.point - surfaceContext.PlanetCenter).normalized;
                 float slope = Vector3.Angle(surfaceHit.normal, radialUp);
                 if (slope > item.maximumSlope)
                 {
@@ -127,7 +173,7 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
                     continue;
                 }
                 if (item.waterClearance > 0f
-                    && PlanetRiverSystem.TrySampleAny(surfaceHit.point, out WaterSample water)
+                    && PlanetWaterRegistry.TrySampleAny(surfaceHit.point, out WaterSample water)
                     && water.signedDistance <= item.waterClearance)
                 {
                     AddRejection(nameof(item.waterClearance), surfaceHit.point);
@@ -156,7 +202,13 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
                 GameObject instance = null;
                 if (!harvestable || !harvestedIds.Contains(instanceId))
                 {
-                    instance = Instantiate(item.prefab, spawnPosition, rotation, parent);
+                    instance = CreateSourceInstance(item, instanceId, parent);
+                    if (instance == null)
+                    {
+                        AddRejection("plantPool", spawnPosition);
+                        continue;
+                    }
+                    instance.transform.SetPositionAndRotation(spawnPosition, rotation);
                     instance.transform.localScale *= uniformScale;
                     PlanetSurfacePropInstance marker = instance.GetComponent<PlanetSurfacePropInstance>();
                     if (marker == null)
@@ -168,13 +220,14 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
                         resource.AssignStableResourceId(instanceId);
                     else
                         ApplyCollisionPolicy(instance, item);
+                    RegisterForStreaming(instance, item, spawnPosition);
                 }
 
                 Vector3 localPosition = transform.InverseTransformPoint(spawnPosition);
                 Quaternion localRotation = Quaternion.Inverse(transform.rotation) * rotation;
                 Vector3 localScale = instance != null
                     ? instance.transform.localScale
-                    : item.prefab.transform.localScale * uniformScale;
+                    : (item.prefab != null ? item.prefab.transform.localScale : Vector3.one) * uniformScale;
                 placements.Add(new Placement(spawnPosition, item.minimumSpacing));
                 snapshots.Add(new GalaxySurfacePropSaveEntry
                 {
@@ -212,7 +265,7 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
 
     public void RespawnForPreview()
     {
-        if (!Application.isPlaying || world == null)
+        if (!Application.isPlaying || surfaceContext == null)
             return;
         if (previewRoutine != null)
             StopCoroutine(previewRoutine);
@@ -231,6 +284,8 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
     {
         placements.Clear();
         snapshots.Clear();
+        streamedDecorations.Clear();
+        streamingCursor = 0;
         DestroyRoot(ref decorationsRoot);
         DestroyRoot(ref harvestablesRoot);
     }
@@ -261,7 +316,7 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
 
         var settingsById = new Dictionary<string, PlanetSurfacePropSpawnSettings>(StringComparer.Ordinal);
         foreach (PlanetSurfacePropSpawnSettings item in settings)
-            if (item != null && item.prefab != null && !string.IsNullOrWhiteSpace(item.catalogId))
+            if (item != null && item.HasValidSource && !string.IsNullOrWhiteSpace(item.catalogId))
                 settingsById[item.catalogId] = item;
 
         foreach (GalaxySurfacePropSaveEntry entry in savedSnapshot)
@@ -288,7 +343,15 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
                 continue;
 
             Transform parent = entry.harvestable ? harvestablesRoot : decorationsRoot;
-            GameObject instance = Instantiate(item.prefab, parent);
+            GameObject instance = CreateSourceInstance(item, entry.instanceId, parent);
+            if (instance == null)
+            {
+                loadingSnapshot = false;
+                savedSnapshot = null;
+                snapshots.Clear();
+                placements.Clear();
+                return false;
+            }
             instance.transform.localPosition = entry.localPosition;
             instance.transform.localRotation = entry.localRotation;
             instance.transform.localScale = entry.localScale;
@@ -301,12 +364,90 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
                 resource.AssignStableResourceId(entry.instanceId);
             else
                 ApplyCollisionPolicy(instance, item);
+            RegisterForStreaming(instance, item, worldPosition);
         }
 
         loadingSnapshot = false;
         savedSnapshot = null;
         Debug.Log($"PlanetSurfaceDecorationSystem: restored {snapshots.Count} surface props.", this);
         return true;
+    }
+
+    void LateUpdate()
+    {
+        if (!UsesLowPolyStreaming() || streamedDecorations.Count == 0 || surfaceContext == null)
+            return;
+
+        Transform player = surfaceContext.PlayerSpawn;
+        if (player == null)
+            return;
+
+        int checks = Mathf.Min(streamingChecksPerFrame, streamedDecorations.Count);
+        for (int i = 0; i < checks; i++)
+        {
+            if (streamingCursor >= streamedDecorations.Count)
+                streamingCursor = 0;
+
+            StreamedDecoration entry = streamedDecorations[streamingCursor++];
+            GameObject instance = entry.instance;
+            if (instance == null)
+                continue;
+
+            float threshold = entry.activationDistance
+                + (instance.activeSelf ? decorationHysteresis : 0f);
+            bool shouldBeActive = (instance.transform.position - player.position).sqrMagnitude
+                <= threshold * threshold;
+            if (shouldBeActive && IsInsideBuildingExclusion(instance.transform.position))
+                shouldBeActive = false;
+            if (instance.activeSelf != shouldBeActive)
+                instance.SetActive(shouldBeActive);
+        }
+    }
+
+    void RegisterForStreaming(
+        GameObject instance,
+        PlanetSurfacePropSpawnSettings item,
+        Vector3 position)
+    {
+        if (!UsesLowPolyStreaming() || instance == null || item == null
+            || item.IsHarvestable || item.role == PlanetDecorationRole.Landmark)
+            return;
+
+        float roleMultiplier = item.role == PlanetDecorationRole.GroundCover ? 0.72f : 1f;
+        float activationDistance = Mathf.Max(40f, decorationActivationDistance * roleMultiplier);
+        streamedDecorations.Add(new StreamedDecoration(instance, activationDistance));
+
+        Transform player = surfaceContext != null ? surfaceContext.PlayerSpawn : null;
+        if (player == null)
+            return;
+        bool active = (position - player.position).sqrMagnitude
+            <= activationDistance * activationDistance;
+        if (active && IsInsideBuildingExclusion(position))
+            active = false;
+        instance.SetActive(active);
+    }
+
+    bool UsesLowPolyStreaming()
+    {
+        return world != null && world.VisualProfile != null;
+    }
+
+    bool IsInsideBuildingExclusion(Vector3 position)
+    {
+        if (buildingExclusionRadius <= 0f)
+            return false;
+
+        IReadOnlyList<BuildingAnchor> anchors = BuildingAnchor.GetActiveAnchors();
+        for (int i = 0; i < anchors.Count; i++)
+        {
+            BuildingAnchor anchor = anchors[i];
+            if (anchor == null)
+                continue;
+            float exclusion = Mathf.Max(buildingExclusionRadius, anchor.CellSize * 1.5f);
+            if (anchor.GetNearestCellDistance(position) <= exclusion)
+                return true;
+        }
+        return false;
     }
 
     void CreateRoots()
@@ -319,7 +460,7 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
 
     bool IsPositionValid(Vector3 position, Vector3 radialUp, PlanetSurfacePropSpawnSettings item)
     {
-        Transform player = world.PlayerSpawn;
+        Transform player = surfaceContext.PlayerSpawn;
         if (player != null && item.playerClearRadius > 0f
             && (position - player.position).sqrMagnitude < item.playerClearRadius * item.playerClearRadius)
         {
@@ -345,7 +486,7 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
             QueryTriggerInteraction.Ignore);
         foreach (Collider overlap in overlaps)
         {
-            if (overlap == null || world.IsTerrainCollider(overlap)
+            if (overlap == null || surfaceContext.IsTerrainCollider(overlap)
                 || overlap.GetComponentInParent<PlanetSurfacePropInstance>() != null)
                 continue;
             AddRejection(nameof(overlaps), position);
@@ -379,7 +520,7 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
         Vector3 bitangent = Vector3.Cross(center, tangent).normalized;
         float angle = (float)random.NextDouble() * Mathf.PI * 2f;
         float distance = item.clusterRadius * Mathf.Sqrt((float)random.NextDouble());
-        float angularOffset = distance / Mathf.Max(1f, world.PlanetRadius);
+        float angularOffset = distance / Mathf.Max(1f, surfaceContext.PlanetRadius);
         Vector3 offset = (Mathf.Cos(angle) * tangent + Mathf.Sin(angle) * bitangent) * angularOffset;
         return (center + offset).normalized;
     }
@@ -513,7 +654,7 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
         unchecked
         {
             int hash = 486187739;
-            hash = hash * 31 + (world != null ? world.TerrainConfigurationHash : 0);
+            hash = hash * 31 + (surfaceContext != null ? surfaceContext.TerrainConfigurationHash : 0);
             foreach (PlanetSurfacePropSpawnSettings item in values)
             {
                 if (item == null)
@@ -523,6 +664,10 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
                 }
                 hash = hash * 31 + PlanetDecorationCatalog.StableHash(item.catalogId);
                 hash = hash * 31 + PlanetDecorationCatalog.StableHash(item.prefab != null ? item.prefab.name : string.Empty);
+                hash = hash * 31 + (item.proceduralPlantSpecies != null
+                    ? item.proceduralPlantSpecies.StableRecipeHash()
+                    : 0);
+                hash = hash * 31 + item.variantPoolSize;
                 hash = hash * 31 + item.count;
                 hash = hash * 31 + item.seedOffset;
                 hash = hash * 31 + item.minimumScale.GetHashCode();
@@ -557,6 +702,69 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
         else
             DestroyImmediate(root.gameObject);
         root = null;
+    }
+
+    void PreparePendingPlantFactory()
+    {
+        pendingPlantFactory?.Dispose();
+        pendingPlantFactory = new ProceduralPlantFactory();
+        if (surfaceContext == null)
+            return;
+        foreach (PlanetSurfacePropSpawnSettings item in settings)
+        {
+            if (item?.proceduralPlantSpecies == null || !item.HasValidSource
+                || string.IsNullOrWhiteSpace(item.catalogId))
+                continue;
+            try
+            {
+                pendingPlantFactory.RegisterPool(
+                    item.proceduralPlantSpecies,
+                    surfaceContext.Seed,
+                    item.catalogId,
+                    item.variantPoolSize);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError(
+                    $"PlanetSurfaceDecorationSystem: failed to build plant pool {item.catalogId}: "
+                    + exception.Message,
+                    this);
+            }
+        }
+    }
+
+    void SwapPlantFactories()
+    {
+        if (pendingPlantFactory == null)
+            return;
+        plantFactory?.Dispose();
+        plantFactory = pendingPlantFactory;
+        pendingPlantFactory = null;
+    }
+
+    GameObject CreateSourceInstance(
+        PlanetSurfacePropSpawnSettings item,
+        string instanceId,
+        Transform parent)
+    {
+        if (item.prefab != null)
+            return Instantiate(item.prefab, parent);
+        if (item.proceduralPlantSpecies == null || plantFactory == null
+            || !plantFactory.ContainsPool(item.catalogId))
+            return null;
+        return plantFactory.CreateInstance(
+            item.catalogId,
+            surfaceContext != null ? surfaceContext.Seed : 0,
+            instanceId,
+            parent);
+    }
+
+    void OnDestroy()
+    {
+        plantFactory?.Dispose();
+        pendingPlantFactory?.Dispose();
+        plantFactory = null;
+        pendingPlantFactory = null;
     }
 
     void OnDrawGizmosSelected()

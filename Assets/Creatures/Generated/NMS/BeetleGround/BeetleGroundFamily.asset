@@ -1,0 +1,189 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51c2f5f83ec62f444ad2111650f3a41c, type: 3}
+  m_Name: BeetleGroundFamily
+  m_EditorClassIdentifier: 
+  familyId: BeetleGround
+  skeletonHash: 497d187bccaf8f72faf35da3f07bd226221f4202b664eb4edcf3f251cd7fc726
+  locomotionType: Hexapod
+  surfaceMode: 0
+  variantIds:
+  - BeetleGround
+  selectionWeight: 1
+  legCount: 6
+  allowRareModules: 0
+  excludedModulePrefixes: []
+  runtimePrefab: {fileID: 4449194245557993915, guid: a244c8cafb57c024e8a0c6e8e1704f32, type: 3}
+  animatorController: {fileID: 9100000, guid: f94656d99592ffb4a8b6afefb7b30b7f, type: 2}
+  familyManifest: {fileID: 4900000, guid: 736fb558909415c4380bcb5e6e970292, type: 3}
+  moduleBindings:
+  - moduleId: _Head_Rhino
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Head_Rhino
+  - moduleId: _Head_Round
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Head_Round
+  - moduleId: _Shell_Big
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Shell_Big
+  - moduleId: _Shell_Reg
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Shell_Reg
+  - moduleId: _Shell_Spiky
+    rendererPaths:
+    - ImportSpace/CanonicalRig/_Shell_Spiky
+  materialDefinitions:
+  - materialId: BigShellMat_fa04abef4e
+    materialPreset: Horn
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\models\planets\creatures\beetlerig\beetle\bigshellmat.material.MXML
+    sourceMxmlSha256: fa04abef4e230250844adccc0ee76f6ebc0dedb2e217e8cd355a800c5b525fd9
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\largeshell.base.dds
+    mainTextureSourceSha256: 202d5955526655762384f6a58ea2462ade52f116ed2ec32b1a4234df751f990e
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\largeshell.base.normal.dds
+    normalTextureSourceSha256: f35f769b1a55c6c4186f9fc9ffc4ea91693f10fd504cffc1c253667c0caea418
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\largeshell.base.masks.dds
+    maskTextureSourceSha256: a8661a7fd3493245aca10ac64b4a6a06e77489c85bfdc321756d590d1d7ecdb8
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 1f06ad80122b4264f8ed746707a2ae80, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.12
+    emissionStrength: 0
+    warnings: []
+  - materialId: RegShellMat_d9703c0293
+    materialPreset: Horn
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\models\planets\creatures\beetlerig\beetle\regshellmat.material.MXML
+    sourceMxmlSha256: d9703c029328a8c3e7437d26444c5b9f802f67482e31b44626268c6340127928
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\regularshell.base.dds
+    mainTextureSourceSha256: 806c9021fb7aa2d5f699532c24c1bfb79a7d333c328c144fc0f6ff0acdec2d47
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\regularshell.base.normal.dds
+    normalTextureSourceSha256: 560a736206787ba39279367efb581bc371dd7602592a18bbc47c6c187780f37f
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\regularshell.base.masks.dds
+    maskTextureSourceSha256: 9c76b7bce16c68504a06726190eb250028c492a27c55ec9b645a92a19140e2f5
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 4be2646214005ff41b195b0f329b4818, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.12
+    emissionStrength: 0
+    warnings: []
+  - materialId: RhinoHeadMat_4e86edb95f
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\models\planets\creatures\beetlerig\beetle\rhinoheadmat.material.MXML
+    sourceMxmlSha256: 4e86edb95f7c42b01ac855526e1fffc65dada515b0ccc0660b88c70fdd50f7b7
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\rhinohead.base.dds
+    mainTextureSourceSha256: 2715dde008c9b7cda6156bc36caeefebc546502d77c9a65bad123b91ca843d9b
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\rhinohead.base.normal.dds
+    normalTextureSourceSha256: 700be4bcf522d31c4fb82c1c6c3de87553454425f9af663469d347f7e92d4496
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\rhinohead.base.masks.dds
+    maskTextureSourceSha256: 2b0240b7b5760638663dde8a3f0ac3b04bce704c884c81b138f46f6af5777142
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 7b65ccc4bb3f2e04db053356c250febc, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: RoundHeadMat_d30fe2e41e
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\models\planets\creatures\beetlerig\beetle\roundheadmat.material.MXML
+    sourceMxmlSha256: d30fe2e41e3715df93d6282736db08cffca3d560e436304d47e7406143309af4
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\roundhead.base.dds
+    mainTextureSourceSha256: 28fa9595207566d5e5809178c58998a4404c1535458dd18d118058c5ef458390
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\roundhead.base.normal.dds
+    normalTextureSourceSha256: 6bb4be16bcb225bd70c16851d2bd4acc2c8a938c8d3cf3c4cc57e2d9a32ae497
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\roundhead.base.masks.dds
+    maskTextureSourceSha256: b299204309d93f266c4be9b5ef088f9923b484c59c6d66d400f4c6435b4a057f
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: d5e781c8190bf5b4ab7327194cfe39aa, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: SpikyShellMat_eabacca9e3
+    materialPreset: Horn
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\models\planets\creatures\beetlerig\beetle\spikyshellmat.material.MXML
+    sourceMxmlSha256: eabacca9e305c8914433738966b0101a75a1ba393951c48bbf53b515e3a12262
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\spikyshell.base.dds
+    mainTextureSourceSha256: 1d6db24b794876b37a4f8aa7deb7f16ff12d57c93c4e908f4beb8fb1fa50223f
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\spikyshell.base.normal.dds
+    normalTextureSourceSha256: a2e47b7c40e17042194d50c31b17501cee79aea9b866ed806bfe684c530e3aeb
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Beetle\Extracted\textures\planets\creatures\beetlerig\spikyshell.base.masks.dds
+    maskTextureSourceSha256: ef2c3311acff3d4be1f4301ecd2fb25bd390a0e87a080361144059b34f755649
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: cab73ab140179d44ca50f06efe006dd3, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.12
+    emissionStrength: 0
+    warnings: []
+  rendererMaterialBindings:
+  - rendererPath: ImportSpace/CanonicalRig/_Head_Rhino
+    materialIds:
+    - RhinoHeadMat_4e86edb95f
+  - rendererPath: ImportSpace/CanonicalRig/_Head_Round
+    materialIds:
+    - RoundHeadMat_d30fe2e41e
+  - rendererPath: ImportSpace/CanonicalRig/_Shell_Big
+    materialIds:
+    - BigShellMat_fa04abef4e
+  - rendererPath: ImportSpace/CanonicalRig/_Shell_Reg
+    materialIds:
+    - RegShellMat_d9703c0293
+  - rendererPath: ImportSpace/CanonicalRig/_Shell_Spiky
+    materialIds:
+    - SpikyShellMat_eabacca9e3
+  loadBearingChains: []
+  walkSpeed: 0.9
+  surfaceRootOffset: 0.31682518
+  hoverClearance: 0
+  localForwardAxis: {x: 0, y: 0, z: -1}
+  idleState: Idle
+  walkState: Walk
+  runState: Run
+  supportsRun: 0

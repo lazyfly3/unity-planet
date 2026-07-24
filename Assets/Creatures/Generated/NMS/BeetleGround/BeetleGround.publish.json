@@ -1,0 +1,54 @@
+{
+  "pipelineVersion": 10,
+  "familyId": "BeetleGround",
+  "skeletonHash": "497d187bccaf8f72faf35da3f07bd226221f4202b664eb4edcf3f251cd7fc726",
+  "validationHash": "b90d9ce0a6b90b19d8bc80107b8337bb5e2e7646fe1ac25e9bec8905843d30b2",
+  "sourceKind": "Fbx",
+  "sourceModelAsset": "Assets/Creatures/Generated/NMS/BeetleGround/BeetleGround.fbx",
+  "sourcePrefabAsset": "",
+  "familyManifestAsset": "Assets/Creatures/Generated/NMS/BeetleGround/BeetleGround_family.json",
+  "skeletonManifestAsset": "Assets/Creatures/Generated/NMS/BeetleGround/BeetleGround_skeleton.json",
+  "materialManifestAsset": "Assets/Creatures/Generated/NMS/BeetleGround/BeetleGround_materials.json",
+  "locomotionType": "Hexapod",
+  "surfaceMode": "Ground",
+  "variantIds": [
+    "BeetleGround"
+  ],
+  "supportsRun": false,
+  "legCount": 6,
+  "allowRareModules": false,
+  "excludedModulePrefixes": [],
+  "selectionWeight": 1,
+  "walkSpeed": 0.9,
+  "surfaceRootOffset": -1.0,
+  "hoverClearance": 0.0,
+  "importScale": 1.0,
+  "importEuler": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "localForwardAxis": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -1.0
+  },
+  "actions": [
+    {
+      "key": "idle",
+      "clipName": "BeetleGround_IDLE_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/BeetleGround/BeetleGround.fbx",
+      "frames": 321,
+      "loop": true
+    },
+    {
+      "key": "walk",
+      "clipName": "BeetleGround_WALK_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/BeetleGround/BeetleGround.fbx",
+      "frames": 81,
+      "loop": true
+    }
+  ],
+  "loadBearingChains": [],
+  "sourceFbxSha256": "703ea2389d7ddf70ea34873c38b8dc7a62a7c521f7a945010578c4610053cb74"
+}

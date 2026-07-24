@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody), typeof(CapsuleCollider))]
@@ -19,11 +20,13 @@ public class VoxelPlanetPlayerController : MonoBehaviour
 
     [Header("Swimming")]
     [SerializeField, Min(0.1f)] float swimSpeed = 3.5f;
-    [SerializeField, Min(0f)] float swimAcceleration = 12f;
+    [SerializeField, Min(0f)] float swimAcceleration = 8f;
+    [SerializeField, Min(0f)] float swimVerticalAcceleration = 7f;
+    [SerializeField, Min(0f)] float passiveSinkSpeed = 0.55f;
     [SerializeField, Min(0f)] float swimUpSpeed = 3f;
+    [SerializeField, Min(0f)] float swimDownSpeed = 2.5f;
     [SerializeField, Min(0f)] float waterDrag = 2.2f;
-    [SerializeField, Min(0f)] float buoyancyAcceleration = 12f;
-    [SerializeField, Min(0.1f)] float swimExitJumpHeight = 1.4f;
+    [SerializeField, Min(0f)] float swimExitUpSpeed = 3.8f;
     [SerializeField, Min(0f)] float swimExitForwardSpeed = 2.5f;
 
     [Header("Radial Grounding")]
@@ -34,14 +37,16 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     [SerializeField, Min(0f)] float groundDetachSpeed = 0.1f;
     [SerializeField] LayerMask groundLayers = ~0;
 
-    [Header("Space Travel")]
-    [SerializeField] bool enableSpaceTravel = true;
-    [SerializeField, Min(0.1f)] float galaxyMapAltitude = 8f;
-    [SerializeField] bool requireOutwardVelocity = true;
-
     [Header("Scene Debug")]
     [SerializeField] bool showGravityGizmo = true;
     [SerializeField, Min(0.1f)] float gravityGizmoLength = 3f;
+
+    [Header("Safety Recovery")]
+    [SerializeField, Min(10f)] float maximumSurfaceAltitude = 250f;
+    [SerializeField, Min(5f)] float maximumSurfacePenetration = 40f;
+
+    [Header("First Person")]
+    [SerializeField] bool hidePlayerMeshInFirstPerson = true;
 
     readonly RaycastHit[] groundHits = new RaycastHit[16];
 
@@ -54,15 +59,35 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     float pitch;
     bool jumpQueued;
     bool gameplayInputBlocked;
-    bool galaxyTransitionRequested;
+    bool externalGameplayInputBlocked;
     float activeGroundTraction = 1f;
+    Transform firstPersonCameraParent;
+    Vector3 firstPersonCameraLocalPosition;
+    Quaternion firstPersonCameraLocalRotation;
+    Rect firstPersonCameraRect;
+    bool firstPersonCameraStateCaptured;
+    bool surfacePhysicsReady = true;
 
     public bool IsGrounded { get; private set; }
     public bool IsSwimming { get; private set; }
+    public float WaterSubmersion { get; private set; }
+    public bool IsFullySubmerged => WaterSubmersion >= 0.95f;
+    public bool IsSurfacePhysicsReady => surfacePhysicsReady;
     public float LookSpeed
     {
         get => lookSpeed;
         set => lookSpeed = Mathf.Clamp(value, 0.2f, 5f);
+    }
+
+    public void SetGameplayInputBlocked(bool blocked)
+    {
+        externalGameplayInputBlocked = blocked;
+        gameplayInputBlocked = blocked || InventoryUI.BlocksGameplayInput;
+        if (blocked)
+        {
+            moveInput = Vector2.zero;
+            jumpQueued = false;
+        }
     }
 
     public void TeleportTo(Vector3 worldPosition, Quaternion worldRotation)
@@ -82,8 +107,98 @@ if (body == null)
         previousUp = smoothUp;
         headingForward = GetTangentForward(worldRotation * Vector3.forward, smoothUp);
         body.rotation = Quaternion.LookRotation(headingForward, smoothUp);
-    
-}
+    }
+
+    public void CaptureFirstPersonCameraState()
+    {
+        if (cameraTransform == null || firstPersonCameraStateCaptured)
+            return;
+
+        firstPersonCameraParent = cameraTransform.parent;
+        firstPersonCameraLocalPosition = cameraTransform.localPosition;
+        firstPersonCameraLocalRotation = cameraTransform.localRotation;
+        Camera camera = cameraTransform.GetComponent<Camera>();
+        firstPersonCameraRect = camera != null ? camera.rect : new Rect(0f, 0f, 1f, 1f);
+        firstPersonCameraStateCaptured = true;
+    }
+
+    public void RestoreFirstPersonCamera()
+    {
+        if (cameraTransform == null)
+            return;
+
+        if (!firstPersonCameraStateCaptured)
+            CaptureFirstPersonCameraState();
+
+        if (firstPersonCameraParent != null && cameraTransform.parent != firstPersonCameraParent)
+            cameraTransform.SetParent(firstPersonCameraParent, false);
+
+        cameraTransform.localPosition = firstPersonCameraLocalPosition;
+        cameraTransform.localRotation = firstPersonCameraLocalRotation;
+        Camera camera = cameraTransform.GetComponent<Camera>();
+        if (camera != null)
+        {
+            camera.rect = firstPersonCameraRect;
+            camera.enabled = true;
+        }
+
+        AudioListener listener = cameraTransform.GetComponent<AudioListener>();
+        if (listener != null)
+            listener.enabled = true;
+
+        EnsureWaterCameraEffects();
+    }
+
+    public void EnterFirstPersonSurfaceMode()
+    {
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
+
+        enabled = true;
+        if (body == null)
+            body = GetComponent<Rigidbody>();
+        if (capsule == null)
+            capsule = GetComponent<CapsuleCollider>();
+
+        body.isKinematic = !surfacePhysicsReady;
+        body.useGravity = false;
+        body.interpolation = RigidbodyInterpolation.Interpolate;
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        body.constraints = RigidbodyConstraints.FreezeRotation;
+        capsule.enabled = true;
+
+        CharacterController legacyController = GetComponent<CharacterController>();
+        if (legacyController != null)
+            legacyController.enabled = false;
+
+        SetFirstPersonBodyVisibility();
+        RestoreFirstPersonCamera();
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
+    public void SetSurfacePhysicsReady(bool ready)
+    {
+        surfacePhysicsReady = ready;
+        if (body == null)
+            body = GetComponent<Rigidbody>();
+
+        if (ready)
+        {
+            body.isKinematic = false;
+            body.velocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+        }
+        else
+        {
+            if (!body.isKinematic)
+            {
+                body.velocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+            }
+            body.isKinematic = true;
+        }
+    }
 
     void Awake()
     {
@@ -110,10 +225,44 @@ if (body == null)
             Debug.LogError("VoxelPlanetPlayerController: Camera Transform cannot be the player transform.");
             cameraTransform = null;
         }
+
+        SetFirstPersonBodyVisibility();
+        CaptureFirstPersonCameraState();
+        EnsureWaterCameraEffects();
+    }
+
+    void EnsureWaterCameraEffects()
+    {
+        if (cameraTransform == null)
+            return;
+
+        Camera waterCamera = cameraTransform.GetComponent<Camera>();
+        if (waterCamera == null)
+            return;
+
+        WaterCameraEffects effects =
+            waterCamera.GetComponent<WaterCameraEffects>()
+            ?? waterCamera.gameObject.AddComponent<WaterCameraEffects>();
+        effects.Configure(this);
+    }
+
+    void SetFirstPersonBodyVisibility()
+    {
+        if (!hidePlayerMeshInFirstPerson)
+            return;
+
+        MeshRenderer renderer = GetComponent<MeshRenderer>();
+        if (renderer != null)
+            renderer.enabled = false;
     }
 
     void Start()
     {
+        if (SceneManager.GetActiveScene().name == "star"
+            && GetComponent<SurfaceMultifunctionController>() == null)
+        {
+            gameObject.AddComponent<SurfaceMultifunctionController>();
+        }
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
@@ -125,7 +274,8 @@ if (body == null)
 
     void Update()
     {
-        gameplayInputBlocked = InventoryUI.BlocksGameplayInput;
+        gameplayInputBlocked = externalGameplayInputBlocked
+            || InventoryUI.BlocksGameplayInput;
         if (gameplayInputBlocked)
         {
             moveInput = Vector2.zero;
@@ -138,7 +288,6 @@ if (body == null)
             GalaxyTravelManager manager = GalaxyTravelManager.Instance;
             if (manager != null && manager.IsInterstellarGalaxy && quadSphereWorld != null)
             {
-                galaxyTransitionRequested = true;
                 manager.OpenGalaxyMap(quadSphereWorld);
                 return;
             }
@@ -157,6 +306,12 @@ if (body == null)
 
     void FixedUpdate()
     {
+        if (!surfacePhysicsReady)
+            return;
+
+        if (RecoverFromInvalidSurfacePosition())
+            return;
+
         UpdateSmoothUp(Time.fixedDeltaTime);
         TransportHeadingToCurrentUp();
 
@@ -164,7 +319,36 @@ if (body == null)
         body.MoveRotation(targetRotation);
 
         HandlePhysicsMovement();
-        CheckGalaxyTransition();
+    }
+
+    bool RecoverFromInvalidSurfacePosition()
+    {
+        if (quadSphereWorld == null || !quadSphereWorld.IsGenerationComplete)
+            return false;
+
+        Vector3 center = quadSphereWorld.GetPlanetCenterWorld();
+        Vector3 offset = body.position - center;
+        float distance = offset.magnitude;
+        bool finite = float.IsFinite(distance)
+            && float.IsFinite(body.velocity.x)
+            && float.IsFinite(body.velocity.y)
+            && float.IsFinite(body.velocity.z);
+        Vector3 direction = distance > 0.001f && finite ? offset / distance : Vector3.up;
+        float surfaceRadius = quadSphereWorld.GetProceduralSurfaceRadius(direction);
+        float altitude = distance - surfaceRadius;
+        if (finite
+            && altitude <= maximumSurfaceAltitude
+            && altitude >= -maximumSurfacePenetration)
+            return false;
+
+        Vector3 recoveryPosition = center + direction * (surfaceRadius + 1.2f);
+        Vector3 recoveryForward = GetTangentForward(headingForward, direction);
+        TeleportTo(recoveryPosition, Quaternion.LookRotation(recoveryForward, direction));
+        RestoreFirstPersonCamera();
+        Debug.LogWarning(
+            $"VoxelPlanetPlayerController: recovered an invalid surface position (altitude {altitude:F1}m).",
+            this);
+        return true;
     }
 
     void LateUpdate()
@@ -268,15 +452,33 @@ if (body == null)
         float gravityMagnitude = gravity.magnitude;
         Vector3 up = gravityMagnitude > 0.0001f ? -gravity / gravityMagnitude : smoothUp;
 
-        Vector3 waterProbe = body.position - up * Mathf.Max(0.2f, capsule.height * 0.25f);
-        if (PlanetRiverSystem.TrySampleAny(waterProbe, out WaterSample water) && water.signedDistance < 0f)
+        Vector3 scale = transform.lossyScale;
+        float capsuleRadius = capsule.radius * Mathf.Max(
+            Mathf.Abs(scale.x),
+            Mathf.Abs(scale.z));
+        float capsuleHeight = Mathf.Max(
+            capsule.height * Mathf.Abs(scale.y),
+            capsuleRadius * 2f);
+        Vector3 capsuleCenter = transform.TransformPoint(capsule.center);
+        bool hasWater = PlanetWaterRegistry.TrySampleAny(
+            capsuleCenter,
+            out WaterSample water);
+        float submersion = hasWater
+            ? CalculateCapsuleSubmersion(
+                water.signedDistance,
+                capsuleHeight)
+            : 0f;
+        IsSwimming = ResolveSwimmingState(
+            IsSwimming,
+            hasWater,
+            submersion);
+        WaterSubmersion = hasWater ? submersion : 0f;
+        if (IsSwimming)
         {
-            IsSwimming = true;
-            HandleSwimming(up, gravity, water);
+            HandleSwimming(up, water, WaterSubmersion);
             IsGrounded = false;
             return;
         }
-        IsSwimming = false;
 
         activeGroundTraction = 1f;
         if (PlanetWeatherSystem.TrySample(body.position, out WeatherSnapshot weather))
@@ -321,32 +523,60 @@ if (body == null)
         }
     }
 
-    void HandleSwimming(Vector3 up, Vector3 gravity, WaterSample water)
+    void HandleSwimming(
+        Vector3 up,
+        WaterSample water,
+        float submersion)
     {
         bool exitJumpRequested = jumpQueued;
         jumpQueued = false;
         Vector3 forward = GetTangentForward(headingForward, up);
         Vector3 right = Vector3.Cross(up, forward).normalized;
         Vector3 desiredDirection = right * moveInput.x + forward * moveInput.y;
-        Vector3 desiredVelocity = desiredDirection * swimSpeed + water.flowVelocity;
-        if (Input.GetKey(KeyCode.Space))
-            desiredVelocity += up * swimUpSpeed;
-
-        float submerged = water.Submersion;
-        body.velocity = Vector3.MoveTowards(
+        Vector3 flowTangential = Vector3.ProjectOnPlane(
+            water.flowVelocity,
+            up);
+        Vector3 desiredTangentialVelocity =
+            desiredDirection * swimSpeed + flowTangential;
+        Vector3 tangentialVelocity = Vector3.ProjectOnPlane(
             body.velocity,
-            desiredVelocity,
-            swimAcceleration * Mathf.Max(0.25f, submerged) * Time.fixedDeltaTime);
-        body.AddForce(-body.velocity * waterDrag * submerged, ForceMode.Acceleration);
-        body.AddForce(gravity * (1f - submerged), ForceMode.Acceleration);
-        body.AddForce(up * buoyancyAcceleration * submerged, ForceMode.Acceleration);
+            up);
+        float tangentialAcceleration =
+            desiredDirection.sqrMagnitude > 0.0001f
+                ? swimAcceleration
+                : waterDrag;
+        tangentialVelocity = Vector3.MoveTowards(
+            tangentialVelocity,
+            desiredTangentialVelocity,
+            tangentialAcceleration * Time.fixedDeltaTime);
 
-        if (exitJumpRequested && gravity.sqrMagnitude > 0.0001f)
+        bool ascendHeld = !gameplayInputBlocked
+            && Input.GetKey(KeyCode.Space);
+        bool descendHeld = !gameplayInputBlocked
+            && Input.GetKey(KeyCode.LeftShift);
+        float verticalTarget = GetSwimVerticalTarget(
+            ascendHeld,
+            descendHeld,
+            passiveSinkSpeed,
+            swimUpSpeed,
+            swimDownSpeed);
+        float verticalVelocity = Vector3.Dot(body.velocity, up);
+        float verticalResponse = Mathf.Lerp(
+            swimVerticalAcceleration * 0.45f,
+            swimVerticalAcceleration,
+            submersion);
+        verticalVelocity = Mathf.MoveTowards(
+            verticalVelocity,
+            verticalTarget,
+            verticalResponse * Time.fixedDeltaTime);
+        body.velocity = tangentialVelocity + up * verticalVelocity;
+
+        bool nearSurface = submersion <= 0.85f;
+        if (exitJumpRequested && ascendHeld && nearSurface)
         {
-            float exitSpeed = Mathf.Sqrt(swimExitJumpHeight * 2f * gravity.magnitude);
             float currentExitSpeed = Vector3.Dot(body.velocity, up);
-            if (currentExitSpeed < exitSpeed)
-                body.velocity += up * (exitSpeed - currentExitSpeed);
+            if (currentExitSpeed < swimExitUpSpeed)
+                body.velocity += up * (swimExitUpSpeed - currentExitSpeed);
 
             if (desiredDirection.sqrMagnitude > 0.0001f)
             {
@@ -358,38 +588,40 @@ if (body == null)
         }
     }
 
-    void CheckGalaxyTransition()
+    public static float CalculateCapsuleSubmersion(
+        float waterSignedDistanceAtCenter,
+        float worldCapsuleHeight)
     {
-        if (!enableSpaceTravel || galaxyTransitionRequested || quadSphereWorld == null
-            || !quadSphereWorld.IsGenerationComplete)
-            return;
+        float height = Mathf.Max(0.01f, worldCapsuleHeight);
+        float halfHeight = height * 0.5f;
+        return Mathf.Clamp01(
+            (halfHeight - waterSignedDistanceAtCenter) / height);
+    }
 
-        Vector3 center = quadSphereWorld.GetPlanetCenterWorld();
-        Vector3 fromCenter = body.position - center;
-        float worldScale = Mathf.Max(
-            Mathf.Abs(quadSphereWorld.transform.lossyScale.x),
-            Mathf.Abs(quadSphereWorld.transform.lossyScale.y),
-            Mathf.Abs(quadSphereWorld.transform.lossyScale.z));
-        Vector3 localPosition = quadSphereWorld.transform.InverseTransformPoint(body.position);
-        Vector3 localFromCenter = localPosition - quadSphereWorld.GetPlanetCenterLocal();
-        float surfaceRadius = quadSphereWorld.GetProceduralSurfaceRadius(localFromCenter);
-        float altitude = (localFromCenter.magnitude - surfaceRadius) * worldScale;
-        if (altitude < galaxyMapAltitude)
-            return;
+    public static bool ResolveSwimmingState(
+        bool previousState,
+        bool hasWater,
+        float submersion)
+    {
+        if (!hasWater)
+            return false;
+        return previousState
+            ? submersion > 0.04f
+            : submersion >= 0.1f;
+    }
 
-        Vector3 up = fromCenter.sqrMagnitude > 0.0001f ? fromCenter.normalized : transform.up;
-        if (requireOutwardVelocity && Vector3.Dot(body.velocity, up) <= 0f)
-            return;
-
-        GalaxyTravelManager manager = GalaxyTravelManager.Instance;
-        if (manager == null)
-            return;
-
-        galaxyTransitionRequested = true;
-        if (manager.IsInterstellarGalaxy)
-            manager.OpenInterstellarFlight(quadSphereWorld);
-        else
-            manager.OpenGalaxyMap(quadSphereWorld);
+    public static float GetSwimVerticalTarget(
+        bool ascendHeld,
+        bool descendHeld,
+        float sinkSpeed,
+        float ascentSpeed,
+        float descentSpeed)
+    {
+        if (ascendHeld == descendHeld)
+            return -Mathf.Max(0f, sinkSpeed);
+        return ascendHeld
+            ? Mathf.Max(0f, ascentSpeed)
+            : -Mathf.Max(0f, descentSpeed);
     }
 
     void MoveOnGround(Vector3 desiredDirection, Vector3 groundNormal)

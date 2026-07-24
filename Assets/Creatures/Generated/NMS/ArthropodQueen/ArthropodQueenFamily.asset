@@ -1,0 +1,938 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51c2f5f83ec62f444ad2111650f3a41c, type: 3}
+  m_Name: ArthropodQueenFamily
+  m_EditorClassIdentifier: 
+  familyId: ArthropodQueen
+  skeletonHash: a79d14ef627d10eeefc0157c20e64cd04c1c1c25c4b6445573ddc83ff6bacc52
+  locomotionType: Arthropod
+  surfaceMode: 0
+  variantIds:
+  - ArthropodQueen
+  selectionWeight: 1
+  legCount: 6
+  allowRareModules: 0
+  excludedModulePrefixes: []
+  runtimePrefab: {fileID: 3083136996886187694, guid: ce25b1c4ef8e00f41893fb2ead712665, type: 3}
+  animatorController: {fileID: 9100000, guid: e4626f55ca9728f44a385e2f30166d88, type: 2}
+  familyManifest: {fileID: 4900000, guid: 6746064788befb84f8f5341311f4ecb2, type: 3}
+  moduleBindings:
+  - moduleId: ArthropodQueen_Fixed
+    rendererPaths:
+    - ImportSpace/CanonicalRig/APodQueen
+    - ImportSpace/CanonicalRig/APodQueenAbdomen
+    - ImportSpace/CanonicalRig/APodQueenAbdomenShellLowL
+    - ImportSpace/CanonicalRig/APodQueenAbdomenShellLowR
+    - ImportSpace/CanonicalRig/APodQueenAbdomenShellMain
+    - ImportSpace/CanonicalRig/APodQueenAbdomenShellUpL
+    - ImportSpace/CanonicalRig/APodQueenAbdomenShellUpR
+    - ImportSpace/CanonicalRig/APodQueenBody
+    - ImportSpace/CanonicalRig/APodQueenBodyShell
+    - ImportSpace/CanonicalRig/APodQueenHead
+    - ImportSpace/CanonicalRig/APodQueenHeadShell
+    - ImportSpace/CanonicalRig/APodQueenLegs
+    - ImportSpace/CanonicalRig/APodQueenLegsShellL1
+    - ImportSpace/CanonicalRig/APodQueenLegsShellL2
+    - ImportSpace/CanonicalRig/APodQueenLegsShellL3
+    - ImportSpace/CanonicalRig/APodQueenLegsShellR1
+    - ImportSpace/CanonicalRig/APodQueenLegsShellR2
+    - ImportSpace/CanonicalRig/APodQueenLegsShellR3
+    - ImportSpace/CanonicalRig/APodQueenThorax
+    - ImportSpace/CanonicalRig/AbdomenArmour
+    - ImportSpace/CanonicalRig/AbdomenArmourLowL
+    - ImportSpace/CanonicalRig/AbdomenArmourLowR
+    - ImportSpace/CanonicalRig/AbdomenArmourUpL
+    - ImportSpace/CanonicalRig/AbdomenArmourUpR
+    - ImportSpace/CanonicalRig/Body
+    - ImportSpace/CanonicalRig/BodyArmour
+    - ImportSpace/CanonicalRig/EXPLODE
+    - ImportSpace/CanonicalRig/EXPLODE.001
+    - ImportSpace/CanonicalRig/EXPLODE.002
+    - ImportSpace/CanonicalRig/EXPLODE.003
+    - ImportSpace/CanonicalRig/EXPLODE.004
+    - ImportSpace/CanonicalRig/EXPLODE.005
+    - ImportSpace/CanonicalRig/EXPLODE.006
+    - ImportSpace/CanonicalRig/EXPLODE.007
+    - ImportSpace/CanonicalRig/EXPLODE.008
+    - ImportSpace/CanonicalRig/EXPLODE.009
+    - ImportSpace/CanonicalRig/EXPLODE.010
+    - ImportSpace/CanonicalRig/EXPLODE.011
+    - ImportSpace/CanonicalRig/EXPLODE.012
+    - ImportSpace/CanonicalRig/EXPLODE.013
+    - ImportSpace/CanonicalRig/HeadArmour
+    - ImportSpace/CanonicalRig/LOCDrool
+    - ImportSpace/CanonicalRig/LegArmourL1
+    - ImportSpace/CanonicalRig/LegArmourL2
+    - ImportSpace/CanonicalRig/LegArmourL3
+    - ImportSpace/CanonicalRig/LegArmourR1
+    - ImportSpace/CanonicalRig/LegArmourR2
+    - ImportSpace/CanonicalRig/LegArmourR3
+    - ImportSpace/CanonicalRig/SUB1APodQueenAbdomenShellMain
+    - ImportSpace/CanonicalRig/SUB1APodQueenBodyShell
+    - ImportSpace/CanonicalRig/SUB1APodQueenHead
+    - ImportSpace/CanonicalRig/SUB1APodQueenHeadShell
+    - ImportSpace/CanonicalRig/SUB1APodQueenLegsShellL1
+    - ImportSpace/CanonicalRig/SUB1APodQueenLegsShellL2
+    - ImportSpace/CanonicalRig/SUB1APodQueenLegsShellL3
+    - ImportSpace/CanonicalRig/SUB1APodQueenLegsShellR1
+    - ImportSpace/CanonicalRig/SUB1APodQueenLegsShellR2
+    - ImportSpace/CanonicalRig/SUB1APodQueenLegsShellR3
+    - ImportSpace/CanonicalRig/SUB2APodQueenHead
+    - ImportSpace/CanonicalRig/SUB2APodQueenHeadShell
+    - ImportSpace/CanonicalRig/SUB3APodQueenHead
+    - ImportSpace/CanonicalRig/SUB4APodQueenHead
+    - ImportSpace/CanonicalRig/SUB5APodQueenHead
+    - ImportSpace/CanonicalRig/SUB6APodQueenHead
+    - ImportSpace/CanonicalRig/antenna_L0_0_jnt
+    - ImportSpace/CanonicalRig/antenna_L0_1_jnt
+    - ImportSpace/CanonicalRig/antenna_L0_2_jnt
+    - ImportSpace/CanonicalRig/antenna_R0_0_jnt
+    - ImportSpace/CanonicalRig/antenna_R0_1_jnt
+    - ImportSpace/CanonicalRig/antenna_R0_2_jnt
+    - ImportSpace/CanonicalRig/head_C0_0_jnt
+    - ImportSpace/CanonicalRig/leg_L0_0_jnt
+    - ImportSpace/CanonicalRig/leg_L0_1_jnt
+    - ImportSpace/CanonicalRig/leg_L0_2_jnt
+    - ImportSpace/CanonicalRig/leg_L0_3_jnt
+    - ImportSpace/CanonicalRig/leg_L0_end_jnt
+    - ImportSpace/CanonicalRig/leg_L1_0_jnt
+    - ImportSpace/CanonicalRig/leg_L1_1_jnt
+    - ImportSpace/CanonicalRig/leg_L1_2_jnt
+    - ImportSpace/CanonicalRig/leg_L1_3_jnt
+    - ImportSpace/CanonicalRig/leg_L1_end_jnt
+    - ImportSpace/CanonicalRig/leg_L2_0_jnt
+    - ImportSpace/CanonicalRig/leg_L2_1_jnt
+    - ImportSpace/CanonicalRig/leg_L2_2_jnt
+    - ImportSpace/CanonicalRig/leg_L2_3_jnt
+    - ImportSpace/CanonicalRig/leg_L2_end_jnt
+    - ImportSpace/CanonicalRig/leg_R0_0_jnt
+    - ImportSpace/CanonicalRig/leg_R0_1_jnt
+    - ImportSpace/CanonicalRig/leg_R0_2_jnt
+    - ImportSpace/CanonicalRig/leg_R0_3_jnt
+    - ImportSpace/CanonicalRig/leg_R0_end_jnt
+    - ImportSpace/CanonicalRig/leg_R1_0_jnt
+    - ImportSpace/CanonicalRig/leg_R1_1_jnt
+    - ImportSpace/CanonicalRig/leg_R1_2_jnt
+    - ImportSpace/CanonicalRig/leg_R1_3_jnt
+    - ImportSpace/CanonicalRig/leg_R1_end_jnt
+    - ImportSpace/CanonicalRig/leg_R2_0_jnt
+    - ImportSpace/CanonicalRig/leg_R2_1_jnt
+    - ImportSpace/CanonicalRig/leg_R2_2_jnt
+    - ImportSpace/CanonicalRig/leg_R2_3_jnt
+    - ImportSpace/CanonicalRig/leg_R2_end_jnt
+    - ImportSpace/CanonicalRig/legbase_L0_0_jnt
+    - ImportSpace/CanonicalRig/legbase_L1_0_jnt
+    - ImportSpace/CanonicalRig/legbase_L2_0_jnt
+    - ImportSpace/CanonicalRig/legbase_R0_0_jnt
+    - ImportSpace/CanonicalRig/legbase_R1_0_jnt
+    - ImportSpace/CanonicalRig/legbase_R2_0_jnt
+    - ImportSpace/CanonicalRig/mandible_L0_0_jnt
+    - ImportSpace/CanonicalRig/mandible_L0_1_jnt
+    - ImportSpace/CanonicalRig/mandible_R0_0_jnt
+    - ImportSpace/CanonicalRig/mandible_R0_1_jnt
+    - ImportSpace/CanonicalRig/models\planets\creatures\arthropod\arthropodqueen
+    - ImportSpace/CanonicalRig/spine_C0_0_jnt
+    - ImportSpace/CanonicalRig/tail_C0_0_jnt
+    - ImportSpace/CanonicalRig/tail_C0_1_jnt
+    - ImportSpace/CanonicalRig/tail_C0_2_jnt
+  materialDefinitions:
+  - materialId: ArthropodAbdomen02MAT1_4ae8df23cf
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropodqueen\arthropodabdomen02mat1.material.MXML
+    sourceMxmlSha256: 4ae8df23cf9b0a774cb7a6e91e09080d03f895023e8ff8b18b11a7588129b15a
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\abdomens\02\arthropodabdomen02.base.dds
+    mainTextureSourceSha256: 1a00c7b7e72002f9434559eae03679539496b1e53b1daacf15ea65f92de13734
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\abdomens\02\arthropodabdomen02.base.normal.dds
+    normalTextureSourceSha256: 6472e86a0bb2b303f2b56fe7f8a8366d91f49add64ef408305522df6f2b46e81
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\abdomens\02\arthropodabdomen02.base.masks.dds
+    maskTextureSourceSha256: 205fcbbe1b1a2920aa3cb708a97d630591591a6f6a99a9db41ef871234df5418
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: c8ccc8dcc6907654dac90137390d5259, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodAbdomen03ShellMAT1_f66cdd7865
+    materialPreset: Horn
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropod\arthropodabdomen03shellmat1.material.MXML
+    sourceMxmlSha256: f66cdd78654c260a8cc6ead937b9b1b81e7a750d36698b399cfd48c3b0c8f8e3
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\abdomens\03\arthropodabdomen03shell.base.dds
+    mainTextureSourceSha256: 973d325a086d7cbffc519e00cb6564d58066ae5cc6c1ea446d535b1c3026848e
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\abdomens\03\arthropodabdomen03shell.base.normal.dds
+    normalTextureSourceSha256: b2854ca1c18841cc7d8fa302577dd6c1584cf620c95d3c4ea031ab8cc83d06a4
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\abdomens\03\arthropodabdomen03shell.base.masks.dds
+    maskTextureSourceSha256: fe624e8103351cbab853d4a02c5e4ba07aebf200329618c2ab8b7df19aa7b5ab
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 369f6950fd68df64d928b22e3ad8edf2, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.12
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodAbdomen05MAT_41a837c6bd
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropod\arthropodabdomen05mat.material.MXML
+    sourceMxmlSha256: 41a837c6bd4e8e034d5f89215fd3cb05b5a3b047bd9846afb4fb07c79c80ef78
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\abdomens\05\arthropodabdomen05.base.dds
+    mainTextureSourceSha256: f9c451baf43e864c9c52d118533496e3fe26d0e259c3ce614f78b0ce72772b05
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\abdomens\05\arthropodabdomen05.base.normal.dds
+    normalTextureSourceSha256: 97268e298f2883ddac01c869ea62dabd52d003732c4ba2ecb5524f92ac8e7e3a
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\abdomens\05\arthropodabdomen05.base.masks.dds
+    maskTextureSourceSha256: bc59ef2e9c5fa53bd6e4f9dcece0a772548330eeb2bbc4873924d74ef48b5ac7
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 28a513eac152af447ba5f03f74ad5e02, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodFangsMAT1_afc98f5082
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropod\arthropodfangsmat1.material.MXML
+    sourceMxmlSha256: afc98f50820296b5488ae93be494913ec7bc885a1eb2672dc42ee41309450d9c
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\misc\arthropodfangs.base.dds
+    mainTextureSourceSha256: 38068f3f1c6ee44a05ec977ba6cecdf86fb85156097f18c9152aa2f2e58fde7a
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\misc\arthropodfangs.base.normal.dds
+    normalTextureSourceSha256: e73f810cb42552f6fc4abe8080b4fe4e623938e446e5b9e2aa6ec6bfcada6ca3
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\misc\arthropodfangs.base.masks.dds
+    maskTextureSourceSha256: 913a3d411c8c62eb10295dde48a3ee9f420c192102147872c6320a481d368bdf
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 2d6195b6abaa23b469a44063aa0c5427, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodHead02LowerMAT1_d1ef028fb2
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropod\arthropodhead02lowermat1.material.MXML
+    sourceMxmlSha256: d1ef028fb2adbfd288c3c8c976a82b4214e5e6211083d1f3b1cc756700c7070c
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\02\arthropodhead02lower.base.dds
+    mainTextureSourceSha256: 18b576a9f91b276c1b51080847442105e353d92cb95acfebc6e83c1a36f4c55c
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\02\arthropodhead02lower.base.normal.dds
+    normalTextureSourceSha256: b506cf66b1c65f848178dbcf00b76270df1a1fe6b1afeb0985614cfb62ea6867
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\02\arthropodhead02lower.base.masks.dds
+    maskTextureSourceSha256: 4c9b890fbd3b69386a03e4876ab36ea6fb969e64f64f245cf5860f7722bdd706
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 6ecb80bfee208b94aa3357ca5a67ed11, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodHead02UpperMAT_2d7cf1b548
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropodqueen\arthropodhead02uppermat.material.MXML
+    sourceMxmlSha256: 2d7cf1b5480bb38fcb7a674d2c0282845f1742396e326f202fd6a8a615bae9a1
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\02\arthropodhead02upper.base.dds
+    mainTextureSourceSha256: 1b81f93c53ad63726f222a15b3032be783c385eb9ac5b750dcb664a3bb3ccb47
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\02\arthropodhead02upper.base.normal.dds
+    normalTextureSourceSha256: 0f0eb1b713d4e1d008ab1845f738b40beb6377b1323820d0a45de1a028db7bb3
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\02\arthropodhead02upper.base.masks.dds
+    maskTextureSourceSha256: 1094f37975bbb61ef28ce041c466d5aac80d99fc638db982e202541732687bce
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 914dd165937a60c4c803043f255638a7, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodHead04UpperMAT_528d841dc2
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropod\arthropodhead04uppermat.material.MXML
+    sourceMxmlSha256: 528d841dc2911b31245b5df2299c15bc06eb1e3a5883f954b49dab925396e7d0
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\04\arthropodhead04upper.base.dds
+    mainTextureSourceSha256: 518de98315039fb2424049887aec7d8eef1102d4141192eb13ee80cff9f1820b
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\04\arthropodhead04upper.base.normal.dds
+    normalTextureSourceSha256: e60af9f3b6e863ab80ea55c547aac75cb2890cda7a145e24379122fb54915456
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\04\arthropodhead04upper.base.masks.dds
+    maskTextureSourceSha256: e9c492810af42ed54285ca41255dde3b4fad6e6a753449196fd069c6eb3fe62b
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: c182596f8e203f548950fccd8a42a533, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodHead05LowerMAT1_d4879b23e4
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropod\arthropodhead05lowermat1.material.MXML
+    sourceMxmlSha256: d4879b23e4542ffd041b9ecd7b32e6835c769c0946d0f70b42371cee853adaf0
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\05\arthropodhead05lower.base.dds
+    mainTextureSourceSha256: 5f413ab02260f09138c169938d936ab6ae58881c14068b074a54786dea13d5c6
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\05\arthropodhead05lower.base.normal.dds
+    normalTextureSourceSha256: 564a128c0e7cb7ae51e09e1b15500b49fb0a1707f36aec9184fc4f28f54c2da9
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\05\arthropodhead05lower.base.masks.dds
+    maskTextureSourceSha256: fbd7201014b8468e7a9fe4afe89883e4f22e692422cf06ff3d26878076cdd9ef
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 9ed7778d9051d0043ba185c28f24503c, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodHead05UpperMAT1_e87f411de2
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropod\arthropodhead05uppermat1.material.MXML
+    sourceMxmlSha256: e87f411de28819b769e384b24c878cce803c1d7972cf8b451547d91021a94d29
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\05\arthropodhead05upper.base.dds
+    mainTextureSourceSha256: 8346c38dbc4df0f9b29909bd33692453003fc29b69e28cd1b63d244ef76f15bf
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\05\arthropodhead05upper.base.normal.dds
+    normalTextureSourceSha256: 6f909f67fa6698488f49a2ff518280776709f30e70f8f57bfb95bdad99fffc4c
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\heads\05\arthropodhead05upper.base.masks.dds
+    maskTextureSourceSha256: 7219f8c33d5874e7d7bf6d046dd3bd71a65dff9db18508c68323202463524c54
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 10e8c5511ca98514289ae2ec5eac7914, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodLegs01MAT_b376b868a2
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropodqueen\arthropodlegs01mat.material.MXML
+    sourceMxmlSha256: b376b868a2c85974ca9dec9e1f510b6f5b19c82e2089c4f640e6b232e8f653cf
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\legs\01\arthropodlegs01.base.dds
+    mainTextureSourceSha256: 46ce09f3c91019c2c479d9625afecb44e92e9a38df94594660e835df22a7dcd6
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\legs\01\arthropodlegs01.base.normal.dds
+    normalTextureSourceSha256: 0cabef9636db1b1c929896eff7d68641ea3314b4aa0d20a57d8ad8f9c0f17367
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\legs\01\arthropodlegs01.base.masks.dds
+    maskTextureSourceSha256: e058cfe1254a288ff8f87aacea1cc23cc32cea762ad3d4b9ed5c3281e3fc397f
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 0ea3d7fcbe8ce9a45a92c83b3581b677, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodLegs02MAT_8fade0c3eb
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropod\arthropodlegs02mat.material.MXML
+    sourceMxmlSha256: 8fade0c3eb93d272328d83fff710e548f77836c6ad945fdc94738f069d4f064a
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\legs\02\arthropodlegs02.base.dds
+    mainTextureSourceSha256: 822da8c2c903d16b5190884b07cbf8be255c5108423723970115e3a909c4ec9f
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\legs\02\arthropodlegs02.base.normal.dds
+    normalTextureSourceSha256: 280bd06376808bc6236bae8e269607794dd8b873d6a3330ff44a027737bde157
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\legs\02\arthropodlegs02.base.masks.dds
+    maskTextureSourceSha256: 4279728d0854c48ce1ef88354ca0928f4a0b4cf6f90efe3a3dd20f73886cbd3c
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 29b065fc2f6417545b4a6d61d20e1c94, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodLegs04MAT_b6fa36d876
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropod\arthropodlegs04mat.material.MXML
+    sourceMxmlSha256: b6fa36d876d497cc01a3b31ddfd7e9884753112f8eab16cc7b5aaabc77a71b17
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\legs\04\arthropodlegs04.base.dds
+    mainTextureSourceSha256: 5845953ec609c524d603e4b33482f991ddc1aad56720d519f27638d7a4b81621
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\legs\04\arthropodlegs04.base.normal.dds
+    normalTextureSourceSha256: c2c29504779e100692a251a3bda591b29baf6550bf67c01d5fe9f79334b656ba
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\legs\04\arthropodlegs04.base.masks.dds
+    maskTextureSourceSha256: 118b1130a200250e05e6a962b9f727982edcd772c6ba0cdfdfb35430279c04e6
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 6d631ba6890566e4a9688706876ca2fe, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodLegs05MAT_05eb3b8dd1
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropod\arthropodlegs05mat.material.MXML
+    sourceMxmlSha256: 05eb3b8dd1ced4e67172efe2fa1d729030a0fe26c4a2facf6ab7c20e76a84ccb
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\legs\05\arthropodlegs05.base.dds
+    mainTextureSourceSha256: d7d47849377000dc50934d652305a1075f930ada212cc3bc90c515556e768bae
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\legs\05\arthropodlegs05.base.normal.dds
+    normalTextureSourceSha256: 7c9ca390c9c09dc0001256b03304b9499804574852cc845e39350f964afbd17f
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\legs\05\arthropodlegs05.base.masks.dds
+    maskTextureSourceSha256: a8dd5c4575aa5fcf393c14716750541589ecff8d191adab80ecec9d30246d417
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 26b150946806ae7468ac4d8443c59618, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodShell02MAT_d86f265ac7
+    materialPreset: Horn
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropodqueen\arthropodshell02mat.material.MXML
+    sourceMxmlSha256: d86f265ac7814fde62b2dcb54f411a248f3b0dcc1759060b3b5be81410c85a89
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\shells\02\arthropodshell02.base.dds
+    mainTextureSourceSha256: f70ef5fe80282647c1e0c78a7e6040ede79730b0bd60d86e0215310f26ad279b
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\shells\02\arthropodshell02.base.normal.dds
+    normalTextureSourceSha256: b5bee8d068cb7e29da2e4248b5bed54698948c40eb06c1b4bab955f8fa5fc929
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\shells\02\arthropodshell02.base.masks.dds
+    maskTextureSourceSha256: 7c228031789c34e1199bce8c4cf69bfa18328cfeec9d72502815df92644f49a9
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: b649ebd417b919b459aa52f204ccdb08, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.12
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodShell05MAT_25dc16e741
+    materialPreset: Horn
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropodqueen\arthropodshell05mat.material.MXML
+    sourceMxmlSha256: 25dc16e741586d16a10c907feadd351d4b801d3fb7b0dad086426f5787d0be6f
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\shells\05\arthropodshell05.base.dds
+    mainTextureSourceSha256: 49fb14bcfe015741bc1cd21cc3542f64bc38e3ecf383968e5fed2b7390c25ec0
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\shells\05\arthropodshell05.base.normal.dds
+    normalTextureSourceSha256: c9615791c8ea7eede12180e3ea78c3eaa2adc80c8febfdeaeead213a2700d0ed
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\shells\05\arthropodshell05.base.masks.dds
+    maskTextureSourceSha256: 92ce0553794ab802d98145e90e805c35940c7cec205ebb856a15615d3b6793a7
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: e5c2c53e3bc423844a5bdb6f8607ec76, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.12
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodTentaclesMAT_a84f7d5159
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropod\arthropodtentaclesmat.material.MXML
+    sourceMxmlSha256: a84f7d5159997ebf6dd7b2b1856ad608bd424ab0c4466b076a2efef835a064ad
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\misc\arthropodtentacles.base.dds
+    mainTextureSourceSha256: 9fec4b9a43984ac15d836bd7c7c3339b7b2bf4d80b19bc45e4decdf59531d376
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\misc\arthropodtentacles.base.normal.dds
+    normalTextureSourceSha256: 437cf54eb6c6eca14e0cb5a537d5a853f1e90be75fcfa7a3b72fb934da4091a0
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\misc\arthropodtentacles.base.masks.dds
+    maskTextureSourceSha256: ba49640a91e94c782ee6d98cac14da5f005e7ebc45b03c117588dd58fd897ec3
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: a3ef8ea37c5125d4eb08293cbef4ba33, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: ArthropodThorax01MAT_d8d0dd8690
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropod\arthropodthorax01mat.material.MXML
+    sourceMxmlSha256: d8d0dd8690e69c33f4252920e5a41dbf8f073513d1a9e2af8612f616ad58e046
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\thorax\arthropodthorax01.base.dds
+    mainTextureSourceSha256: d92ce07f8cec7294d3f7da7d6696954fdbf45a1b28a6448a0d7a2c0d8005cfbc
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\thorax\arthropodthorax01.base.normal.dds
+    normalTextureSourceSha256: 6384fc9b8abaf1c42c4fa63ea54b0d33b24c1ccf55a20f75b792104901d0565e
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\thorax\arthropodthorax01.base.masks.dds
+    maskTextureSourceSha256: 1a1ac236463aba4df1d27b3c5b1df89a041579887db6224c6a4e23022d98594c
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: cfe9a785ce6a5534f9e13a9e38a00a78, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: Default-Material
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 97540aa090bee8647a16b54a0b7009dd, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  rendererMaterialBindings:
+  - rendererPath: ImportSpace/CanonicalRig/APodQueen
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenAbdomen
+    materialIds:
+    - ArthropodAbdomen05MAT_41a837c6bd
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenAbdomenShellLowL
+    materialIds:
+    - ArthropodAbdomen03ShellMAT1_f66cdd7865
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenAbdomenShellLowR
+    materialIds:
+    - ArthropodAbdomen03ShellMAT1_f66cdd7865
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenAbdomenShellMain
+    materialIds:
+    - ArthropodAbdomen02MAT1_4ae8df23cf
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenAbdomenShellUpL
+    materialIds:
+    - ArthropodAbdomen03ShellMAT1_f66cdd7865
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenAbdomenShellUpR
+    materialIds:
+    - ArthropodAbdomen03ShellMAT1_f66cdd7865
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenBody
+    materialIds:
+    - ArthropodShell05MAT_25dc16e741
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenBodyShell
+    materialIds:
+    - ArthropodShell02MAT_d86f265ac7
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenHead
+    materialIds:
+    - ArthropodHead05UpperMAT1_e87f411de2
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenHeadShell
+    materialIds:
+    - ArthropodHead02UpperMAT_2d7cf1b548
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenLegs
+    materialIds:
+    - ArthropodLegs05MAT_05eb3b8dd1
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenLegsShellL1
+    materialIds:
+    - ArthropodLegs02MAT_8fade0c3eb
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenLegsShellL2
+    materialIds:
+    - ArthropodLegs02MAT_8fade0c3eb
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenLegsShellL3
+    materialIds:
+    - ArthropodLegs02MAT_8fade0c3eb
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenLegsShellR1
+    materialIds:
+    - ArthropodLegs02MAT_8fade0c3eb
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenLegsShellR2
+    materialIds:
+    - ArthropodLegs02MAT_8fade0c3eb
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenLegsShellR3
+    materialIds:
+    - ArthropodLegs02MAT_8fade0c3eb
+  - rendererPath: ImportSpace/CanonicalRig/APodQueenThorax
+    materialIds:
+    - ArthropodThorax01MAT_d8d0dd8690
+  - rendererPath: ImportSpace/CanonicalRig/AbdomenArmour
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/AbdomenArmourLowL
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/AbdomenArmourLowR
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/AbdomenArmourUpL
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/AbdomenArmourUpR
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/Body
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/BodyArmour
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.001
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.002
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.003
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.004
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.005
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.006
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.007
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.008
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.009
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.010
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.011
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.012
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/EXPLODE.013
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/HeadArmour
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/LOCDrool
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/LegArmourL1
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/LegArmourL2
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/LegArmourL3
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/LegArmourR1
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/LegArmourR2
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/LegArmourR3
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/SUB1APodQueenAbdomenShellMain
+    materialIds:
+    - ArthropodLegs01MAT_b376b868a2
+  - rendererPath: ImportSpace/CanonicalRig/SUB1APodQueenBodyShell
+    materialIds:
+    - ArthropodLegs01MAT_b376b868a2
+  - rendererPath: ImportSpace/CanonicalRig/SUB1APodQueenHead
+    materialIds:
+    - ArthropodHead04UpperMAT_528d841dc2
+  - rendererPath: ImportSpace/CanonicalRig/SUB1APodQueenHeadShell
+    materialIds:
+    - ArthropodLegs01MAT_b376b868a2
+  - rendererPath: ImportSpace/CanonicalRig/SUB1APodQueenLegsShellL1
+    materialIds:
+    - ArthropodLegs01MAT_b376b868a2
+  - rendererPath: ImportSpace/CanonicalRig/SUB1APodQueenLegsShellL2
+    materialIds:
+    - ArthropodLegs01MAT_b376b868a2
+  - rendererPath: ImportSpace/CanonicalRig/SUB1APodQueenLegsShellL3
+    materialIds:
+    - ArthropodLegs01MAT_b376b868a2
+  - rendererPath: ImportSpace/CanonicalRig/SUB1APodQueenLegsShellR1
+    materialIds:
+    - ArthropodLegs01MAT_b376b868a2
+  - rendererPath: ImportSpace/CanonicalRig/SUB1APodQueenLegsShellR2
+    materialIds:
+    - ArthropodLegs01MAT_b376b868a2
+  - rendererPath: ImportSpace/CanonicalRig/SUB1APodQueenLegsShellR3
+    materialIds:
+    - ArthropodLegs01MAT_b376b868a2
+  - rendererPath: ImportSpace/CanonicalRig/SUB2APodQueenHead
+    materialIds:
+    - ArthropodHead05LowerMAT1_d4879b23e4
+  - rendererPath: ImportSpace/CanonicalRig/SUB2APodQueenHeadShell
+    materialIds:
+    - ArthropodLegs04MAT_b6fa36d876
+  - rendererPath: ImportSpace/CanonicalRig/SUB3APodQueenHead
+    materialIds:
+    - ArthropodHead02LowerMAT1_d1ef028fb2
+  - rendererPath: ImportSpace/CanonicalRig/SUB4APodQueenHead
+    materialIds:
+    - ArthropodFangsMAT1_afc98f5082
+  - rendererPath: ImportSpace/CanonicalRig/SUB5APodQueenHead
+    materialIds:
+    - ArthropodTentaclesMAT_a84f7d5159
+  - rendererPath: ImportSpace/CanonicalRig/SUB6APodQueenHead
+    materialIds:
+    - ArthropodLegs05MAT_05eb3b8dd1
+  - rendererPath: ImportSpace/CanonicalRig/antenna_L0_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/antenna_L0_1_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/antenna_L0_2_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/antenna_R0_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/antenna_R0_1_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/antenna_R0_2_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/head_C0_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L0_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L0_1_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L0_2_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L0_3_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L0_end_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L1_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L1_1_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L1_2_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L1_3_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L1_end_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L2_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L2_1_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L2_2_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L2_3_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_L2_end_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R0_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R0_1_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R0_2_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R0_3_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R0_end_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R1_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R1_1_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R1_2_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R1_3_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R1_end_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R2_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R2_1_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R2_2_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R2_3_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/leg_R2_end_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/legbase_L0_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/legbase_L1_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/legbase_L2_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/legbase_R0_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/legbase_R1_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/legbase_R2_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/mandible_L0_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/mandible_L0_1_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/mandible_R0_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/mandible_R0_1_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/models\planets\creatures\arthropod\arthropodqueen
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/spine_C0_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/tail_C0_0_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/tail_C0_1_jnt
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/tail_C0_2_jnt
+    materialIds:
+    - Default-Material
+  loadBearingChains: []
+  walkSpeed: 0.9
+  surfaceRootOffset: 0.79143596
+  hoverClearance: 0
+  localForwardAxis: {x: 0, y: 0, z: -1}
+  idleState: Idle
+  walkState: Walk
+  runState: Run
+  supportsRun: 1

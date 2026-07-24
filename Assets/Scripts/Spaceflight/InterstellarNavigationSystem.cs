@@ -13,6 +13,12 @@ public struct InterstellarPlanetTargetSnapshot
     public bool visited;
 }
 
+public enum PlanetProxyDetail
+{
+    Far,
+    Near
+}
+
 [DefaultExecutionOrder(-400)]
 [DisallowMultipleComponent]
 public sealed class InterstellarNavigationSystem : MonoBehaviour
@@ -41,8 +47,8 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
     bool scanned;
     Material planetMaterial;
     Material atmosphereMaterial;
-    bool transitionStarted;
     bool automaticLandingRequested;
+    string nearObservationPlanetId;
 
     public bool HasTarget => HasLockedTarget;
     public bool HasLockedTarget => lockedIndex >= 0 && lockedIndex < targets.Count;
@@ -56,9 +62,13 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
     public int TargetCount => targets.Count;
     public Vector3 DirectionToTarget => GetDirectionToUniversePosition(LockedUniversePosition);
     public bool AutomaticLandingRequested => automaticLandingRequested;
+    public string NearObservationPlanetId => nearObservationPlanetId ?? string.Empty;
+    public SpacePlanetProxy LockedProxy => HasLockedTarget ? targets[lockedIndex].proxy : null;
     public double SelectedApproachBoundaryDistance => HasLockedTarget
         ? GetApproachBoundaryDistance(LockedPlanet)
         : 0d;
+    public bool IsNearLockedPlanet => HasLockedTarget
+        && IsNearPlanet(LockedPlanet, TargetDistance);
 
     public bool CanEnterSelected
     {
@@ -75,6 +85,17 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         && runtime.ShipBody != null
         && runtime.ShipBody.velocity.magnitude <= CalculateAllowedEntrySpeed(LockedPlanet, TargetDistance);
 
+    public double GetNearExitDistance(GalaxyPlanetDefinition definition)
+    {
+        PlanetCelestialProfile celestial = definition?.celestial
+            ?? PlanetCelestialProfile.CreateLargeDefault();
+        celestial = celestial.Clone();
+        float outerRadius = celestial.radius + Mathf.Max(
+            celestial.maximumTerrainElevation,
+            celestial.HasAtmosphere ? celestial.atmosphereTopAltitude : 0f);
+        return Math.Max(celestial.radius * 4.2d, outerRadius + 2500d);
+    }
+
     void Awake()
     {
         Camera camera = Camera.main;
@@ -86,6 +107,8 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
             proxyRoot = GameObject.Find("PlanetRuntimeRoot")?.transform ?? transform;
         planetMaterial = CreatePlanetMaterial();
         atmosphereMaterial = CreateAtmosphereMaterial();
+        nearObservationPlanetId =
+            GalaxyTravelManager.Instance?.NearObservationPlanetId ?? string.Empty;
     }
 
     void OnEnable()
@@ -110,16 +133,49 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         UpdateTargetDistances();
         if (Input.GetKeyDown(KeyCode.N))
             LockNextTarget();
-        if (!transitionStarted && TryFindApproachBoundaryTarget(out int entryIndex))
-        {
-            SetLockedIndex(entryIndex);
-            BeginSelectedPlanetApproach();
-        }
     }
 
     public void RequestAutomaticLanding(bool requested)
     {
         automaticLandingRequested = requested;
+    }
+
+    public bool IsNearPlanet(
+        GalaxyPlanetDefinition definition,
+        double distance)
+    {
+        return definition != null
+            && !string.IsNullOrEmpty(nearObservationPlanetId)
+            && string.Equals(
+                definition.planetId,
+                nearObservationPlanetId,
+                StringComparison.Ordinal)
+            && distance <= GetNearExitDistance(definition) * 1.35d;
+    }
+
+    public void MarkNearPlanet(GalaxyPlanetDefinition definition)
+    {
+        nearObservationPlanetId = definition?.planetId ?? string.Empty;
+        if (Application.isPlaying)
+        {
+            GalaxyTravelManager.Instance?.SetNearObservationPlanet(
+                nearObservationPlanetId,
+                true);
+        }
+        RefreshProxySet();
+    }
+
+    public void ClearNearPlanet()
+    {
+        if (string.IsNullOrEmpty(nearObservationPlanetId))
+            return;
+        nearObservationPlanetId = string.Empty;
+        if (Application.isPlaying)
+        {
+            GalaxyTravelManager.Instance?.SetNearObservationPlanet(
+                string.Empty,
+                true);
+        }
     }
 
     public bool TryLockReticleTarget(Camera camera, float coneDegrees)
@@ -277,8 +333,27 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
                 target.proxy.SetUniverseTime(GalaxyTravelManager.Instance?.UniverseTimeSeconds ?? 0d);
             }
         }
+        ValidateNearObservationPlanet();
         if (proxySetChanged)
             RefreshProxySet();
+    }
+
+    void ValidateNearObservationPlanet()
+    {
+        if (string.IsNullOrEmpty(nearObservationPlanetId))
+            return;
+        PlanetTarget nearTarget = targets.Find(target =>
+            target.definition != null
+            && string.Equals(
+                target.definition.planetId,
+                nearObservationPlanetId,
+                StringComparison.Ordinal));
+        if (nearTarget == null
+            || nearTarget.distance
+                > GetNearExitDistance(nearTarget.definition) * 1.35d)
+        {
+            ClearNearPlanet();
+        }
     }
 
     void RefreshProxySet()
@@ -304,6 +379,12 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
                     atmosphereMaterial);
                 target.proxy.transform.position = runtime.ToLocalPosition(target.universePosition);
             }
+            if (target.proxy != null)
+            {
+                target.proxy.SetDetail(index == lockedIndex
+                    ? PlanetProxyDetail.Near
+                    : PlanetProxyDetail.Far);
+            }
         }
     }
 
@@ -312,7 +393,6 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         GalaxyTravelManager manager = GalaxyTravelManager.Instance;
         if (manager == null || !HasLockedTarget)
             return;
-        transitionStarted = true;
         runtime.SaveState(true);
         Rigidbody body = runtime.ShipBody;
         DoubleVector3 relative = runtime.ShipUniversePosition - LockedUniversePosition;
@@ -368,7 +448,6 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
     void HandleUniverseRelocated(DoubleVector3 previousPosition, DoubleVector3 currentPosition)
     {
         scanned = false;
-        transitionStarted = false;
         RefreshTargets(true);
         UpdateTargetDistances();
     }
@@ -423,17 +502,28 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
 
     static Material CreatePlanetMaterial()
     {
-        Shader shader = Shader.Find("Standard");
+        Shader shader = Shader.Find("VoxelPlanet/SurfaceFarLod");
+        if (shader == null)
+            shader = Shader.Find("Standard");
         var material = new Material(shader) { name = "RuntimeInterstellarPlanet" };
-        material.SetFloat("_Glossiness", 0.2f);
+        if (material.HasProperty("_UseLowPolyVisual"))
+        {
+            material.SetFloat("_UseLowPolyVisual", 1f);
+            material.SetFloat("_EnableNearTerrainCutout", 0f);
+            material.SetFloat("_RadialInset", 0f);
+            material.SetFloat("_MinimumAmbient", 0.23f);
+        }
+        else if (material.HasProperty("_Glossiness"))
+        {
+            material.SetFloat("_Glossiness", 0.2f);
+        }
         return material;
     }
 
     static Material CreateAtmosphereMaterial()
     {
-        Shader shader = Shader.Find("Sprites/Default");
+        Shader shader = Shader.Find("VoxelPlanet/AtmosphereShell") ?? Shader.Find("Sprites/Default");
         var material = new Material(shader) { name = "RuntimeInterstellarAtmosphere" };
-        material.color = new Color(0.25f, 0.65f, 1f, 0.13f);
         return material;
     }
 
@@ -460,8 +550,24 @@ public sealed class SpacePlanetProxy : MonoBehaviour
 {
     public GalaxyPlanetDefinition Definition { get; private set; }
     Mesh runtimeMesh;
+    MeshFilter terrainFilter;
+    MeshRenderer terrainRenderer;
+    MeshRenderer atmosphereRenderer;
+    ProceduralPlanetOcean ocean;
     PlanetCelestialProfile celestial;
+    PlanetProxyDetail detail = (PlanetProxyDetail)(-1);
     double universeTimeSeconds;
+    MaterialPropertyBlock terrainProperties;
+    MaterialPropertyBlock atmosphereProperties;
+
+    public PlanetProxyDetail Detail => detail;
+    public Mesh TerrainMesh => runtimeMesh;
+
+    void Awake()
+    {
+        terrainProperties = new MaterialPropertyBlock();
+        atmosphereProperties = new MaterialPropertyBlock();
+    }
 
     public static SpacePlanetProxy Create(
         Transform parent,
@@ -473,37 +579,51 @@ public sealed class SpacePlanetProxy : MonoBehaviour
         GameObject planet = new GameObject("PlanetProxy_" + definition.planetId);
         planet.transform.SetParent(parent, false);
         MeshFilter filter = planet.AddComponent<MeshFilter>();
-        filter.sharedMesh = PlanetLodMeshBuilder.Build(definition, 14);
         MeshRenderer renderer = planet.AddComponent<MeshRenderer>();
 
         var proxy = planet.AddComponent<SpacePlanetProxy>();
         proxy.Definition = definition;
-        proxy.runtimeMesh = filter.sharedMesh;
+        proxy.terrainFilter = filter;
+        proxy.terrainRenderer = renderer;
         proxy.celestial = (definition.celestial ?? PlanetCelestialProfile.CreateCompatibleDefault()).Clone();
         renderer.sharedMaterial = sharedPlanetMaterial;
-        var properties = new MaterialPropertyBlock();
-        Color baseColor = definition.hasExplicitPalette ? definition.surfaceColor : definition.mapColor;
-        properties.SetColor("_Color", baseColor);
-        properties.SetColor("_EmissionColor", Color.Lerp(baseColor, Color.black, 0.82f));
-        renderer.SetPropertyBlock(properties);
+        proxy.SetDetail(PlanetProxyDetail.Far);
 
         PlanetCelestialProfile celestial = proxy.celestial;
+        proxy.ocean = planet.AddComponent<ProceduralPlanetOcean>();
+        proxy.ocean.Configure(
+            definition,
+            Vector3.zero,
+            24,
+            PlanetOceanRenderMode.Orbital);
+        proxy.ApplyTerrainProperties();
         if (!celestial.HasAtmosphere)
             return proxy;
 
         GameObject atmosphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         atmosphere.name = "Atmosphere";
         atmosphere.transform.SetParent(planet.transform, false);
+        float visualAtmosphereAltitude = Mathf.Min(
+            celestial.atmosphereTopAltitude,
+            celestial.radius * 0.1f);
         atmosphere.transform.localScale = Vector3.one
-            * ((celestial.radius + celestial.atmosphereTopAltitude) * 2f);
+            * ((celestial.radius + visualAtmosphereAltitude) * 2f);
         Collider atmosphereCollider = atmosphere.GetComponent<Collider>();
         if (atmosphereCollider != null)
             Destroy(atmosphereCollider);
-        Renderer atmosphereRenderer = atmosphere.GetComponent<Renderer>();
-        atmosphereRenderer.sharedMaterial = sharedAtmosphereMaterial;
-        var atmosphereProperties = new MaterialPropertyBlock();
-        atmosphereProperties.SetColor("_Color", GetAtmosphereColor(definition.climate));
-        atmosphereRenderer.SetPropertyBlock(atmosphereProperties);
+        proxy.atmosphereRenderer = atmosphere.GetComponent<MeshRenderer>();
+        proxy.atmosphereRenderer.sharedMaterial = sharedAtmosphereMaterial;
+        AtmosphereVisualProfile atmosphereVisual = celestial.atmosphereVisual
+            ?? new AtmosphereVisualProfile();
+        Color atmosphereColor = GetAtmosphereColor(definition.climate);
+        proxy.atmosphereProperties.SetVector("_PlanetCenter", planet.transform.position);
+        proxy.atmosphereProperties.SetColor("_HorizonColor",
+            Color.Lerp(atmosphereVisual.horizonColor, atmosphereColor, 0.35f));
+        proxy.atmosphereProperties.SetColor("_ZenithColor", atmosphereVisual.zenithColor);
+        proxy.atmosphereProperties.SetColor("_SunsetColor", atmosphereVisual.sunsetColor);
+        proxy.atmosphereProperties.SetFloat("_Scattering",
+            Mathf.Clamp(atmosphereVisual.scatteringStrength, 0.25f, 1.35f));
+        proxy.atmosphereRenderer.SetPropertyBlock(proxy.atmosphereProperties);
         return proxy;
     }
 
@@ -512,16 +632,99 @@ public sealed class SpacePlanetProxy : MonoBehaviour
         universeTimeSeconds = value;
     }
 
+    public void SetDetail(PlanetProxyDetail value)
+    {
+        if (detail == value && runtimeMesh != null)
+            return;
+        detail = value;
+        int terrainResolution = value == PlanetProxyDetail.Near ? 64 : 14;
+        int oceanResolution = value == PlanetProxyDetail.Near ? 56 : 24;
+        Mesh replacement = PlanetLodMeshBuilder.Build(Definition, terrainResolution);
+        replacement.name = "SpacePlanetProxy_" + value + "_" + Definition.planetId;
+        if (terrainFilter != null)
+            terrainFilter.sharedMesh = replacement;
+        if (runtimeMesh != null)
+            Destroy(runtimeMesh);
+        runtimeMesh = replacement;
+        if (ocean != null)
+            ocean.Configure(
+                Definition,
+                Vector3.zero,
+                oceanResolution,
+                PlanetOceanRenderMode.Orbital);
+        ApplyTerrainProperties();
+    }
+
     void LateUpdate()
     {
         if (celestial != null)
             transform.localRotation = PlanetReferenceFrame.RotationAtTime(celestial, universeTimeSeconds);
+        ApplyTerrainProperties();
+        ApplyAtmosphereProperties();
     }
 
     void OnDestroy()
     {
         if (runtimeMesh != null)
             Destroy(runtimeMesh);
+    }
+
+    void ApplyTerrainProperties()
+    {
+        if (terrainRenderer == null || Definition == null)
+            return;
+        if (terrainProperties == null)
+            terrainProperties = new MaterialPropertyBlock();
+        PlanetLowPolyVisualProfile visual = Definition.lowPolyVisual;
+        Color baseColor = Definition.hasExplicitPalette
+            ? Definition.surfaceColor
+            : Definition.mapColor;
+        terrainRenderer.GetPropertyBlock(terrainProperties);
+        terrainProperties.SetColor("_Color", baseColor);
+        terrainProperties.SetColor("_EmissionColor", Color.Lerp(baseColor, Color.black, 0.82f));
+        terrainProperties.SetFloat("_EnableNearTerrainCutout", 0f);
+        terrainProperties.SetFloat("_UseLowPolyVisual", visual != null ? 1f : 0f);
+        terrainProperties.SetFloat("_RadialInset", 0f);
+        terrainProperties.SetFloat("_MinimumAmbient", 0.23f);
+        terrainProperties.SetVector("_PlanetCenter", transform.position);
+        terrainProperties.SetVector("_HideCenter", transform.position);
+        terrainProperties.SetFloat("_HideRadius", 0f);
+        terrainProperties.SetFloat("_TransitionWidth", 1f);
+        terrainProperties.SetFloat("_PlanetRadius", celestial == null ? 100f : celestial.radius);
+        terrainProperties.SetFloat(
+            "_HeightScale",
+            celestial == null ? 12f : Mathf.Max(1f, celestial.maximumTerrainElevation));
+        if (visual != null)
+        {
+            terrainProperties.SetColor("_LowlandColor", visual.lowlandColor);
+            terrainProperties.SetColor("_HighlandColor", visual.highlandColor);
+            terrainProperties.SetColor("_CliffColor", visual.cliffColor);
+            terrainProperties.SetColor("_RockColor", visual.rockColor);
+            terrainProperties.SetColor("_AccentColor", visual.accentColor);
+            terrainProperties.SetColor("_ShoreColor", visual.shoreColor);
+            terrainProperties.SetColor("_SnowColor", visual.snowColor);
+            terrainProperties.SetFloat("_FacetStrength", visual.facetStrength);
+            terrainProperties.SetFloat("_LightingBands", visual.lightingBands);
+            terrainProperties.SetFloat("_MacroColorSize", visual.macroColorSize);
+            terrainProperties.SetFloat("_MacroVariation", visual.macroVariation);
+            terrainProperties.SetFloat("_CliffSlope", visual.cliffSlope);
+            terrainProperties.SetFloat("_SeaLevel", visual.oceanLevel);
+            terrainProperties.SetFloat("_ShoreWidth", visual.shoreWidth);
+            terrainProperties.SetFloat("_SnowLine", visual.snowLine);
+            terrainProperties.SetFloat("_SnowAmount", visual.snowAmount);
+        }
+        terrainRenderer.SetPropertyBlock(terrainProperties);
+    }
+
+    void ApplyAtmosphereProperties()
+    {
+        if (atmosphereRenderer == null)
+            return;
+        if (atmosphereProperties == null)
+            atmosphereProperties = new MaterialPropertyBlock();
+        atmosphereRenderer.GetPropertyBlock(atmosphereProperties);
+        atmosphereProperties.SetVector("_PlanetCenter", transform.position);
+        atmosphereRenderer.SetPropertyBlock(atmosphereProperties);
     }
 
     static Color GetAtmosphereColor(PlanetClimate climate)

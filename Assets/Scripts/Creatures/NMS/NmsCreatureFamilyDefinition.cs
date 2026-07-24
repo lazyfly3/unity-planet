@@ -25,6 +25,10 @@ public sealed class NmsCreatureFamilyDefinition : ScriptableObject
     [SerializeField] RuntimeAnimatorController animatorController;
     [SerializeField] TextAsset familyManifest;
     [SerializeField] NmsCreatureModuleBinding[] moduleBindings = Array.Empty<NmsCreatureModuleBinding>();
+    [SerializeField] NmsCreatureMaterialDefinition[] materialDefinitions =
+        Array.Empty<NmsCreatureMaterialDefinition>();
+    [SerializeField] NmsCreatureRendererMaterialBinding[] rendererMaterialBindings =
+        Array.Empty<NmsCreatureRendererMaterialBinding>();
     [SerializeField] NmsCreatureLegChain[] loadBearingChains = Array.Empty<NmsCreatureLegChain>();
     [SerializeField, Min(0f)] float walkSpeed = 1.35f;
     [SerializeField, Min(0f)] float surfaceRootOffset = 0.05f;
@@ -33,6 +37,7 @@ public sealed class NmsCreatureFamilyDefinition : ScriptableObject
     [SerializeField] string idleState = "Idle";
     [SerializeField] string walkState = "Walk";
     [SerializeField] string runState = "Run";
+    [SerializeField] bool supportsRun = true;
 
     [NonSerialized] NmsCreatureFamilyManifestData parsedManifest;
 
@@ -48,6 +53,9 @@ public sealed class NmsCreatureFamilyDefinition : ScriptableObject
     public GameObject RuntimePrefab => runtimePrefab;
     public RuntimeAnimatorController AnimatorController => animatorController;
     public IReadOnlyList<NmsCreatureModuleBinding> ModuleBindings => moduleBindings;
+    public IReadOnlyList<NmsCreatureMaterialDefinition> MaterialDefinitions => materialDefinitions;
+    public IReadOnlyList<NmsCreatureRendererMaterialBinding> RendererMaterialBindings =>
+        rendererMaterialBindings;
     public IReadOnlyList<NmsCreatureLegChain> LoadBearingChains => loadBearingChains;
     public float WalkSpeed => walkSpeed;
     public float SurfaceRootOffset => surfaceRootOffset;
@@ -61,6 +69,7 @@ public sealed class NmsCreatureFamilyDefinition : ScriptableObject
     public string IdleState => idleState;
     public string WalkState => walkState;
     public string RunState => runState;
+    public bool SupportsRun => supportsRun;
 
     public bool TryGetManifest(out NmsCreatureFamilyManifestData manifest)
     {
@@ -92,6 +101,7 @@ public sealed class NmsCreatureFamilyDefinition : ScriptableObject
         string importedSkeletonHash,
         string importedLocomotionType,
         NmsCreatureSurfaceMode importedSurfaceMode,
+        bool importedSupportsRun,
         string[] importedVariantIds,
         int importedSelectionWeight,
         int importedLegCount,
@@ -101,6 +111,8 @@ public sealed class NmsCreatureFamilyDefinition : ScriptableObject
         RuntimeAnimatorController importedController,
         TextAsset importedManifest,
         NmsCreatureModuleBinding[] importedBindings,
+        NmsCreatureMaterialDefinition[] importedMaterialDefinitions,
+        NmsCreatureRendererMaterialBinding[] importedRendererMaterialBindings,
         NmsCreatureLegChain[] importedChains,
         float importedWalkSpeed,
         float importedSurfaceRootOffset,
@@ -111,6 +123,7 @@ public sealed class NmsCreatureFamilyDefinition : ScriptableObject
         skeletonHash = importedSkeletonHash;
         locomotionType = importedLocomotionType;
         surfaceMode = importedSurfaceMode;
+        supportsRun = importedSupportsRun;
         variantIds = importedVariantIds ?? Array.Empty<string>();
         selectionWeight = Mathf.Max(1, importedSelectionWeight);
         legCount = Mathf.Max(0, importedLegCount);
@@ -120,6 +133,10 @@ public sealed class NmsCreatureFamilyDefinition : ScriptableObject
         animatorController = importedController;
         familyManifest = importedManifest;
         moduleBindings = importedBindings ?? Array.Empty<NmsCreatureModuleBinding>();
+        materialDefinitions =
+            importedMaterialDefinitions ?? Array.Empty<NmsCreatureMaterialDefinition>();
+        rendererMaterialBindings =
+            importedRendererMaterialBindings ?? Array.Empty<NmsCreatureRendererMaterialBinding>();
         loadBearingChains = importedChains ?? Array.Empty<NmsCreatureLegChain>();
         walkSpeed = Mathf.Max(0f, importedWalkSpeed);
         surfaceRootOffset = Mathf.Max(0f, importedSurfaceRootOffset);

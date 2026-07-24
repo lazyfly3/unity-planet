@@ -1,0 +1,61 @@
+{
+  "pipelineVersion": 10,
+  "familyId": "ArthropodGround",
+  "skeletonHash": "45e1f07c8012801010ff8ce1c13bd971551786cf2e36385d4e06318be2eb6fe2",
+  "validationHash": "e5de04eab067f795573a6c9bf2495eee58fd2c48a4214aca6511ba2e0b49658a",
+  "sourceKind": "Fbx",
+  "sourceModelAsset": "Assets/Creatures/Generated/NMS/ArthropodGround/ArthropodGround.fbx",
+  "sourcePrefabAsset": "",
+  "familyManifestAsset": "Assets/Creatures/Generated/NMS/ArthropodGround/ArthropodGround_family.json",
+  "skeletonManifestAsset": "Assets/Creatures/Generated/NMS/ArthropodGround/ArthropodGround_skeleton.json",
+  "materialManifestAsset": "Assets/Creatures/Generated/NMS/ArthropodGround/ArthropodGround_materials.json",
+  "locomotionType": "Arthropod",
+  "surfaceMode": "Ground",
+  "variantIds": [
+    "ArthropodGround"
+  ],
+  "supportsRun": true,
+  "legCount": 6,
+  "allowRareModules": false,
+  "excludedModulePrefixes": [],
+  "selectionWeight": 1,
+  "walkSpeed": 1.1,
+  "surfaceRootOffset": -1.0,
+  "hoverClearance": 0.0,
+  "importScale": 1.0,
+  "importEuler": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "localForwardAxis": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -1.0
+  },
+  "actions": [
+    {
+      "key": "idle",
+      "clipName": "ArthropodGround_IDLE_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/ArthropodGround/ArthropodGround.fbx",
+      "frames": 121,
+      "loop": true
+    },
+    {
+      "key": "walk",
+      "clipName": "ArthropodGround_WALK_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/ArthropodGround/ArthropodGround.fbx",
+      "frames": 49,
+      "loop": true
+    },
+    {
+      "key": "run",
+      "clipName": "ArthropodGround_RUN_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/ArthropodGround/ArthropodGround.fbx",
+      "frames": 49,
+      "loop": true
+    }
+  ],
+  "loadBearingChains": [],
+  "sourceFbxSha256": "fb541237ca558a2709d0b07362ec5adbc55754dc2716d020af1fa1cfb2ce6348"
+}

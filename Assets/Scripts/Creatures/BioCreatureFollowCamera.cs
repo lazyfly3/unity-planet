@@ -25,6 +25,27 @@ target = newTarget;
     
 }
 
+    public void SetFraming(float horizontalSpan, float verticalSpan, bool snap = false)
+    {
+        Camera view = GetComponent<Camera>();
+        float verticalFov = view != null ? view.fieldOfView : 60f;
+        float aspect = view != null ? Mathf.Max(0.1f, view.aspect) : 16f / 9f;
+        float verticalRadians = verticalFov * Mathf.Deg2Rad;
+        float horizontalRadians = 2f * Mathf.Atan(
+            Mathf.Tan(verticalRadians * 0.5f) * aspect);
+        float verticalDistance = Mathf.Max(0.5f, verticalSpan * 0.6f)
+            / Mathf.Max(0.1f, Mathf.Tan(verticalRadians * 0.5f));
+        float horizontalDistance = Mathf.Max(0.5f, horizontalSpan * 0.55f)
+            / Mathf.Max(0.1f, Mathf.Tan(horizontalRadians * 0.5f));
+        float framingDistance = Mathf.Max(verticalDistance, horizontalDistance) * 1.25f + 3.5f;
+
+        followDistance = Mathf.Max(6.5f, framingDistance * 0.9f);
+        sideOffset = Mathf.Max(3.2f, framingDistance * 0.45f);
+        height = Mathf.Max(3.2f, verticalSpan * 0.95f);
+        if (snap && target != null && gravitySource != null)
+            ApplyCamera(1f);
+    }
+
     void LateUpdate()
     {
         if (target == null || gravitySource == null)

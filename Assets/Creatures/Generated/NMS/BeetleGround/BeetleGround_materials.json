@@ -1,0 +1,581 @@
+{
+  "pipelineVersion": 10,
+  "familyId": "BeetleGround",
+  "skeletonHash": "497d187bccaf8f72faf35da3f07bd226221f4202b664eb4edcf3f251cd7fc726",
+  "materials": [
+    {
+      "materialId": "BeetleWingMat_8d40bd1e52",
+      "sourceMaterialName": "BeetleWingMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\models\\planets\\creatures\\beetlerig\\beetle\\beetlewingmat.material.MXML",
+      "sourceMxmlSha256": "8d40bd1e52dc898e683f1868da05b370d35deb6860ae406eaab50b20c583aaed",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/abf2d5e2026e_beetlewing01.base.tga",
+      "normalTexture": "Textures/a4b975c85a71_beetlewing01.base.normal.tga",
+      "maskTexture": "Textures/fb12edee64c6_beetlewing01.base.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\beetlewing01.base.dds",
+      "mainTextureSourceSha256": "abf2d5e2026e367231c3f6b798928ec3064551ff1f0b4da93b84c41151fefd4e",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\beetlewing01.base.normal.dds",
+      "normalTextureSourceSha256": "a4b975c85a71242fbbc3b810a2b93f717c517eb9caa7f9b3ff8261650589eb49",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\beetlewing01.base.masks.dds",
+      "maskTextureSourceSha256": "fb12edee64c6a37aedaf227f50f1e72d49ba36e40feb706f6fa790b84a37de6f",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "BigShellMat_fa04abef4e",
+      "sourceMaterialName": "BigShellMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\models\\planets\\creatures\\beetlerig\\beetle\\bigshellmat.material.MXML",
+      "sourceMxmlSha256": "fa04abef4e230250844adccc0ee76f6ebc0dedb2e217e8cd355a800c5b525fd9",
+      "materialPreset": "Horn",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/202d59555266_largeshell.base.tga",
+      "normalTexture": "Textures/f35f769b1a55_largeshell.base.normal.tga",
+      "maskTexture": "Textures/a8661a7fd349_largeshell.base.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.12,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\largeshell.base.dds",
+      "mainTextureSourceSha256": "202d5955526655762384f6a58ea2462ade52f116ed2ec32b1a4234df751f990e",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\largeshell.base.normal.dds",
+      "normalTextureSourceSha256": "f35f769b1a55c6c4186f9fc9ffc4ea91693f10fd504cffc1c253667c0caea418",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\largeshell.base.masks.dds",
+      "maskTextureSourceSha256": "a8661a7fd3493245aca10ac64b4a6a06e77489c85bfdc321756d590d1d7ecdb8",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "RegBodyMat_870611510a",
+      "sourceMaterialName": "RegBodyMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\models\\planets\\creatures\\beetlerig\\beetle\\regbodymat.material.MXML",
+      "sourceMxmlSha256": "870611510adcf75b24ce3ffac417f01947692b94366e2eb7759c169ed964901e",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/7949899c420f_beetlebody.base.tga",
+      "normalTexture": "Textures/4a7192a60b4f_beetlebody.base.normal.tga",
+      "maskTexture": "Textures/3d6f6ef21551_beetlebody.base.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\beetlebody.base.dds",
+      "mainTextureSourceSha256": "7949899c420f363c6beda7094b3b803df33312c6a153026d3456a4addc724740",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\beetlebody.base.normal.dds",
+      "normalTextureSourceSha256": "4a7192a60b4f97f657194fc3ce1cd95afb109d8f1055843e47928b39c8bf17f6",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\beetlebody.base.masks.dds",
+      "maskTextureSourceSha256": "3d6f6ef2155146d4973bfe2c1e8fc2967fe08bcbd3fc9b2f921c0755e6c977b6",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "RegShellMat_d9703c0293",
+      "sourceMaterialName": "RegShellMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\models\\planets\\creatures\\beetlerig\\beetle\\regshellmat.material.MXML",
+      "sourceMxmlSha256": "d9703c029328a8c3e7437d26444c5b9f802f67482e31b44626268c6340127928",
+      "materialPreset": "Horn",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/806c9021fb7a_regularshell.base.tga",
+      "normalTexture": "Textures/560a73620678_regularshell.base.normal.tga",
+      "maskTexture": "Textures/9c76b7bce16c_regularshell.base.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.12,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\regularshell.base.dds",
+      "mainTextureSourceSha256": "806c9021fb7aa2d5f699532c24c1bfb79a7d333c328c144fc0f6ff0acdec2d47",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\regularshell.base.normal.dds",
+      "normalTextureSourceSha256": "560a736206787ba39279367efb581bc371dd7602592a18bbc47c6c187780f37f",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\regularshell.base.masks.dds",
+      "maskTextureSourceSha256": "9c76b7bce16c68504a06726190eb250028c492a27c55ec9b645a92a19140e2f5",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "RhinoHeadMat_4e86edb95f",
+      "sourceMaterialName": "RhinoHeadMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\models\\planets\\creatures\\beetlerig\\beetle\\rhinoheadmat.material.MXML",
+      "sourceMxmlSha256": "4e86edb95f7c42b01ac855526e1fffc65dada515b0ccc0660b88c70fdd50f7b7",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/2715dde008c9_rhinohead.base.tga",
+      "normalTexture": "Textures/700be4bcf522_rhinohead.base.normal.tga",
+      "maskTexture": "Textures/2b0240b7b576_rhinohead.base.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\rhinohead.base.dds",
+      "mainTextureSourceSha256": "2715dde008c9b7cda6156bc36caeefebc546502d77c9a65bad123b91ca843d9b",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\rhinohead.base.normal.dds",
+      "normalTextureSourceSha256": "700be4bcf522d31c4fb82c1c6c3de87553454425f9af663469d347f7e92d4496",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\rhinohead.base.masks.dds",
+      "maskTextureSourceSha256": "2b0240b7b5760638663dde8a3f0ac3b04bce704c884c81b138f46f6af5777142",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "RoundHeadMat_d30fe2e41e",
+      "sourceMaterialName": "RoundHeadMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\models\\planets\\creatures\\beetlerig\\beetle\\roundheadmat.material.MXML",
+      "sourceMxmlSha256": "d30fe2e41e3715df93d6282736db08cffca3d560e436304d47e7406143309af4",
+      "materialPreset": "Skin",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/28fa95952075_roundhead.base.tga",
+      "normalTexture": "Textures/6bb4be16bcb2_roundhead.base.normal.tga",
+      "maskTexture": "Textures/b299204309d9_roundhead.base.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.28,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\roundhead.base.dds",
+      "mainTextureSourceSha256": "28fa9595207566d5e5809178c58998a4404c1535458dd18d118058c5ef458390",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\roundhead.base.normal.dds",
+      "normalTextureSourceSha256": "6bb4be16bcb225bd70c16851d2bd4acc2c8a938c8d3cf3c4cc57e2d9a32ae497",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\roundhead.base.masks.dds",
+      "maskTextureSourceSha256": "b299204309d93f266c4be9b5ef088f9923b484c59c6d66d400f4c6435b4a057f",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    },
+    {
+      "materialId": "SpikyShellMat_eabacca9e3",
+      "sourceMaterialName": "SpikyShellMat",
+      "sourceMxmlPath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\models\\planets\\creatures\\beetlerig\\beetle\\spikyshellmat.material.MXML",
+      "sourceMxmlSha256": "eabacca9e305c8914433738966b0101a75a1ba393951c48bbf53b515e3a12262",
+      "materialPreset": "Horn",
+      "transparencyMode": "Opaque",
+      "maskChannelLayout": "R=Secondary,G=Accent,B=Smoothness,A=Emission",
+      "mainTexture": "Textures/1d6db24b7948_spikyshell.base.tga",
+      "normalTexture": "Textures/a2e47b7c40e1_spikyshell.base.normal.tga",
+      "maskTexture": "Textures/ef2c3311acff_spikyshell.base.masks.tga",
+      "emissionTexture": "",
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "glow": 0.0,
+      "paletteStrength": 0.12,
+      "warnings": [],
+      "mainTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\spikyshell.base.dds",
+      "mainTextureSourceSha256": "1d6db24b794876b37a4f8aa7deb7f16ff12d57c93c4e908f4beb8fb1fa50223f",
+      "normalTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\spikyshell.base.normal.dds",
+      "normalTextureSourceSha256": "a2e47b7c40e17042194d50c31b17501cee79aea9b866ed806bfe684c530e3aeb",
+      "maskTextureSourcePath": "D:\\blender\\creature\\NMSImport\\RemainingLand\\Beetle\\Extracted\\textures\\planets\\creatures\\beetlerig\\spikyshell.base.masks.dds",
+      "maskTextureSourceSha256": "ef2c3311acff3d4be1f4301ecd2fb25bd390a0e87a080361144059b34f755649",
+      "emissionTextureSourcePath": "",
+      "emissionTextureSourceSha256": ""
+    }
+  ],
+  "renderers": [
+    {
+      "rendererName": "Abdomen01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Abdomen02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Abdomen03JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Abdomen04JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "BeetleBody",
+      "modules": [],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "RegBodyMat_870611510a"
+        }
+      ]
+    },
+    {
+      "rendererName": "BeetleData",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "GlobalJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LBackLeg01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LBackLeg02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LBackLeg03JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LBackLeg04JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LFrontLeg01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LFrontLeg02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LFrontLeg03JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LFrontLeg04JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LMidLeg01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LMidLeg02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LMidLeg03JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LMidLeg04JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LRhinoBFeeler01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LRhinoBFeeler02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LRoundBFeeler01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LRoundBFeeler02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LRoundTFeeler01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LRoundTFeeler02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LShellWing01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LShellWing02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LWing01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LWing02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LWing03JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "LWing04JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RBackLeg01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RBackLeg02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RBackLeg03JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RBackLeg04JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RFrontLeg01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RFrontLeg02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RFrontLeg03JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RFrontLeg04JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RMidLeg01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RMidLeg02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RMidLeg03JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RMidLeg04JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RRhinoBFeeler01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RRhinoBFeeler02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RRoundBFeeler01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RRoundBFeeler02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RRoundTFeeler01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RRoundTFeeler02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RShellWing01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RShellWing02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RWing01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RWing02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RWing03JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RWing04JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RhinoHeadJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RhinoJawEndJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RhinoJawJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RootJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RoundHead01JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "RoundHead02JNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "ThoraxJNT",
+      "modules": [],
+      "slots": []
+    },
+    {
+      "rendererName": "Wings",
+      "modules": [],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "BeetleWingMat_8d40bd1e52"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Head_Rhino",
+      "modules": [
+        "_Head_Rhino"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "RhinoHeadMat_4e86edb95f"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Head_Round",
+      "modules": [
+        "_Head_Round"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "RoundHeadMat_d30fe2e41e"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Shell_Big",
+      "modules": [
+        "_Shell_Big"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "BigShellMat_fa04abef4e"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Shell_Reg",
+      "modules": [
+        "_Shell_Reg"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "RegShellMat_d9703c0293"
+        }
+      ]
+    },
+    {
+      "rendererName": "_Shell_Spiky",
+      "modules": [
+        "_Shell_Spiky"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "materialId": "SpikyShellMat_eabacca9e3"
+        }
+      ]
+    },
+    {
+      "rendererName": "models\\planets\\creatures\\beetlerig\\beetle",
+      "modules": [],
+      "slots": []
+    }
+  ]
+}

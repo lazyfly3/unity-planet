@@ -6,6 +6,7 @@ public sealed class PlanetAtmosphereVisualController : MonoBehaviour
 {
     Transform planetCenter;
     PlanetCelestialProfile profile;
+    PlanetLowPolyVisualProfile visualProfile;
     Renderer targetRenderer;
     Material runtimeMaterial;
     bool capturedFog;
@@ -13,11 +14,26 @@ public sealed class PlanetAtmosphereVisualController : MonoBehaviour
     Color originalFogColor;
     float originalFogDensity;
     FogMode originalFogMode;
+    float originalFogStartDistance;
+    float originalFogEndDistance;
 
     public void Configure(Transform center, PlanetCelestialProfile value, Renderer renderer)
     {
+        Configure(center, value, null, renderer);
+    }
+
+    public void Configure(Transform center, PlanetCelestialProfile value,
+        PlanetLowPolyVisualProfile visual)
+    {
+        Configure(center, value, visual, GetComponent<Renderer>());
+    }
+
+    public void Configure(Transform center, PlanetCelestialProfile value,
+        PlanetLowPolyVisualProfile visual, Renderer renderer)
+    {
         planetCenter = center;
         profile = (value ?? PlanetCelestialProfile.CreateCompatibleDefault()).Clone();
+        visualProfile = visual != null ? visual.Clone() : null;
         targetRenderer = renderer != null ? renderer : GetComponent<Renderer>();
         if (targetRenderer == null)
             return;
@@ -40,19 +56,21 @@ public sealed class PlanetAtmosphereVisualController : MonoBehaviour
     {
         if (runtimeMaterial == null || profile == null || planetCenter == null)
             return;
-        AtmosphereVisualProfile visual = profile.atmosphereVisual ?? new AtmosphereVisualProfile();
+        AtmosphereVisualProfile atmosphere = profile.atmosphereVisual ?? new AtmosphereVisualProfile();
         Vector3 center = planetCenter.position;
         runtimeMaterial.SetVector("_PlanetCenter", new Vector4(center.x, center.y, center.z, 1f));
         runtimeMaterial.SetFloat("_PlanetRadius", profile.radius);
         runtimeMaterial.SetFloat("_AtmosphereRadius", profile.radius + profile.atmosphereTopAltitude);
-        runtimeMaterial.SetColor("_HorizonColor", visual.horizonColor);
-        runtimeMaterial.SetColor("_ZenithColor", visual.zenithColor);
-        runtimeMaterial.SetColor("_SunsetColor", visual.sunsetColor);
-        runtimeMaterial.SetFloat("_Scattering", visual.scatteringStrength);
-        runtimeMaterial.SetFloat("_CloudCoverage", visual.cloudCoverage);
+        runtimeMaterial.SetColor("_HorizonColor",
+            visualProfile != null ? visualProfile.horizonColor : atmosphere.horizonColor);
+        runtimeMaterial.SetColor("_ZenithColor",
+            visualProfile != null ? visualProfile.zenithColor : atmosphere.zenithColor);
+        runtimeMaterial.SetColor("_SunsetColor",
+            visualProfile != null ? visualProfile.sunsetColor : atmosphere.sunsetColor);
+        runtimeMaterial.SetFloat("_Scattering",
+            visualProfile != null ? visualProfile.atmosphereThickness : atmosphere.scatteringStrength);
         Vector3 axis = profile.rotationAxis;
         runtimeMaterial.SetVector("_RotationAxis", new Vector4(axis.x, axis.y, axis.z, 0f));
-        runtimeMaterial.SetFloat("_CloudSpeed", visual.cloudRotationMultiplier / Mathf.Max(1f, profile.rotationPeriod));
     }
 
     void UpdateCameraFog()
@@ -76,11 +94,19 @@ public sealed class PlanetAtmosphereVisualController : MonoBehaviour
         Color dayColor = Color.Lerp(visual.horizonColor, visual.zenithColor, 0.35f);
         Color nightColor = Color.Lerp(visual.zenithColor, Color.black, 0.78f);
         RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.ExponentialSquared;
+        RenderSettings.fogMode = visualProfile != null ? FogMode.Linear : FogMode.ExponentialSquared;
         RenderSettings.fogColor = Color.Lerp(nightColor, dayColor, daylight);
-        float atmosphericFog = Mathf.Lerp(0.00008f, 0.0022f, density01)
+        float atmosphericFog = Mathf.Lerp(0.00004f, 0.0011f, density01)
             * Mathf.Max(0.25f, visual.scatteringStrength);
-        RenderSettings.fogDensity = Mathf.Max(RenderSettings.fogDensity, atmosphericFog);
+        if (visualProfile != null)
+        {
+            RenderSettings.fogStartDistance = 100f;
+            RenderSettings.fogEndDistance = Mathf.Lerp(900f, 360f, density01 * visualProfile.hazeStrength);
+        }
+        else
+        {
+            RenderSettings.fogDensity = Mathf.Max(RenderSettings.fogDensity, atmosphericFog);
+        }
         if (camera.clearFlags == CameraClearFlags.SolidColor)
             camera.backgroundColor = RenderSettings.fogColor;
     }
@@ -94,6 +120,8 @@ public sealed class PlanetAtmosphereVisualController : MonoBehaviour
         originalFogColor = RenderSettings.fogColor;
         originalFogDensity = RenderSettings.fogDensity;
         originalFogMode = RenderSettings.fogMode;
+        originalFogStartDistance = RenderSettings.fogStartDistance;
+        originalFogEndDistance = RenderSettings.fogEndDistance;
     }
 
     void RestoreFog()
@@ -104,6 +132,8 @@ public sealed class PlanetAtmosphereVisualController : MonoBehaviour
         RenderSettings.fogColor = originalFogColor;
         RenderSettings.fogDensity = originalFogDensity;
         RenderSettings.fogMode = originalFogMode;
+        RenderSettings.fogStartDistance = originalFogStartDistance;
+        RenderSettings.fogEndDistance = originalFogEndDistance;
         capturedFog = false;
     }
 

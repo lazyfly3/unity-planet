@@ -19,6 +19,7 @@ public sealed class PlanetWeatherSystem : MonoBehaviour
     [Header("World References")]
     [SerializeField] Transform effectsRoot;
     [SerializeField] MeshRenderer cloudShell;
+    [SerializeField] PlanetLowPolyCloudField lowPolyCloudField;
     [SerializeField] Light sunLight;
     [SerializeField] Light lightningLight;
     [SerializeField] LineRenderer lightningRenderer;
@@ -54,6 +55,7 @@ public sealed class PlanetWeatherSystem : MonoBehaviour
     MaterialPropertyBlock cloudProperties;
     VoxelQuadSphereWorld world;
     PlanetWeatherSettings settings;
+    PlanetLowPolyVisualProfile visualProfile;
     Transform player;
     int planetSeed;
     Vector3 windAxis;
@@ -67,11 +69,24 @@ public sealed class PlanetWeatherSystem : MonoBehaviour
     bool baselineFog;
     Color baselineFogColor;
     float baselineFogDensity;
+    FogMode baselineFogMode;
+    float baselineFogStart;
+    float baselineFogEnd;
     Color baselineAmbient;
     float baselineSunIntensity;
     Color baselineSunColor;
 
     public WeatherSnapshot Snapshot => snapshot;
+
+    public void ConfigureVisualProfile(PlanetLowPolyVisualProfile profile)
+    {
+        visualProfile = profile != null ? profile.Clone() : null;
+        visualProfile?.ClampValues();
+        TuneLowPolyPrecipitation(rainParticles, 0.2f);
+        TuneLowPolyPrecipitation(snowParticles, 0.55f);
+        TuneLowPolyPrecipitation(ashParticles, 0.45f);
+        TuneLowPolyPrecipitation(crystalParticles, 0.38f);
+    }
 
     void Awake()
     {
@@ -106,6 +121,7 @@ world = targetWorld;
         ResolveFromStart(weatherTime);
         configured = settings.enabled && current.preset != null;
         PositionCloudShell();
+        lowPolyCloudField?.Configure(world, visualProfile);
         ApplyAtTime(weatherTime, true);
         if (weatherPanel != null)
             weatherPanel.SetActive(configured);
@@ -275,12 +291,30 @@ if (!configured || world == null)
     {
         Color fogColor = Color.Lerp(a.fogColor, b.fogColor, transition);
         RenderSettings.fog = fogDensity > 0.0001f || baselineFog;
-        RenderSettings.fogMode = FogMode.ExponentialSquared;
-        RenderSettings.fogDensity = Mathf.Max(baselineFogDensity, fogDensity);
-        RenderSettings.fogColor = Color.Lerp(baselineFogColor, fogColor, Mathf.Clamp01(fogDensity * 28f));
+        if (visualProfile != null)
+        {
+            float weatherFog = Mathf.Clamp01(fogDensity * 16f);
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogStartDistance = Mathf.Lerp(135f, 38f, weatherFog);
+            RenderSettings.fogEndDistance = Mathf.Lerp(850f, 240f, weatherFog);
+            RenderSettings.fogColor = Color.Lerp(
+                visualProfile.horizonColor,
+                fogColor,
+                weatherFog * 0.48f);
+        }
+        else
+        {
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogDensity = Mathf.Max(baselineFogDensity, fogDensity);
+            RenderSettings.fogColor = Color.Lerp(
+                baselineFogColor,
+                fogColor,
+                Mathf.Clamp01(fogDensity * 28f));
+        }
         Color ambientTint = Color.Lerp(a.ambientTint, b.ambientTint, transition);
-        RenderSettings.ambientLight = Color.Lerp(baselineAmbient,
-            baselineAmbient * ambientTint, Mathf.Clamp01(cloud));
+        if (visualProfile == null)
+            RenderSettings.ambientLight = Color.Lerp(baselineAmbient,
+                baselineAmbient * ambientTint, Mathf.Clamp01(cloud));
         if (sunLight != null)
         {
             sunLight.intensity = baselineSunIntensity * Mathf.Lerp(a.lightMultiplier, b.lightMultiplier, transition);
@@ -292,11 +326,16 @@ if (!configured || world == null)
                 cloudProperties = new MaterialPropertyBlock();
             cloudShell.GetPropertyBlock(cloudProperties);
             cloudProperties.SetFloat("_Coverage", cloud);
-            cloudProperties.SetColor("_CloudColor", Color.Lerp(a.fogColor, b.fogColor, transition));
+            Color cloudColor = visualProfile != null
+                ? Color.Lerp(visualProfile.horizonColor, Color.white, 0.58f)
+                : Color.Lerp(a.fogColor, b.fogColor, transition);
+            cloudProperties.SetColor("_CloudColor", cloudColor);
             cloudProperties.SetVector("_Wind", new Vector4(windAxis.x, windAxis.y, windAxis.z, snapshot.windSpeed));
+            cloudProperties.SetFloat("_CloudSeed", visualProfile != null ? visualProfile.cloudSeed : planetSeed);
             cloudShell.SetPropertyBlock(cloudProperties);
             cloudShell.enabled = cloud > 0.01f;
         }
+        lowPolyCloudField?.SetWeather(cloud, snapshot.windVelocity);
         Shader.SetGlobalVector("_PlanetCenter", world.GetPlanetCenterWorld());
         Shader.SetGlobalFloat("_WeatherWetness", wetness);
         Shader.SetGlobalFloat("_WeatherDust", dust);
@@ -339,7 +378,10 @@ if (!configured || world == null)
         float normalized = Mathf.Clamp01(strength);
         var main = system.main;
         main.startColor = Color.Lerp(from, to, blend);
-        main.maxParticles = Mathf.Max(64, Mathf.RoundToInt(Mathf.Lerp(fromCount, toCount, blend)));
+        int targetCount = Mathf.Max(64, Mathf.RoundToInt(Mathf.Lerp(fromCount, toCount, blend)));
+        if (visualProfile != null && system == rainParticles)
+            targetCount = Mathf.Min(targetCount, 1600);
+        main.maxParticles = targetCount;
         var emission = system.emission;
         emission.rateOverTime = main.maxParticles * normalized * 0.45f;
         if (normalized > 0.005f)
@@ -436,6 +478,9 @@ if (!configured || world == null)
         baselineFog = RenderSettings.fog;
         baselineFogColor = RenderSettings.fogColor;
         baselineFogDensity = RenderSettings.fogDensity;
+        baselineFogMode = RenderSettings.fogMode;
+        baselineFogStart = RenderSettings.fogStartDistance;
+        baselineFogEnd = RenderSettings.fogEndDistance;
         baselineAmbient = RenderSettings.ambientLight;
         if (sunLight != null)
         {
@@ -454,6 +499,9 @@ if (!configured || world == null)
         RenderSettings.fog = baselineFog;
         RenderSettings.fogColor = baselineFogColor;
         RenderSettings.fogDensity = baselineFogDensity;
+        RenderSettings.fogMode = baselineFogMode;
+        RenderSettings.fogStartDistance = baselineFogStart;
+        RenderSettings.fogEndDistance = baselineFogEnd;
         RenderSettings.ambientLight = baselineAmbient;
         if (sunLight != null)
         {
@@ -469,6 +517,19 @@ if (!configured || world == null)
             if (system != null) system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         if (lightningLight != null) lightningLight.enabled = false;
         if (lightningRenderer != null) lightningRenderer.enabled = false;
+    }
+
+    static void TuneLowPolyPrecipitation(ParticleSystem system, float lengthScale)
+    {
+        if (system == null)
+            return;
+        ParticleSystemRenderer renderer = system.GetComponent<ParticleSystemRenderer>();
+        if (renderer != null)
+        {
+            renderer.lengthScale = lengthScale;
+            renderer.velocityScale = 0.025f;
+            renderer.maxParticleSize = 0.018f;
+        }
     }
 
     double GetWeatherTime()

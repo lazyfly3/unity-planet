@@ -27,6 +27,9 @@ public sealed class InterstellarCameraRig : MonoBehaviour
     Vector3 collisionKick;
     Vector2 freeLookAngles;
     bool velocityInitialized;
+    bool cinematicFovOverrideActive;
+    float cinematicFovOverride;
+    bool cinematicMotionOverrideActive;
 
     void Awake()
     {
@@ -74,9 +77,11 @@ public sealed class InterstellarCameraRig : MonoBehaviour
         {
             float speed = targetBody == null ? 0f : targetBody.velocity.magnitude;
             float ratio = Mathf.Clamp01(speed / maximumFovSpeed);
-            float desiredFov = Mathf.Lerp(fieldOfViewRange.x, fieldOfViewRange.y, ratio);
-            desiredFov += (fieldOfViewRange.y - fieldOfViewRange.x) * 0.7f
-                * (ship == null ? 0f : ship.WarpVisualIntensity);
+            float desiredFov = cinematicFovOverrideActive
+                ? cinematicFovOverride
+                : Mathf.Lerp(fieldOfViewRange.x, fieldOfViewRange.y, ratio)
+                    + (fieldOfViewRange.y - fieldOfViewRange.x) * 0.7f
+                    * (ship == null ? 0f : ship.WarpVisualIntensity);
             targetCamera.fieldOfView = Mathf.Lerp(
                 targetCamera.fieldOfView,
                 desiredFov,
@@ -84,12 +89,29 @@ public sealed class InterstellarCameraRig : MonoBehaviour
         }
     }
 
+    public void SetCinematicFovOverride(float? value)
+    {
+        cinematicFovOverrideActive = value.HasValue;
+        if (value.HasValue)
+            cinematicFovOverride = Mathf.Clamp(value.Value, 25f, 110f);
+    }
+
+    public void SetCinematicMotionOverride(bool active)
+    {
+        cinematicMotionOverrideActive = active;
+        localRecoil = Vector3.zero;
+        previousVelocity = targetBody == null
+            ? Vector3.zero
+            : targetBody.velocity;
+        velocityInitialized = true;
+    }
+
     void UpdateLocalEffects()
     {
         float deltaTime = Mathf.Max(0.0001f, Time.unscaledDeltaTime);
         Vector3 velocity = targetBody == null ? Vector3.zero : targetBody.velocity;
         Vector3 localAcceleration = Vector3.zero;
-        if (velocityInitialized)
+        if (velocityInitialized && !cinematicMotionOverrideActive)
             localAcceleration = target.InverseTransformDirection((velocity - previousVelocity) / deltaTime);
         previousVelocity = velocity;
         velocityInitialized = true;

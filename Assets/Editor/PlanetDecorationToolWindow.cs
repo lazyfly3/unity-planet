@@ -606,6 +606,7 @@ public static class PlanetDecorationToolBootstrap
             EnsureFolders();
             PlanetDecorationCatalog valueCatalog = EnsureCatalog();
             List<PlanetDecorationEntry> entries = BuildCuratedEntries();
+            LowPolyPlanetKitAssetBuilder.AppendCatalogEntries(entries);
             valueCatalog.ReplaceContents(BuildProfiles(), entries);
             EditorUtility.SetDirty(valueCatalog);
             AssetDatabase.SaveAssets();

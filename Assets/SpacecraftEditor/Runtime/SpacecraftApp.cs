@@ -211,6 +211,9 @@ namespace SpacecraftEditor
             if (cameraController == null) cameraController = GetComponentInChildren<OrbitCameraController>(true);
             if (uiController == null) uiController = GetComponentInChildren<EditorUIController>(true);
             if (forceVisualizer == null) forceVisualizer = GetComponentInChildren<ForceVisualizer>(true);
+            // A landed workshop prefab can coexist with the surface player's camera.
+            // Always prefer the camera owned by this prefab so Awake cannot hijack Camera.main.
+            if (mainCamera == null) mainCamera = GetComponentInChildren<Camera>(true);
             if (mainCamera == null) mainCamera = Camera.main;
             if (hullController == null)
             {

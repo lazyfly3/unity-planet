@@ -624,9 +624,6 @@ MonoBehaviour:
   groundLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  enableSpaceTravel: 1
-  galaxyMapAltitude: 8
-  requireOutwardVelocity: 1
   showGravityGizmo: 1
   gravityGizmoLength: 3
 --- !u!136 &218647387
@@ -29938,6 +29935,7 @@ MonoBehaviour:
   seed: 12345
   planetCenterLocal: {x: 0, y: 0, z: 0}
   planetRadius: 100
+  voxelOuterRadius: 100
   surfaceGravity: 9.8
   faceGridSize: 100
   maxDepth: 64
@@ -30002,6 +30000,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   effectsRoot: {fileID: 931646031}
   cloudShell: {fileID: 1947672129}
+  lowPolyCloudField: {fileID: 1947672132}
   sunLight: {fileID: 1810727648}
   lightningLight: {fileID: 476744411}
   lightningRenderer: {fileID: 509321478}
@@ -30222,6 +30221,7 @@ GameObject:
   - component: {fileID: 1947672131}
   - component: {fileID: 1947672130}
   - component: {fileID: 1947672129}
+  - component: {fileID: 1947672132}
   m_Layer: 0
   m_Name: CloudShell
   m_TagString: Untagged
@@ -30294,6 +30294,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1926115621}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1947672132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1947672128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c742bdcb2c87a9442b37ccd5f4d296c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maximumClouds: 24
+  altitudeSpread: 18
+  scaleRange: {x: 10, y: 24}
 --- !u!1 &1950000001
 GameObject:
   m_ObjectHideFlags: 0
@@ -30340,6 +30355,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   surfaceSceneName: star
   mapSceneName: GalaxyMap
+  interstellarSceneName: InterstellarFlight
+  approachSceneName: PlanetApproach
   gridColumns: 12
   gridRows: 8
   galaxyLayoutSeed: 7319
@@ -30472,6 +30489,58 @@ MonoBehaviour:
         fogColor: {r: 0.42, g: 0.2, b: 0.09, a: 1}
         particleColor: {r: 0.9, g: 0.43, b: 0.16, a: 1}
         ambientTint: {r: 1, g: 1, b: 1, a: 1}
+    celestial:
+      surfaceGenerationMode: 0
+      radius: 100
+      surfaceGravity: 9.8
+      gravitationalParameter: 98000
+      rotationAxis: {x: 0, y: 1, z: 0}
+      rotationPeriod: 180
+      atmosphereSurfaceDensity: 0.8
+      atmosphereScaleHeight: 4.5
+      atmosphereTopAltitude: 20
+      maximumTerrainElevation: 12
+      editableDepth: 64
+      rotationEpochSeconds: 0
+      atmosphereVisual:
+        kind: 2
+        horizonColor: {r: 0.24, g: 0.58, b: 1, a: 1}
+        zenithColor: {r: 0.035, g: 0.14, b: 0.32, a: 1}
+        sunsetColor: {r: 1, g: 0.32, b: 0.08, a: 1}
+        scatteringStrength: 0.8
+        cloudCoverage: 0.45
+        cloudRotationMultiplier: 1.08
+    lowPolyVisual:
+      visualVersion: 1
+      lowlandColor: {r: 0.22, g: 0.42, b: 0.24, a: 1}
+      highlandColor: {r: 0.42, g: 0.5, b: 0.3, a: 1}
+      cliffColor: {r: 0.24, g: 0.24, b: 0.22, a: 1}
+      rockColor: {r: 0.32, g: 0.3, b: 0.28, a: 1}
+      accentColor: {r: 0.55, g: 0.68, b: 0.34, a: 1}
+      facetStrength: 0.72
+      lightingBands: 4
+      macroColorSize: 18
+      cliffSlope: 0.58
+      macroVariation: 0.16
+      forestWeight: 0
+      desertWeight: 0
+      tundraWeight: 0
+      volcanicWeight: 0
+      crystalWeight: 0
+      tropicalWeight: 0
+      decorationSeed: 0
+      decorationDensity: 1
+      decorationScale: 1
+      clusterStrength: 0.5
+      landmarkStyle: 0
+      horizonColor: {r: 0.42, g: 0.68, b: 0.9, a: 1}
+      zenithColor: {r: 0.08, g: 0.22, b: 0.42, a: 1}
+      sunsetColor: {r: 1, g: 0.35, b: 0.12, a: 1}
+      groundAmbientColor: {r: 0.08, g: 0.09, b: 0.08, a: 1}
+      atmosphereThickness: 0.65
+      cloudCoverage: 0.35
+      hazeStrength: 0.22
+      cloudSeed: 0
   - planetId: verdant
     displayName: Viridia
     seed: 24680
@@ -30634,6 +30703,58 @@ MonoBehaviour:
         fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
         particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
         ambientTint: {r: 1, g: 1, b: 1, a: 1}
+    celestial:
+      surfaceGenerationMode: 0
+      radius: 100
+      surfaceGravity: 9.8
+      gravitationalParameter: 98000
+      rotationAxis: {x: 0, y: 1, z: 0}
+      rotationPeriod: 180
+      atmosphereSurfaceDensity: 0.8
+      atmosphereScaleHeight: 4.5
+      atmosphereTopAltitude: 20
+      maximumTerrainElevation: 12
+      editableDepth: 64
+      rotationEpochSeconds: 0
+      atmosphereVisual:
+        kind: 2
+        horizonColor: {r: 0.24, g: 0.58, b: 1, a: 1}
+        zenithColor: {r: 0.035, g: 0.14, b: 0.32, a: 1}
+        sunsetColor: {r: 1, g: 0.32, b: 0.08, a: 1}
+        scatteringStrength: 0.8
+        cloudCoverage: 0.45
+        cloudRotationMultiplier: 1.08
+    lowPolyVisual:
+      visualVersion: 1
+      lowlandColor: {r: 0.22, g: 0.42, b: 0.24, a: 1}
+      highlandColor: {r: 0.42, g: 0.5, b: 0.3, a: 1}
+      cliffColor: {r: 0.24, g: 0.24, b: 0.22, a: 1}
+      rockColor: {r: 0.32, g: 0.3, b: 0.28, a: 1}
+      accentColor: {r: 0.55, g: 0.68, b: 0.34, a: 1}
+      facetStrength: 0.72
+      lightingBands: 4
+      macroColorSize: 18
+      cliffSlope: 0.58
+      macroVariation: 0.16
+      forestWeight: 0
+      desertWeight: 0
+      tundraWeight: 0
+      volcanicWeight: 0
+      crystalWeight: 0
+      tropicalWeight: 0
+      decorationSeed: 0
+      decorationDensity: 1
+      decorationScale: 1
+      clusterStrength: 0.5
+      landmarkStyle: 0
+      horizonColor: {r: 0.42, g: 0.68, b: 0.9, a: 1}
+      zenithColor: {r: 0.08, g: 0.22, b: 0.42, a: 1}
+      sunsetColor: {r: 1, g: 0.35, b: 0.12, a: 1}
+      groundAmbientColor: {r: 0.08, g: 0.09, b: 0.08, a: 1}
+      atmosphereThickness: 0.65
+      cloudCoverage: 0.35
+      hazeStrength: 0.22
+      cloudSeed: 0
   - planetId: crimson
     displayName: Cinder
     seed: 97531
@@ -30774,6 +30895,58 @@ MonoBehaviour:
         fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
         particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
         ambientTint: {r: 1, g: 1, b: 1, a: 1}
+    celestial:
+      surfaceGenerationMode: 0
+      radius: 100
+      surfaceGravity: 9.8
+      gravitationalParameter: 98000
+      rotationAxis: {x: 0, y: 1, z: 0}
+      rotationPeriod: 180
+      atmosphereSurfaceDensity: 0.8
+      atmosphereScaleHeight: 4.5
+      atmosphereTopAltitude: 20
+      maximumTerrainElevation: 12
+      editableDepth: 64
+      rotationEpochSeconds: 0
+      atmosphereVisual:
+        kind: 2
+        horizonColor: {r: 0.24, g: 0.58, b: 1, a: 1}
+        zenithColor: {r: 0.035, g: 0.14, b: 0.32, a: 1}
+        sunsetColor: {r: 1, g: 0.32, b: 0.08, a: 1}
+        scatteringStrength: 0.8
+        cloudCoverage: 0.45
+        cloudRotationMultiplier: 1.08
+    lowPolyVisual:
+      visualVersion: 1
+      lowlandColor: {r: 0.22, g: 0.42, b: 0.24, a: 1}
+      highlandColor: {r: 0.42, g: 0.5, b: 0.3, a: 1}
+      cliffColor: {r: 0.24, g: 0.24, b: 0.22, a: 1}
+      rockColor: {r: 0.32, g: 0.3, b: 0.28, a: 1}
+      accentColor: {r: 0.55, g: 0.68, b: 0.34, a: 1}
+      facetStrength: 0.72
+      lightingBands: 4
+      macroColorSize: 18
+      cliffSlope: 0.58
+      macroVariation: 0.16
+      forestWeight: 0
+      desertWeight: 0
+      tundraWeight: 0
+      volcanicWeight: 0
+      crystalWeight: 0
+      tropicalWeight: 0
+      decorationSeed: 0
+      decorationDensity: 1
+      decorationScale: 1
+      clusterStrength: 0.5
+      landmarkStyle: 0
+      horizonColor: {r: 0.42, g: 0.68, b: 0.9, a: 1}
+      zenithColor: {r: 0.08, g: 0.22, b: 0.42, a: 1}
+      sunsetColor: {r: 1, g: 0.35, b: 0.12, a: 1}
+      groundAmbientColor: {r: 0.08, g: 0.09, b: 0.08, a: 1}
+      atmosphereThickness: 0.65
+      cloudCoverage: 0.35
+      hazeStrength: 0.22
+      cloudSeed: 0
   - planetId: azure
     displayName: Pelagos
     seed: 48127
@@ -30914,6 +31087,58 @@ MonoBehaviour:
         fogColor: {r: 0.3, g: 0.42, b: 0.5, a: 1}
         particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
         ambientTint: {r: 1, g: 1, b: 1, a: 1}
+    celestial:
+      surfaceGenerationMode: 0
+      radius: 100
+      surfaceGravity: 9.8
+      gravitationalParameter: 98000
+      rotationAxis: {x: 0, y: 1, z: 0}
+      rotationPeriod: 180
+      atmosphereSurfaceDensity: 0.8
+      atmosphereScaleHeight: 4.5
+      atmosphereTopAltitude: 20
+      maximumTerrainElevation: 12
+      editableDepth: 64
+      rotationEpochSeconds: 0
+      atmosphereVisual:
+        kind: 2
+        horizonColor: {r: 0.24, g: 0.58, b: 1, a: 1}
+        zenithColor: {r: 0.035, g: 0.14, b: 0.32, a: 1}
+        sunsetColor: {r: 1, g: 0.32, b: 0.08, a: 1}
+        scatteringStrength: 0.8
+        cloudCoverage: 0.45
+        cloudRotationMultiplier: 1.08
+    lowPolyVisual:
+      visualVersion: 1
+      lowlandColor: {r: 0.22, g: 0.42, b: 0.24, a: 1}
+      highlandColor: {r: 0.42, g: 0.5, b: 0.3, a: 1}
+      cliffColor: {r: 0.24, g: 0.24, b: 0.22, a: 1}
+      rockColor: {r: 0.32, g: 0.3, b: 0.28, a: 1}
+      accentColor: {r: 0.55, g: 0.68, b: 0.34, a: 1}
+      facetStrength: 0.72
+      lightingBands: 4
+      macroColorSize: 18
+      cliffSlope: 0.58
+      macroVariation: 0.16
+      forestWeight: 0
+      desertWeight: 0
+      tundraWeight: 0
+      volcanicWeight: 0
+      crystalWeight: 0
+      tropicalWeight: 0
+      decorationSeed: 0
+      decorationDensity: 1
+      decorationScale: 1
+      clusterStrength: 0.5
+      landmarkStyle: 0
+      horizonColor: {r: 0.42, g: 0.68, b: 0.9, a: 1}
+      zenithColor: {r: 0.08, g: 0.22, b: 0.42, a: 1}
+      sunsetColor: {r: 1, g: 0.35, b: 0.12, a: 1}
+      groundAmbientColor: {r: 0.08, g: 0.09, b: 0.08, a: 1}
+      atmosphereThickness: 0.65
+      cloudCoverage: 0.35
+      hazeStrength: 0.22
+      cloudSeed: 0
   - planetId: violet
     displayName: Nyx
     seed: 86420
@@ -31054,6 +31279,58 @@ MonoBehaviour:
         fogColor: {r: 0.22, g: 0.08, b: 0.34, a: 1}
         particleColor: {r: 0.72, g: 0.9, b: 1, a: 1}
         ambientTint: {r: 0.55, g: 0.3, b: 0.8, a: 1}
+    celestial:
+      surfaceGenerationMode: 0
+      radius: 100
+      surfaceGravity: 9.8
+      gravitationalParameter: 98000
+      rotationAxis: {x: 0, y: 1, z: 0}
+      rotationPeriod: 180
+      atmosphereSurfaceDensity: 0.8
+      atmosphereScaleHeight: 4.5
+      atmosphereTopAltitude: 20
+      maximumTerrainElevation: 12
+      editableDepth: 64
+      rotationEpochSeconds: 0
+      atmosphereVisual:
+        kind: 2
+        horizonColor: {r: 0.24, g: 0.58, b: 1, a: 1}
+        zenithColor: {r: 0.035, g: 0.14, b: 0.32, a: 1}
+        sunsetColor: {r: 1, g: 0.32, b: 0.08, a: 1}
+        scatteringStrength: 0.8
+        cloudCoverage: 0.45
+        cloudRotationMultiplier: 1.08
+    lowPolyVisual:
+      visualVersion: 1
+      lowlandColor: {r: 0.22, g: 0.42, b: 0.24, a: 1}
+      highlandColor: {r: 0.42, g: 0.5, b: 0.3, a: 1}
+      cliffColor: {r: 0.24, g: 0.24, b: 0.22, a: 1}
+      rockColor: {r: 0.32, g: 0.3, b: 0.28, a: 1}
+      accentColor: {r: 0.55, g: 0.68, b: 0.34, a: 1}
+      facetStrength: 0.72
+      lightingBands: 4
+      macroColorSize: 18
+      cliffSlope: 0.58
+      macroVariation: 0.16
+      forestWeight: 0
+      desertWeight: 0
+      tundraWeight: 0
+      volcanicWeight: 0
+      crystalWeight: 0
+      tropicalWeight: 0
+      decorationSeed: 0
+      decorationDensity: 1
+      decorationScale: 1
+      clusterStrength: 0.5
+      landmarkStyle: 0
+      horizonColor: {r: 0.42, g: 0.68, b: 0.9, a: 1}
+      zenithColor: {r: 0.08, g: 0.22, b: 0.42, a: 1}
+      sunsetColor: {r: 1, g: 0.35, b: 0.12, a: 1}
+      groundAmbientColor: {r: 0.08, g: 0.09, b: 0.08, a: 1}
+      atmosphereThickness: 0.65
+      cloudCoverage: 0.35
+      hazeStrength: 0.22
+      cloudSeed: 0
   resourceCatalog: []
   decorationCatalog: {fileID: 11400000, guid: bfc1507753c20c54f89990af172b4bb7, type: 2}
 --- !u!1 &1969799801

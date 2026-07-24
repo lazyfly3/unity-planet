@@ -1,0 +1,61 @@
+{
+  "pipelineVersion": 10,
+  "familyId": "ArthropodBugFiend",
+  "skeletonHash": "c415c2ae5f87a9ce2b3a2aa3f30c329dd8e7e96e5504ce5cf3dc58ae3cd12c87",
+  "validationHash": "735b172657a27e43971630e6ac7a5969ccca836f7f545f5f045ba324fca12798",
+  "sourceKind": "Fbx",
+  "sourceModelAsset": "Assets/Creatures/Generated/NMS/ArthropodBugFiend/ArthropodBugFiend.fbx",
+  "sourcePrefabAsset": "",
+  "familyManifestAsset": "Assets/Creatures/Generated/NMS/ArthropodBugFiend/ArthropodBugFiend_family.json",
+  "skeletonManifestAsset": "Assets/Creatures/Generated/NMS/ArthropodBugFiend/ArthropodBugFiend_skeleton.json",
+  "materialManifestAsset": "Assets/Creatures/Generated/NMS/ArthropodBugFiend/ArthropodBugFiend_materials.json",
+  "locomotionType": "Arthropod",
+  "surfaceMode": "Ground",
+  "variantIds": [
+    "ArthropodBugFiend"
+  ],
+  "supportsRun": true,
+  "legCount": 6,
+  "allowRareModules": false,
+  "excludedModulePrefixes": [],
+  "selectionWeight": 1,
+  "walkSpeed": 1.15,
+  "surfaceRootOffset": -1.0,
+  "hoverClearance": 0.0,
+  "importScale": 1.0,
+  "importEuler": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "localForwardAxis": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -1.0
+  },
+  "actions": [
+    {
+      "key": "idle",
+      "clipName": "ArthropodBugFiend_IDLE_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/ArthropodBugFiend/ArthropodBugFiend.fbx",
+      "frames": 121,
+      "loop": true
+    },
+    {
+      "key": "walk",
+      "clipName": "ArthropodBugFiend_WALK_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/ArthropodBugFiend/ArthropodBugFiend.fbx",
+      "frames": 49,
+      "loop": true
+    },
+    {
+      "key": "run",
+      "clipName": "ArthropodBugFiend_RUN_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/ArthropodBugFiend/ArthropodBugFiend.fbx",
+      "frames": 49,
+      "loop": true
+    }
+  ],
+  "loadBearingChains": [],
+  "sourceFbxSha256": "11e8b45e8ac31d85de5d8aff5d527d42b2698bb7f3895b98fd7182958ee1a9e1"
+}

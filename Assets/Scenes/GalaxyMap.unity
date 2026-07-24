@@ -44,3 +44,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 90a4f20d481d498a901d206072101884, type: 3}
   m_Name:
   m_EditorClassIdentifier:
+  chineseFont: {fileID: 12800000, guid: 4dc8aa084416d904b8623eecd3e80018, type: 3}
+  initialRepeatDelay: 0.28
+  repeatInterval: 0.11

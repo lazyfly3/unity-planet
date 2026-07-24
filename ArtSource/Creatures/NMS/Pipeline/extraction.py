@@ -14,6 +14,10 @@ TEXTURE_PATTERN = re.compile(
     r"(textures[\\/][^\"'<>\s]+?\.(?:dds|png|tga))",
     re.IGNORECASE,
 )
+MATERIAL_PATTERN = re.compile(
+    rb"(models[\\/][ -~]+?\.material\.mbin)",
+    re.IGNORECASE,
+)
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -79,6 +83,8 @@ def _convert_mbin(family, source: Path) -> Path:
         [str(family["mbinCompiler"]), "-y", "-f", "-Q", str(source)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     if result.returncode != 0 or not output.is_file():
         details = (result.stdout + result.stderr).strip()
@@ -89,19 +95,66 @@ def _convert_mbin(family, source: Path) -> Path:
 
 def _convert_metadata(family, warnings):
     converted = []
-    descriptor_source = family["extractedRoot"] / family["descriptorSource"]
-    if not descriptor_source.is_file():
-        raise RuntimeError(f"Descriptor source is missing: {descriptor_source}")
-    converted.append(_convert_mbin(family, descriptor_source))
+    descriptor_source_relative = family.get("descriptorSource")
+    if descriptor_source_relative:
+        descriptor_source = family["extractedRoot"] / descriptor_source_relative
+        if not descriptor_source.is_file():
+            raise RuntimeError(f"Descriptor source is missing: {descriptor_source}")
+        converted.append(_convert_mbin(family, descriptor_source))
     for material in family["extractedRoot"].rglob("*.material.mbin"):
         try:
             converted.append(_convert_mbin(family, material))
         except RuntimeError as exc:
             warnings.append(str(exc))
-    descriptor = family["extractedRoot"] / family["descriptor"]
-    if not descriptor.is_file():
-        raise RuntimeError(f"Descriptor MXML was not generated: {descriptor}")
+    descriptor_relative = family.get("descriptor")
+    if descriptor_relative:
+        descriptor = family["extractedRoot"] / descriptor_relative
+        if not descriptor.is_file():
+            raise RuntimeError(f"Descriptor MXML was not generated: {descriptor}")
     return converted
+
+
+def _material_references(root: Path):
+    references = set()
+    for scene in root.rglob("*.scene.mbin"):
+        data = scene.read_bytes()
+        for match in MATERIAL_PATTERN.finditer(data):
+            references.add(_normalise(match.group(1).decode("ascii", errors="ignore")))
+    return references
+
+
+def _extract_referenced_materials(family, references, records, warnings):
+    if not references:
+        warnings.append("No material references were found in extracted Scene MBIN files")
+        return
+    pak_name = family.get("materialPak", "NMSARC.MetadataEtc.pak")
+    pak_path = family["gamePakRoot"] / pak_name
+    if not pak_path.is_file():
+        warnings.append(f"Material archive is missing: {pak_path}")
+        return
+    unresolved = set(references)
+    HGPAKFile = _load_hgpak(family)
+    with HGPAKFile(pak_path) as pak:
+        available = unresolved.intersection(pak.files.keys())
+        for relative, data in pak.extract(filters=sorted(available)):
+            normalised = _normalise(relative)
+            target = family["extractedRoot"] / normalised
+            target.parent.mkdir(parents=True, exist_ok=True)
+            digest = _sha256_bytes(data)
+            reused = target.is_file() and target.stat().st_size == len(data)
+            if reused:
+                reused = _sha256_file(target) == digest
+            if not reused:
+                target.write_bytes(data)
+            records[normalised] = {
+                "archive": pak_name,
+                "size": len(data),
+                "sha256": digest,
+                "reused": reused,
+            }
+            unresolved.discard(normalised)
+    for relative in sorted(unresolved):
+        warnings.append(f"Missing material: {relative}")
 
 
 def _texture_references(mxml_paths):
@@ -123,7 +176,36 @@ def _extract_referenced_textures(family, references, records, warnings):
         path.name for path in sorted(family["gamePakRoot"].glob("NMSARC.TexCreature*.pak"))
         if path.name not in configured
     ]
-    for pak_name in configured + discovered:
+    shared = []
+    normalised_references = tuple(sorted(unresolved))
+    shared_rules = (
+        ("/planets/biomes/common/", "NMSARC.TexBiomesCOMMON.pak"),
+        ("/planets/biomes/weird/", "NMSARC.TexBiomesWEIRD.pak"),
+        ("/planets/npcs/", "NMSARC.TexPlanetNPCS.pak"),
+        ("/common/player/", "NMSARC.TexPlayer.pak"),
+        ("/textures/effects/", "NMSARC.TexMisc.pak"),
+        ("/space/spaceship/", "NMSARC.TexSpacecraft.pak"),
+        ("/space/", "NMSARC.TexSpace.pak"),
+        ("/robots/", "NMSARC.TexRobots.pak"),
+    )
+    for path_fragment, pak_name in shared_rules:
+        if any(path_fragment in f"/{reference}" for reference in normalised_references):
+            if pak_name not in configured and pak_name not in discovered and pak_name not in shared:
+                shared.append(pak_name)
+
+    # Biome-specific references follow TexBiomes<BIOME>.pak naming. Keep this
+    # data driven so new creature materials can reference other biomes without
+    # adding family-specific configuration.
+    for reference in normalised_references:
+        match = re.search(r"(?:^|/)textures/planets/biomes/([^/]+)/", f"/{reference}")
+        if not match:
+            continue
+        biome = re.sub(r"[^a-z0-9]", "", match.group(1).lower()).upper()
+        pak_name = f"NMSARC.TexBiomes{biome}.pak"
+        if pak_name not in configured and pak_name not in discovered and pak_name not in shared:
+            shared.append(pak_name)
+
+    for pak_name in configured + discovered + shared:
         pak_path = family["gamePakRoot"] / pak_name
         if not pak_path.is_file():
             warnings.append(f"Texture archive is missing: {pak_path}")
@@ -155,11 +237,9 @@ def _extract_referenced_textures(family, references, records, warnings):
 
 
 def _validate_required_sources(family):
-    required = [
-        family["sourceScene"],
-        family["descriptorSource"],
-        *family["actions"].values(),
-    ]
+    required = [family["sourceScene"], *family["actions"].values()]
+    if family.get("descriptorSource"):
+        required.append(family["descriptorSource"])
     missing = [
         str(family["extractedRoot"] / relative)
         for relative in required
@@ -207,6 +287,10 @@ def extraction_stage(family):
             family, pak_name, filters, records, warnings
         )
     _validate_required_sources(family)
+    material_references = _material_references(family["extractedRoot"])
+    _extract_referenced_materials(
+        family, material_references, records, warnings
+    )
     converted = _convert_metadata(family, warnings)
     references = _texture_references(converted)
     _extract_referenced_textures(family, references, records, warnings)
@@ -220,6 +304,7 @@ def extraction_stage(family):
         "fileCount": len(records),
         "files": records,
         "convertedMxml": [str(path) for path in converted],
+        "materialReferenceCount": len(material_references),
         "textureReferenceCount": len(references),
         "warnings": warnings,
     }

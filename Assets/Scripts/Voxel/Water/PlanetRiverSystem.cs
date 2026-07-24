@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
-public sealed class PlanetRiverSystem : MonoBehaviour
+public sealed class PlanetRiverSystem : MonoBehaviour, IPlanetWaterSampler
 {
     static readonly List<PlanetRiverSystem> ActiveSystems = new List<PlanetRiverSystem>();
 
@@ -58,11 +58,13 @@ weatherRainfallRate = Mathf.Max(0f, rainfallRate);
     {
         if (!ActiveSystems.Contains(this))
             ActiveSystems.Add(this);
+        PlanetWaterRegistry.Register(this);
     }
 
     void OnDisable()
     {
         ActiveSystems.Remove(this);
+        PlanetWaterRegistry.Unregister(this);
     }
 
     void OnDestroy()
@@ -217,22 +219,7 @@ if (!IsEnabled || address.Depth > Mathf.CeilToInt(settings.maxDepth + 2f))
 
     public static bool TrySampleAny(Vector3 worldPosition, out WaterSample sample)
     {
-float bestDistance = float.PositiveInfinity;
-        sample = default;
-        bool found = false;
-        foreach (PlanetRiverSystem system in ActiveSystems)
-        {
-            if (!system.TrySample(worldPosition, out WaterSample candidate))
-                continue;
-            float distance = Mathf.Abs(candidate.signedDistance);
-            if (distance >= bestDistance)
-                continue;
-            bestDistance = distance;
-            sample = candidate;
-            found = true;
-        }
-        return found;
-    
+        return PlanetWaterRegistry.TrySampleAny(worldPosition, out sample);
 }
 
     public bool TrySample(Vector3 worldPosition, out WaterSample sample)
@@ -292,7 +279,9 @@ sample = default;
             surfaceNormal = normal,
             flowVelocity = world.transform.TransformDirection(bestFlow),
             depth = dynamicDepth,
-            signedDistance = radius - surfaceRadius
+            signedDistance = radius - surfaceRadius,
+            tint = settings.deepColor,
+            kind = bestIsLake ? PlanetWaterKind.Lake : PlanetWaterKind.River
         };
         return sample.signedDistance <= sample.depth * 0.35f;
     

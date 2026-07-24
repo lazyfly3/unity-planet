@@ -160,6 +160,7 @@ public sealed class VisitedPlanetRecord
     public Vector3 lastLandingDirection = Vector3.up;
     public Vector3 lastPlayerLocalPosition;
     public long lastVisitedUtcTicks;
+    public SurfaceSpacecraftState surfaceSpacecraft = new SurfaceSpacecraftState();
 
     public InterstellarCoordinate Coordinate => new InterstellarCoordinate(
         coordinateX,

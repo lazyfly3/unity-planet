@@ -416,9 +416,20 @@ public sealed class PlanetApproachController : MonoBehaviour
                 {
                     runtimePlanetMaterial = new Material(shader) { name = "ApproachPlanetFarLod" };
                     renderer.sharedMaterial = runtimePlanetMaterial;
+                    ApplyPlanetVisualProfile(runtimePlanetMaterial);
                     UpdatePlanetLodBlend();
                 }
             }
+        }
+        if (celestialBodyRoot != null)
+        {
+            ProceduralPlanetOcean ocean = celestialBodyRoot.GetComponent<ProceduralPlanetOcean>()
+                ?? celestialBodyRoot.gameObject.AddComponent<ProceduralPlanetOcean>();
+            ocean.Configure(
+                planet,
+                Vector3.zero,
+                56,
+                PlanetOceanRenderMode.Orbital);
         }
         if (landingCollision != null)
         {
@@ -433,6 +444,35 @@ public sealed class PlanetApproachController : MonoBehaviour
         PlanetAtmosphereVisualController visuals = atmosphereShell.GetComponent<PlanetAtmosphereVisualController>()
             ?? atmosphereShell.gameObject.AddComponent<PlanetAtmosphereVisualController>();
         visuals.Configure(celestialBodyRoot, celestial, atmosphereShell);
+    }
+
+    void ApplyPlanetVisualProfile(Material material)
+    {
+        if (material == null || planet == null || planet.lowPolyVisual == null)
+            return;
+
+        PlanetLowPolyVisualProfile visual = planet.lowPolyVisual.Clone();
+        visual.ClampValues();
+        material.SetFloat("_UseLowPolyVisual", 1f);
+        material.SetColor("_LowlandColor", visual.lowlandColor);
+        material.SetColor("_HighlandColor", visual.highlandColor);
+        material.SetColor("_CliffColor", visual.cliffColor);
+        material.SetColor("_RockColor", visual.rockColor);
+        material.SetColor("_AccentColor", visual.accentColor);
+        material.SetColor("_ShoreColor", visual.shoreColor);
+        material.SetColor("_SnowColor", visual.snowColor);
+        material.SetFloat("_FacetStrength", visual.facetStrength);
+        material.SetFloat("_LightingBands", visual.lightingBands);
+        material.SetFloat("_MacroColorSize", visual.macroColorSize);
+        material.SetFloat("_MacroVariation", visual.macroVariation);
+        material.SetFloat("_CliffSlope", visual.cliffSlope);
+        material.SetFloat("_PlanetRadius", celestial.radius);
+        material.SetFloat("_HeightScale", Mathf.Max(1f, celestial.maximumTerrainElevation));
+        material.SetFloat("_SeaLevel", visual.oceanLevel);
+        material.SetFloat("_ShoreWidth", visual.shoreWidth);
+        material.SetFloat("_SnowLine", visual.snowLine);
+        material.SetFloat("_SnowAmount", visual.snowAmount);
+        material.SetFloat("_MinimumAmbient", 0.2f);
     }
 
     public void SetAutomaticLanding(bool enabled)
@@ -518,6 +558,9 @@ public sealed class PlanetApproachController : MonoBehaviour
         runtimePlanetMaterial.SetVector("_HideCenter", new Vector4(hideCenter.x, hideCenter.y, hideCenter.z, 1f));
         runtimePlanetMaterial.SetFloat("_HideRadius", nearTerrainLodHideRadius);
         runtimePlanetMaterial.SetFloat("_RadialInset", 1.5f);
+        runtimePlanetMaterial.SetFloat(
+            "_EnableNearTerrainCutout",
+            approachTerrainWorld != null && approachTerrainWorld.IsFlightRegionReady ? 1f : 0f);
     }
 
     void UpdateHud()

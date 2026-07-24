@@ -305,6 +305,12 @@ MonoBehaviour:
   seed: 12345
   forcedFamilyId: 
   regenerateWithR: 1
+  motionMode: 0
+  proceduralMotionProfile: {fileID: 0}
+  authorizedAntelopeLibrary: {fileID: 0}
+  importedWalkPlaybackSpeed: 1.8
+  organicMaterialCatalog: {fileID: 0}
+  preferOrganicMaterialTextures: 1
   gravitySource: {fileID: 2103856858}
   groundLayers:
     serializedVersion: 2

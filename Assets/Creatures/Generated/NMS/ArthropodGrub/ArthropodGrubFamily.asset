@@ -1,0 +1,146 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51c2f5f83ec62f444ad2111650f3a41c, type: 3}
+  m_Name: ArthropodGrubFamily
+  m_EditorClassIdentifier: 
+  familyId: ArthropodGrub
+  skeletonHash: 46fd693aa7db9eb20384089ae1d35457a68c076180b7a4b1f8881b71060cd6ac
+  locomotionType: Arthropod
+  surfaceMode: 0
+  variantIds:
+  - ArthropodGrub
+  selectionWeight: 1
+  legCount: 0
+  allowRareModules: 0
+  excludedModulePrefixes: []
+  runtimePrefab: {fileID: 4407818413744354325, guid: 667385226f77b0d48b164efd64aee0ac, type: 3}
+  animatorController: {fileID: 9100000, guid: a5b783bc651134f49903b91fef31ca9d, type: 2}
+  familyManifest: {fileID: 4900000, guid: bcbf7eb5bdefcd744b937d0dceae03ed, type: 3}
+  moduleBindings:
+  - moduleId: ArthropodGrub_Fixed
+    rendererPaths:
+    - ImportSpace/CanonicalRig/APodGrubLOD0
+    - ImportSpace/CanonicalRig/APodGrubLOD1
+    - ImportSpace/CanonicalRig/APodGrubLOD2
+    - ImportSpace/CanonicalRig/APodGrubLOD3
+    - ImportSpace/CanonicalRig/Data
+    - ImportSpace/CanonicalRig/Head
+    - ImportSpace/CanonicalRig/Jaw
+    - ImportSpace/CanonicalRig/Spine1
+    - ImportSpace/CanonicalRig/Spine2
+    - ImportSpace/CanonicalRig/Spine3
+    - ImportSpace/CanonicalRig/Tail1
+    - ImportSpace/CanonicalRig/Tail2
+    - ImportSpace/CanonicalRig/Tail3
+    - ImportSpace/CanonicalRig/models\planets\creatures\arthropod\arthropodgrub
+  materialDefinitions:
+  - materialId: APodGrubMAT_43b4255e69
+    materialPreset: Skin
+    sourceMxmlPath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\models\planets\creatures\arthropod\arthropodgrub\apodgrubmat.material.MXML
+    sourceMxmlSha256: 43b4255e69a8eeb74b1b6f77f9c5c2f6747884abc769ff152b28dcb69a00e28a
+    mainTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\grub\arthropodgrub.base.dds
+    mainTextureSourceSha256: 06427d837dbfeb536e42cba50af0035b5e5aa5a1dae97874448a33b72f67b7a3
+    normalTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\grub\arthropodgrub.base.normal.dds
+    normalTextureSourceSha256: ef86da92d3871b87696838579fe38891871c5489ebe8e4739ad8eed0bf6997c7
+    maskTextureSourcePath: D:\blender\creature\NMSImport\RemainingLand\Arthropod\Extracted\textures\planets\creatures\arthropod\grub\arthropodgrub.base.masks.dds
+    maskTextureSourceSha256: e58c091c068f022192ac0477d4e4748dd7b1fffabab63a520477fda85b8968c8
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: Opaque
+    maskChannelLayout: R=Secondary,G=Accent,B=Smoothness,A=Emission
+    material: {fileID: 2100000, guid: 3fb9d2ec925f0ca48b7808b41d00bdfe, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.5
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings: []
+  - materialId: Default-Material
+    materialPreset: Skin
+    sourceMxmlPath: 
+    sourceMxmlSha256: 
+    mainTextureSourcePath: 
+    mainTextureSourceSha256: 
+    normalTextureSourcePath: 
+    normalTextureSourceSha256: 
+    maskTextureSourcePath: 
+    maskTextureSourceSha256: 
+    emissionTextureSourcePath: 
+    emissionTextureSourceSha256: 
+    transparencyMode: 
+    maskChannelLayout: 
+    material: {fileID: 2100000, guid: 019f31185e1b4e74eaf1aeb9d5b7118d, type: 2}
+    hasMainTexture: 1
+    hasNormalTexture: 1
+    hasMaskTexture: 1
+    hasEmissionTexture: 0
+    metallic: 0
+    smoothness: 0.36
+    paletteStrength: 0.28
+    emissionStrength: 0
+    warnings:
+    - material record was inferred from Unity renderer slot
+  rendererMaterialBindings:
+  - rendererPath: ImportSpace/CanonicalRig/APodGrubLOD0
+    materialIds:
+    - APodGrubMAT_43b4255e69
+  - rendererPath: ImportSpace/CanonicalRig/APodGrubLOD1
+    materialIds:
+    - APodGrubMAT_43b4255e69
+  - rendererPath: ImportSpace/CanonicalRig/APodGrubLOD2
+    materialIds:
+    - APodGrubMAT_43b4255e69
+  - rendererPath: ImportSpace/CanonicalRig/APodGrubLOD3
+    materialIds:
+    - APodGrubMAT_43b4255e69
+  - rendererPath: ImportSpace/CanonicalRig/Data
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/Head
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/Jaw
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/Spine1
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/Spine2
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/Spine3
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/Tail1
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/Tail2
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/Tail3
+    materialIds:
+    - Default-Material
+  - rendererPath: ImportSpace/CanonicalRig/models\planets\creatures\arthropod\arthropodgrub
+    materialIds:
+    - Default-Material
+  loadBearingChains: []
+  walkSpeed: 0.8
+  surfaceRootOffset: 0.16246842
+  hoverClearance: 0
+  localForwardAxis: {x: 0, y: 0, z: -1}
+  idleState: Idle
+  walkState: Walk
+  runState: Run
+  supportsRun: 1

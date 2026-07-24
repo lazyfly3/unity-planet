@@ -59,6 +59,8 @@ public sealed class InterstellarShipController : MonoBehaviour
     public float WarpExitDistance => cruiseController == null ? 0f : cruiseController.ExitDistance;
     public bool AutomaticLandingActive => cruiseController != null
         && cruiseController.AutomaticLandingRequested;
+    public bool SurfaceEntryActive => cruiseController != null
+        && cruiseController.IsSurfaceEntryActive;
     public float Speed => shipBody == null ? 0f : shipBody.velocity.magnitude;
     public bool StabilizationEnabled => ifcsMotor == null
         || ifcsMotor.AssistMode != SpacecraftAssistMode.Decoupled;

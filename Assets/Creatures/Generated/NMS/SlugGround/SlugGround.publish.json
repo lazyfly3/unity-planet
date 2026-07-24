@@ -1,0 +1,54 @@
+{
+  "pipelineVersion": 10,
+  "familyId": "SlugGround",
+  "skeletonHash": "117e0dac38601efaf877f67ccddc80d8371a757677173ef01059663764ad22a3",
+  "validationHash": "2e90f87f6d359d9282012dc8f2ce2a54272012cbcee467d3c2ec5d50b1f721e6",
+  "sourceKind": "Fbx",
+  "sourceModelAsset": "Assets/Creatures/Generated/NMS/SlugGround/SlugGround.fbx",
+  "sourcePrefabAsset": "",
+  "familyManifestAsset": "Assets/Creatures/Generated/NMS/SlugGround/SlugGround_family.json",
+  "skeletonManifestAsset": "Assets/Creatures/Generated/NMS/SlugGround/SlugGround_skeleton.json",
+  "materialManifestAsset": "Assets/Creatures/Generated/NMS/SlugGround/SlugGround_materials.json",
+  "locomotionType": "Serpentine",
+  "surfaceMode": "Ground",
+  "variantIds": [
+    "SlugGround"
+  ],
+  "supportsRun": false,
+  "legCount": 0,
+  "allowRareModules": false,
+  "excludedModulePrefixes": [],
+  "selectionWeight": 1,
+  "walkSpeed": 0.65,
+  "surfaceRootOffset": -1.0,
+  "hoverClearance": 0.0,
+  "importScale": 1.0,
+  "importEuler": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "localForwardAxis": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -1.0
+  },
+  "actions": [
+    {
+      "key": "idle",
+      "clipName": "SlugGround_IDLE_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/SlugGround/SlugGround.fbx",
+      "frames": 121,
+      "loop": true
+    },
+    {
+      "key": "walk",
+      "clipName": "SlugGround_WALK_InvBind",
+      "assetPath": "Assets/Creatures/Generated/NMS/SlugGround/SlugGround.fbx",
+      "frames": 61,
+      "loop": true
+    }
+  ],
+  "loadBearingChains": [],
+  "sourceFbxSha256": "af4b6964bd5979524be258256be8e66bd6ef2d5a37d07c487e38f72960351db2"
+}

@@ -19,6 +19,122 @@ public sealed class NmsAuthorizedAntelopeTests
     const string GaitTemplatePath =
         "Assets/Creatures/Authorized/NMS/Procedural/AntelopeWalkGaitTemplate.asset";
 
+    [Test]
+    public void Bio1VariantScales_AreDeterministicDistinctAndConstrained()
+    {
+        Vector3[] first = Bio1AntelopeVariantShowcase.CreateVariantScales(12345);
+        Vector3[] second = Bio1AntelopeVariantShowcase.CreateVariantScales(12345);
+        Assert.That(first, Has.Length.EqualTo(3));
+        Assert.That(second, Has.Length.EqualTo(3));
+        var heights = new float[3];
+        for (int i = 0; i < first.Length; i++)
+        {
+            Assert.That(Vector3.Distance(first[i], second[i]), Is.LessThan(0.000001f));
+            Assert.That(first[i].x, Is.InRange(0.82f, 1.22f));
+            Assert.That(first[i].y, Is.InRange(0.72f, 1.30f));
+            Assert.That(first[i].z, Is.InRange(0.96f, 1.04f));
+            heights[i] = first[i].y;
+        }
+        System.Array.Sort(heights);
+        Assert.That(heights[0], Is.InRange(0.72f, 0.88f));
+        Assert.That(heights[1], Is.InRange(0.91f, 1.08f));
+        Assert.That(heights[2], Is.InRange(1.12f, 1.30f));
+    }
+
+    [Test]
+    public void SharedVariantSampler_IsDeterministicForAuthorizedAntelope()
+    {
+        NmsCreatureFamilyDefinition family =
+            AssetDatabase.LoadAssetAtPath<NmsCreatureFamilyDefinition>(FamilyPath);
+        Assert.That(family, Is.Not.Null);
+        Assert.That(NmsCreatureVariantSampler.TrySample(
+            family, 24680, out NmsCreatureSpeciesDefinition first,
+            out string firstError), Is.True, firstError);
+        Assert.That(NmsCreatureVariantSampler.TrySample(
+            family, 24680, out NmsCreatureSpeciesDefinition second,
+            out string secondError), Is.True, secondError);
+        Assert.That(first.signature, Is.EqualTo(second.signature));
+        Assert.That(first.selectedModules, Is.EqualTo(second.selectedModules));
+        Assert.That(first.primaryColor, Is.EqualTo(second.primaryColor));
+        Assert.That(first.secondaryColor, Is.EqualTo(second.secondaryColor));
+        Assert.That(first.accentColor, Is.EqualTo(second.accentColor));
+    }
+
+    [Test]
+    public void SharedVariantSampler_AlwaysCoversTheAntelopeTailSocket()
+    {
+        NmsCreatureFamilyDefinition family =
+            AssetDatabase.LoadAssetAtPath<NmsCreatureFamilyDefinition>(FamilyPath);
+        Assert.That(family, Is.Not.Null);
+        for (int seed = 0; seed < 500; seed++)
+        {
+            Assert.That(NmsCreatureVariantSampler.TrySample(
+                family, seed, out NmsCreatureSpeciesDefinition species,
+                out string error), Is.True, error);
+            int bodyCount = 0;
+            int tailCount = 0;
+            for (int module = 0; module < species.selectedModules.Length; module++)
+            {
+                string id = species.selectedModules[module];
+                if (id == "_Body_Deer" || id == "_Body_Fat")
+                    bodyCount++;
+                if (id == "_Tail_Alien0" || id == "_Tail_Alien1"
+                    || id == "_Tail_Alien4")
+                    tailCount++;
+            }
+            Assert.That(bodyCount, Is.EqualTo(1), $"Seed {seed}");
+            Assert.That(tailCount, Is.EqualTo(1), $"Seed {seed}");
+        }
+    }
+
+    [Test]
+    public void AppearanceOptions_AreManifestDrivenAndExcludeOpenTailSocket()
+    {
+        NmsCreatureFamilyDefinition family =
+            AssetDatabase.LoadAssetAtPath<NmsCreatureFamilyDefinition>(FamilyPath);
+        Assert.That(NmsAntelopeEditingOptions.TryCreate(
+            family, out NmsAntelopeEditingOptions options,
+            out string error), Is.True, error);
+        Assert.That(options.Bodies, Is.EquivalentTo(
+            new[] { "_Body_Deer", "_Body_Fat" }));
+        Assert.That(options.Tails, Is.EquivalentTo(
+            new[] { "_Tail_Alien0", "_Tail_Alien1", "_Tail_Alien4" }));
+        Assert.That(options.Tails, Has.None.Empty);
+        Assert.That(options.GetOptions(
+            NmsAntelopeEditablePart.Accessory, "_Body_Deer"),
+            Has.Some.EqualTo("_DeerAcc_25"));
+        Assert.That(options.GetOptions(
+            NmsAntelopeEditablePart.Accessory, "_Body_Fat"),
+            Has.Some.EqualTo("_FatAcc_14OK"));
+    }
+
+    [Test]
+    public void AppearanceParameters_RoundTripWithoutChangingSelectedModules()
+    {
+        NmsCreatureFamilyDefinition family =
+            AssetDatabase.LoadAssetAtPath<NmsCreatureFamilyDefinition>(FamilyPath);
+        Assert.That(NmsCreatureVariantSampler.TrySample(
+            family, 9876, out NmsCreatureSpeciesDefinition sampled,
+            out string sampleError), Is.True, sampleError);
+        var descriptor = new NmsAntelopeVariantDescriptor(
+            9876, new Vector3(1.1f, 0.9f, 1.02f), sampled);
+        NmsAntelopeVariantParameters parameters =
+            NmsAntelopeVariantParameters.FromDescriptor(descriptor);
+        Assert.That(NmsAntelopeEditingOptions.TryCreate(
+            family, out NmsAntelopeEditingOptions options,
+            out string optionsError), Is.True, optionsError);
+        options.Constrain(parameters);
+        NmsCreatureSpeciesDefinition rebuilt =
+            NmsCreatureVariantSampler.CreateManualSpecies(
+                family.FamilyId, parameters.seed, parameters.BuildModuleIds(),
+                parameters.primaryColor, parameters.secondaryColor,
+                parameters.accentColor);
+        Assert.That(rebuilt.selectedModules, Is.EqualTo(sampled.selectedModules));
+        Assert.That(rebuilt.primaryColor, Is.EqualTo(sampled.primaryColor));
+        Assert.That(rebuilt.secondaryColor, Is.EqualTo(sampled.secondaryColor));
+        Assert.That(rebuilt.accentColor, Is.EqualTo(sampled.accentColor));
+    }
+
     [TestCase("_Body_Deer", "_Head_Deer", "DeerEyes", "_HDEars_1", "_HDHorns_4", "_Tail_Alien1", "_DeerAcc_25")]
     [TestCase("_Body_Fat", "_Head_Deer", "DeerEyes", "_HDEars_9", "_HORNS_None", "_TAIL_None", "_FatAcc_14OK")]
     public void AuthorizedModules_RebindToOneCanonicalRig(params string[] selected)

@@ -1,0 +1,1436 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0f07431238c82844bdb9888f9d6b2a5, type: 3}
+  m_Name: NmsOrganicMaterialCatalog
+  m_EditorClassIdentifier: 
+  textureSets:
+  - textureSetId: alien_caterpillar_skin
+    displayName: alien_caterpillar_skin
+    kind: 0
+    baseColor: {fileID: 2800000, guid: c9396a90c4091f343bfd9f6cf0c930b5, type: 3}
+    normal: {fileID: 2800000, guid: ffe4bc26d1a9aa846a1a67f1e580ce25, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: alien_cell_growth
+    displayName: alien_cell_growth
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 4f25d616b77763d458b1183b71f1b6e3, type: 3}
+    normal: {fileID: 2800000, guid: 903db0dd6fe2d784bbeecdf3844fc0d7, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 2800000, guid: dbe109cebaa7b934ca1933e1eebbef92, type: 3}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 1
+  - textureSetId: alien_cell_membrane
+    displayName: alien_cell_membrane
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 7fd13cc743ec23d47b5a0a6164706152, type: 3}
+    normal: {fileID: 2800000, guid: 9b051836d5ef487468c7fd020265de5f, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: alien_growth_brain_cells
+    displayName: alien_growth_brain_cells
+    kind: 7
+    baseColor: {fileID: 2800000, guid: 6639508236949bd49bcad375d384c792, type: 3}
+    normal: {fileID: 2800000, guid: e9d5da8c0d356254a8a69e977c407943, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.18
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: alien_growth_flesh_rhizome
+    displayName: alien_growth_flesh_rhizome
+    kind: 7
+    baseColor: {fileID: 2800000, guid: c43c211bc2bca0442b6830347949b595, type: 3}
+    normal: {fileID: 2800000, guid: 8ea7f1f29a734f5438dde436d54c4481, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.18
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: alien_growth_jaws
+    displayName: alien_growth_jaws
+    kind: 6
+    baseColor: {fileID: 2800000, guid: 4ad3ebd3a0cb8cb4f942c55ef0ea64d0, type: 3}
+    normal: {fileID: 2800000, guid: 65ab9a14e14dd764e89cda364d2142aa, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.18
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: alien_guts_and_goo
+    displayName: alien_guts_and_goo
+    kind: 6
+    baseColor: {fileID: 2800000, guid: cb1c1d9b7bb28994f8d23217db2a3f0c, type: 3}
+    normal: {fileID: 2800000, guid: 89ac47e618672db43bf89867e1ee05d4, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.18
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: alien_skin_blisters
+    displayName: alien_skin_blisters
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 504bd98194e842242b68bf24e9b041f8, type: 3}
+    normal: {fileID: 2800000, guid: 191e18c917e9e3c46bd0ec796e3483cd, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: alien_skin_crusted
+    displayName: alien_skin_crusted
+    kind: 8
+    baseColor: {fileID: 2800000, guid: 9b11a30925fe2d54285d23a991a5fece, type: 3}
+    normal: {fileID: 2800000, guid: cd1ed0f9c6b409b45bf2b6e07ef3dfb9, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 2800000, guid: a8eca8382179ddf4abe6c57e771faa2b, type: 3}
+    paletteStrength: 0.28
+    normalStrength: 1
+    emissionStrength: 1
+  - textureSetId: arch_fingerprint_skin
+    displayName: arch_fingerprint_skin
+    kind: 0
+    baseColor: {fileID: 2800000, guid: b6620a160142946488a6311d2b93f79b, type: 3}
+    normal: {fileID: 2800000, guid: 8052adc53b2720647915a17257aa7901, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: bone
+    displayName: bone
+    kind: 4
+    baseColor: {fileID: 2800000, guid: 352b78a242fe7934c875f90be6bc2f9e, type: 3}
+    normal: {fileID: 2800000, guid: 6fe3eb7b57e498d46a8c1944b98b88bd, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.2
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: clustered_inflorescence
+    displayName: clustered_inflorescence
+    kind: 11
+    baseColor: {fileID: 2800000, guid: b5ec4d15a6f907649b083c82003d434f, type: 3}
+    normal: {fileID: 2800000, guid: 1986ba6efd9e8f04ca348039dc84a859, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: cookie
+    displayName: cookie
+    kind: 11
+    baseColor: {fileID: 2800000, guid: c0031784534a60b438f462bcf725e1a4, type: 3}
+    normal: {fileID: 2800000, guid: f22ff032e35b42f4b866323a506bf93a, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: eye_blue_bulbar_conjunctiva
+    displayName: eye_blue_bulbar_conjunctiva
+    kind: 5
+    baseColor: {fileID: 2800000, guid: ee1b09f8658450249a93df4388fc6ef6, type: 3}
+    normal: {fileID: 2800000, guid: 2b9e326c25e745e4cbb27f6bb5bbad51, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.18
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_40yo_cheek_skin_1
+    displayName: female_40yo_cheek_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 6d1b361e316cac24ebf9a99c4300ece9, type: 3}
+    normal: {fileID: 2800000, guid: 83ffc025866a7a5419d30b2c505d1e15, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_40yo_cheek_skin_2
+    displayName: female_40yo_cheek_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 7fcb21cae5e0aa840881a9e0f0ffd53f, type: 3}
+    normal: {fileID: 2800000, guid: 351c31f9da26af84d82058c082f1c178, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_40yo_cheek_skin_3
+    displayName: female_40yo_cheek_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 4c2ddaa83218e0740b26b1b941a5d81d, type: 3}
+    normal: {fileID: 2800000, guid: 069d8a8cb1cf8a841bb3145d9f38671c, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_40yo_chin_skin_1
+    displayName: female_40yo_chin_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 33406136a6e570b4fbeb813bc53389b6, type: 3}
+    normal: {fileID: 2800000, guid: 1b786d111b93fbc49a8f5c14677ecf30, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_40yo_chin_skin_2
+    displayName: female_40yo_chin_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 41f1f932ee957c54c9694f3a06d2771a, type: 3}
+    normal: {fileID: 2800000, guid: de25089512ab2254ead8c8343a1e76b8, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_60yo_cheek_skin_1
+    displayName: female_60yo_cheek_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: e1b17c70b82ce9f4491e799e605ba9b5, type: 3}
+    normal: {fileID: 2800000, guid: afc68f5593fe0604487f91949f9f35b1, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_60yo_cheek_skin_2
+    displayName: female_60yo_cheek_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 46802a0b97a4eeb4e878e45573125b31, type: 3}
+    normal: {fileID: 2800000, guid: 082d218efe80f16469354b9c52a1f716, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_60yo_cheek_skin_3
+    displayName: female_60yo_cheek_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: d057ec4eca4beb244870edf4a2254ae3, type: 3}
+    normal: {fileID: 2800000, guid: 00b0ce4119d2abf488c3709239368aa0, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_60yo_cheek_skin_4
+    displayName: female_60yo_cheek_skin_4
+    kind: 0
+    baseColor: {fileID: 2800000, guid: e062b0d8204352e4d9c7212dce55ac84, type: 3}
+    normal: {fileID: 2800000, guid: a3d6bbb1ca527814ba85214ebd93217d, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_60yo_forehead_skin_1
+    displayName: female_60yo_forehead_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 26ead8e257f007a4589d1dea5ac26869, type: 3}
+    normal: {fileID: 2800000, guid: de9e0bd8556b1df4cbe66d18f04d9ff9, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_60yo_forehead_skin_2
+    displayName: female_60yo_forehead_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: be82acb911fc71c4b87fa99a254ac1e7, type: 3}
+    normal: {fileID: 2800000, guid: 3ec82b040bfa4984287e87d2fc49fbbc, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_60yo_forehead_skin_3
+    displayName: female_60yo_forehead_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 0b03dea5745ccc94bbb09e60ea3a868a, type: 3}
+    normal: {fileID: 2800000, guid: 740d1dd5eb6adc241a88d9d39bad3a5e, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_back_skin_1
+    displayName: female_back_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 63c75805fdfea5747979d85c135c4538, type: 3}
+    normal: {fileID: 2800000, guid: 70c5197fd90a6ed42be957901ce3b222, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_elbow_skin_1
+    displayName: female_elbow_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 5fa14d786f0298e4f9bcdd6a88cfce2c, type: 3}
+    normal: {fileID: 2800000, guid: a711dd327a88b034481af6eea7c4ec29, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_elbow_skin_2
+    displayName: female_elbow_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: cdf4169adda0c8e4c88a074b0501e123, type: 3}
+    normal: {fileID: 2800000, guid: e1f951dc24a8d1d4d9a11b8bbd76ec57, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_elbow_skin_3
+    displayName: female_elbow_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 8bcad63e8329d6f4193873e9c0d11361, type: 3}
+    normal: {fileID: 2800000, guid: 5cc877adcf9ac2b468daac3106e29736, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_elbow_skin_4
+    displayName: female_elbow_skin_4
+    kind: 0
+    baseColor: {fileID: 2800000, guid: fc98cfca4735a994d8396d249f14383a, type: 3}
+    normal: {fileID: 2800000, guid: 5209357acddf7e74e9cf836024527c96, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_fullarm_skin_1
+    displayName: female_fullarm_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: c96a4f8ec2ed5ae488b8a435978a9384, type: 3}
+    normal: {fileID: 2800000, guid: e3594ceeefbdb794bba13f77bec22b78, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_fullarm_skin_2
+    displayName: female_fullarm_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 3660933f8c94c4f47b5dd86b70c1b93a, type: 3}
+    normal: {fileID: 2800000, guid: 29bd0cba8038a04469f0885cc8864757, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_fullarm_skin_3
+    displayName: female_fullarm_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: f684fdf882aa70e4cbf56460ca61a7b1, type: 3}
+    normal: {fileID: 2800000, guid: 9366a403476dd0c44bce805a7d9ec1bf, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_fullarm_skin_4
+    displayName: female_fullarm_skin_4
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 6e5de68677c9d2b47bc70bc2a35c7f8e, type: 3}
+    normal: {fileID: 2800000, guid: 8ba8dbe77de78a34cacebf2b64960ff9, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_fullarm_skin_5
+    displayName: female_fullarm_skin_5
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 08044ec2d8f51d64082e73edc1694e3d, type: 3}
+    normal: {fileID: 2800000, guid: ac076171e6264f749a0b25b867697ff1, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_fullarm_skin_6
+    displayName: female_fullarm_skin_6
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 3b4ba5dea63e22740840f4190807b96b, type: 3}
+    normal: {fileID: 2800000, guid: eb3bf012e96ac444a998d3f10474a96b, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_leg_skin_1
+    displayName: female_leg_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: c6640ed958677374da85fecfcd744457, type: 3}
+    normal: {fileID: 2800000, guid: 2ed9d6d4f74e8a649bb053f9ab9d95ed, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_leg_skin_2
+    displayName: female_leg_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 0e9768afe4633a74fb18536293e6b96d, type: 3}
+    normal: {fileID: 2800000, guid: 61c763f49a09f6a4a9af5c8ffcfcb96c, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_leg_skin_3
+    displayName: female_leg_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: dc2e3c2bc2c8b144289999aed300b075, type: 3}
+    normal: {fileID: 2800000, guid: 61ce143c509f0da4896d189a70ce839e, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_leg_skin_4
+    displayName: female_leg_skin_4
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 90455ad1356498d468c93904c6e08230, type: 3}
+    normal: {fileID: 2800000, guid: b2f746dd0ffc62a42baaefe9d49cf1c1, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_leg_skin_5
+    displayName: female_leg_skin_5
+    kind: 0
+    baseColor: {fileID: 2800000, guid: ecd26df9e4a4dda4ba05366229363b3c, type: 3}
+    normal: {fileID: 2800000, guid: 93686097875cf0145917629f0040c3f4, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: female_shoulder_skin_1
+    displayName: female_shoulder_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 7cb23ddc496b1e74794aa3be2aeab97d, type: 3}
+    normal: {fileID: 2800000, guid: 4378ec95534138044ae9aa385ee8952c, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: fingernail
+    displayName: fingernail
+    kind: 11
+    baseColor: {fileID: 2800000, guid: 19421bb4007d6314c92272d3ce14b235, type: 3}
+    normal: {fileID: 2800000, guid: 3714cdde3e7fd8f4288a900aea193771, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: fish_scales
+    displayName: fish_scales
+    kind: 1
+    baseColor: {fileID: 2800000, guid: bd82990fc7a438f43bcecfca24bba1ff, type: 3}
+    normal: {fileID: 2800000, guid: acccae59995b501479573fbcbf2603e0, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.28
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: flesh_carbonized
+    displayName: flesh_carbonized
+    kind: 7
+    baseColor: {fileID: 2800000, guid: 2aa5887bcab8346419ae770dbb988588, type: 3}
+    normal: {fileID: 2800000, guid: 5665d5851d5faa34eab681e4fde25190, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.18
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: frog_skin
+    displayName: frog_skin
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 19f09ca0104e6d9428745c760a8a2279, type: 3}
+    normal: {fileID: 2800000, guid: 202383bb052e5934a9675db4b2197d8f, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: human_blood
+    displayName: human_blood
+    kind: 11
+    baseColor: {fileID: 2800000, guid: 2f637bf18887b5542b3de7f449c982ba, type: 3}
+    normal: {fileID: 2800000, guid: b9f4b890a8dc0864fbe40153d460a42a, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: hypertrophic_wild_scar
+    displayName: hypertrophic_wild_scar
+    kind: 11
+    baseColor: {fileID: 2800000, guid: 5c7cd67d4ace7e14388c08b5ac74b414, type: 3}
+    normal: {fileID: 2800000, guid: 31749749bb695484b83aaf12b3d97594, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: lizard_skin
+    displayName: lizard_skin
+    kind: 1
+    baseColor: {fileID: 2800000, guid: 997b43aec9b9fc549907bc7e49a7bb3c, type: 3}
+    normal: {fileID: 2800000, guid: 4839e605f98fab1429d8a82b68421f03, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.28
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: loop_fingerprint_skin
+    displayName: loop_fingerprint_skin
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 6247a4b08dfef704e9ed3bd3fb59c024, type: 3}
+    normal: {fileID: 2800000, guid: 39d67e3425f8e774f8bb4185f01e1d55, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_30yo_cheek_skin_1
+    displayName: male_30yo_cheek_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 865637ec6b261a64395d56cbc6e3b3cb, type: 3}
+    normal: {fileID: 2800000, guid: 2f0b81a940e6d5c4c8ba69f8ddfe3572, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_30yo_cheek_skin_2
+    displayName: male_30yo_cheek_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: daa04ad5f321a58478f952413296d211, type: 3}
+    normal: {fileID: 2800000, guid: 4c46af1070780c448809f197b8e41bc9, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_30yo_forehead_skin_1
+    displayName: male_30yo_forehead_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: bd10cf354caa32c43a9fdfb61bcec0cb, type: 3}
+    normal: {fileID: 2800000, guid: 9139f7a2d47f26044934080ce9f534a3, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_30yo_forehead_skin_2
+    displayName: male_30yo_forehead_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: df99481b9d3773c4abcf1035547ca33a, type: 3}
+    normal: {fileID: 2800000, guid: f13458f2900e93b46b125ce355221671, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_30yo_forehead_skin_3
+    displayName: male_30yo_forehead_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 259c986417c5732459673026b4d89973, type: 3}
+    normal: {fileID: 2800000, guid: b7db69612424e3d4dbe0c99d3341dbc4, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_30yo_forehead_skin_4
+    displayName: male_30yo_forehead_skin_4
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 87e0f551ba28ade41bc2dae791e9e227, type: 3}
+    normal: {fileID: 2800000, guid: 150d4d0fa317d3947b0620457d387b77, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_40yo_cheek_skin_1
+    displayName: male_40yo_cheek_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: d89981b0bd0b2e247b913b3ebdeec82a, type: 3}
+    normal: {fileID: 2800000, guid: d083de4250c18c44f8318cc17c4b90fd, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_40yo_cheek_skin_2
+    displayName: male_40yo_cheek_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 8f9f89cd31b080440a6eec6d3b1826b5, type: 3}
+    normal: {fileID: 2800000, guid: c7299fe30af0047449f2203ada10f3a9, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_40yo_cheek_skin_3
+    displayName: male_40yo_cheek_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 731ecb325f2dd73488390544698bd214, type: 3}
+    normal: {fileID: 2800000, guid: 0da1535c1e6a48f438a8869da3e0e7bd, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_40yo_cheek_skin_4
+    displayName: male_40yo_cheek_skin_4
+    kind: 0
+    baseColor: {fileID: 2800000, guid: e8cc309fa40d1a241862d68ebb15b546, type: 3}
+    normal: {fileID: 2800000, guid: 2bacb152cb50cb44e98633e57a2944cb, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_40yo_cheek_skin_5
+    displayName: male_40yo_cheek_skin_5
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 4330eee108e9f2b4cbc0da9f0b06e4d3, type: 3}
+    normal: {fileID: 2800000, guid: 9825c0786c6bf7044b74dfffd6e9c1bd, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_40yo_cheek_skin_6
+    displayName: male_40yo_cheek_skin_6
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 5456e013d93421d45a4c1dd92a00dd60, type: 3}
+    normal: {fileID: 2800000, guid: b35dab731ea57204c9754c3e068f86a5, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_40yo_cheek_skin_7
+    displayName: male_40yo_cheek_skin_7
+    kind: 0
+    baseColor: {fileID: 2800000, guid: f0f1090769cab4142a1f2da2cffd68ff, type: 3}
+    normal: {fileID: 2800000, guid: 8f9efaf09d8606f4b805fd3367bee880, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_40yo_cheek_skin_8
+    displayName: male_40yo_cheek_skin_8
+    kind: 0
+    baseColor: {fileID: 2800000, guid: a91d291ffbeac4f449f91ba8069d3019, type: 3}
+    normal: {fileID: 2800000, guid: 9eb1bdfef858a3541878f17848417e0b, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_40yo_chin_skin_1
+    displayName: male_40yo_chin_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: fac6b4682dafd304c9e7e48fe85b98d2, type: 3}
+    normal: {fileID: 2800000, guid: 9f0869365f285d54983c438a2b1ba8fe, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_40yo_chin_skin_2
+    displayName: male_40yo_chin_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 467262c762839984f9f3f82b527b8548, type: 3}
+    normal: {fileID: 2800000, guid: 39588a5440e5d7c45a691bd06dfefa67, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_40yo_forehead_skin_1
+    displayName: male_40yo_forehead_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 9f30e299c847c4543a899c384b00e490, type: 3}
+    normal: {fileID: 2800000, guid: 1f446ece57bc62745bb2c0688f6dd475, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_40yo_nose_skin_1
+    displayName: male_40yo_nose_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 3a9bc83c454d7944bb19e36922dc5b68, type: 3}
+    normal: {fileID: 2800000, guid: b5239cfe7951a4d4abdfa1297005ea18, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_belly_skin_1
+    displayName: male_belly_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 641073f03720551418e72b2e04c33c16, type: 3}
+    normal: {fileID: 2800000, guid: 8312be23572c0ea4d92073431e48d611, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_belly_skin_2
+    displayName: male_belly_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: bc24f708f24d9a54db6ed9323e90861c, type: 3}
+    normal: {fileID: 2800000, guid: 6c8451f5405ae254989b536ab9866766, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_belly_skin_3
+    displayName: male_belly_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: b5dcbb63178ce8d4897d058aac28fad8, type: 3}
+    normal: {fileID: 2800000, guid: 62a2cb72ec97ebe4b89cc6c88592a751, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_foot_sole_skin_1
+    displayName: male_foot_sole_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 06d8748d80135d8409cee3ea691525be, type: 3}
+    normal: {fileID: 2800000, guid: c763c3a2d8c4d5042ae2324e55e85796, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_foot_sole_skin_2
+    displayName: male_foot_sole_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 913c502f182268340a843cfc5a4380dd, type: 3}
+    normal: {fileID: 2800000, guid: 12c21eca148811447af397ceb6907a0e, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_foot_sole_skin_3
+    displayName: male_foot_sole_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 7e1b0602e48e82f42b2218f521805c57, type: 3}
+    normal: {fileID: 2800000, guid: 443a557c3553dd9429b4cd39a0ab3343, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_fullarm_skin_1
+    displayName: male_fullarm_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: d1d984671ed6f014b8c42b0ae0239cfc, type: 3}
+    normal: {fileID: 2800000, guid: 037e489722b098d4f8f346c7b51a011f, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_fullarm_skin_2
+    displayName: male_fullarm_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 74e1ce77295afc44ca610d37316cb0c8, type: 3}
+    normal: {fileID: 2800000, guid: 00d49a4ddc5dccc4e9054bfa1f38a0dd, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_fullarm_skin_3
+    displayName: male_fullarm_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 440eb8a5952785f45b647fd172b32814, type: 3}
+    normal: {fileID: 2800000, guid: 2ef242671c4931748b26521ae5d57b65, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_fullarm_skin_4
+    displayName: male_fullarm_skin_4
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 31d3e0c972977114daf4a45d6e231342, type: 3}
+    normal: {fileID: 2800000, guid: 6991d412d66bef044a5ce7e84adebab5, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_fullarm_skin_5
+    displayName: male_fullarm_skin_5
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 5bb0bb1347380f34abb64fe83f5de3c6, type: 3}
+    normal: {fileID: 2800000, guid: cc16c63974e46a4458cc10db1eb539d4, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_fullarm_skin_6
+    displayName: male_fullarm_skin_6
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 994a5fdd1ac77bd4bb8c75ed709f459d, type: 3}
+    normal: {fileID: 2800000, guid: 570654ca72dcfec44a1eb0a4a8a967c5, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_fullarm_skin_7
+    displayName: male_fullarm_skin_7
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 20c3bfdf6ab3fce41a394b2ad8b2469f, type: 3}
+    normal: {fileID: 2800000, guid: 6632db0ce6e098a4e9aabc40ecd8ab65, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_lowerleg_skin_1
+    displayName: male_lowerleg_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 97124f4bb60ca6c498462e15562b2f9f, type: 3}
+    normal: {fileID: 2800000, guid: 7f2e35dab2faecb43a12bdd0c2b1c492, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_lowerleg_skin_2
+    displayName: male_lowerleg_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 2fbcab7cd484b9e40be10257d6645782, type: 3}
+    normal: {fileID: 2800000, guid: 77464a131f778d947a89db9860bcf2bc, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_lowerleg_skin_3
+    displayName: male_lowerleg_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 341c08bcdc3d4a740a37b3fec11216f8, type: 3}
+    normal: {fileID: 2800000, guid: d67a4a9552282f14fb6efc3946aac11b, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_lowerleg_skin_4
+    displayName: male_lowerleg_skin_4
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 633ee197a84950f4088016a83a2754f0, type: 3}
+    normal: {fileID: 2800000, guid: 6dbbfa85546a6ac468ea83b921b589ac, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_lowerleg_skin_5
+    displayName: male_lowerleg_skin_5
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 7259beefa0572fa4e9e91092c9844de2, type: 3}
+    normal: {fileID: 2800000, guid: e83263d9945a10646b4116c769deeae5, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_neck_skin_1
+    displayName: male_neck_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 1fdf72deb4304dc4b9f5c6900ba391b2, type: 3}
+    normal: {fileID: 2800000, guid: ba78e7cf8b1a1bf42b5c023f72c632fb, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_palmhand_skin_1
+    displayName: male_palmhand_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: f81d1a1e2d94e7d4093b42f43cdf33b2, type: 3}
+    normal: {fileID: 2800000, guid: 9e58a913ffa386344a3c5cceb981491a, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_shoulder_skin_1
+    displayName: male_shoulder_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: a093372871987974ab9a1b69f021afcc, type: 3}
+    normal: {fileID: 2800000, guid: e0011d8f20713874fbe33c83d266625b, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_shoulder_skin_2
+    displayName: male_shoulder_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 183f03d81867ef94883f37f7a51318f3, type: 3}
+    normal: {fileID: 2800000, guid: 896695a929c892c42838379ae03ba08d, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_shoulder_skin_3
+    displayName: male_shoulder_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 6d9176433096d9c478b6ac6193a8ecd8, type: 3}
+    normal: {fileID: 2800000, guid: 8b6db442c0a1b4145a1c3b73166885f1, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_shoulder_skin_4
+    displayName: male_shoulder_skin_4
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 14bd1c283fd648e43837cb9f22e0dbc6, type: 3}
+    normal: {fileID: 2800000, guid: b1a0bf295cf72db44907a9d876bf914d, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_shoulder_skin_5
+    displayName: male_shoulder_skin_5
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 1c0d2b14e4a020e49ac201c2b0140f2c, type: 3}
+    normal: {fileID: 2800000, guid: f3234e1a6de1a9443bdd96f454dfa09d, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_shoulder_skin_6
+    displayName: male_shoulder_skin_6
+    kind: 0
+    baseColor: {fileID: 2800000, guid: a2953dea69326c046847d83d68c951e2, type: 3}
+    normal: {fileID: 2800000, guid: b2ed95a1fdb0a9f4abe298cc1dcff969, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_shoulder_skin_7
+    displayName: male_shoulder_skin_7
+    kind: 0
+    baseColor: {fileID: 2800000, guid: b522b3faa5460bf40bfe4c7a60b6b28f, type: 3}
+    normal: {fileID: 2800000, guid: 74554a5e01f70694ea122ca59efc80cf, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_shoulder_skin_8
+    displayName: male_shoulder_skin_8
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 7358b9096d9ff2b4abfcce3d7e9eb430, type: 3}
+    normal: {fileID: 2800000, guid: 95473cc21d5fb3c4d8f0b8b29b1a6147, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_upperchest_skin_1
+    displayName: male_upperchest_skin_1
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 4c387a552f7224641a771459b1d2d82a, type: 3}
+    normal: {fileID: 2800000, guid: 7aca86b543ef38146ad3d5c0ae7f243f, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_upperchest_skin_2
+    displayName: male_upperchest_skin_2
+    kind: 0
+    baseColor: {fileID: 2800000, guid: efd48f61206d74940acbea36039ad6b0, type: 3}
+    normal: {fileID: 2800000, guid: 8091c5dfaa9da854883328141e240648, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_upperchest_skin_3
+    displayName: male_upperchest_skin_3
+    kind: 0
+    baseColor: {fileID: 2800000, guid: e80bc3c445e123b488042caee51252f1, type: 3}
+    normal: {fileID: 2800000, guid: 6358e154d770c7b47a4aa262f152c124, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_upperchest_skin_4
+    displayName: male_upperchest_skin_4
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 1b6a893ec9624aa43becaf273786c524, type: 3}
+    normal: {fileID: 2800000, guid: 0181471d40822f9429399953d8f7219b, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: male_upperchest_skin_5
+    displayName: male_upperchest_skin_5
+    kind: 0
+    baseColor: {fileID: 2800000, guid: b731ec5bb09b38b45b6e5d2a82b6f637, type: 3}
+    normal: {fileID: 2800000, guid: a102576a1a480aa49b3c9736885884e0, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: micro_veins
+    displayName: micro_veins
+    kind: 11
+    baseColor: {fileID: 2800000, guid: 359059b412bfe754e994d5eead5fab6a, type: 3}
+    normal: {fileID: 2800000, guid: e7cba36d3ac86ac4d850544436f08197, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: nail_polish
+    displayName: nail_polish
+    kind: 11
+    baseColor: {fileID: 2800000, guid: 76fd41b4e8c2ff0469a389f3f33efa12, type: 3}
+    normal: {fileID: 2800000, guid: bd092d070ab7add4f87c1e8c87e0048a, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: namib_dune_gecko_skin
+    displayName: namib_dune_gecko_skin
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 8268f4ce4a7fc8c44981f60d3e61b3ac, type: 3}
+    normal: {fileID: 2800000, guid: f75fd5bf701effa47b6bbc5fb370de14, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: octopus_tentacle_skin
+    displayName: octopus_tentacle_skin
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 92fabcb38661ac14f84768be9454c925, type: 3}
+    normal: {fileID: 2800000, guid: 0834a054f186a8945b8153f8627691d5, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: reptilian_alien_skin
+    displayName: reptilian_alien_skin
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 009d8b467b7d037458f10b02bc8e633d, type: 3}
+    normal: {fileID: 2800000, guid: 6741dd9a02b5f824798fe2de24f48c4a, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: shaved_hair
+    displayName: shaved_hair
+    kind: 2
+    baseColor: {fileID: 2800000, guid: 7b65a62668591af44b66e16206dfab8c, type: 3}
+    normal: {fileID: 2800000, guid: f8c12d5539c74684d87319a255444170, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_acne_keloid
+    displayName: skin_acne_keloid
+    kind: 0
+    baseColor: {fileID: 2800000, guid: f16fc53ab97bcbb49b8cbe747f0d4c4b, type: 3}
+    normal: {fileID: 2800000, guid: 576bf413cbe1822438ec8a5885241594, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_acne_scar
+    displayName: skin_acne_scar
+    kind: 0
+    baseColor: {fileID: 2800000, guid: a7d5bedbb735cf04596d76a3de98c8e0, type: 3}
+    normal: {fileID: 2800000, guid: 37e388793568b38448f62a83431e6412, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_bedsore
+    displayName: skin_bedsore
+    kind: 0
+    baseColor: {fileID: 2800000, guid: fbe5d50407ef9354cbf1cbfee20ad8f9, type: 3}
+    normal: {fileID: 2800000, guid: 697cc13fb4ca1d44ebccd9d0325a9b3a, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_birth_mark
+    displayName: skin_birth_mark
+    kind: 0
+    baseColor: {fileID: 2800000, guid: dc3a987b0870a9f44bf0e14c088e4848, type: 3}
+    normal: {fileID: 2800000, guid: 5a540c0912a536642af8ed4a6222e20f, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_blackhead_acne
+    displayName: skin_blackhead_acne
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 966b145e6db89c844a764d32aba122b6, type: 3}
+    normal: {fileID: 2800000, guid: 46ac75ccc3cd9d24dbd1958487f2edcc, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_blisters
+    displayName: skin_blisters
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 3be0abee1fe38f44d9f6414f81be5c76, type: 3}
+    normal: {fileID: 2800000, guid: 7e1f2124f31207d4ebf63598e415fa7e, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_compact_stretch_marks
+    displayName: skin_compact_stretch_marks
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 28d01fa6fa5ff204c9b91d6d427910cb, type: 3}
+    normal: {fileID: 2800000, guid: f90b5e9a1b8cdc84c86ff5ab29f33a0e, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_cracks
+    displayName: skin_cracks
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 44933f4b503cc5148b9cd5273d2cfe1b, type: 3}
+    normal: {fileID: 2800000, guid: 6ec87bfd39f8e4445b9608a365fd084f, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_crust
+    displayName: skin_crust
+    kind: 8
+    baseColor: {fileID: 2800000, guid: 1e0fcea5e4c2e4b4d9b0401eb010bf03, type: 3}
+    normal: {fileID: 2800000, guid: 4e09c9fce48f26049b715822f8fdc436, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.28
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_crust_wound
+    displayName: skin_crust_wound
+    kind: 7
+    baseColor: {fileID: 2800000, guid: 7f2fe64d9fa32914fa2a97109a138b83, type: 3}
+    normal: {fileID: 2800000, guid: 657f68e1c38dccb4aa0a87670f140ad2, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.18
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_freckles
+    displayName: skin_freckles
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 8f135f19cc3568f43bb12dd4661590ac, type: 3}
+    normal: {fileID: 2800000, guid: 785a418b419ef7b40ac2e5719a8d7d9c, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_infected_cuts
+    displayName: skin_infected_cuts
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 32cf3625257daba4aa2dfa6bee65440e, type: 3}
+    normal: {fileID: 2800000, guid: 3ec7ca9e40847ee408a20487320685a7, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_long_stretch_marks
+    displayName: skin_long_stretch_marks
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 7cd92cc93b19cc848a1a53d738dd11d8, type: 3}
+    normal: {fileID: 2800000, guid: 36b46f5cc48b0a64f92eec7c57657b17, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_milia
+    displayName: skin_milia
+    kind: 0
+    baseColor: {fileID: 2800000, guid: a322b66637075724d944080ea2f7300f, type: 3}
+    normal: {fileID: 2800000, guid: 2045b3187e04b934fa6056b26e58e2cc, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_molds
+    displayName: skin_molds
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 21942cfc42489d34db54466ef8f11011, type: 3}
+    normal: {fileID: 2800000, guid: e903676d7e80eec408aea526c2fde5ae, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_scratches
+    displayName: skin_scratches
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 592d768f7a42e68479bcb31c402c30f7, type: 3}
+    normal: {fileID: 2800000, guid: 378aec505a3cce44e8663ed4c2e3980d, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_seborrheic_keratosis
+    displayName: skin_seborrheic_keratosis
+    kind: 0
+    baseColor: {fileID: 2800000, guid: f7945262f22887c48bb81ca385264287, type: 3}
+    normal: {fileID: 2800000, guid: dbaa3a26d033d464d9f9017505fb85b9, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_suture_stitches
+    displayName: skin_suture_stitches
+    kind: 0
+    baseColor: {fileID: 2800000, guid: c94658c6cf1f5864bb29aae942b142ec, type: 3}
+    normal: {fileID: 2800000, guid: ca3431ca3238bb9469f2cc4062bd5984, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_whitehead_pimples
+    displayName: skin_whitehead_pimples
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 3798a377c40d9e644863a4209d9fca41, type: 3}
+    normal: {fileID: 2800000, guid: 13d3ebc0f7e6d7f43a534c90c15736ed, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: skin_zebra
+    displayName: skin_zebra
+    kind: 0
+    baseColor: {fileID: 2800000, guid: c7da66f614ca21e4d926f25c7f0a5e86, type: 3}
+    normal: {fileID: 2800000, guid: 52b4f6da384ea0146bfc40eb144d2012, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: snake_skin
+    displayName: snake_skin
+    kind: 1
+    baseColor: {fileID: 2800000, guid: 77a14056ef33f274cbb5c2b456bb4917, type: 3}
+    normal: {fileID: 2800000, guid: e159374ae6ab7b647b0169cde9b291f3, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.28
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: straw_yellow
+    displayName: straw_yellow
+    kind: 11
+    baseColor: {fileID: 2800000, guid: 91ca570a244193148b58942115168eaf, type: 3}
+    normal: {fileID: 2800000, guid: 661a7acdae56a1049a3a07f35467c169, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: sunburn_peeled_skin
+    displayName: sunburn_peeled_skin
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 17e15b3735806724fbd3a9c44df0d07b, type: 3}
+    normal: {fileID: 2800000, guid: 1f3902b0b6fe8d9449c8b4a1f1907390, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: suture_scar
+    displayName: suture_scar
+    kind: 11
+    baseColor: {fileID: 2800000, guid: ca2a6d40add4e7f4b964d457382324e2, type: 3}
+    normal: {fileID: 2800000, guid: c609cfe4b6ab1bc4ab8648b89aff3bae, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: swirl_fingerprint_skin
+    displayName: swirl_fingerprint_skin
+    kind: 0
+    baseColor: {fileID: 2800000, guid: af2a461d2f0a88b4a84c56c0f910de86, type: 3}
+    normal: {fileID: 2800000, guid: b6c4bee1132ba2240b293b173bc09b21, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: swiss_cheese
+    displayName: swiss_cheese
+    kind: 11
+    baseColor: {fileID: 2800000, guid: 4c3e7f804c0a83b4fa8ec1e265982f26, type: 3}
+    normal: {fileID: 2800000, guid: 243752cbdff586b4fafe5f8d5b400bbf, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: toad_skin
+    displayName: toad_skin
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 5ce6b35f275918f48abc0e2273b5cedc, type: 3}
+    normal: {fileID: 2800000, guid: c371c2aff2c8465439af1a239546f7f9, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: tongue_taste_buds
+    displayName: tongue_taste_buds
+    kind: 6
+    baseColor: {fileID: 2800000, guid: 26096cd37d73689418b68b67c78e3241, type: 3}
+    normal: {fileID: 2800000, guid: b6f6f77ade688fd4c8c5f5a4d5f4f1dc, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.18
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: tooth_tartar
+    displayName: tooth_tartar
+    kind: 11
+    baseColor: {fileID: 2800000, guid: 614e8830f636c8544888951fc2c9c9ac, type: 3}
+    normal: {fileID: 2800000, guid: a08b40198332eec4cb0f59782bac5aae, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: varicose_veins
+    displayName: varicose_veins
+    kind: 11
+    baseColor: {fileID: 2800000, guid: 244908d99e0d7f244b400f08f3470a4d, type: 3}
+    normal: {fileID: 2800000, guid: 6f63f61cf7e20154a9d4a98dcfa468f6, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: zombie_bloody_meat
+    displayName: zombie_bloody_meat
+    kind: 7
+    baseColor: {fileID: 2800000, guid: f3d8d4fc9e476874e9297e1a94b2eac4, type: 3}
+    normal: {fileID: 2800000, guid: 48859453edb1d694e89bee4c28ca39e7, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.18
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: zombie_crumpled_skin
+    displayName: zombie_crumpled_skin
+    kind: 0
+    baseColor: {fileID: 2800000, guid: 46089946a4530b744a0b322bb00a9dfe, type: 3}
+    normal: {fileID: 2800000, guid: f7976bcbd2dc0c04fb6d8d3c70223b32, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: zombie_skin_burnt_scars
+    displayName: zombie_skin_burnt_scars
+    kind: 0
+    baseColor: {fileID: 2800000, guid: cf9a430480aec4149bdb0c7b2031a764, type: 3}
+    normal: {fileID: 2800000, guid: b3b6f5be962ff844490e58ba859d87f2, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  - textureSetId: zombie_skin_transformation
+    displayName: zombie_skin_transformation
+    kind: 0
+    baseColor: {fileID: 2800000, guid: df6cbaad220bb804baead4a940783ec1, type: 3}
+    normal: {fileID: 2800000, guid: 2a2fb14bd3f425c498adb11d82891a84, type: 3}
+    mask: {fileID: 0}
+    emission: {fileID: 0}
+    paletteStrength: 0.35
+    normalStrength: 1
+    emissionStrength: 0
+  revision: 4

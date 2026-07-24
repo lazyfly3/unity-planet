@@ -40,8 +40,10 @@ sealed class NmsUnityPublishManifest
     public string sourcePrefabAsset;
     public string familyManifestAsset;
     public string skeletonManifestAsset;
+    public string materialManifestAsset;
     public string locomotionType;
     public string surfaceMode = "Ground";
+    public bool supportsRun = true;
     public string[] variantIds = Array.Empty<string>();
     public int legCount;
     public bool allowRareModules;
@@ -57,10 +59,66 @@ sealed class NmsUnityPublishManifest
     public NmsCreatureLegChain[] loadBearingChains = Array.Empty<NmsCreatureLegChain>();
 }
 
+[Serializable]
+sealed class NmsUnityMaterialManifest
+{
+    public int pipelineVersion;
+    public string familyId;
+    public string skeletonHash;
+    public NmsUnityMaterialRecord[] materials = Array.Empty<NmsUnityMaterialRecord>();
+    public NmsUnityRendererMaterialRecord[] renderers =
+        Array.Empty<NmsUnityRendererMaterialRecord>();
+}
+
+[Serializable]
+sealed class NmsUnityMaterialRecord
+{
+    public string materialId;
+    public string sourceMaterialName;
+    public string materialPreset;
+    public string sourceMxmlPath;
+    public string sourceMxmlSha256;
+    public string mainTexture;
+    public string mainTextureSourcePath;
+    public string mainTextureSourceSha256;
+    public string normalTexture;
+    public string normalTextureSourcePath;
+    public string normalTextureSourceSha256;
+    public string maskTexture;
+    public string maskTextureSourcePath;
+    public string maskTextureSourceSha256;
+    public string emissionTexture;
+    public string emissionTextureSourcePath;
+    public string emissionTextureSourceSha256;
+    public string transparencyMode;
+    public string maskChannelLayout;
+    public float metallic = -1f;
+    public float roughness = -1f;
+    public float smoothness = -1f;
+    public float glow = -1f;
+    public float paletteStrength = -1f;
+    public string[] warnings = Array.Empty<string>();
+}
+
+[Serializable]
+sealed class NmsUnityRendererMaterialRecord
+{
+    public string rendererName;
+    public string[] modules = Array.Empty<string>();
+    public NmsUnityRendererMaterialSlot[] slots = Array.Empty<NmsUnityRendererMaterialSlot>();
+}
+
+[Serializable]
+sealed class NmsUnityRendererMaterialSlot
+{
+    public int slot;
+    public string materialId;
+}
+
 [InitializeOnLoad]
 static class NmsCreatureFamilyAssetBootstrap
 {
-    const string SessionKey = "NmsCreatureFamilyAssetBootstrap.v9";
+    const string SessionKey = "NmsCreatureFamilyAssetBootstrap.v11";
 
     static NmsCreatureFamilyAssetBootstrap()
     {
@@ -200,6 +258,21 @@ public static class NmsCreatureFamilyAssetBuilder
             AssetDatabase.LoadAssetAtPath<NmsCreatureFamilyCatalog>(CatalogPath);
         if (catalog == null || catalog.Families.Count != publishFiles.Length)
             return true;
+        for (int i = 0; i < catalog.Families.Count; i++)
+        {
+            NmsCreatureFamilyDefinition family = catalog.Families[i];
+            if (family == null || family.MaterialDefinitions.Count == 0)
+                return true;
+            for (int materialIndex = 0;
+                materialIndex < family.MaterialDefinitions.Count;
+                materialIndex++)
+            {
+                NmsCreatureMaterialDefinition material =
+                    family.MaterialDefinitions[materialIndex];
+                if (material == null || string.IsNullOrEmpty(material.materialPreset))
+                    return true;
+            }
+        }
 
         DateTime catalogTime = File.Exists(CatalogPath)
             ? File.GetLastWriteTimeUtc(CatalogPath)
@@ -388,6 +461,12 @@ public static class NmsCreatureFamilyAssetBuilder
             Dictionary<string, List<Renderer>> renderersByName = IndexRenderers(instance);
             NmsCreatureModuleBinding[] bindings =
                 BuildBindings(root.transform, family, renderersByName);
+            BuildAndAssignMaterials(
+                familyDirectory,
+                publish,
+                root.transform,
+                out NmsCreatureMaterialDefinition[] materialDefinitions,
+                out NmsCreatureRendererMaterialBinding[] rendererMaterialBindings);
             ValidateRig(instance.transform, family, publish);
             ValidateNativeAnimations(instance, publish);
             float surfaceOffset = publish.surfaceRootOffset >= 0f
@@ -413,6 +492,7 @@ public static class NmsCreatureFamilyAssetBuilder
                 publish.skeletonHash,
                 publish.locomotionType,
                 GetSurfaceMode(publish),
+                publish.supportsRun,
                 publish.variantIds,
                 publish.selectionWeight,
                 publish.legCount,
@@ -422,6 +502,8 @@ public static class NmsCreatureFamilyAssetBuilder
                 controller,
                 manifestAsset,
                 bindings,
+                materialDefinitions,
+                rendererMaterialBindings,
                 publish.loadBearingChains,
                 publish.walkSpeed,
                 surfaceOffset,
@@ -527,8 +609,12 @@ public static class NmsCreatureFamilyAssetBuilder
             machine.RemoveState(states[i].state);
 
         AnimatorState defaultState = null;
-        string[] keys = { "idle", "walk", "run" };
-        string[] stateNames = { "Idle", "Walk", "Run" };
+        string[] keys = publish.supportsRun
+            ? new[] { "idle", "walk", "run" }
+            : new[] { "idle", "walk" };
+        string[] stateNames = publish.supportsRun
+            ? new[] { "Idle", "Walk", "Run" }
+            : new[] { "Idle", "Walk" };
         for (int i = 0; i < keys.Length; i++)
         {
             NmsUnityPublishAction action = publish.actions.FirstOrDefault(
@@ -652,6 +738,648 @@ public static class NmsCreatureFamilyAssetBuilder
             });
         }
         return bindings.ToArray();
+    }
+
+    static void BuildAndAssignMaterials(
+        string familyDirectory,
+        NmsUnityPublishManifest publish,
+        Transform root,
+        out NmsCreatureMaterialDefinition[] materialDefinitions,
+        out NmsCreatureRendererMaterialBinding[] rendererMaterialBindings)
+    {
+        Shader shader = Shader.Find("Voxel Planet/NMS Creature Uber");
+        if (shader == null)
+            shader = Shader.Find("Standard");
+        if (shader == null)
+            throw new InvalidOperationException("No shader is available for NMS creature materials.");
+
+        NmsUnityMaterialManifest materialManifest = LoadMaterialManifest(publish);
+        var materialRecords = new Dictionary<string, NmsUnityMaterialRecord>(StringComparer.Ordinal);
+        var rendererRecords = new Dictionary<string, NmsUnityRendererMaterialRecord>(StringComparer.Ordinal);
+        if (materialManifest != null)
+        {
+            for (int i = 0; i < materialManifest.materials.Length; i++)
+            {
+                NmsUnityMaterialRecord record = materialManifest.materials[i];
+                if (record != null && !string.IsNullOrEmpty(record.materialId))
+                    materialRecords[record.materialId] = record;
+            }
+            for (int i = 0; i < materialManifest.renderers.Length; i++)
+            {
+                NmsUnityRendererMaterialRecord record = materialManifest.renderers[i];
+                if (record != null && !string.IsNullOrEmpty(record.rendererName))
+                    rendererRecords[record.rendererName] = record;
+            }
+        }
+
+        string materialDirectory = familyDirectory + "/Materials";
+        EnsureAssetFolder(materialDirectory);
+        var builtMaterials = new Dictionary<string, Material>(StringComparer.Ordinal);
+        var definitions = new Dictionary<string, NmsCreatureMaterialDefinition>(StringComparer.Ordinal);
+        var rendererBindings = new List<NmsCreatureRendererMaterialBinding>();
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
+        {
+            Renderer renderer = renderers[rendererIndex];
+            Material[] sourceMaterials = renderer.sharedMaterials;
+            if (sourceMaterials == null || sourceMaterials.Length == 0)
+                continue;
+
+            rendererRecords.TryGetValue(
+                renderer.name,
+                out NmsUnityRendererMaterialRecord rendererRecord);
+            var materialIds = new string[sourceMaterials.Length];
+            var assigned = new Material[sourceMaterials.Length];
+            for (int slot = 0; slot < sourceMaterials.Length; slot++)
+            {
+                string materialId = GetRendererSlotMaterialId(
+                    rendererRecord,
+                    sourceMaterials[slot],
+                    renderer.name,
+                    slot);
+                if (string.IsNullOrEmpty(materialId))
+                    materialId = renderer.name + "_Slot" + slot;
+                materialIds[slot] = materialId;
+                if (!materialRecords.TryGetValue(materialId, out NmsUnityMaterialRecord record))
+                {
+                    record = new NmsUnityMaterialRecord
+                    {
+                        materialId = materialId,
+                        sourceMaterialName = sourceMaterials[slot] != null
+                            ? sourceMaterials[slot].name
+                            : materialId,
+                        warnings = new[] { "material record was inferred from Unity renderer slot" }
+                    };
+                }
+
+                if (!builtMaterials.TryGetValue(materialId, out Material material))
+                {
+                    material = BuildMaterialAsset(
+                        materialDirectory,
+                        publish,
+                        shader,
+                        record,
+                        sourceMaterials[slot]);
+                    builtMaterials.Add(materialId, material);
+                    definitions.Add(materialId, CreateMaterialDefinition(record, material));
+                }
+                assigned[slot] = material;
+            }
+
+            renderer.sharedMaterials = assigned;
+            rendererBindings.Add(new NmsCreatureRendererMaterialBinding
+            {
+                rendererPath = AnimationUtility.CalculateTransformPath(renderer.transform, root),
+                materialIds = materialIds
+            });
+        }
+
+        materialDefinitions = definitions.Values
+            .OrderBy(value => value.materialId, StringComparer.Ordinal)
+            .ToArray();
+        rendererMaterialBindings = rendererBindings
+            .OrderBy(value => value.rendererPath, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    static NmsUnityMaterialManifest LoadMaterialManifest(NmsUnityPublishManifest publish)
+    {
+        if (publish == null || string.IsNullOrEmpty(publish.materialManifestAsset))
+            return null;
+        TextAsset asset = AssetDatabase.LoadAssetAtPath<TextAsset>(publish.materialManifestAsset);
+        if (asset == null)
+        {
+            Debug.LogWarning(
+                $"{publish.familyId}: material manifest is missing at " +
+                publish.materialManifestAsset + "; using imported material fallback.");
+            return null;
+        }
+        NmsUnityMaterialManifest manifest =
+            JsonConvert.DeserializeObject<NmsUnityMaterialManifest>(asset.text);
+        if (manifest == null
+            || !string.Equals(manifest.familyId, publish.familyId, StringComparison.Ordinal))
+        {
+            Debug.LogWarning(
+                $"{publish.familyId}: material manifest identity mismatch; " +
+                "using imported material fallback.");
+            return null;
+        }
+        return manifest;
+    }
+
+    static string GetRendererSlotMaterialId(
+        NmsUnityRendererMaterialRecord rendererRecord,
+        Material sourceMaterial,
+        string rendererName,
+        int slot)
+    {
+        if (rendererRecord != null && rendererRecord.slots != null)
+        {
+            for (int i = 0; i < rendererRecord.slots.Length; i++)
+            {
+                if (rendererRecord.slots[i] != null && rendererRecord.slots[i].slot == slot)
+                    return rendererRecord.slots[i].materialId;
+            }
+        }
+        if (sourceMaterial != null && !string.IsNullOrEmpty(sourceMaterial.name))
+            return sourceMaterial.name;
+        return rendererName + "_Slot" + slot;
+    }
+
+    static Material BuildMaterialAsset(
+        string materialDirectory,
+        NmsUnityPublishManifest publish,
+        Shader shader,
+        NmsUnityMaterialRecord record,
+        Material sourceMaterial)
+    {
+        string assetPath =
+            materialDirectory + "/" + SanitizeAssetName(record.materialId) + ".mat";
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(assetPath);
+        if (material == null)
+        {
+            material = new Material(shader);
+            AssetDatabase.CreateAsset(material, assetPath);
+        }
+        material.shader = shader;
+        material.name = record.materialId;
+
+        Texture main = ResolveTexture(
+            publish,
+            record.mainTexture,
+            sourceMaterial,
+            "_MainTex",
+            record,
+            TextureKind.Main);
+        Texture normal = ResolveTexture(
+            publish,
+            record.normalTexture,
+            sourceMaterial,
+            "_BumpMap",
+            record,
+            TextureKind.Normal);
+        Texture mask = ResolveTexture(
+            publish,
+            record.maskTexture,
+            sourceMaterial,
+            "_MaskMap",
+            record,
+            TextureKind.Mask);
+        Texture emission = ResolveTexture(
+            publish,
+            record.emissionTexture,
+            sourceMaterial,
+            "_EmissionMap",
+            record,
+            TextureKind.Emission);
+
+        NmsCreatureMaterialPreset preset = ResolveMaterialPreset(record, main, normal, mask, emission);
+
+        SetTextureIfPresent(material, "_MainTex", main);
+        SetTextureIfPresent(material, "_NormalMap", normal);
+        SetTextureIfPresent(material, "_BumpMap", normal);
+        SetTextureIfPresent(material, "_MaskMap", mask);
+        SetTextureIfPresent(material, "_MasksMap", mask);
+        SetTextureIfPresent(material, "_EmissionMap", emission);
+        SetColorIfPresent(material, "_PrimaryColor", preset.primaryFallback);
+        SetColorIfPresent(material, "_SecondaryColor", preset.secondaryFallback);
+        SetColorIfPresent(material, "_AccentColor", preset.accentFallback);
+        SetColorIfPresent(material, "_EmissionColor", preset.emissionColor);
+        SetFloatIfPresent(material, "_NormalStrength", normal != null ? preset.normalStrength : 0f);
+        SetFloatIfPresent(material, "_MaskStrength", mask != null ? preset.maskStrength : 0f);
+        SetFloatIfPresent(material, "_EmissionStrength", emission != null ? preset.emissionStrength : 0f);
+        SetFloatIfPresent(material, "_PaletteStrength", preset.paletteStrength);
+        SetFloatIfPresent(material, "_VertexColorStrength", preset.vertexColorStrength);
+        SetFloatIfPresent(material, "_Glossiness", preset.smoothness);
+        SetFloatIfPresent(material, "_Metallic", preset.metallic);
+        SetFloatIfPresent(material, "_SurfaceNoiseStrength", preset.surfaceNoiseStrength);
+        SetFloatIfPresent(
+            material,
+            "_AlphaCutoff",
+            string.Equals(record.transparencyMode, "Cutout", StringComparison.OrdinalIgnoreCase)
+                ? 0.35f
+                : 0f);
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    static NmsCreatureMaterialDefinition CreateMaterialDefinition(
+        NmsUnityMaterialRecord record,
+        Material material)
+    {
+        return new NmsCreatureMaterialDefinition
+        {
+            materialId = record.materialId,
+            materialPreset = ResolveMaterialPreset(record, null, null, null, null).presetName,
+            sourceMxmlPath = record.sourceMxmlPath,
+            sourceMxmlSha256 = record.sourceMxmlSha256,
+            mainTextureSourcePath = record.mainTextureSourcePath,
+            mainTextureSourceSha256 = record.mainTextureSourceSha256,
+            normalTextureSourcePath = record.normalTextureSourcePath,
+            normalTextureSourceSha256 = record.normalTextureSourceSha256,
+            maskTextureSourcePath = record.maskTextureSourcePath,
+            maskTextureSourceSha256 = record.maskTextureSourceSha256,
+            emissionTextureSourcePath = record.emissionTextureSourcePath,
+            emissionTextureSourceSha256 = record.emissionTextureSourceSha256,
+            transparencyMode = record.transparencyMode,
+            maskChannelLayout = record.maskChannelLayout,
+            material = material,
+            hasMainTexture = material != null
+                && material.HasProperty("_MainTex")
+                && material.GetTexture("_MainTex") != null,
+            hasNormalTexture = material != null
+                && ((material.HasProperty("_NormalMap")
+                        && material.GetTexture("_NormalMap") != null)
+                    || (material.HasProperty("_BumpMap")
+                        && material.GetTexture("_BumpMap") != null)),
+            hasMaskTexture = material != null
+                && ((material.HasProperty("_MaskMap")
+                        && material.GetTexture("_MaskMap") != null)
+                    || (material.HasProperty("_MasksMap")
+                        && material.GetTexture("_MasksMap") != null)),
+            hasEmissionTexture = material != null
+                && material.HasProperty("_EmissionMap")
+                && material.GetTexture("_EmissionMap") != null,
+            metallic = material != null && material.HasProperty("_Metallic")
+                ? material.GetFloat("_Metallic") : 0f,
+            smoothness = material != null && material.HasProperty("_Glossiness")
+                ? material.GetFloat("_Glossiness") : 0.35f,
+            paletteStrength = material != null && material.HasProperty("_PaletteStrength")
+                ? material.GetFloat("_PaletteStrength") : 0.35f,
+            emissionStrength = material != null && material.HasProperty("_EmissionStrength")
+                ? material.GetFloat("_EmissionStrength") : 0f,
+            warnings = record.warnings ?? Array.Empty<string>()
+        };
+    }
+
+    struct NmsCreatureMaterialPreset
+    {
+        public string presetName;
+        public float metallic;
+        public float smoothness;
+        public float normalStrength;
+        public float maskStrength;
+        public float emissionStrength;
+        public float paletteStrength;
+        public float vertexColorStrength;
+        public float surfaceNoiseStrength;
+        public Color primaryFallback;
+        public Color secondaryFallback;
+        public Color accentFallback;
+        public Color emissionColor;
+    }
+
+    static NmsCreatureMaterialPreset ResolveMaterialPreset(
+        NmsUnityMaterialRecord record,
+        Texture main,
+        Texture normal,
+        Texture mask,
+        Texture emission)
+    {
+        string presetName = !string.IsNullOrEmpty(record.materialPreset)
+            ? record.materialPreset
+            : InferMaterialPreset(record);
+        bool hasMain = main != null || !string.IsNullOrEmpty(record.mainTexture);
+        var preset = new NmsCreatureMaterialPreset
+        {
+            presetName = presetName,
+            metallic = 0f,
+            smoothness = 0.34f,
+            normalStrength = normal != null || !string.IsNullOrEmpty(record.normalTexture) ? 0.9f : 0f,
+            maskStrength = mask != null || !string.IsNullOrEmpty(record.maskTexture) ? 1f : 0f,
+            emissionStrength = emission != null || !string.IsNullOrEmpty(record.emissionTexture) ? 1f : 0f,
+            paletteStrength = hasMain ? 0.25f : 1f,
+            vertexColorStrength = 0f,
+            surfaceNoiseStrength = 0.025f,
+            primaryFallback = Color.white,
+            secondaryFallback = new Color(0.62f, 0.7f, 0.75f, 1f),
+            accentFallback = new Color(0.38f, 0.32f, 0.25f, 1f),
+            emissionColor = Color.black
+        };
+
+        switch (presetName)
+        {
+            case "Fur":
+                preset.smoothness = 0.18f;
+                preset.normalStrength = Mathf.Max(preset.normalStrength, 0.55f);
+                preset.paletteStrength = hasMain ? 0.18f : 0.85f;
+                preset.surfaceNoiseStrength = 0.055f;
+                break;
+            case "Horn":
+                preset.smoothness = 0.42f;
+                preset.normalStrength = Mathf.Max(preset.normalStrength, 0.75f);
+                preset.paletteStrength = hasMain ? 0.12f : 0.55f;
+                preset.accentFallback = new Color(0.72f, 0.63f, 0.48f, 1f);
+                break;
+            case "Shell":
+                preset.smoothness = 0.52f;
+                preset.normalStrength = Mathf.Max(preset.normalStrength, 0.9f);
+                preset.paletteStrength = hasMain ? 0.16f : 0.62f;
+                preset.surfaceNoiseStrength = 0.018f;
+                break;
+            case "Bone":
+                preset.smoothness = 0.31f;
+                preset.normalStrength = Mathf.Max(preset.normalStrength, 0.65f);
+                preset.paletteStrength = hasMain ? 0.08f : 0.35f;
+                preset.primaryFallback = new Color(0.82f, 0.78f, 0.68f, 1f);
+                preset.secondaryFallback = new Color(0.55f, 0.5f, 0.42f, 1f);
+                break;
+            case "Mechanical":
+                preset.metallic = 0.38f;
+                preset.smoothness = 0.58f;
+                preset.normalStrength = Mathf.Max(preset.normalStrength, 0.75f);
+                preset.paletteStrength = hasMain ? 0.18f : 0.7f;
+                preset.primaryFallback = new Color(0.42f, 0.48f, 0.52f, 1f);
+                break;
+            case "Glow":
+                preset.smoothness = 0.5f;
+                preset.emissionStrength = Mathf.Max(preset.emissionStrength, 1.35f);
+                preset.paletteStrength = hasMain ? 0.22f : 0.85f;
+                preset.emissionColor = new Color(0.2f, 0.8f, 1f, 1f);
+                break;
+            default:
+                preset.presetName = "Skin";
+                preset.smoothness = 0.36f;
+                preset.normalStrength = Mathf.Max(preset.normalStrength, 0.7f);
+                preset.paletteStrength = hasMain ? 0.28f : 1f;
+                preset.surfaceNoiseStrength = 0.03f;
+                break;
+        }
+
+        if (record.metallic >= 0f)
+            preset.metallic = Mathf.Clamp01(record.metallic);
+        if (record.smoothness >= 0f)
+            preset.smoothness = Mathf.Clamp01(record.smoothness);
+        else if (record.roughness >= 0f)
+            preset.smoothness = Mathf.Clamp01(1f - record.roughness);
+        if (record.glow >= 0f)
+            preset.emissionStrength = Mathf.Max(0f, record.glow);
+        if (record.paletteStrength >= 0f)
+            preset.paletteStrength = Mathf.Clamp01(record.paletteStrength);
+        return preset;
+    }
+
+    static string InferMaterialPreset(NmsUnityMaterialRecord record)
+    {
+        string key = NormalizeName(
+            (record.materialId ?? string.Empty) + " "
+            + (record.sourceMaterialName ?? string.Empty) + " "
+            + (record.mainTexture ?? string.Empty) + " "
+            + (record.normalTexture ?? string.Empty) + " "
+            + (record.maskTexture ?? string.Empty) + " "
+            + (record.emissionTexture ?? string.Empty));
+        if (ContainsAny(key, "glow", "emiss", "light", "neon", "energy"))
+            return "Glow";
+        if (ContainsAny(key, "metal", "mech", "robot", "tech", "armour", "armor"))
+            return "Mechanical";
+        if (ContainsAny(key, "bone", "skel", "teeth", "tooth", "claw", "rib"))
+            return "Bone";
+        if (ContainsAny(key, "horn", "tusk", "spine", "spike", "shell", "plate", "hoof", "antler"))
+            return ContainsAny(key, "shell", "plate", "carapace", "chitin")
+                ? "Shell"
+                : "Horn";
+        if (ContainsAny(key, "fur", "hair", "mane", "wool"))
+            return "Fur";
+        return "Skin";
+    }
+
+    static bool ContainsAny(string value, params string[] needles)
+    {
+        for (int i = 0; i < needles.Length; i++)
+        {
+            if (value.IndexOf(needles[i], StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+        }
+        return false;
+    }
+
+    enum TextureKind
+    {
+        Main,
+        Normal,
+        Mask,
+        Emission
+    }
+
+    static Texture ResolveTexture(
+        NmsUnityPublishManifest publish,
+        string explicitName,
+        Material sourceMaterial,
+        string sourceProperty,
+        NmsUnityMaterialRecord record,
+        TextureKind kind)
+    {
+        Texture explicitTexture = FindTextureAsset(publish, explicitName, kind);
+        if (explicitTexture != null)
+            return explicitTexture;
+        if (sourceMaterial != null && sourceMaterial.HasProperty(sourceProperty))
+        {
+            Texture sourceTexture = sourceMaterial.GetTexture(sourceProperty);
+            if (sourceTexture != null)
+                return sourceTexture;
+        }
+        if (sourceMaterial != null && sourceMaterial.HasProperty("_MainTex"))
+        {
+            Texture sourceTexture = sourceMaterial.GetTexture("_MainTex");
+            if (kind == TextureKind.Main && sourceTexture != null)
+                return sourceTexture;
+        }
+        return GuessTextureAsset(publish, record, kind);
+    }
+
+    static Texture FindTextureAsset(
+        NmsUnityPublishManifest publish,
+        string textureName,
+        TextureKind kind)
+    {
+        if (string.IsNullOrEmpty(textureName))
+            return null;
+        string familyDirectory =
+            Path.GetDirectoryName(publish.familyManifestAsset).Replace('\\', '/');
+        string fullFamilyDirectory = Path.GetFullPath(familyDirectory);
+        string explicitPath = Path.Combine(
+            fullFamilyDirectory,
+            textureName.Replace('/', Path.DirectorySeparatorChar));
+        string[] matches = File.Exists(explicitPath)
+            ? new[] { explicitPath }
+            : Directory.Exists(familyDirectory)
+                ? Directory.GetFiles(
+                    fullFamilyDirectory,
+                    Path.GetFileName(textureName),
+                    SearchOption.AllDirectories)
+                : Array.Empty<string>();
+        for (int i = 0; i < matches.Length; i++)
+        {
+            string assetPath = ToAssetPath(matches[i]);
+            ConfigureTextureImporter(assetPath, kind);
+            Texture texture = AssetDatabase.LoadAssetAtPath<Texture>(assetPath);
+            if (texture != null)
+                return texture;
+        }
+        return null;
+    }
+
+    static Texture GuessTextureAsset(
+        NmsUnityPublishManifest publish,
+        NmsUnityMaterialRecord record,
+        TextureKind kind)
+    {
+        string familyDirectory =
+            Path.GetDirectoryName(publish.familyManifestAsset).Replace('\\', '/');
+        if (!Directory.Exists(familyDirectory))
+            return null;
+        string materialKey = NormalizeName(
+            !string.IsNullOrEmpty(record.sourceMaterialName)
+                ? record.sourceMaterialName
+                : record.materialId);
+        string[] files = Directory.GetFiles(
+            Path.GetFullPath(familyDirectory),
+            "*.*",
+            SearchOption.AllDirectories);
+        string best = null;
+        int bestScore = 0;
+        for (int i = 0; i < files.Length; i++)
+        {
+            string extension = Path.GetExtension(files[i]);
+            if (!IsTextureExtension(extension))
+                continue;
+            string name = NormalizeName(Path.GetFileNameWithoutExtension(files[i]));
+            int score = TextureScore(name, materialKey, kind);
+            if (score <= bestScore)
+                continue;
+            best = files[i];
+            bestScore = score;
+        }
+        if (string.IsNullOrEmpty(best))
+            return null;
+        string assetPath = ToAssetPath(best);
+        ConfigureTextureImporter(assetPath, kind);
+        return AssetDatabase.LoadAssetAtPath<Texture>(assetPath);
+    }
+
+    static int TextureScore(string textureName, string materialKey, TextureKind kind)
+    {
+        if (string.IsNullOrEmpty(textureName))
+            return 0;
+        int score = 0;
+        if (!string.IsNullOrEmpty(materialKey)
+            && (textureName.Contains(materialKey) || materialKey.Contains(textureName)))
+            score += 20;
+        bool normal = textureName.Contains("normal") || textureName.Contains("nrm");
+        bool mask = textureName.Contains("mask") || textureName.Contains("rough")
+            || textureName.Contains("metal");
+        bool emission = textureName.Contains("emiss") || textureName.Contains("glow")
+            || textureName.Contains("light");
+        bool baseLike = textureName.Contains("base") || textureName.Contains("fur")
+            || textureName.Contains("scale") || textureName.Contains("skin")
+            || textureName.Contains("horn");
+        switch (kind)
+        {
+            case TextureKind.Main:
+                if (baseLike) score += 10;
+                if (normal || mask || emission) score -= 20;
+                break;
+            case TextureKind.Normal:
+                if (normal) score += 40;
+                break;
+            case TextureKind.Mask:
+                if (mask) score += 40;
+                break;
+            case TextureKind.Emission:
+                if (emission) score += 40;
+                break;
+        }
+        return score;
+    }
+
+    static void ConfigureTextureImporter(string assetPath, TextureKind kind)
+    {
+        if (AssetImporter.GetAtPath(assetPath) is not TextureImporter importer)
+            return;
+        bool changed = importer.wrapMode != TextureWrapMode.Repeat
+            || !importer.mipmapEnabled;
+        importer.wrapMode = TextureWrapMode.Repeat;
+        importer.mipmapEnabled = true;
+        TextureImporterType type = kind == TextureKind.Normal
+            ? TextureImporterType.NormalMap
+            : TextureImporterType.Default;
+        if (importer.textureType != type)
+        {
+            importer.textureType = type;
+            changed = true;
+        }
+        bool srgb = kind == TextureKind.Main || kind == TextureKind.Emission;
+        if (importer.sRGBTexture != srgb)
+        {
+            importer.sRGBTexture = srgb;
+            changed = true;
+        }
+        if (changed)
+            importer.SaveAndReimport();
+    }
+
+    static bool IsTextureExtension(string extension)
+    {
+        return string.Equals(extension, ".dds", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".png", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".tga", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".jpg", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".jpeg", StringComparison.OrdinalIgnoreCase);
+    }
+
+    static void SetTextureIfPresent(Material material, string propertyName, Texture texture)
+    {
+        if (material.HasProperty(propertyName))
+            material.SetTexture(propertyName, texture);
+    }
+
+    static void SetColorIfPresent(Material material, string propertyName, Color value)
+    {
+        if (material.HasProperty(propertyName))
+            material.SetColor(propertyName, value);
+    }
+
+    static void SetFloatIfPresent(Material material, string propertyName, float value)
+    {
+        if (material.HasProperty(propertyName))
+            material.SetFloat(propertyName, value);
+    }
+
+    static void EnsureAssetFolder(string assetFolder)
+    {
+        string[] parts = assetFolder.Split('/');
+        string current = parts[0];
+        for (int i = 1; i < parts.Length; i++)
+        {
+            string next = current + "/" + parts[i];
+            if (!AssetDatabase.IsValidFolder(next))
+                AssetDatabase.CreateFolder(current, parts[i]);
+            current = next;
+        }
+    }
+
+    static string SanitizeAssetName(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "Material";
+        char[] invalid = Path.GetInvalidFileNameChars();
+        var result = value.ToCharArray();
+        for (int i = 0; i < result.Length; i++)
+        {
+            if (Array.IndexOf(invalid, result[i]) >= 0)
+                result[i] = '_';
+        }
+        return new string(result);
+    }
+
+    static string NormalizeName(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+        var chars = value.ToLowerInvariant()
+            .Where(char.IsLetterOrDigit)
+            .ToArray();
+        return new string(chars);
     }
 
     static float CalculateSurfaceOffset(
@@ -917,9 +1645,12 @@ public static class NmsCreatureFamilyAssetBuilder
             || string.IsNullOrWhiteSpace(publish.familyManifestAsset))
             throw new InvalidOperationException(
                 "Invalid NMS family publish manifest: " + path);
-        if (publish.actions == null || publish.actions.Length < 3)
+        int requiredActionCount = publish.supportsRun ? 3 : 2;
+        if (publish.actions == null || publish.actions.Length < requiredActionCount)
             throw new InvalidOperationException(
-                $"{publish.familyId}: Idle, Walk and Run are required.");
+                publish.supportsRun
+                    ? $"{publish.familyId}: Idle, Walk and Run are required."
+                    : $"{publish.familyId}: native Idle and Walk are required.");
     }
 
     static string ToAssetPath(string path)
