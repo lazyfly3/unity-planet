@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eecc710e49b7cda439e62dfc92366965, type: 3}
   m_Name: PlanetLabTerrainPbrLibrary
   m_EditorClassIdentifier: 
-  albedoArray: {fileID: 18700000, guid: bf6c9f6f861c93f4aa1c7bc495b31882, type: 2}
-  normalArray: {fileID: 18700000, guid: 1c2c58f46cb4b294c965185b325be2ec, type: 2}
-  maskArray: {fileID: 18700000, guid: 6d05cc05535cf6c47b3bc9d178af72b4, type: 2}
+  albedoArray: {fileID: 18700000, guid: 7a676003d93a575498dd45205d9b5367, type: 2}
+  normalArray: {fileID: 18700000, guid: c20ce9b83ac6ab2469627d9760d9c91e, type: 2}
+  maskArray: {fileID: 18700000, guid: 8417141723920044a9aa42efd430d38a, type: 2}
   entries:
   - id: breakstone
     slice: 0

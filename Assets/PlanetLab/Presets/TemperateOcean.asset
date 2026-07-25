@@ -15,8 +15,8 @@ MonoBehaviour:
   version: 2
   displayName: Temperate Ocean
   template: 0
-  seed: -1446408897
-  radius: 689
+  seed: 7319
+  radius: 100
   maximumTerrainElevation: 16
   previewResolution: 64
   terrain:
@@ -26,7 +26,7 @@ MonoBehaviour:
     detailScale: 0.065
     detailHeight: 3.6
     ridgeHeight: 7
-    continentThreshold: 0.597
+    continentThreshold: 0.5
     continentWarp: 0.6
     continentSharpness: 1.25
     mountainMask: 0.52
@@ -102,5 +102,5 @@ MonoBehaviour:
     rotationSpeed: 8
   planar:
     autoAnchor: 1
-    anchorLatitude: -53.392017
-    anchorLongitude: 31.079666
+    anchorLatitude: 35.45604
+    anchorLongitude: -46.670074
