@@ -102,6 +102,12 @@ Up = up.normalized;
     
 }
 
+    public void ShiftWorldOffset(Vector3 offset)
+    {
+        OriginWorld += offset;
+        transform.position += offset;
+    }
+
     void SyncAxesFromTransform()
     {
         Up = transform.up;

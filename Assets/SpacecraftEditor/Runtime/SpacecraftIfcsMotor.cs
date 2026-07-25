@@ -34,6 +34,7 @@ namespace SpacecraftEditor
         Quaternion externalWorldAttitude;
         bool hasVelocityReference;
         Vector3 velocityReferenceWorld;
+        Vector3 environmentalAccelerationWorld;
 
         public bool ControlsEnabled
         {
@@ -64,6 +65,24 @@ namespace SpacecraftEditor
         public Vector3 VelocityReferenceWorld => hasVelocityReference
             ? velocityReferenceWorld
             : Vector3.zero;
+        public Vector3 EnvironmentalAccelerationWorld =>
+            environmentalAccelerationWorld;
+
+        public void SetEnvironmentalAcceleration(
+            Vector3 worldAcceleration)
+        {
+            environmentalAccelerationWorld = worldAcceleration;
+        }
+
+        public void SetTargetSpeed(float metersPerSecond)
+        {
+            if (profile == null)
+                RefreshProfileAndAllocator();
+            targetSpeed = Mathf.Clamp(
+                metersPerSecond,
+                profile.MinimumTargetSpeed,
+                profile.MaximumTargetSpeed);
+        }
 
         public void SetVelocityReference(Vector3 worldVelocity)
         {
@@ -240,6 +259,15 @@ namespace SpacecraftEditor
             Vector3 desiredAcceleration = LinearControlEnabled
                 ? CalculateLinearAcceleration(command, localVelocity, thrustMultiplier)
                 : Vector3.zero;
+            if (LinearControlEnabled)
+            {
+                // IFCS operates on the velocity requested by the pilot. Any
+                // known continuous environment acceleration (planetary
+                // gravity, for example) must be cancelled by the allocated
+                // thrusters or a coupled-mode ship cannot hold station.
+                desiredAcceleration -= transform.InverseTransformDirection(
+                    environmentalAccelerationWorld);
+            }
             Vector3 desiredAngularAcceleration = AngularControlEnabled
                 ? CalculateAngularAcceleration(command, localAngularVelocity)
                 : Vector3.zero;
@@ -450,6 +478,7 @@ namespace SpacecraftEditor
             if (hullController != null)
                 hullController.HullChanged -= HandleHullChanged;
             allocator.StopAll();
+            environmentalAccelerationWorld = Vector3.zero;
         }
     }
 }

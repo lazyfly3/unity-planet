@@ -26,7 +26,7 @@ public sealed class SurfaceFirstPersonArmsController : MonoBehaviour
     readonly Dictionary<Transform, Quaternion> restRotations =
         new Dictionary<Transform, Quaternion>();
     readonly List<Renderer> viewRenderers = new List<Renderer>();
-    readonly MaterialPropertyBlock propertyBlock = new MaterialPropertyBlock();
+    MaterialPropertyBlock propertyBlock;
     VoxelPlanetPlayerController player;
     Rigidbody playerBody;
     Camera worldCamera;
@@ -59,6 +59,7 @@ public sealed class SurfaceFirstPersonArmsController : MonoBehaviour
 
     void Awake()
     {
+        propertyBlock = new MaterialPropertyBlock();
         player = GetComponent<VoxelPlanetPlayerController>();
         playerBody = GetComponent<Rigidbody>();
         worldCamera = Camera.main;
@@ -196,9 +197,10 @@ public sealed class SurfaceFirstPersonArmsController : MonoBehaviour
         GameObject prefab = Resources.Load<GameObject>(ArmsResourcePath);
         if (prefab == null)
         {
-            Debug.LogError(
-                "SurfaceFirstPersonArmsController: generated arms prefab is missing.",
+            Debug.LogWarning(
+                "SurfaceFirstPersonArmsController: optional generated arms prefab is missing; surface tools remain usable without the view model.",
                 this);
+            enabled = false;
             return;
         }
 

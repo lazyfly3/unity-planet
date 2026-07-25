@@ -12,10 +12,14 @@ public enum SurfaceSpacecraftParkingMode
 public sealed class SurfaceSpacecraftState
 {
     public bool valid;
+    public PlanetSurfaceTopology surfaceTopology =
+        PlanetSurfaceTopology.LegacySphere;
     public Vector3 radialDirection = Vector3.up;
     public Vector3 tangentForward = Vector3.forward;
     public SurfaceSpacecraftParkingMode parkingMode;
     public float hoverAltitude = 6f;
+    public double planarX;
+    public double planarZ;
 
     public SurfaceSpacecraftState Clone()
     {
@@ -27,6 +31,16 @@ public sealed class SurfaceSpacecraftState
         radialDirection = radialDirection.sqrMagnitude > 0.001f
             ? radialDirection.normalized
             : Vector3.up;
+        if (surfaceTopology == PlanetSurfaceTopology.InfinitePlanar)
+        {
+            tangentForward = Vector3.ProjectOnPlane(
+                tangentForward,
+                Vector3.up).normalized;
+            if (tangentForward.sqrMagnitude < 0.001f)
+                tangentForward = Vector3.forward;
+            hoverAltitude = Mathf.Clamp(hoverAltitude, 2f, 40f);
+            return;
+        }
         tangentForward = Vector3.ProjectOnPlane(
             tangentForward,
             radialDirection).normalized;

@@ -25,10 +25,16 @@ public sealed class BiotaDiscoveryRecord
     public long discoveredUtcTicks;
 }
 
+public enum PlanetSurfaceTopology
+{
+    LegacySphere = 0,
+    InfinitePlanar = 1
+}
+
 [Serializable]
 public sealed class GalaxySaveSlotMetadata
 {
-    public int formatVersion = 8;
+    public int formatVersion = 9;
     public string slotId;
     public string displayName;
     public int worldSeed;
@@ -66,6 +72,7 @@ public sealed class GalaxySaveSlotMetadata
     public string nearObservationPlanetId;
     public float spacecraftHullIntegrity = 100f;
     public VisitedPlanetRecord[] visitedPlanets = Array.Empty<VisitedPlanetRecord>();
+    public PlanetSurfaceTopology surfaceTopology = PlanetSurfaceTopology.LegacySphere;
 }
 
 public sealed class GalaxySaveSlotInfo
@@ -169,6 +176,7 @@ displayName = NormalizeDisplayName(displayName);
             currentPlanetId = ProceduralInterstellarGenerator.EncodePlanetId(InterstellarCoordinate.Zero),
             galaxyMode = GalaxyMode.Interstellar3DProcedural,
             galaxyGeneratorVersion = ProceduralInterstellarGenerator.CurrentVersion,
+            surfaceTopology = PlanetSurfaceTopology.InfinitePlanar,
             shipFacing = GalaxyShipFacing.Up,
             spacePositionZ = 14000d
         };
@@ -211,6 +219,7 @@ GalaxySaveSlotMetadata existing = LoadMetadata(DevelopmentSlotId);
             developmentSlot = true,
             galaxyMode = GalaxyMode.Interstellar3DProcedural,
             galaxyGeneratorVersion = ProceduralInterstellarGenerator.CurrentVersion,
+            surfaceTopology = PlanetSurfaceTopology.InfinitePlanar,
             shipFacing = GalaxyShipFacing.Up,
             spacePositionZ = 14000d
         };
@@ -224,7 +233,7 @@ GalaxySaveSlotMetadata existing = LoadMetadata(DevelopmentSlotId);
     {
 if (metadata == null)
             throw new ArgumentNullException(nameof(metadata));
-        metadata.formatVersion = 8;
+        metadata.formatVersion = 9;
         ValidateSlotId(metadata.slotId);
         metadata.displayName = NormalizeDisplayName(metadata.displayName);
         metadata.lastPlayedUtcTicks = DateTime.UtcNow.Ticks;
@@ -296,7 +305,7 @@ ValidateSlotId(slotId);
 
     static void ValidateMetadata(GalaxySaveSlotMetadata metadata, string expectedSlotId)
     {
-        if (metadata == null || (metadata.formatVersion < 1 || metadata.formatVersion > 8)
+        if (metadata == null || (metadata.formatVersion < 1 || metadata.formatVersion > 9)
             || metadata.slotId != expectedSlotId)
             throw new InvalidDataException("Invalid save slot metadata.");
         if (string.IsNullOrWhiteSpace(metadata.displayName))
@@ -461,6 +470,18 @@ ValidateSlotId(slotId);
                 InitializePhysicalSpacePosition(metadata);
             metadata.galaxyGeneratorVersion = ProceduralInterstellarGenerator.CurrentVersion;
             metadata.formatVersion = 8;
+            changed = true;
+        }
+        if (metadata.formatVersion < 9)
+        {
+            string backupPath = metadataPath + ".pre-planar-surface-v9.backup";
+            if (File.Exists(metadataPath) && !File.Exists(backupPath))
+                File.Copy(metadataPath, backupPath);
+
+            // Existing saves deliberately remain on the legacy sphere. Only
+            // newly-created slots opt into the infinite planar surface.
+            metadata.surfaceTopology = PlanetSurfaceTopology.LegacySphere;
+            metadata.formatVersion = 9;
             changed = true;
         }
         return changed;

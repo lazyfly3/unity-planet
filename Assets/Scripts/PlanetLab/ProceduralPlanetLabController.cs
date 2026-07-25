@@ -618,30 +618,64 @@ public sealed class ProceduralPlanetLabController : MonoBehaviour
     {
         if (planarTerrainMaterial == null)
         {
-            Shader shader = Shader.Find("VoxelPlanet/PlanetLabPlanarSurface");
-            if (shader == null)
-                throw new InvalidOperationException(
-                    "Missing shader: VoxelPlanet/PlanetLabPlanarSurface");
-            planarTerrainMaterial = new Material(shader)
+            GalaxyPlanetDefinition definition =
+                preset != null ? preset.CloneDefinition() : null;
+            if (definition != null)
             {
-                name = "PlanetLabPlanarTerrainMaterial",
-                hideFlags = HideFlags.HideAndDontSave
-            };
+                planarTerrainMaterial =
+                    PlanetLabPlanarMaterialFactory.CreateTerrainMaterial(
+                        definition,
+                        planarPbrLibrary,
+                        preset.template);
+                planarTerrainMaterial.name =
+                    "PlanetLabPlanarTerrainMaterial";
+                planarTerrainMaterial.hideFlags =
+                    HideFlags.HideAndDontSave;
+            }
+            else
+            {
+                Shader shader =
+                    Shader.Find("VoxelPlanet/PlanetLabPlanarSurface");
+                if (shader == null)
+                    throw new InvalidOperationException(
+                        "Missing shader: VoxelPlanet/PlanetLabPlanarSurface");
+                planarTerrainMaterial = new Material(shader)
+                {
+                    name = "PlanetLabPlanarTerrainMaterial",
+                    hideFlags = HideFlags.HideAndDontSave
+                };
+            }
         }
         if (planarTerrainRenderer != null)
             planarTerrainRenderer.sharedMaterial = planarTerrainMaterial;
 
         if (planarOceanMaterial == null)
         {
-            Shader shader = Shader.Find("VoxelPlanet/PlanetLabPlanarOcean");
-            if (shader == null)
-                throw new InvalidOperationException(
-                    "Missing shader: VoxelPlanet/PlanetLabPlanarOcean");
-            planarOceanMaterial = new Material(shader)
+            GalaxyPlanetDefinition definition =
+                preset != null ? preset.CloneDefinition() : null;
+            if (definition != null)
             {
-                name = "PlanetLabPlanarOceanMaterial",
-                hideFlags = HideFlags.HideAndDontSave
-            };
+                planarOceanMaterial =
+                    PlanetLabPlanarMaterialFactory
+                        .CreateOceanMaterial(definition);
+                planarOceanMaterial.name =
+                    "PlanetLabPlanarOceanMaterial";
+                planarOceanMaterial.hideFlags =
+                    HideFlags.HideAndDontSave;
+            }
+            else
+            {
+                Shader shader =
+                    Shader.Find("VoxelPlanet/PlanetLabPlanarOcean");
+                if (shader == null)
+                    throw new InvalidOperationException(
+                        "Missing shader: VoxelPlanet/PlanetLabPlanarOcean");
+                planarOceanMaterial = new Material(shader)
+                {
+                    name = "PlanetLabPlanarOceanMaterial",
+                    hideFlags = HideFlags.HideAndDontSave
+                };
+            }
         }
         if (planarOceanRenderer != null)
             planarOceanRenderer.sharedMaterial = planarOceanMaterial;

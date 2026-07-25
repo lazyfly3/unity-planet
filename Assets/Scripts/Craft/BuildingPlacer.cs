@@ -134,7 +134,10 @@ public class BuildingPlacer : MonoBehaviour
     {
         PlacementSnapshot snapshot = default;
 
-        if (buildCamera == null || quadSphereWorld == null)
+        IPlanetSurfaceRuntime surfaceRuntime =
+            PlanetSurfaceRuntimeRegistry.Current;
+        if (buildCamera == null
+            || (quadSphereWorld == null && surfaceRuntime == null))
             return snapshot;
 
         Ray ray = new Ray(buildCamera.transform.position, buildCamera.transform.forward);
@@ -145,8 +148,11 @@ public class BuildingPlacer : MonoBehaviour
         }
 
         snapshot.HasHit = true;
-        Vector3 planetCenter = quadSphereWorld.GetPlanetCenterWorld();
-        Vector3 hitUp = PlanetGravity.GetUp(hit.point, planetCenter);
+        Vector3 hitUp = surfaceRuntime != null
+            ? surfaceRuntime.GetUp(hit.point)
+            : PlanetGravity.GetUp(
+                hit.point,
+                quadSphereWorld.GetPlanetCenterWorld());
 
         var hitPiece = hit.collider.GetComponentInParent<BuildingFoundationPiece>();
         if (hitPiece != null)

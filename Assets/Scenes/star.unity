@@ -611,10 +611,12 @@ MonoBehaviour:
   weatherWindInfluence: 0.18
   swimSpeed: 3.5
   swimAcceleration: 12
+  swimVerticalAcceleration: 7
+  passiveSinkSpeed: 0.55
   swimUpSpeed: 3
+  swimDownSpeed: 2.5
   waterDrag: 2.2
-  buoyancyAcceleration: 12
-  swimExitJumpHeight: 1.4
+  swimExitUpSpeed: 3.8
   swimExitForwardSpeed: 2.5
   groundProbeDistance: 0.2
   groundProbeRadiusScale: 0.9
@@ -626,6 +628,9 @@ MonoBehaviour:
     m_Bits: 4294967295
   showGravityGizmo: 1
   gravityGizmoLength: 3
+  maximumSurfaceAltitude: 250
+  maximumSurfacePenetration: 40
+  hidePlayerMeshInFirstPerson: 1
 --- !u!136 &218647387
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -24020,9 +24025,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa348a173365c484896324731e077e61, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maximumTint: 0.82
-  underwaterCutoffFrequency: 900
-  transitionSpeed: 4
 --- !u!1 &1515782889
 GameObject:
   m_ObjectHideFlags: 0
@@ -30373,11 +30375,18 @@ MonoBehaviour:
     tintMapIcon: 0
     iconResourcePath: Galaxy/planet_amber
     terrain:
+      shapeVersion: 2
       continentScale: 0.022
       continentHeight: 7
       detailScale: 0.075
       detailHeight: 3
       ridgeHeight: 2
+      continentThreshold: 0.5
+      continentWarp: 0.55
+      continentSharpness: 1.2
+      mountainMask: 0.5
+      oceanFloorDepth: 0.55
+      terraceStrength: 0
       surfaceLayerDepth: 1
       stoneDepth: 4
       generateCaves: 1
@@ -30522,6 +30531,23 @@ MonoBehaviour:
       macroColorSize: 18
       cliffSlope: 0.58
       macroVariation: 0.16
+      oceanEnabled: 1
+      deepOceanColor: {r: 0.015, g: 0.12, b: 0.22, a: 1}
+      shallowOceanColor: {r: 0.03, g: 0.52, b: 0.62, a: 1}
+      shoreColor: {r: 0.72, g: 0.68, b: 0.42, a: 1}
+      snowColor: {r: 0.9, g: 0.92, b: 0.84, a: 1}
+      oceanLevel: 0
+      shoreWidth: 0.018
+      snowLine: 0.68
+      snowAmount: 0.55
+      oceanSmoothness: 0.86
+      oceanWaveStrength: 0.32
+      oceanWaveScale: 1
+      oceanWaveSpeed: 1
+      oceanNormalStrength: 0.85
+      oceanFoamStrength: 0.62
+      oceanRefractionStrength: 0.012
+      oceanOpacity: 0.82
       forestWeight: 0
       desertWeight: 0
       tundraWeight: 0
@@ -30552,11 +30578,18 @@ MonoBehaviour:
     tintMapIcon: 0
     iconResourcePath: Galaxy/planet_green
     terrain:
+      shapeVersion: 2
       continentScale: 0.012
       continentHeight: 10
       detailScale: 0.045
       detailHeight: 1.5
       ridgeHeight: 0.5
+      continentThreshold: 0.5
+      continentWarp: 0.55
+      continentSharpness: 1.2
+      mountainMask: 0.5
+      oceanFloorDepth: 0.55
+      terraceStrength: 0
       surfaceLayerDepth: 1.5
       stoneDepth: 5
       generateCaves: 1
@@ -30736,6 +30769,23 @@ MonoBehaviour:
       macroColorSize: 18
       cliffSlope: 0.58
       macroVariation: 0.16
+      oceanEnabled: 1
+      deepOceanColor: {r: 0.015, g: 0.12, b: 0.22, a: 1}
+      shallowOceanColor: {r: 0.03, g: 0.52, b: 0.62, a: 1}
+      shoreColor: {r: 0.72, g: 0.68, b: 0.42, a: 1}
+      snowColor: {r: 0.9, g: 0.92, b: 0.84, a: 1}
+      oceanLevel: 0
+      shoreWidth: 0.018
+      snowLine: 0.68
+      snowAmount: 0.55
+      oceanSmoothness: 0.86
+      oceanWaveStrength: 0.32
+      oceanWaveScale: 1
+      oceanWaveSpeed: 1
+      oceanNormalStrength: 0.85
+      oceanFoamStrength: 0.62
+      oceanRefractionStrength: 0.012
+      oceanOpacity: 0.82
       forestWeight: 0
       desertWeight: 0
       tundraWeight: 0
@@ -30766,11 +30816,18 @@ MonoBehaviour:
     tintMapIcon: 0
     iconResourcePath: Galaxy/planet_red
     terrain:
+      shapeVersion: 2
       continentScale: 0.025
       continentHeight: 9
       detailScale: 0.085
       detailHeight: 4.5
       ridgeHeight: 7
+      continentThreshold: 0.5
+      continentWarp: 0.55
+      continentSharpness: 1.2
+      mountainMask: 0.5
+      oceanFloorDepth: 0.55
+      terraceStrength: 0
       surfaceLayerDepth: 0.6
       stoneDepth: 2.5
       generateCaves: 1
@@ -30928,6 +30985,23 @@ MonoBehaviour:
       macroColorSize: 18
       cliffSlope: 0.58
       macroVariation: 0.16
+      oceanEnabled: 1
+      deepOceanColor: {r: 0.015, g: 0.12, b: 0.22, a: 1}
+      shallowOceanColor: {r: 0.03, g: 0.52, b: 0.62, a: 1}
+      shoreColor: {r: 0.72, g: 0.68, b: 0.42, a: 1}
+      snowColor: {r: 0.9, g: 0.92, b: 0.84, a: 1}
+      oceanLevel: 0
+      shoreWidth: 0.018
+      snowLine: 0.68
+      snowAmount: 0.55
+      oceanSmoothness: 0.86
+      oceanWaveStrength: 0.32
+      oceanWaveScale: 1
+      oceanWaveSpeed: 1
+      oceanNormalStrength: 0.85
+      oceanFoamStrength: 0.62
+      oceanRefractionStrength: 0.012
+      oceanOpacity: 0.82
       forestWeight: 0
       desertWeight: 0
       tundraWeight: 0
@@ -30958,11 +31032,18 @@ MonoBehaviour:
     tintMapIcon: 0
     iconResourcePath: Galaxy/planet_blue
     terrain:
+      shapeVersion: 2
       continentScale: 0.01
       continentHeight: 6
       detailScale: 0.035
       detailHeight: 0.8
       ridgeHeight: 0.2
+      continentThreshold: 0.5
+      continentWarp: 0.55
+      continentSharpness: 1.2
+      mountainMask: 0.5
+      oceanFloorDepth: 0.55
+      terraceStrength: 0
       surfaceLayerDepth: 2
       stoneDepth: 6
       generateCaves: 1
@@ -31120,6 +31201,23 @@ MonoBehaviour:
       macroColorSize: 18
       cliffSlope: 0.58
       macroVariation: 0.16
+      oceanEnabled: 1
+      deepOceanColor: {r: 0.015, g: 0.12, b: 0.22, a: 1}
+      shallowOceanColor: {r: 0.03, g: 0.52, b: 0.62, a: 1}
+      shoreColor: {r: 0.72, g: 0.68, b: 0.42, a: 1}
+      snowColor: {r: 0.9, g: 0.92, b: 0.84, a: 1}
+      oceanLevel: 0
+      shoreWidth: 0.018
+      snowLine: 0.68
+      snowAmount: 0.55
+      oceanSmoothness: 0.86
+      oceanWaveStrength: 0.32
+      oceanWaveScale: 1
+      oceanWaveSpeed: 1
+      oceanNormalStrength: 0.85
+      oceanFoamStrength: 0.62
+      oceanRefractionStrength: 0.012
+      oceanOpacity: 0.82
       forestWeight: 0
       desertWeight: 0
       tundraWeight: 0
@@ -31150,11 +31248,18 @@ MonoBehaviour:
     tintMapIcon: 0
     iconResourcePath: Galaxy/planet_violet
     terrain:
+      shapeVersion: 2
       continentScale: 0.03
       continentHeight: 6
       detailScale: 0.11
       detailHeight: 5.5
       ridgeHeight: 6
+      continentThreshold: 0.5
+      continentWarp: 0.55
+      continentSharpness: 1.2
+      mountainMask: 0.5
+      oceanFloorDepth: 0.55
+      terraceStrength: 0
       surfaceLayerDepth: 0.7
       stoneDepth: 3
       generateCaves: 1
@@ -31312,6 +31417,23 @@ MonoBehaviour:
       macroColorSize: 18
       cliffSlope: 0.58
       macroVariation: 0.16
+      oceanEnabled: 1
+      deepOceanColor: {r: 0.015, g: 0.12, b: 0.22, a: 1}
+      shallowOceanColor: {r: 0.03, g: 0.52, b: 0.62, a: 1}
+      shoreColor: {r: 0.72, g: 0.68, b: 0.42, a: 1}
+      snowColor: {r: 0.9, g: 0.92, b: 0.84, a: 1}
+      oceanLevel: 0
+      shoreWidth: 0.018
+      snowLine: 0.68
+      snowAmount: 0.55
+      oceanSmoothness: 0.86
+      oceanWaveStrength: 0.32
+      oceanWaveScale: 1
+      oceanWaveSpeed: 1
+      oceanNormalStrength: 0.85
+      oceanFoamStrength: 0.62
+      oceanRefractionStrength: 0.012
+      oceanOpacity: 0.82
       forestWeight: 0
       desertWeight: 0
       tundraWeight: 0

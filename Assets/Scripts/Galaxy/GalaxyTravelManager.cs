@@ -51,7 +51,7 @@ public sealed class GalaxyPlanetDefinition
 public sealed class GalaxyTravelManager : MonoBehaviour
 {
     const int PlanetSaveMagic = 0x504C4E54;
-    const int PlanetSaveVersion = 12;
+    const int PlanetSaveVersion = 13;
     const int StarterEquipmentVersion = 1;
 
     static GalaxyTravelManager instance;
@@ -113,6 +113,9 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         && activeSlotMetadata.galaxyMode == GalaxyMode.InfiniteProcedural;
     public bool IsInterstellarGalaxy => activeSlotMetadata != null
         && activeSlotMetadata.galaxyMode == GalaxyMode.Interstellar3DProcedural;
+    public bool UsesInfinitePlanarSurface => activeSlotMetadata != null
+        && activeSlotMetadata.surfaceTopology
+            == PlanetSurfaceTopology.InfinitePlanar;
     public InterstellarCoordinate ShipCoordinate3D => shipCoordinate3D;
     public InterstellarCoordinate CurrentPlanetCoordinate3D => currentPlanetCoordinate3D;
     public int WorldSeed => activeSlotMetadata != null ? activeSlotMetadata.worldSeed : galaxyLayoutSeed;
@@ -345,8 +348,12 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     {
         if (SceneManager.GetActiveScene().name == surfaceSceneName)
         {
+            InfinitePlanarSurfaceWorld planar =
+                FindObjectOfType<InfinitePlanarSurfaceWorld>();
+            if (planar != null)
+                SavePlanet(planar);
             VoxelQuadSphereWorld world = FindObjectOfType<VoxelQuadSphereWorld>();
-            if (world != null)
+            if (world != null && planar == null)
                 SavePlanet(world);
             CaptureInventory();
         }
@@ -380,6 +387,40 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         SceneManager.LoadScene(mapSceneName, LoadSceneMode.Single);
     
 }
+
+    public void OpenGalaxyMapFromSurface(
+        IPlanetSurfaceRuntime surfaceRuntime)
+    {
+        if (surfaceRuntime == null)
+            return;
+        if (surfaceRuntime.Topology == PlanetSurfaceTopology.LegacySphere)
+        {
+            OpenGalaxyMap(FindObjectOfType<VoxelQuadSphereWorld>());
+            return;
+        }
+        if (transitionInProgress)
+            return;
+
+        InfinitePlanarSurfaceWorld planar =
+            surfaceRuntime as InfinitePlanarSurfaceWorld;
+        if (planar != null)
+            SavePlanet(planar);
+        CaptureInventory();
+        galaxyMapReturnSceneName = SceneManager.GetActiveScene().name;
+        GalaxyPlanetDefinition current = CurrentPlanet;
+        if (current != null)
+        {
+            if (IsInterstellarGalaxy)
+                shipCoordinate3D = current.coordinate3D;
+            else if (IsInfiniteGalaxy)
+                shipCoordinate = current.coordinate;
+            else
+                shipGridPosition = current.gridPosition;
+        }
+        SaveActiveSlotMetadata();
+        transitionInProgress = true;
+        SceneManager.LoadScene(mapSceneName, LoadSceneMode.Single);
+    }
 
     public bool ExitGalaxyMapWithoutTravel()
     {
@@ -463,6 +504,92 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         SaveActiveSlotMetadata();
         transitionInProgress = true;
         SceneManager.LoadScene(interstellarSceneName, LoadSceneMode.Single);
+    }
+
+    public void OpenInterstellarFlightFromSurface(
+        IPlanetSurfaceRuntime surfaceRuntime,
+        Vector3 planarForward,
+        Vector3 departureVelocity)
+    {
+        if (transitionInProgress
+            || surfaceRuntime == null
+            || surfaceRuntime.Topology
+                != PlanetSurfaceTopology.InfinitePlanar
+            || !IsInterstellarGalaxy)
+        {
+            return;
+        }
+
+        InfinitePlanarSurfaceWorld planar =
+            surfaceRuntime as InfinitePlanarSurfaceWorld;
+        if (planar != null)
+            SavePlanet(planar);
+        CaptureInventory();
+        PendingSurfaceDepartureContext.Clear();
+
+        GalaxyPlanetDefinition current = CurrentPlanet;
+        if (current != null)
+        {
+            Vector3 direction =
+                surfaceRuntime.AnchorDirection.sqrMagnitude > 0.001f
+                    ? surfaceRuntime.AnchorDirection.normalized
+                    : GetLastLandingDirection(current.planetId);
+            PlanetLabPlanarPatchMeshBuilder.BuildTangentBasis(
+                direction,
+                out Vector3 east,
+                out Vector3 north);
+            Vector3 flatForward = Vector3.ProjectOnPlane(
+                planarForward,
+                Vector3.up).normalized;
+            if (flatForward.sqrMagnitude < 0.001f)
+                flatForward = Vector3.forward;
+            Vector3 tangentForward =
+                (east * flatForward.x + north * flatForward.z)
+                .normalized;
+            if (tangentForward.sqrMagnitude < 0.001f)
+                tangentForward = north;
+            Quaternion departureRotation =
+                Quaternion.LookRotation(direction, tangentForward);
+
+            shipCoordinate3D = current.coordinate3D;
+            activeSlotMetadata.nearObservationPlanetId =
+                current.planetId;
+            UniversePosition planetPosition =
+                GetInterstellarPlanetAddress(current.coordinate3D);
+            PlanetCelestialProfile celestial =
+                current.celestial
+                ?? PlanetCelestialProfile.CreateCompatibleDefault();
+            celestial.ClampValues();
+            PlanetPhysicalProfile physical = celestial.Physical;
+            double outerRadius =
+                physical.radiusMeters
+                + System.Math.Max(
+                    celestial.maximumTerrainElevation,
+                    celestial.HasAtmosphere
+                        ? physical.atmosphereTopAltitudeMeters
+                        : 0d);
+            double departureDistance = System.Math.Max(
+                physical.radiusMeters * 4.2d,
+                outerRadius + 2_500d);
+            StoreUniversePosition(
+                planetPosition.Add(new DoubleVector3(
+                    direction.x * departureDistance,
+                    direction.y * departureDistance,
+                    direction.z * departureDistance)));
+            Vector3 orbitalVelocity =
+                GetInterstellarPlanetVelocity(current.coordinate3D);
+            float speed = Mathf.Max(
+                120f,
+                departureVelocity.magnitude);
+            PendingSurfaceDepartureContext.Set(
+                departureRotation,
+                orbitalVelocity + direction * speed);
+        }
+        SaveActiveSlotMetadata();
+        transitionInProgress = true;
+        SceneManager.LoadScene(
+            interstellarSceneName,
+            LoadSceneMode.Single);
     }
 
     public SurfaceSpacecraftState GetSurfaceSpacecraftState(string planetId)
@@ -957,8 +1084,12 @@ if (transitionInProgress || planet == null)
 if (transitionInProgress)
             return;
 
+        InfinitePlanarSurfaceWorld planar =
+            FindObjectOfType<InfinitePlanarSurfaceWorld>();
+        if (planar != null)
+            SavePlanet(planar);
         VoxelQuadSphereWorld world = FindObjectOfType<VoxelQuadSphereWorld>();
-        if (world != null)
+        if (world != null && planar == null)
             SavePlanet(world);
         CaptureInventory();
         SaveActiveSlotMetadata();
@@ -976,9 +1107,8 @@ if (transitionInProgress)
         if (scene.name != surfaceSceneName)
             return;
 
-        VoxelQuadSphereWorld world = FindObjectOfType<VoxelQuadSphereWorld>();
         GalaxyPlanetDefinition planet = CurrentPlanet;
-        if (world == null || planet == null)
+        if (planet == null)
             return;
 
         if (IsInfiniteGalaxy || IsInterstellarGalaxy)
@@ -993,6 +1123,19 @@ if (transitionInProgress)
             }
         }
 
+        if (UsesInfinitePlanarSurface)
+        {
+            ConfigureInfinitePlanarSurfaceScene(planet);
+            return;
+        }
+
+        VoxelQuadSphereWorld world = FindObjectOfType<VoxelQuadSphereWorld>();
+        if (world == null)
+            return;
+        LegacySphereSurfaceRuntime sphereRuntime =
+            world.GetComponent<LegacySphereSurfaceRuntime>()
+            ?? world.gameObject.AddComponent<LegacySphereSurfaceRuntime>();
+        sphereRuntime.Configure(world);
         GalaxyPlanetSaveData save = LoadPlanet(planet.planetId);
         GetPlanetPalette(planet, out Color surfaceColor, out Color rockColor);
         List<PlanetSurfacePropSpawnSettings> surfacePropPlan = decorationCatalog != null
@@ -1047,6 +1190,99 @@ if (transitionInProgress)
         RestoreInventory();
     }
 
+    void ConfigureInfinitePlanarSurfaceScene(
+        GalaxyPlanetDefinition planet)
+    {
+        if (FindObjectOfType<InfinitePlanarSurfaceWorld>() != null)
+            return;
+
+        VoxelQuadSphereWorld sphere =
+            FindObjectOfType<VoxelQuadSphereWorld>();
+        if (sphere != null)
+        {
+            sphere.enabled = false;
+            PlanetRiverSystem river =
+                sphere.GetComponent<PlanetRiverSystem>();
+            if (river != null)
+                river.enabled = false;
+            PlanetSurfaceDayNightController dayNight =
+                sphere.GetComponent<PlanetSurfaceDayNightController>();
+            if (dayNight != null)
+                dayNight.enabled = false;
+            PlanetSurfaceFarLodController farLod =
+                sphere.GetComponent<PlanetSurfaceFarLodController>();
+            if (farLod != null)
+                farLod.enabled = false;
+        }
+
+        foreach (VoxelQuadSphereDigTool dig
+                 in FindObjectsOfType<VoxelQuadSphereDigTool>(true))
+        {
+            dig.enabled = false;
+        }
+        foreach (VoxelDigTool dig in FindObjectsOfType<VoxelDigTool>(true))
+            dig.enabled = false;
+        foreach (PlanetWeatherSystem weather
+                 in FindObjectsOfType<PlanetWeatherSystem>(true))
+        {
+            weather.gameObject.SetActive(false);
+        }
+        foreach (Canvas canvas in FindObjectsOfType<Canvas>(true))
+        {
+            if (canvas != null
+                && canvas.name.IndexOf(
+                    "Weather",
+                    System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                canvas.gameObject.SetActive(false);
+            }
+        }
+
+        PendingPlanetLandingContext landing =
+            PendingPlanetLandingContext.Consume();
+        GalaxyPlanetSaveData save = LoadPlanet(planet.planetId);
+        VoxelPlanetPlayerController player =
+            FindObjectOfType<VoxelPlanetPlayerController>(true);
+        if (player == null)
+        {
+            Debug.LogError(
+                "GalaxyTravelManager: infinite planar surface requires VoxelPlanetPlayerController.",
+                this);
+            return;
+        }
+
+        var root = new GameObject("InfinitePlanarSurfaceWorld");
+        InfinitePlanarSurfaceWorld planar =
+            root.AddComponent<InfinitePlanarSurfaceWorld>();
+        // Infinite planar saves deliberately do not run the random tree,
+        // vegetation, landmark, or ground-cover generator. Dedicated
+        // harvestable resource settings remain enabled.
+        List<PlanetSurfacePropSpawnSettings> surfacePropPlan =
+            new List<PlanetSurfacePropSpawnSettings>();
+        planar.Configure(
+            planet,
+            save,
+            landing,
+            player,
+            surfacePropPlan);
+        InfinitePlanarSurfaceEntryCoordinator coordinator =
+            root.AddComponent<InfinitePlanarSurfaceEntryCoordinator>();
+        PlanarSurfaceLandedSpacecraftRestorer restorer = null;
+        if (IsInterstellarGalaxy)
+        {
+            restorer = root.AddComponent<
+                PlanarSurfaceLandedSpacecraftRestorer>();
+            restorer.Initialize(planar, landing);
+        }
+        coordinator.Initialize(
+            planar,
+            FindObjectOfType<PlanetLoadingUI>(true));
+        if (restorer != null)
+            coordinator.BindRestorer(restorer);
+        RestorePlanarBuildings(planar, save);
+        RestoreInventory();
+    }
+
     void SavePlanet(VoxelQuadSphereWorld world)
     {
         if (!world.IsGenerationComplete)
@@ -1089,7 +1325,8 @@ if (transitionInProgress)
                 ? PlanetSurfaceGenerationMode.StreamingLargeSphere
                 : PlanetSurfaceGenerationMode.LegacyFullSphere,
             planetReferenceRadius = world.PlanetRadius,
-            voxelOuterRadius = world.VoxelOuterRadius
+            voxelOuterRadius = world.VoxelOuterRadius,
+            surfaceTopology = PlanetSurfaceTopology.LegacySphere
         };
 
         string savePath = GetPlanetSavePath(planet.planetId);
@@ -1102,6 +1339,65 @@ if (transitionInProgress)
             $"GalaxyTravelManager: saved planet '{planet.planetId}' with voxel and mesh snapshots "
             + $"({fileMegabytes:0.00} MB) in {elapsedMilliseconds:0} ms.",
             this);
+    }
+
+    void SavePlanet(InfinitePlanarSurfaceWorld world)
+    {
+        if (world == null || !world.IsCenterCollisionReady)
+        {
+            Debug.LogWarning(
+                "GalaxyTravelManager: skipped planar save because the center collision is not ready.",
+                world);
+            return;
+        }
+
+        GalaxyPlanetDefinition planet = CurrentPlanet;
+        if (planet == null)
+            return;
+        PlanetCelestialProfile celestial =
+            planet.celestial
+            ?? PlanetCelestialProfile.CreateCompatibleDefault();
+        var data = new GalaxyPlanetSaveData
+        {
+            formatVersion = PlanetSaveVersion,
+            planetId = planet.planetId,
+            seed = planet.seed,
+            hasFullVoxelSnapshot = false,
+            faceGridSize = 0,
+            maxDepth = 0,
+            chunkSize =
+                PlanetLabPlanarSettings.InfiniteChunkResolution,
+            terrainSettings = planet.terrain != null
+                ? planet.terrain.Clone()
+                : new PlanetTerrainSettings(),
+            hasFullMeshSnapshot = false,
+            chunks = new QuadSphereChunkSaveEntry[0],
+            hasFullResourceSnapshot = true,
+            resources = new GalaxyResourceSaveEntry[0],
+            harvestedSurfacePropIds = new string[0],
+            hasFullSurfacePropSnapshot = true,
+            surfaceProps = new GalaxySurfacePropSaveEntry[0],
+            buildings = CapturePlanarBuildings(world),
+            surfaceGenerationMode =
+                PlanetSurfaceGenerationMode.InfinitePlanar,
+            planetReferenceRadius = (float)celestial.radius,
+            voxelOuterRadius = (float)celestial.radius,
+            surfaceTopology =
+                PlanetSurfaceTopology.InfinitePlanar
+        };
+        world.CapturePlanarState(data);
+
+        string savePath = GetPlanetSavePath(planet.planetId);
+        Directory.CreateDirectory(Path.GetDirectoryName(savePath));
+        WritePlanetBinary(savePath, data);
+
+        VisitedPlanetRecord visited = FindVisitedPlanet(planet.planetId);
+        if (visited != null && data.hasPlanarPlayerPosition)
+        {
+            visited.hasPlanarPlayerPosition = true;
+            visited.lastPlanarPlayerX = data.planarPlayerX;
+            visited.lastPlanarPlayerZ = data.planarPlayerZ;
+        }
     }
 
     GalaxyPlanetSaveData LoadPlanet(string planetId)
@@ -1133,6 +1429,7 @@ if (transitionInProgress)
             return legacy != null
                 && (legacy.formatVersion == 10
                     || legacy.formatVersion == 11
+                    || legacy.formatVersion == 12
                     || legacy.formatVersion == PlanetSaveVersion)
                 ? legacy
                 : null;
@@ -1260,6 +1557,10 @@ if (transitionInProgress)
                 writer.Write(building.slabHeight);
                 writer.Write(building.pillarHeight);
                 writer.Write(building.pillarSize);
+                writer.Write(building.usesPlanarAddress);
+                writer.Write(building.planarOriginX);
+                writer.Write(building.planarOriginZ);
+                writer.Write(building.planarOriginY);
 
                 Vector2Int[] cells = building.occupiedCells ?? new Vector2Int[0];
                 writer.Write(cells.Length);
@@ -1299,6 +1600,11 @@ if (transitionInProgress)
             writer.Write((int)data.surfaceGenerationMode);
             writer.Write(data.planetReferenceRadius);
             writer.Write(data.voxelOuterRadius);
+            writer.Write((int)data.surfaceTopology);
+            WriteVector3(writer, data.planarAnchorDirection);
+            writer.Write(data.hasPlanarPlayerPosition);
+            writer.Write(data.planarPlayerX);
+            writer.Write(data.planarPlayerZ);
         }
 
         if (File.Exists(path))
@@ -1317,7 +1623,10 @@ if (transitionInProgress)
                 throw new InvalidDataException("Invalid planet save signature.");
 
             int version = reader.ReadInt32();
-            if (version != 10 && version != 11 && version != PlanetSaveVersion)
+            if (version != 10
+                && version != 11
+                && version != 12
+                && version != PlanetSaveVersion)
                 throw new InvalidDataException($"Unsupported planet save version {version}.");
 
             GalaxyPlanetSaveData data = new GalaxyPlanetSaveData
@@ -1454,6 +1763,13 @@ if (transitionInProgress)
                         pillarHeight = reader.ReadSingle(),
                         pillarSize = reader.ReadSingle()
                     };
+                    if (version >= 13)
+                    {
+                        building.usesPlanarAddress = reader.ReadBoolean();
+                        building.planarOriginX = reader.ReadDouble();
+                        building.planarOriginZ = reader.ReadDouble();
+                        building.planarOriginY = reader.ReadSingle();
+                    }
                     int cellCount = ReadBoundedCount(reader, "building cell", 1000000);
                     building.occupiedCells = new Vector2Int[cellCount];
                     for (int cell = 0; cell < cellCount; cell++)
@@ -1500,6 +1816,15 @@ if (transitionInProgress)
                 data.surfaceGenerationMode = PlanetSurfaceGenerationMode.LegacyFullSphere;
                 data.planetReferenceRadius = PlanetCelestialProfile.CompatibleRadius;
                 data.voxelOuterRadius = PlanetCelestialProfile.CompatibleRadius;
+            }
+            if (version >= 13)
+            {
+                data.surfaceTopology =
+                    (PlanetSurfaceTopology)reader.ReadInt32();
+                data.planarAnchorDirection = ReadVector3(reader);
+                data.hasPlanarPlayerPosition = reader.ReadBoolean();
+                data.planarPlayerX = reader.ReadDouble();
+                data.planarPlayerZ = reader.ReadDouble();
             }
 
             return data;
@@ -1940,6 +2265,105 @@ if (transitionInProgress)
         }
 
         Debug.Log($"GalaxyTravelManager: restored {restoredPieces} building pieces for planet '{save.planetId}'.");
+    }
+
+    static GalaxyBuildingSaveEntry[] CapturePlanarBuildings(
+        InfinitePlanarSurfaceWorld world)
+    {
+        if (world == null)
+            return new GalaxyBuildingSaveEntry[0];
+
+        var result = new List<GalaxyBuildingSaveEntry>();
+        foreach (BuildingAnchor anchor in BuildingAnchor.GetActiveAnchors())
+        {
+            if (anchor == null || anchor.OccupiedCells.Count == 0)
+                continue;
+            var cells = new List<Vector2Int>(anchor.OccupiedCells);
+            cells.Sort((left, right) =>
+            {
+                int xComparison = left.x.CompareTo(right.x);
+                return xComparison != 0
+                    ? xComparison
+                    : left.y.CompareTo(right.y);
+            });
+            PlanarSurfaceAddress address =
+                world.ToPersistentAddress(anchor.OriginWorld);
+            result.Add(new GalaxyBuildingSaveEntry
+            {
+                buildingTypeId = "foundation",
+                localOrigin = anchor.OriginWorld,
+                localUp = anchor.Up,
+                localForward = anchor.Forward,
+                cellSize = anchor.CellSize,
+                slabHeight = anchor.SlabHeight,
+                pillarHeight = anchor.PillarHeight,
+                pillarSize = anchor.PillarSize,
+                occupiedCells = cells.ToArray(),
+                usesPlanarAddress = true,
+                planarOriginX = address.x,
+                planarOriginZ = address.z,
+                planarOriginY = address.y
+            });
+        }
+        return result.ToArray();
+    }
+
+    static void RestorePlanarBuildings(
+        InfinitePlanarSurfaceWorld world,
+        GalaxyPlanetSaveData save)
+    {
+        if (world == null
+            || save?.buildings == null
+            || save.buildings.Length == 0)
+        {
+            return;
+        }
+
+        BuildingPlacer placer = FindObjectOfType<BuildingPlacer>();
+        Material foundationMaterial =
+            placer != null ? placer.FoundationMaterial : null;
+        int restoredPieces = 0;
+        foreach (GalaxyBuildingSaveEntry building in save.buildings)
+        {
+            if (building == null
+                || building.buildingTypeId != "foundation"
+                || !building.usesPlanarAddress
+                || building.occupiedCells == null
+                || building.occupiedCells.Length == 0)
+            {
+                continue;
+            }
+
+            Vector3 origin = world.FromPersistentAddress(
+                new PlanarSurfaceAddress(
+                    building.planarOriginX,
+                    building.planarOriginZ,
+                    building.planarOriginY));
+            Vector3 up = building.localUp.sqrMagnitude > 0.9f
+                ? building.localUp.normalized
+                : Vector3.up;
+            Vector3 forward = Vector3.ProjectOnPlane(
+                building.localForward,
+                up).normalized;
+            if (forward.sqrMagnitude < 0.001f)
+                forward = Vector3.forward;
+
+            BuildingAnchor anchor = BuildingAnchor.Create(
+                origin,
+                up,
+                forward,
+                Mathf.Max(0.1f, building.cellSize),
+                Mathf.Max(0.01f, building.slabHeight),
+                Mathf.Max(0f, building.pillarHeight),
+                Mathf.Max(0.01f, building.pillarSize),
+                foundationMaterial);
+            anchor.gameObject
+                .AddComponent<PlanetFloatingOriginParticipant>();
+            restoredPieces +=
+                anchor.RestoreCells(building.occupiedCells);
+        }
+        Debug.Log(
+            $"GalaxyTravelManager: restored {restoredPieces} planar building pieces for planet '{save.planetId}'.");
     }
 
     void CaptureInventory()
@@ -2445,6 +2869,9 @@ if (transitionInProgress)
         record.surfaceSpacecraft = new SurfaceSpacecraftState
         {
             valid = true,
+            surfaceTopology = UsesInfinitePlanarSurface
+                ? PlanetSurfaceTopology.InfinitePlanar
+                : PlanetSurfaceTopology.LegacySphere,
             radialDirection = record.lastLandingDirection,
             tangentForward = context.shipRotation * Vector3.forward,
             parkingMode = context.landingMode == PlanetLandingMode.OceanPlatform

@@ -74,7 +74,6 @@ public sealed class HarvestableResource : MonoBehaviour
         interactionDistance = Mathf.Max(0.1f, interactionDistance);
         hitPulseDuration = Mathf.Max(0.01f, hitPulseDuration);
         progressFeedbackDuration = Mathf.Max(0.1f, progressFeedbackDuration);
-        EnsureHarvestCollider();
     }
 
     void Update()
@@ -133,10 +132,45 @@ public sealed class HarvestableResource : MonoBehaviour
         int remaining = playerInventory.Add(rewardDefinition, rewardAmount);
         if (remaining == 0)
         {
-            GetComponentInParent<VoxelQuadSphereWorld>()?.MarkResourceHarvested(stableResourceId);
+            IPlanetHarvestPersistenceSink persistenceSink =
+                FindPersistenceSink();
+            persistenceSink?.MarkHarvested(stableResourceId);
             PlayFeedbackSound(harvestCompleteSound);
             PlanetSurfacePropInstance generatedInstance = GetComponentInParent<PlanetSurfacePropInstance>();
             Destroy(generatedInstance != null ? generatedInstance.gameObject : gameObject);
+        }
+    }
+
+    IPlanetHarvestPersistenceSink FindPersistenceSink()
+    {
+        MonoBehaviour[] parents = GetComponentsInParent<MonoBehaviour>(true);
+        for (int index = 0; index < parents.Length; index++)
+        {
+            if (parents[index] is IPlanetHarvestPersistenceSink sink)
+                return sink;
+        }
+
+        VoxelQuadSphereWorld sphere =
+            GetComponentInParent<VoxelQuadSphereWorld>();
+        if (sphere != null)
+            return new SphereHarvestPersistenceSink(sphere);
+        return PlanetSurfaceRuntimeRegistry.Current
+            as IPlanetHarvestPersistenceSink;
+    }
+
+    sealed class SphereHarvestPersistenceSink :
+        IPlanetHarvestPersistenceSink
+    {
+        readonly VoxelQuadSphereWorld world;
+
+        public SphereHarvestPersistenceSink(VoxelQuadSphereWorld value)
+        {
+            world = value;
+        }
+
+        public void MarkHarvested(string stableId)
+        {
+            world?.MarkResourceHarvested(stableId);
         }
     }
 

@@ -83,6 +83,8 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
     int createdChunkCount;
     double lastChunkBuildMilliseconds;
     double maximumChunkBuildMilliseconds;
+    double globalOriginX;
+    double globalOriginZ;
 
     public int ActiveChunkCount => activeChunks.Count;
     public int PooledChunkCount => pooledChunks.Count;
@@ -93,6 +95,33 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
     public double LastChunkBuildMilliseconds => lastChunkBuildMilliseconds;
     public double MaximumChunkBuildMilliseconds => maximumChunkBuildMilliseconds;
     public Mesh InfiniteOceanMesh => oceanMesh;
+    public bool IsCenterChunkReady =>
+        configured && activeChunks.ContainsKey(centerCoordinate);
+    public bool IsFullyReady =>
+        configured
+        && activeChunks.Count == (viewRadius * 2 + 1) * (viewRadius * 2 + 1)
+        && buildQueue.Count == 0;
+    public double GlobalOriginX => globalOriginX;
+    public double GlobalOriginZ => globalOriginZ;
+
+    public event Action<Vector2Int> ChunkActivated;
+    public event Action<Vector2Int> ChunkRecycled;
+
+    public void GetActiveCoordinates(List<Vector2Int> destination)
+    {
+        if (destination == null)
+            throw new ArgumentNullException(nameof(destination));
+        destination.Clear();
+        foreach (Vector2Int coordinate in activeChunks.Keys)
+            destination.Add(coordinate);
+        destination.Sort((left, right) =>
+        {
+            int xComparison = left.x.CompareTo(right.x);
+            return xComparison != 0
+                ? xComparison
+                : left.y.CompareTo(right.y);
+        });
+    }
 
     public void Configure(
         GalaxyPlanetDefinition valueDefinition,
@@ -155,6 +184,15 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         }
     }
 
+    public void SetTarget(Transform valueTarget)
+    {
+        if (target == valueTarget)
+            return;
+        target = valueTarget;
+        if (configured)
+            RefreshStreamingCenter(true);
+    }
+
     public void RefreshAppearance(
         Material valueTerrainMaterial,
         Material valueOceanMaterial,
@@ -180,6 +218,45 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
                 north,
                 worldX,
                 worldZ);
+    }
+
+    public bool TrySampleSurface(
+        double planarX,
+        double planarZ,
+        out float height,
+        out Vector3 normal)
+    {
+        height = 0f;
+        normal = Vector3.up;
+        if (definition == null)
+            return false;
+
+        float x = (float)planarX;
+        float z = (float)planarZ;
+        height = SampleHeight(x, z);
+        const float sampleStep = 0.5f;
+        float west = SampleHeight(x - sampleStep, z);
+        float eastHeight = SampleHeight(x + sampleStep, z);
+        float south = SampleHeight(x, z - sampleStep);
+        float northHeight = SampleHeight(x, z + sampleStep);
+        normal = new Vector3(
+            -(eastHeight - west) / (sampleStep * 2f),
+            1f,
+            -(northHeight - south) / (sampleStep * 2f)).normalized;
+        return true;
+    }
+
+    public void SetGlobalOrigin(double planarX, double planarZ)
+    {
+        globalOriginX = planarX;
+        globalOriginZ = planarZ;
+        foreach (KeyValuePair<Vector2Int, Chunk> pair in activeChunks)
+            PositionChunk(pair.Value, pair.Key);
+        foreach (Chunk chunk in pooledChunks)
+            PositionChunk(chunk, chunk.coordinate);
+        RefreshStreamingCenter(true);
+        if (!Application.isPlaying)
+            BuildAllQueuedChunks();
     }
 
     public void RebuildImmediate()
@@ -270,7 +347,9 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         Vector3 localTarget = target != null
             ? transform.InverseTransformPoint(target.position)
             : Vector3.zero;
-        Vector2Int nextCenter = WorldToChunk(localTarget.x, localTarget.z);
+        Vector2Int nextCenter = WorldToChunk(
+            localTarget.x + (float)globalOriginX,
+            localTarget.z + (float)globalOriginZ);
         if (!force && nextCenter == centerCoordinate)
             return;
         centerCoordinate = nextCenter;
@@ -294,6 +373,7 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
             Vector2Int coordinate = removalBuffer[index];
             Chunk chunk = activeChunks[coordinate];
             activeChunks.Remove(coordinate);
+            ChunkRecycled?.Invoke(coordinate);
             chunk.root.SetActive(false);
             pooledChunks.Enqueue(chunk);
         }
@@ -353,10 +433,7 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
             : CreateChunk();
         chunk.coordinate = coordinate;
         chunk.root.name = "Chunk";
-        chunk.root.transform.localPosition = new Vector3(
-            coordinate.x * chunkSize,
-            0f,
-            coordinate.y * chunkSize);
+        PositionChunk(chunk, coordinate);
         chunk.root.transform.localRotation = Quaternion.identity;
         chunk.root.transform.localScale = Vector3.one;
 
@@ -376,6 +453,7 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         ApplyChunkAppearance(chunk);
         chunk.root.SetActive(true);
         activeChunks.Add(coordinate, chunk);
+        ChunkActivated?.Invoke(coordinate);
         lastChunkBuildMilliseconds =
             (System.Diagnostics.Stopwatch.GetTimestamp() - buildStart)
             * 1000d
@@ -383,6 +461,16 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         maximumChunkBuildMilliseconds = Math.Max(
             maximumChunkBuildMilliseconds,
             lastChunkBuildMilliseconds);
+    }
+
+    void PositionChunk(Chunk chunk, Vector2Int coordinate)
+    {
+        if (chunk?.root == null)
+            return;
+        chunk.root.transform.localPosition = new Vector3(
+            (float)(coordinate.x * (double)chunkSize - globalOriginX),
+            0f,
+            (float)(coordinate.y * (double)chunkSize - globalOriginZ));
     }
 
     Chunk CreateChunk()

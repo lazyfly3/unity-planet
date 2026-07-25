@@ -87,6 +87,8 @@ public sealed class SurfaceMultifunctionController : MonoBehaviour
             && !menuOpen
             && ship != null
             && ship.CanBoardFrom(playerCamera, BoardDistance);
+        if (canBoard)
+            interactionLabel.text = ship.BoardPromptText;
         interactionLabel.gameObject.SetActive(canBoard);
         if (canBoard && Input.GetKeyDown(KeyCode.F))
         {

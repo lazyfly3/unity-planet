@@ -4,7 +4,8 @@ using UnityEngine;
 public enum PlanetSurfaceGenerationMode
 {
     LegacyFullSphere = 0,
-    StreamingLargeSphere = 1
+    StreamingLargeSphere = 1,
+    InfinitePlanar = 2
 }
 
 public enum PlanetAtmosphereKind
@@ -228,6 +229,9 @@ public sealed class VisitedPlanetRecord
     public long coordinateZ;
     public Vector3 lastLandingDirection = Vector3.up;
     public Vector3 lastPlayerLocalPosition;
+    public bool hasPlanarPlayerPosition;
+    public double lastPlanarPlayerX;
+    public double lastPlanarPlayerZ;
     public long lastVisitedUtcTicks;
     public SurfaceSpacecraftState surfaceSpacecraft = new SurfaceSpacecraftState();
 

@@ -43,8 +43,15 @@ public sealed class SurfaceToolController : MonoBehaviour
         inventory = GetComponent<PlayerInventory>();
         buildingPlacer = GetComponent<BuildingPlacer>();
         multifunction = GetComponent<SurfaceMultifunctionController>();
-        arms = GetComponent<SurfaceFirstPersonArmsController>()
-            ?? gameObject.AddComponent<SurfaceFirstPersonArmsController>();
+        arms = GetComponent<SurfaceFirstPersonArmsController>();
+        if (arms == null
+            && Resources.Load<GameObject>(
+                "SurfaceTools/SurfaceFirstPersonArms") != null)
+        {
+            arms =
+                gameObject.AddComponent<
+                    SurfaceFirstPersonArmsController>();
+        }
         biotaScanner = GetComponent<SurfaceBiotaScannerTool>()
             ?? gameObject.AddComponent<SurfaceBiotaScannerTool>();
         LoadDefinitions();

@@ -28,6 +28,11 @@ public sealed class GalaxyPlanetSaveData
     public PlanetSurfaceGenerationMode surfaceGenerationMode = PlanetSurfaceGenerationMode.LegacyFullSphere;
     public float planetReferenceRadius = PlanetCelestialProfile.CompatibleRadius;
     public float voxelOuterRadius = PlanetCelestialProfile.CompatibleRadius;
+    public PlanetSurfaceTopology surfaceTopology = PlanetSurfaceTopology.LegacySphere;
+    public Vector3 planarAnchorDirection = Vector3.up;
+    public bool hasPlanarPlayerPosition;
+    public double planarPlayerX;
+    public double planarPlayerZ;
 }
 
 [Serializable]
@@ -42,6 +47,10 @@ public sealed class GalaxyBuildingSaveEntry
     public float pillarHeight;
     public float pillarSize;
     public Vector2Int[] occupiedCells;
+    public bool usesPlanarAddress;
+    public double planarOriginX;
+    public double planarOriginZ;
+    public float planarOriginY;
 }
 
 [Serializable]

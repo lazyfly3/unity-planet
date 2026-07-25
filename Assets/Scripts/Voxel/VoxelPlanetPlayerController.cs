@@ -291,9 +291,10 @@ if (body == null)
         if (Input.GetKeyDown(KeyCode.M))
         {
             GalaxyTravelManager manager = GalaxyTravelManager.Instance;
-            if (manager != null && manager.IsInterstellarGalaxy && quadSphereWorld != null)
+            if (manager != null && manager.IsInterstellarGalaxy)
             {
-                manager.OpenGalaxyMap(quadSphereWorld);
+                manager.OpenGalaxyMapFromSurface(
+                    PlanetSurfaceRuntimeRegistry.Current);
                 return;
             }
         }
@@ -328,6 +329,44 @@ if (body == null)
 
     bool RecoverFromInvalidSurfacePosition()
     {
+        IPlanetSurfaceRuntime runtime =
+            PlanetSurfaceRuntimeRegistry.Current;
+        if (runtime != null
+            && runtime.Topology == PlanetSurfaceTopology.InfinitePlanar)
+        {
+            if (!runtime.IsCenterCollisionReady
+                || !runtime.TryProjectToSurface(
+                    body.position,
+                    out PlanetSurfaceSample surface))
+            {
+                return false;
+            }
+            float planarAltitude = Vector3.Dot(
+                body.position - surface.point,
+                surface.normal);
+            bool planarFinite = float.IsFinite(planarAltitude)
+                && float.IsFinite(body.velocity.x)
+                && float.IsFinite(body.velocity.y)
+                && float.IsFinite(body.velocity.z);
+            if (planarFinite
+                && planarAltitude <= maximumSurfaceAltitude
+                && planarAltitude >= -maximumSurfacePenetration)
+            {
+                return false;
+            }
+            Vector3 forward = GetTangentForward(
+                headingForward,
+                surface.normal);
+            TeleportTo(
+                surface.point + surface.normal * 1.2f,
+                Quaternion.LookRotation(forward, surface.normal));
+            RestoreFirstPersonCamera();
+            Debug.LogWarning(
+                "VoxelPlanetPlayerController: recovered an invalid planar surface position.",
+                this);
+            return true;
+        }
+
         if (quadSphereWorld == null || !quadSphereWorld.IsGenerationComplete)
             return false;
 
@@ -382,6 +421,13 @@ if (body == null)
 
     Vector3 GetTargetUp(Vector3 worldPosition)
     {
+        IPlanetSurfaceRuntime runtime =
+            PlanetSurfaceRuntimeRegistry.Current;
+        if (runtime != null
+            && runtime.Topology == PlanetSurfaceTopology.InfinitePlanar)
+        {
+            return runtime.GetUp(worldPosition);
+        }
         if (quadSphereWorld != null)
             return PlanetGravity.GetUp(worldPosition, quadSphereWorld.GetPlanetCenterWorld());
 
@@ -393,6 +439,13 @@ if (body == null)
 
     Vector3 GetGravityAcceleration(Vector3 worldPosition)
     {
+        IPlanetSurfaceRuntime runtime =
+            PlanetSurfaceRuntimeRegistry.Current;
+        if (runtime != null
+            && runtime.Topology == PlanetSurfaceTopology.InfinitePlanar)
+        {
+            return runtime.GetGravity(worldPosition);
+        }
         if (quadSphereWorld != null)
         {
             return PlanetGravity.GetGravitationalAcceleration(

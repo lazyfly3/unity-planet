@@ -11,7 +11,8 @@ public enum SurfaceSpacecraftPhase
     Landed,
     Hovering,
     Boarding,
-    Departing
+    Departing,
+    Piloting
 }
 
 [DisallowMultipleComponent]
@@ -24,6 +25,7 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
     readonly Collider[] clearanceHits = new Collider[64];
 
     VoxelQuadSphereWorld world;
+    IPlanetSurfaceRuntime surfaceRuntime;
     VoxelPlanetPlayerController player;
     ShipAssembly assembly;
     Rigidbody body;
@@ -31,6 +33,12 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
     Bounds localBounds;
     Coroutine activeRoutine;
     SurfaceSpacecraftState savedState;
+    Camera pilotCamera;
+    int pilotEnteredFrame;
+    KeyboardMouseFlightInput planarFlightInput;
+    SpacecraftIfcsMotor planarIfcs;
+    PlanetSurfaceFlightEnvironment planarEnvironment;
+    float pilotSaveTimer;
 
     public static SurfaceSpacecraftController Current { get; private set; }
     public SurfaceSpacecraftPhase Phase { get; private set; } =
@@ -41,7 +49,13 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
         || Phase == SurfaceSpacecraftPhase.Approaching;
     public bool IsDeparting => Phase == SurfaceSpacecraftPhase.Boarding
         || Phase == SurfaceSpacecraftPhase.Departing;
-    public bool CanBeCalled => !IsMoving && !IsDeparting;
+    public bool IsPiloting => Phase == SurfaceSpacecraftPhase.Piloting;
+    public bool CanBeCalled => !IsMoving && !IsDeparting && !IsPiloting;
+    public string BoardPromptText =>
+        surfaceRuntime != null
+        && surfaceRuntime.Topology == PlanetSurfaceTopology.InfinitePlanar
+            ? "按 F 登上飞船并驾驶"
+            : "按 F 登上飞船并返回宇宙";
     public Vector3 TrackingPosition =>
         assembly != null ? assembly.transform.position : transform.position;
     public string TrackingStatusText
@@ -62,6 +76,8 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
                     return "正在登船";
                 case SurfaceSpacecraftPhase.Departing:
                     return "正在离开";
+                case SurfaceSpacecraftPhase.Piloting:
+                    return "驾驶中";
                 case SurfaceSpacecraftPhase.Landed:
                     return "已着陆";
                 default:
@@ -100,6 +116,46 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
                 || savedState.parkingMode == SurfaceSpacecraftParkingMode.OceanPlatform
                 ? SurfaceSpacecraftPhase.Landed
                 : SurfaceSpacecraftPhase.Parked;
+        }
+    }
+
+    public void Initialize(
+        IPlanetSurfaceRuntime targetRuntime,
+        VoxelPlanetPlayerController surfacePlayer,
+        ShipAssembly shipAssembly,
+        SurfaceSpacecraftState restoredState)
+    {
+        surfaceRuntime = targetRuntime;
+        world = null;
+        player = surfacePlayer;
+        assembly = shipAssembly;
+        body = assembly != null ? assembly.ShipBody : null;
+        shipColliders = GetComponentsInChildren<Collider>(true);
+        localBounds = CalculateLocalBounds(
+            assembly != null ? assembly.transform : transform);
+        savedState = restoredState != null
+            ? restoredState.Clone()
+            : CaptureState(
+                SurfaceSpacecraftParkingMode.Terrain,
+                6f);
+        savedState.ClampValues();
+        Current = this;
+        ResolvePlanarFlightSystems();
+
+        if (savedState.valid
+            && savedState.parkingMode
+                == SurfaceSpacecraftParkingMode.Hovering)
+        {
+            RestoreHoverState(savedState);
+        }
+        else
+        {
+            Phase = savedState.parkingMode
+                    == SurfaceSpacecraftParkingMode.Terrain
+                || savedState.parkingMode
+                    == SurfaceSpacecraftParkingMode.OceanPlatform
+                    ? SurfaceSpacecraftPhase.Landed
+                    : SurfaceSpacecraftPhase.Parked;
         }
     }
 
@@ -148,7 +204,10 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
 
     public bool CallToPlayer(VoxelPlanetPlayerController targetPlayer)
     {
-        if (!CanBeCalled || targetPlayer == null || world == null || assembly == null)
+        if (!CanBeCalled
+            || targetPlayer == null
+            || (world == null && surfaceRuntime == null)
+            || assembly == null)
             return false;
         if (IsBoardingReachable(targetPlayer.transform.position))
             return false;
@@ -189,10 +248,17 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
 
     public bool BeginSurfaceDeparture()
     {
+        if (surfaceRuntime != null
+            && surfaceRuntime.Topology
+                == PlanetSurfaceTopology.InfinitePlanar)
+        {
+            return BeginPlanarPilot();
+        }
+
         GalaxyTravelManager manager = GalaxyTravelManager.Instance;
         if (IsMoving
             || IsDeparting
-            || world == null
+            || (world == null && surfaceRuntime == null)
             || assembly == null
             || manager == null
             || !manager.IsInterstellarGalaxy)
@@ -203,8 +269,346 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
         return true;
     }
 
+    public bool BeginInterstellarDeparture()
+    {
+        GalaxyTravelManager manager = GalaxyTravelManager.Instance;
+        if (surfaceRuntime == null
+            || surfaceRuntime.Topology
+                != PlanetSurfaceTopology.InfinitePlanar
+            || IsMoving
+            || IsDeparting
+            || assembly == null
+            || manager == null
+            || !manager.IsInterstellarGalaxy)
+        {
+            return false;
+        }
+
+        if (activeRoutine != null)
+            StopCoroutine(activeRoutine);
+        activeRoutine = StartCoroutine(PlanarDepartureRoutine());
+        return true;
+    }
+
+    bool BeginPlanarPilot()
+    {
+        if (IsMoving
+            || IsDeparting
+            || IsPiloting
+            || surfaceRuntime == null
+            || assembly == null
+            || player == null)
+        {
+            return false;
+        }
+
+        SurfaceMultifunctionController multifunction =
+            player.GetComponent<SurfaceMultifunctionController>();
+        multifunction?.SetInputBlocked(true);
+        player.CaptureFirstPersonCameraState();
+        player.SetGameplayInputBlocked(true);
+        player.SetSurfacePhysicsReady(false);
+        player.enabled = false;
+
+        Transform ship = assembly.transform;
+        pilotCamera = Camera.main;
+        if (pilotCamera != null)
+        {
+            Vector3 chasePosition = new Vector3(
+                0f,
+                Mathf.Max(4.5f, localBounds.max.y + 3f),
+                Mathf.Min(-10f, localBounds.min.z - 8f));
+            pilotCamera.transform.SetParent(null, true);
+            pilotCamera.transform.position =
+                ship.TransformPoint(chasePosition);
+            pilotCamera.transform.rotation = Quaternion.LookRotation(
+                ship.TransformPoint(localBounds.center)
+                    - pilotCamera.transform.position,
+                Vector3.up);
+            pilotCamera.clearFlags = CameraClearFlags.Skybox;
+        }
+
+        pilotEnteredFrame = Time.frameCount;
+        pilotSaveTimer = 0f;
+        SetPlanarPilotPhysics(true);
+        (surfaceRuntime as InfinitePlanarSurfaceWorld)
+            ?.SetMovementTarget(ship);
+        Phase = SurfaceSpacecraftPhase.Piloting;
+        StatusText =
+            "IFCS驾驶｜WASD平移 空格/Ctrl升降 鼠标转向 "
+            + "Q/E滚转 X制动 Shift加速 F着陆 L离开星球";
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+        return true;
+    }
+
+    void Update()
+    {
+        if (!IsPiloting || assembly == null)
+            return;
+
+        if (Time.frameCount > pilotEnteredFrame
+            && Input.GetKeyDown(KeyCode.F))
+        {
+            TryBeginPlanarLanding();
+            return;
+        }
+        if (Input.GetKeyDown(KeyCode.L))
+        {
+            BeginInterstellarDeparture();
+            return;
+        }
+
+        UpdatePilotStatus();
+        pilotSaveTimer += Time.unscaledDeltaTime;
+        if (pilotSaveTimer >= 2f)
+        {
+            pilotSaveTimer = 0f;
+            SaveState(
+                SurfaceSpacecraftParkingMode.Hovering,
+                planarEnvironment != null
+                    ? Mathf.Max(0f, planarEnvironment.Altitude)
+                    : 6f,
+                false);
+        }
+    }
+
+    void TryBeginPlanarLanding()
+    {
+        float footprint =
+            Mathf.Max(localBounds.extents.x, localBounds.extents.z) + 2f;
+        if (!surfaceRuntime.TryFindLandingPoint(
+                assembly.transform.position,
+                footprint,
+                12f,
+                out PlanetSurfaceSample surface))
+        {
+            StatusText =
+                "附近没有安全陆地｜继续驾驶，或按 L 离开星球";
+            return;
+        }
+
+        Vector3 forward = Vector3.ProjectOnPlane(
+            assembly.transform.forward,
+            Vector3.up).normalized;
+        if (forward.sqrMagnitude < 0.001f)
+            forward = Vector3.forward;
+        Quaternion landingRotation =
+            Quaternion.LookRotation(forward, Vector3.up);
+        Vector3 landingPosition =
+            RootPositionOnSurface(surface.point, landingRotation);
+        activeRoutine = StartCoroutine(
+            PlanarLandingRoutine(
+                landingPosition,
+                landingRotation));
+    }
+
+    IEnumerator PlanarLandingRoutine(
+        Vector3 landingPosition,
+        Quaternion landingRotation)
+    {
+        Transform ship = assembly.transform;
+        SetPlanarPilotPhysics(false);
+        SetFlightPhysics(true);
+        Vector3 startPosition = ship.position;
+        Quaternion startRotation = ship.rotation;
+        Phase = SurfaceSpacecraftPhase.Approaching;
+        StatusText = "正在着陆";
+        float elapsed = 0f;
+        const float duration = 1.25f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float ratio = Smooth01(elapsed / duration);
+            Vector3 position =
+                Vector3.Lerp(startPosition, landingPosition, ratio);
+            position.y += Mathf.Sin(ratio * Mathf.PI) * 4f;
+            SetShipPose(
+                position,
+                Quaternion.Slerp(
+                    startRotation,
+                    landingRotation,
+                    ratio));
+            yield return null;
+        }
+
+        SetShipPose(landingPosition, landingRotation);
+        SetFlightPhysics(false);
+        Phase = SurfaceSpacecraftPhase.Landed;
+        StatusText = string.Empty;
+        SaveState(
+            SurfaceSpacecraftParkingMode.Terrain,
+            0f,
+            true);
+        RestorePlayerAfterPilot();
+        activeRoutine = null;
+    }
+
+    void RestorePlayerAfterPilot()
+    {
+        if (player == null || assembly == null)
+            return;
+
+        Transform ship = assembly.transform;
+        float sideDistance =
+            Mathf.Max(localBounds.extents.x, localBounds.extents.z) + 3f;
+        Vector3 near = ship.position + ship.right * sideDistance;
+        Vector3 playerPoint = near;
+        if (surfaceRuntime.TryFindLandingPoint(
+                near,
+                1f,
+                45f,
+                out PlanetSurfaceSample surface))
+        {
+            playerPoint = surface.point + Vector3.up * 1.2f;
+        }
+        player.SetSurfacePhysicsReady(true);
+        player.EnterFirstPersonSurfaceMode();
+        player.TeleportTo(
+            playerPoint,
+            Quaternion.LookRotation(
+                Vector3.ProjectOnPlane(ship.forward, Vector3.up).normalized,
+                Vector3.up));
+        player.SetGameplayInputBlocked(false);
+        player.GetComponent<SurfaceMultifunctionController>()
+            ?.SetInputBlocked(false);
+        (surfaceRuntime as InfinitePlanarSurfaceWorld)
+            ?.SetMovementTarget(player.transform);
+        pilotCamera = null;
+    }
+
+    void LateUpdate()
+    {
+        if (!IsPiloting || pilotCamera == null || assembly == null)
+            return;
+        Transform ship = assembly.transform;
+        float distance = Mathf.Max(
+            12f,
+            localBounds.extents.magnitude * 2.1f);
+        float height = Mathf.Max(5f, localBounds.extents.y + 3f);
+        Vector3 desiredPosition =
+            ship.position - ship.forward * distance + Vector3.up * height;
+        pilotCamera.transform.position = Vector3.Lerp(
+            pilotCamera.transform.position,
+            desiredPosition,
+            1f - Mathf.Exp(-7f * Time.deltaTime));
+        pilotCamera.transform.rotation = Quaternion.Slerp(
+            pilotCamera.transform.rotation,
+            Quaternion.LookRotation(
+                ship.position + Vector3.up * 1.5f
+                    - pilotCamera.transform.position,
+                Vector3.up),
+            1f - Mathf.Exp(-9f * Time.deltaTime));
+    }
+
+    void UpdatePilotStatus()
+    {
+        if (planarEnvironment == null || body == null)
+            return;
+        StatusText = string.Format(
+            "IFCS驾驶｜{0:0} m/s  重力 {1:0.0} m/s²  "
+            + "空气密度 {2:0.000} kg/m³｜F着陆 L离开",
+            body.velocity.magnitude,
+            planarEnvironment.GravityAcceleration.magnitude,
+            planarEnvironment.AirDensity);
+    }
+
+    void ResolvePlanarFlightSystems()
+    {
+        if (surfaceRuntime == null
+            || surfaceRuntime.Topology
+                != PlanetSurfaceTopology.InfinitePlanar
+            || assembly == null
+            || body == null)
+        {
+            return;
+        }
+
+        GameObject flightRoot = assembly.gameObject;
+        planarFlightInput =
+            flightRoot.GetComponent<KeyboardMouseFlightInput>()
+            ?? flightRoot.AddComponent<KeyboardMouseFlightInput>();
+        planarIfcs =
+            flightRoot.GetComponent<SpacecraftIfcsMotor>()
+            ?? flightRoot.AddComponent<SpacecraftIfcsMotor>();
+        ShipHullController hull =
+            flightRoot.GetComponentInChildren<ShipHullController>(true);
+        planarFlightInput.enabled = true;
+        planarIfcs.enabled = true;
+        planarIfcs.Configure(
+            body,
+            assembly,
+            hull,
+            planarFlightInput,
+            true);
+        planarIfcs.SetAssistMode(SpacecraftAssistMode.Coupled);
+        planarIfcs.SetTargetSpeed(45f);
+        planarIfcs.ControlsEnabled = false;
+
+        planarEnvironment =
+            flightRoot.GetComponent<PlanetSurfaceFlightEnvironment>()
+            ?? flightRoot.AddComponent<PlanetSurfaceFlightEnvironment>();
+        InfinitePlanarSurfaceWorld planar =
+            surfaceRuntime as InfinitePlanarSurfaceWorld;
+        planarEnvironment.Configure(
+            body,
+            planarIfcs,
+            surfaceRuntime,
+            planar != null && planar.Definition != null
+                ? planar.Definition.celestial
+                : PlanetCelestialProfile.CreateCompatibleDefault(),
+            localBounds);
+        planarEnvironment.enabled = false;
+    }
+
+    void SetPlanarPilotPhysics(bool enabled)
+    {
+        if (body != null)
+        {
+            if (!body.isKinematic)
+            {
+                body.velocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+            }
+            body.isKinematic = !enabled;
+            body.useGravity = false;
+            body.interpolation = enabled
+                ? RigidbodyInterpolation.Interpolate
+                : RigidbodyInterpolation.None;
+            body.collisionDetectionMode = enabled
+                ? CollisionDetectionMode.ContinuousDynamic
+                : CollisionDetectionMode.Discrete;
+        }
+        if (shipColliders != null)
+        {
+            for (int index = 0; index < shipColliders.Length; index++)
+            {
+                if (shipColliders[index] != null)
+                    shipColliders[index].enabled = true;
+            }
+        }
+        if (planarEnvironment != null)
+            planarEnvironment.enabled = enabled;
+        if (planarIfcs != null)
+        {
+            planarIfcs.SetEnvironmentalAcceleration(Vector3.zero);
+            planarIfcs.ResetControllerState();
+            planarIfcs.ControlsEnabled = enabled;
+        }
+        if (planarFlightInput != null)
+            planarFlightInput.CaptureEnabled = enabled;
+    }
+
     IEnumerator CallRoutine(VoxelPlanetPlayerController targetPlayer)
     {
+        if (surfaceRuntime != null
+            && surfaceRuntime.Topology
+                == PlanetSurfaceTopology.InfinitePlanar)
+        {
+            yield return PlanarCallRoutine(targetPlayer);
+            yield break;
+        }
+
         player = targetPlayer;
         Transform ship = assembly.transform;
         Vector3 center = world.GetPlanetCenterWorld();
@@ -314,6 +718,14 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
 
     IEnumerator DepartureRoutine()
     {
+        if (surfaceRuntime != null
+            && surfaceRuntime.Topology
+                == PlanetSurfaceTopology.InfinitePlanar)
+        {
+            yield return PlanarDepartureRoutine();
+            yield break;
+        }
+
         Phase = SurfaceSpacecraftPhase.Boarding;
         StatusText = "正在登船";
         SurfaceMultifunctionController multifunction =
@@ -414,6 +826,53 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
         out FlightDestination destination)
     {
         destination = default;
+        if (surfaceRuntime != null
+            && surfaceRuntime.Topology
+                == PlanetSurfaceTopology.InfinitePlanar)
+        {
+            Vector3 planarPlayerForward = Vector3.ProjectOnPlane(
+                targetPlayer.transform.forward,
+                Vector3.up).normalized;
+            if (planarPlayerForward.sqrMagnitude < 0.001f)
+                planarPlayerForward = Vector3.forward;
+            Vector3 near =
+                targetPlayer.transform.position
+                + planarPlayerForward * 18f;
+            if (!surfaceRuntime.TryFindLandingPoint(
+                    near,
+                    Mathf.Max(localBounds.extents.x, localBounds.extents.z)
+                        + 2f,
+                    12f,
+                    out PlanetSurfaceSample surface))
+            {
+                return false;
+            }
+            Vector3 forward = Vector3.ProjectOnPlane(
+                targetPlayer.transform.position - surface.point,
+                Vector3.up).normalized;
+            if (forward.sqrMagnitude < 0.001f)
+                forward = -planarPlayerForward;
+            Quaternion rotation =
+                Quaternion.LookRotation(forward, Vector3.up);
+            Vector3 rootPosition =
+                RootPositionOnSurface(surface.point, rotation);
+            if (!HasClearance(
+                    rootPosition,
+                    rotation,
+                    targetPlayer.transform))
+            {
+                return false;
+            }
+            destination = new FlightDestination
+            {
+                direction = Vector3.up,
+                rootPosition = rootPosition,
+                rotation = rotation,
+                hoverAltitude = 0f
+            };
+            return true;
+        }
+
         Vector3 center = world.GetPlanetCenterWorld();
         Vector3 playerDirection = SafeDirection(
             targetPlayer.transform.position - center,
@@ -486,6 +945,38 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
         float lateralDistance = 10f,
         float altitude = 6f)
     {
+        if (surfaceRuntime != null
+            && surfaceRuntime.Topology
+                == PlanetSurfaceTopology.InfinitePlanar)
+        {
+            Vector3 planarForward = Vector3.ProjectOnPlane(
+                targetPlayer.transform.forward,
+                Vector3.up).normalized;
+            if (planarForward.sqrMagnitude < 0.001f)
+                planarForward = Vector3.forward;
+            Vector3 planarRight = Vector3.Cross(
+                Vector3.up,
+                planarForward).normalized;
+            Quaternion planarRotation =
+                Quaternion.LookRotation(
+                    planarForward,
+                    Vector3.up);
+            Vector3 planarRoot = CalculateHoverRootPosition(
+                targetPlayer.transform.position,
+                planarRight,
+                Vector3.up,
+                localBounds.min.y,
+                lateralDistance,
+                altitude);
+            return new FlightDestination
+            {
+                direction = Vector3.up,
+                rootPosition = planarRoot,
+                rotation = planarRotation,
+                hoverAltitude = altitude
+            };
+        }
+
         Vector3 center = world.GetPlanetCenterWorld();
         Vector3 direction = SafeDirection(
             targetPlayer.transform.position - center,
@@ -571,6 +1062,37 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
 
     void RestoreHoverState(SurfaceSpacecraftState state)
     {
+        if (surfaceRuntime != null
+            && surfaceRuntime.Topology
+                == PlanetSurfaceTopology.InfinitePlanar)
+        {
+            Vector3 surfaceProbe = surfaceRuntime.FromPersistentAddress(
+                new PlanarSurfaceAddress(
+                    state.planarX,
+                    state.planarZ,
+                    0f));
+            surfaceRuntime.TryProjectToSurface(
+                surfaceProbe,
+                out PlanetSurfaceSample surface);
+            Vector3 forward = Vector3.ProjectOnPlane(
+                state.tangentForward,
+                Vector3.up).normalized;
+            if (forward.sqrMagnitude < 0.001f)
+                forward = Vector3.forward;
+            Quaternion planarRotation =
+                Quaternion.LookRotation(forward, Vector3.up);
+            Vector3 planarBottom =
+                surface.point + Vector3.up * state.hoverAltitude;
+            SetShipPose(
+                planarBottom
+                    - planarRotation
+                    * new Vector3(0f, localBounds.min.y, 0f),
+                planarRotation);
+            Phase = SurfaceSpacecraftPhase.Hovering;
+            SetFlightPhysics(false);
+            return;
+        }
+
         Vector3 center = world.GetPlanetCenterWorld();
         float surfaceRadius = world.GetProceduralSurfaceRadius(state.radialDirection);
         GalaxyTravelManager manager = GalaxyTravelManager.Instance;
@@ -621,10 +1143,36 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
         SurfaceSpacecraftParkingMode parkingMode,
         float hoverAltitude)
     {
+        Transform ship =
+            assembly != null ? assembly.transform : transform;
+        if (surfaceRuntime != null
+            && surfaceRuntime.Topology
+                == PlanetSurfaceTopology.InfinitePlanar)
+        {
+            PlanarSurfaceAddress address =
+                surfaceRuntime.ToPersistentAddress(ship.position);
+            Vector3 forward = Vector3.ProjectOnPlane(
+                ship.forward,
+                Vector3.up).normalized;
+            return new SurfaceSpacecraftState
+            {
+                valid = true,
+                surfaceTopology =
+                    PlanetSurfaceTopology.InfinitePlanar,
+                radialDirection = surfaceRuntime.AnchorDirection,
+                tangentForward = forward.sqrMagnitude > 0.001f
+                    ? forward
+                    : Vector3.forward,
+                parkingMode = parkingMode,
+                hoverAltitude = hoverAltitude,
+                planarX = address.x,
+                planarZ = address.z
+            };
+        }
+
         Vector3 center = world != null
             ? world.GetPlanetCenterWorld()
             : Vector3.zero;
-        Transform ship = assembly != null ? assembly.transform : transform;
         Vector3 direction = SafeDirection(ship.position - center, ship.up);
         return new SurfaceSpacecraftState
         {
@@ -634,6 +1182,159 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
             parkingMode = parkingMode,
             hoverAltitude = hoverAltitude
         };
+    }
+
+    IEnumerator PlanarCallRoutine(
+        VoxelPlanetPlayerController targetPlayer)
+    {
+        player = targetPlayer;
+        Transform ship = assembly.transform;
+        Vector3 start = ship.position;
+        Quaternion startRotation = ship.rotation;
+        bool hasLanding = TryFindLandingPose(
+            targetPlayer,
+            out FlightDestination destination);
+        if (!hasLanding)
+            destination = BuildHoverDestination(targetPlayer);
+
+        StatusText = "飞船正在起飞";
+        Phase = SurfaceSpacecraftPhase.TakingOff;
+        SetFlightPhysics(true);
+        Vector3 departurePoint = start + Vector3.up * 28f;
+        yield return AnimatePose(
+            start,
+            departurePoint,
+            startRotation,
+            Quaternion.LookRotation(
+                Vector3.ProjectOnPlane(
+                    destination.rootPosition - start,
+                    Vector3.up).normalized,
+                Vector3.up),
+            1f,
+            true);
+
+        Phase = SurfaceSpacecraftPhase.Travelling;
+        StatusText = "飞船正在赶来";
+        Vector3 arrivalPoint =
+            destination.rootPosition + Vector3.up * 28f;
+        float elapsed = 0f;
+        const float travelDuration = 2.2f;
+        while (elapsed < travelDuration)
+        {
+            elapsed += Time.deltaTime;
+            float ratio = Smooth01(elapsed / travelDuration);
+            Vector3 linear =
+                Vector3.Lerp(departurePoint, arrivalPoint, ratio);
+            linear.y += Mathf.Sin(ratio * Mathf.PI) * 18f;
+            Vector3 direction =
+                destination.rootPosition - ship.position;
+            Vector3 forward = Vector3.ProjectOnPlane(
+                direction,
+                Vector3.up).normalized;
+            if (forward.sqrMagnitude < 0.001f)
+                forward = ship.forward;
+            SetShipPose(
+                linear,
+                Quaternion.LookRotation(forward, Vector3.up));
+            yield return null;
+        }
+
+        Phase = SurfaceSpacecraftPhase.Approaching;
+        StatusText = hasLanding
+            ? "正在降落"
+            : "附近无安全着陆点";
+        yield return AnimatePose(
+            arrivalPoint,
+            destination.rootPosition,
+            ship.rotation,
+            destination.rotation,
+            1.35f,
+            false);
+        SetShipPose(destination.rootPosition, destination.rotation);
+        SetFlightPhysics(false);
+        Phase = hasLanding
+            ? SurfaceSpacecraftPhase.Landed
+            : SurfaceSpacecraftPhase.Hovering;
+        SaveState(
+            hasLanding
+                ? SurfaceSpacecraftParkingMode.Terrain
+                : SurfaceSpacecraftParkingMode.Hovering,
+            hasLanding ? 6f : destination.hoverAltitude,
+            true);
+        activeRoutine = null;
+    }
+
+    IEnumerator PlanarDepartureRoutine()
+    {
+        SetPlanarPilotPhysics(false);
+        Phase = SurfaceSpacecraftPhase.Boarding;
+        StatusText = "正在登船";
+        SurfaceMultifunctionController multifunction =
+            player != null
+                ? player.GetComponent<SurfaceMultifunctionController>()
+                : null;
+        multifunction?.SetInputBlocked(true);
+        if (player != null)
+        {
+            player.SetGameplayInputBlocked(true);
+            player.SetSurfacePhysicsReady(false);
+            player.enabled = false;
+        }
+
+        Camera camera = Camera.main;
+        Transform cameraTransform =
+            camera != null ? camera.transform : null;
+        Transform ship = assembly.transform;
+        if (cameraTransform != null)
+        {
+            cameraTransform.SetParent(ship, true);
+            cameraTransform.localPosition =
+                new Vector3(7.5f, 4.2f, -12f);
+            cameraTransform.localRotation = Quaternion.LookRotation(
+                new Vector3(-7.5f, -2.5f, 12f).normalized,
+                Vector3.up);
+        }
+
+        Phase = SurfaceSpacecraftPhase.Departing;
+        StatusText = "离开星球";
+        SetFlightPhysics(true);
+        Vector3 start = ship.position;
+        Vector3 end = start + Vector3.up * 160f;
+        Quaternion exitRotation =
+            Quaternion.LookRotation(Vector3.up, ship.forward);
+        float elapsed = 0f;
+        const float duration = 3f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float ratio = Mathf.Clamp01(elapsed / duration);
+            float eased = Smooth01(ratio);
+            SetShipPose(
+                Vector3.Lerp(start, end, eased),
+                Quaternion.Slerp(
+                    ship.rotation,
+                    exitRotation,
+                    eased));
+            yield return null;
+        }
+
+        SaveState(
+            savedState != null
+                && savedState.parkingMode
+                    == SurfaceSpacecraftParkingMode.Hovering
+                    ? SurfaceSpacecraftParkingMode.Hovering
+                    : SurfaceSpacecraftParkingMode.Terrain,
+            savedState != null ? savedState.hoverAltitude : 6f,
+            true);
+        GalaxyTravelManager manager = GalaxyTravelManager.Instance;
+        if (manager != null && manager.IsInterstellarGalaxy)
+        {
+            manager.OpenInterstellarFlightFromSurface(
+                surfaceRuntime,
+                ship.forward,
+                Vector3.up * 120f);
+        }
+        activeRoutine = null;
     }
 
     void SetFlightPhysics(bool moving)
