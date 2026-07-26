@@ -60,6 +60,7 @@ public class VoxelPlanetPlayerController : MonoBehaviour
     bool jumpQueued;
     bool gameplayInputBlocked;
     bool externalGameplayInputBlocked;
+    bool externalCameraControl;
     float activeGroundTraction = 1f;
     Transform firstPersonCameraParent;
     Vector3 firstPersonCameraLocalPosition;
@@ -88,6 +89,13 @@ public class VoxelPlanetPlayerController : MonoBehaviour
             moveInput = Vector2.zero;
             jumpQueued = false;
         }
+    }
+
+    public bool ExternalCameraControlActive => externalCameraControl;
+
+    public void SetExternalCameraControl(bool controlled)
+    {
+        externalCameraControl = controlled;
     }
 
     public void TeleportTo(Vector3 worldPosition, Quaternion worldRotation)
@@ -397,7 +405,7 @@ if (body == null)
 
     void LateUpdate()
     {
-        if (cameraTransform != null)
+        if (cameraTransform != null && !externalCameraControl)
             cameraTransform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
     }
 

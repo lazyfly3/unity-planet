@@ -123,6 +123,15 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         });
     }
 
+    public Vector2Int GetChunkCoordinate(
+        double planarX,
+        double planarZ)
+    {
+        return new Vector2Int(
+            ToChunkIndex(planarX),
+            ToChunkIndex(planarZ));
+    }
+
     public void Configure(
         GalaxyPlanetDefinition valueDefinition,
         PlanetLabPlanarSettings settings,
@@ -538,9 +547,18 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
 
     Vector2Int WorldToChunk(float x, float z)
     {
-        return new Vector2Int(
-            Mathf.FloorToInt((x + chunkSize * 0.5f) / chunkSize),
-            Mathf.FloorToInt((z + chunkSize * 0.5f) / chunkSize));
+        return GetChunkCoordinate(x, z);
+    }
+
+    int ToChunkIndex(double value)
+    {
+        double coordinate = Math.Floor(
+            (value + chunkSize * 0.5d) / chunkSize);
+        if (coordinate <= int.MinValue)
+            return int.MinValue;
+        if (coordinate >= int.MaxValue)
+            return int.MaxValue;
+        return (int)coordinate;
     }
 
     void EnsureOceanMesh()

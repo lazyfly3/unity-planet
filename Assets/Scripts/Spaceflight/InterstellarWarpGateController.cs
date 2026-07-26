@@ -35,6 +35,7 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
     WarpGateContext context;
     InterstellarFlightRuntime runtime;
     Rigidbody shipBody;
+    Transform shipPresentation;
     Camera playerCamera;
     Vector3 cameraOffsetLocal;
     Vector2 gateSize;
@@ -58,6 +59,15 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
         ? Vector3.forward
         : gateRoot.transform.forward;
 
+    public void SetShipPresentation(Transform value)
+    {
+        shipPresentation = value != null
+            ? value
+            : shipBody == null ? null : shipBody.transform;
+        if (running && !entranceFrozen)
+            UpdateEntrancePose();
+    }
+
     public bool BeginWarp(WarpGateContext value)
     {
         InterstellarFlightRuntime valueRuntime =
@@ -71,7 +81,8 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
             value,
             valueRuntime,
             valueShipBody,
-            Camera.main);
+            Camera.main,
+            valueShipBody == null ? null : valueShipBody.transform);
     }
 
     public bool BeginWarp(
@@ -79,6 +90,21 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
         InterstellarFlightRuntime valueRuntime,
         Rigidbody valueShipBody,
         Camera valuePlayerCamera)
+    {
+        return BeginWarp(
+            value,
+            valueRuntime,
+            valueShipBody,
+            valuePlayerCamera,
+            valueShipBody == null ? null : valueShipBody.transform);
+    }
+
+    public bool BeginWarp(
+        WarpGateContext value,
+        InterstellarFlightRuntime valueRuntime,
+        Rigidbody valueShipBody,
+        Camera valuePlayerCamera,
+        Transform valueShipPresentation)
     {
         if (value.planet == null
             || valueRuntime == null
@@ -94,8 +120,11 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
         context = value;
         runtime = valueRuntime;
         shipBody = valueShipBody;
+        shipPresentation = valueShipPresentation != null
+            ? valueShipPresentation
+            : valueShipBody.transform;
         playerCamera = valuePlayerCamera;
-        cameraOffsetLocal = shipBody.transform.InverseTransformPoint(
+        cameraOffsetLocal = shipPresentation.InverseTransformPoint(
             playerCamera.transform.position);
         gateSize = CalculateGateSize(shipBody.transform);
         relocated = false;
@@ -125,7 +154,7 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
 
     public void FreezeEntrance()
     {
-        if (!running || relocated || gateRoot == null || shipBody == null)
+        if (!running || relocated || gateRoot == null || shipPresentation == null)
             return;
         UpdateEntrancePose();
         entranceFrozen = true;
@@ -134,19 +163,19 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
 
     public Vector3 GetEntranceAimDirection(Vector3 fallback)
     {
-        if (!running || relocated || gateRoot == null || shipBody == null)
+        if (!running || relocated || gateRoot == null || shipPresentation == null)
             return fallback.sqrMagnitude > 0.001f
                 ? fallback.normalized
                 : Vector3.forward;
-        Vector3 toCenter = gateRoot.transform.position - shipBody.position;
+        Vector3 toCenter = gateRoot.transform.position - shipPresentation.position;
         return toCenter.sqrMagnitude > 0.001f
             ? toCenter.normalized
             : gateRoot.transform.forward;
     }
 
-    public float EntranceDistance => gateRoot == null || shipBody == null
+    public float EntranceDistance => gateRoot == null || shipPresentation == null
         ? 0f
-        : Vector3.Distance(shipBody.position, gateRoot.transform.position);
+        : Vector3.Distance(shipPresentation.position, gateRoot.transform.position);
 
     public void SetPhase(InterstellarWarpState phase, float progress)
     {
@@ -199,10 +228,10 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
             || relocated
             || !entranceFrozen
             || gateRoot == null
-            || shipBody == null)
+            || shipPresentation == null)
             return false;
 
-        Vector3 currentPosition = shipBody.position;
+        Vector3 currentPosition = shipPresentation.position;
         float currentPlaneDistance = Vector3.Dot(
             currentPosition - gateRoot.transform.position,
             gateRoot.transform.forward);
@@ -257,16 +286,16 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
 
     public void NotifyRelocated()
     {
-        if (!running || shipBody == null || gateRoot == null)
+        if (!running || shipPresentation == null || gateRoot == null)
             return;
         relocated = true;
         portalCamera.enabled = false;
         Vector3 direction = context.travelDirection.sqrMagnitude > 0.001f
             ? context.travelDirection.normalized
-            : shipBody.transform.forward;
+            : shipPresentation.forward;
         Vector3 up = context.exitRotation * Vector3.up;
         gateRoot.transform.SetPositionAndRotation(
-            shipBody.position - direction * 8f,
+            shipPresentation.position - direction * 8f,
             Quaternion.LookRotation(direction, up));
         gateRoot.transform.localScale = new Vector3(gateSize.x, gateSize.y, 1f);
         surfaceMaterial.SetFloat("_UseTexture", 0f);
@@ -278,6 +307,7 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
         relocated = false;
         entranceFrozen = false;
         hasCrossingSample = false;
+        shipPresentation = null;
         if (portalCamera != null)
             portalCamera.enabled = false;
         if (gateRoot != null)
@@ -363,19 +393,17 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
 
     void UpdateEntrancePose(bool useRenderedShipPose = false)
     {
-        if (gateRoot == null || shipBody == null)
+        if (gateRoot == null || shipPresentation == null)
             return;
         Vector3 direction = context.travelDirection.sqrMagnitude > 0.001f
             ? context.travelDirection.normalized
-            : shipBody.transform.forward;
-        Vector3 up = Vector3.ProjectOnPlane(shipBody.transform.up, direction);
+            : shipPresentation.forward;
+        Vector3 up = Vector3.ProjectOnPlane(shipPresentation.up, direction);
         if (up.sqrMagnitude < 0.001f)
             up = Vector3.ProjectOnPlane(Vector3.up, direction);
         if (up.sqrMagnitude < 0.001f)
             up = Vector3.right;
-        Vector3 shipPosition = useRenderedShipPose
-            ? shipBody.transform.position
-            : shipBody.position;
+        Vector3 shipPosition = shipPresentation.position;
         gateRoot.transform.SetPositionAndRotation(
             shipPosition + direction * GateForwardDistance,
             Quaternion.LookRotation(direction, up.normalized));
@@ -383,12 +411,12 @@ public sealed class InterstellarWarpGateController : MonoBehaviour
 
     void ResetCrossingSample()
     {
-        if (gateRoot == null || shipBody == null)
+        if (gateRoot == null || shipPresentation == null)
         {
             hasCrossingSample = false;
             return;
         }
-        previousShipPosition = shipBody.position;
+        previousShipPosition = shipPresentation.position;
         previousPlaneDistance = Vector3.Dot(
             previousShipPosition - gateRoot.transform.position,
             gateRoot.transform.forward);

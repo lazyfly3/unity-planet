@@ -51,7 +51,7 @@ public sealed class GalaxyPlanetDefinition
 public sealed class GalaxyTravelManager : MonoBehaviour
 {
     const int PlanetSaveMagic = 0x504C4E54;
-    const int PlanetSaveVersion = 13;
+    const int PlanetSaveVersion = 15;
     const int StarterEquipmentVersion = 1;
 
     static GalaxyTravelManager instance;
@@ -1430,6 +1430,8 @@ if (transitionInProgress)
                 && (legacy.formatVersion == 10
                     || legacy.formatVersion == 11
                     || legacy.formatVersion == 12
+                    || legacy.formatVersion == 13
+                    || legacy.formatVersion == 14
                     || legacy.formatVersion == PlanetSaveVersion)
                 ? legacy
                 : null;
@@ -1605,6 +1607,41 @@ if (transitionInProgress)
             writer.Write(data.hasPlanarPlayerPosition);
             writer.Write(data.planarPlayerX);
             writer.Write(data.planarPlayerZ);
+
+            GalaxyDroppedObjectSaveEntry[] droppedObjects =
+                data.droppedObjects
+                ?? new GalaxyDroppedObjectSaveEntry[0];
+            writer.Write(droppedObjects.Length);
+            foreach (GalaxyDroppedObjectSaveEntry value
+                in droppedObjects)
+            {
+                GalaxyDroppedObjectSaveEntry dropped =
+                    value ?? new GalaxyDroppedObjectSaveEntry();
+                writer.Write(dropped.objectId ?? string.Empty);
+                writer.Write(dropped.payloadTypeId ?? string.Empty);
+                writer.Write(dropped.planarX);
+                writer.Write(dropped.planarZ);
+                writer.Write(dropped.planarY);
+                writer.Write(dropped.rotation.x);
+                writer.Write(dropped.rotation.y);
+                writer.Write(dropped.rotation.z);
+                writer.Write(dropped.rotation.w);
+                WriteVector3(writer, dropped.velocity);
+                WriteVector3(writer, dropped.angularVelocity);
+                writer.Write(dropped.sleeping);
+                writer.Write(dropped.cityDraftId ?? string.Empty);
+                writer.Write(dropped.cityBoundaryOrder);
+                writer.Write(dropped.cityBoundaryLocked);
+                writer.Write(dropped.claimedCityId ?? string.Empty);
+                writer.Write(dropped.claimedDistrictId ?? string.Empty);
+            }
+
+            var cityCollection = new GalaxyPlanarCitySaveCollection
+            {
+                cities = data.planarCities
+                    ?? new GalaxyPlanarCitySaveEntry[0]
+            };
+            writer.Write(JsonUtility.ToJson(cityCollection));
         }
 
         if (File.Exists(path))
@@ -1626,6 +1663,8 @@ if (transitionInProgress)
             if (version != 10
                 && version != 11
                 && version != 12
+                && version != 13
+                && version != 14
                 && version != PlanetSaveVersion)
                 throw new InvalidDataException($"Unsupported planet save version {version}.");
 
@@ -1825,6 +1864,66 @@ if (transitionInProgress)
                 data.hasPlanarPlayerPosition = reader.ReadBoolean();
                 data.planarPlayerX = reader.ReadDouble();
                 data.planarPlayerZ = reader.ReadDouble();
+            }
+            if (version >= 14)
+            {
+                int droppedObjectCount = ReadBoundedCount(
+                    reader,
+                    "dropped object",
+                    10000000);
+                data.droppedObjects =
+                    new GalaxyDroppedObjectSaveEntry[droppedObjectCount];
+                for (int i = 0; i < droppedObjectCount; i++)
+                {
+                    data.droppedObjects[i] =
+                        new GalaxyDroppedObjectSaveEntry
+                        {
+                            objectId = reader.ReadString(),
+                            payloadTypeId = reader.ReadString(),
+                            planarX = reader.ReadDouble(),
+                            planarZ = reader.ReadDouble(),
+                            planarY = reader.ReadSingle(),
+                            rotation = new Quaternion(
+                                reader.ReadSingle(),
+                                reader.ReadSingle(),
+                                reader.ReadSingle(),
+                                reader.ReadSingle()),
+                            velocity = ReadVector3(reader),
+                            angularVelocity = ReadVector3(reader),
+                            sleeping = reader.ReadBoolean()
+                        };
+                    if (version >= 15)
+                    {
+                        GalaxyDroppedObjectSaveEntry dropped =
+                            data.droppedObjects[i];
+                        dropped.cityDraftId = reader.ReadString();
+                        dropped.cityBoundaryOrder = reader.ReadInt32();
+                        dropped.cityBoundaryLocked = reader.ReadBoolean();
+                        dropped.claimedCityId = reader.ReadString();
+                        dropped.claimedDistrictId = reader.ReadString();
+                    }
+                }
+            }
+            else
+            {
+                data.droppedObjects =
+                    new GalaxyDroppedObjectSaveEntry[0];
+            }
+            if (version >= 15)
+            {
+                string citiesJson = reader.ReadString();
+                GalaxyPlanarCitySaveCollection collection =
+                    string.IsNullOrWhiteSpace(citiesJson)
+                        ? null
+                        : JsonUtility.FromJson<
+                            GalaxyPlanarCitySaveCollection>(citiesJson);
+                data.planarCities = collection?.cities
+                    ?? new GalaxyPlanarCitySaveEntry[0];
+            }
+            else
+            {
+                data.planarCities =
+                    new GalaxyPlanarCitySaveEntry[0];
             }
 
             return data;

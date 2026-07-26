@@ -234,4 +234,81 @@ public sealed class InfinitePlanarSurfaceRuntimeTests
             Object.DestroyImmediate(root);
         }
     }
+
+    [Test]
+    public void PlanetaryGravitySupportCancelsOnlyDownwardEnvironmentLoad()
+    {
+        float hover = SpacecraftIfcsMotor.CalculateGravitySupportAcceleration(
+            Vector3.down * 17.65f,
+            Vector3.zero,
+            Vector3.up,
+            20f);
+        float wingBorne =
+            SpacecraftIfcsMotor.CalculateGravitySupportAcceleration(
+                Vector3.down * 17.65f,
+                Vector3.up * 12f,
+                Vector3.up,
+                20f);
+        float capped = SpacecraftIfcsMotor.CalculateGravitySupportAcceleration(
+            Vector3.down * 24f,
+            Vector3.zero,
+            Vector3.up,
+            20f);
+        float downforceIsNotHidden =
+            SpacecraftIfcsMotor.CalculateGravitySupportAcceleration(
+                Vector3.down * 9.8f,
+                Vector3.down * 6f,
+                Vector3.up,
+                20f);
+
+        Assert.That(hover, Is.EqualTo(17.65f).Within(0.001f));
+        Assert.That(wingBorne, Is.EqualTo(5.65f).Within(0.001f));
+        Assert.That(capped, Is.EqualTo(20f).Within(0.001f));
+        Assert.That(
+            downforceIsNotHidden,
+            Is.EqualTo(9.8f).Within(0.001f));
+    }
+
+    [Test]
+    public void BuiltInWingProfilesProduceLiftAndSoftStall()
+    {
+        ShipAerodynamicProfile wing =
+            ShipAerodynamicProfile.CreateForPart(
+                "decor.delta_wing",
+                SpacecraftPartCategory.Decoration);
+
+        float preStall = Mathf.Abs(
+            wing.EvaluateLiftCoefficient(
+                wing.StallAngleDegrees * 0.8f));
+        float atStall = Mathf.Abs(
+            wing.EvaluateLiftCoefficient(
+                wing.StallAngleDegrees));
+        float deepStall = Mathf.Abs(
+            wing.EvaluateLiftCoefficient(
+                wing.StallAngleDegrees + 35f));
+
+        Assert.IsTrue(wing.IsEnabled);
+        Assert.AreEqual(SpacecraftAerodynamicRole.Wing, wing.Role);
+        Assert.Greater(atStall, preStall);
+        Assert.Less(deepStall, atStall);
+        Assert.Greater(
+            wing.EvaluateDragCoefficient(atStall),
+            wing.BaseDragCoefficient);
+    }
+
+    [Test]
+    public void NonAerodynamicPartsRemainAerodynamicallyInactive()
+    {
+        ShipAerodynamicProfile thruster =
+            ShipAerodynamicProfile.CreateForPart(
+                "thruster.large",
+                SpacecraftPartCategory.Thruster);
+        ShipAerodynamicProfile weapon =
+            ShipAerodynamicProfile.CreateForPart(
+                "weapon.energy",
+                SpacecraftPartCategory.Weapon);
+
+        Assert.IsFalse(thruster.IsEnabled);
+        Assert.IsFalse(weapon.IsEnabled);
+    }
 }

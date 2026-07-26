@@ -32,6 +32,8 @@ namespace CityGeneration
         [Min(1)] public int maxMinorRoadSegments = 1200;
         [Min(0.1f)] public float minimumBoundaryEdge = 5f;
         [Min(1f)] public float minimumBoundaryArea = 400f;
+        [Min(0.01f)] public float boundarySnapTolerance = 0.25f;
+        [Range(3, 128)] public int maximumBoundaryPoints = 128;
 
         public CityGenerationSettings ValidatedCopy()
         {
@@ -63,9 +65,38 @@ namespace CityGeneration
                 maxMajorRoadSegments = Mathf.Max(1, maxMajorRoadSegments),
                 maxMinorRoadSegments = Mathf.Max(1, maxMinorRoadSegments),
                 minimumBoundaryEdge = Mathf.Max(0.1f, minimumBoundaryEdge),
-                minimumBoundaryArea = Mathf.Max(1f, minimumBoundaryArea)
+                minimumBoundaryArea = Mathf.Max(1f, minimumBoundaryArea),
+                boundarySnapTolerance = Mathf.Clamp(
+                    boundarySnapTolerance,
+                    0.01f,
+                    2f),
+                maximumBoundaryPoints = Mathf.Clamp(
+                    maximumBoundaryPoints,
+                    3,
+                    128)
             };
         }
+    }
+
+    public enum CityBoundaryRepairMode
+    {
+        None,
+        ConcaveHull,
+        ConvexHull
+    }
+
+    public sealed class CityBoundaryResolution
+    {
+        public IReadOnlyList<Vector2> SourcePoints { get; internal set; }
+        public IReadOnlyList<List<Vector2>> Regions { get; internal set; }
+        public IReadOnlyList<List<Vector2>> IgnoredRegions { get; internal set; }
+        public int IntersectionCount { get; internal set; }
+        public int CollapsedPointCount { get; internal set; }
+        public CityBoundaryRepairMode RepairMode { get; internal set; }
+        public bool WasAutoRepaired =>
+            RepairMode != CityBoundaryRepairMode.None;
+        public float TotalArea { get; internal set; }
+        public string Message { get; internal set; }
     }
 
     public sealed class CityRoadSegment
@@ -156,6 +187,7 @@ namespace CityGeneration
         public string Error { get; internal set; }
         public IReadOnlyList<Vector2> Boundary { get; internal set; }
         public IReadOnlyList<List<Vector2>> Regions { get; internal set; }
+        public CityBoundaryResolution BoundaryResolution { get; internal set; }
         public List<CityRoadSegment> Roads { get; } = new List<CityRoadSegment>();
         public List<CityBlockData> Blocks { get; } = new List<CityBlockData>();
         public List<CityLotData> Lots { get; } = new List<CityLotData>();
@@ -186,5 +218,8 @@ namespace CityGeneration
         public float MaximumFoundationClearance { get; internal set; }
         public int FoundationCount { get; internal set; }
         public int FoundationColumnCount { get; internal set; }
+        public int BoundaryIntersectionCount { get; internal set; }
+        public int IgnoredBoundaryRegionCount { get; internal set; }
+        public bool BoundaryWasAutoRepaired { get; internal set; }
     }
 }

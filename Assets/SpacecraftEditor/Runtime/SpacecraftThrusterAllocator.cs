@@ -34,6 +34,11 @@ namespace SpacecraftEditor
         public float MaximumAppliedThrottle { get; private set; }
         public Vector3 AppliedLocalForce { get; private set; }
         public Vector3 AppliedLocalTorque { get; private set; }
+        public SpacecraftDirectionalAuthority DirectionalAuthority
+        {
+            get;
+            private set;
+        }
 
         public void Rebuild(ShipAssembly assembly, ShipHullDefinition hull)
         {
@@ -82,6 +87,7 @@ namespace SpacecraftEditor
             MaximumAppliedThrottle = 0f;
             AppliedLocalForce = Vector3.zero;
             AppliedLocalTorque = Vector3.zero;
+            DirectionalAuthority = default;
         }
 
         public float SolveAndApply(
@@ -101,9 +107,29 @@ namespace SpacecraftEditor
 
             RefreshExternalActuators(shipTransform);
             BuildWrenches(body.centerOfMass, Mathf.Max(1f, thrustMultiplier));
+            UpdateDirectionalAuthority(body.mass);
             Solve(desiredLocalForce, desiredLocalTorque, Mathf.Max(0.01f, torqueWeight));
             Apply(body, shipTransform, Mathf.Max(1f, thrustMultiplier), Mathf.Max(0.0001f, deltaTime));
             return ControlAuthority;
+        }
+
+        public SpacecraftDirectionalAuthority RefreshDirectionalAuthority(
+            Rigidbody body,
+            Transform shipTransform,
+            float thrustMultiplier = 1f)
+        {
+            if (body == null || shipTransform == null || actuators.Length == 0)
+            {
+                DirectionalAuthority = default;
+                return DirectionalAuthority;
+            }
+
+            RefreshExternalActuators(shipTransform);
+            BuildWrenches(
+                body.centerOfMass,
+                Mathf.Max(1f, thrustMultiplier));
+            UpdateDirectionalAuthority(body.mass);
+            return DirectionalAuthority;
         }
 
         public void StopAll()
@@ -185,6 +211,49 @@ namespace SpacecraftEditor
                 localForces[index] = force;
                 localTorques[index] = Vector3.Cross(actuators[index].localPosition - localCenterOfMass, force);
             }
+        }
+
+        void UpdateDirectionalAuthority(float mass)
+        {
+            Vector3 positiveForce = Vector3.zero;
+            Vector3 negativeForce = Vector3.zero;
+            Vector3 positiveTorque = Vector3.zero;
+            Vector3 negativeTorque = Vector3.zero;
+            for (int index = 0; index < localForces.Length; index++)
+            {
+                AccumulateSigned(
+                    localForces[index],
+                    ref positiveForce,
+                    ref negativeForce);
+                AccumulateSigned(
+                    localTorques[index],
+                    ref positiveTorque,
+                    ref negativeTorque);
+            }
+
+            float inverseMass = 1f / Mathf.Max(1f, mass);
+            DirectionalAuthority = new SpacecraftDirectionalAuthority
+            {
+                positiveForce = positiveForce,
+                negativeForce = negativeForce,
+                positiveTorque = positiveTorque,
+                negativeTorque = negativeTorque,
+                positiveAcceleration = positiveForce * inverseMass,
+                negativeAcceleration = negativeForce * inverseMass
+            };
+        }
+
+        static void AccumulateSigned(
+            Vector3 value,
+            ref Vector3 positive,
+            ref Vector3 negative)
+        {
+            positive.x += Mathf.Max(0f, value.x);
+            positive.y += Mathf.Max(0f, value.y);
+            positive.z += Mathf.Max(0f, value.z);
+            negative.x += Mathf.Max(0f, -value.x);
+            negative.y += Mathf.Max(0f, -value.y);
+            negative.z += Mathf.Max(0f, -value.z);
         }
 
         void Solve(Vector3 desiredForce, Vector3 desiredTorque, float torqueWeight)

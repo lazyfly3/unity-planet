@@ -50,37 +50,63 @@ namespace CityGeneration
             CityGenerationSettings safeSettings =
                 settings == null ? new CityGenerationSettings() : settings.ValidatedCopy();
 
-            if (!CityPolygonGeometry.ResolveClosedRegions(
+            if (!CityPolygonGeometry.ResolveBoundary(
                     boundaryPoints,
                     safeSettings,
-                    out List<List<Vector2>> regions,
+                    out CityBoundaryResolution resolution,
                     out string error))
             {
                 return CityGenerationResult.Failed(error);
             }
 
-            var boundary = new List<Vector2>(boundaryPoints.Count);
-            for (int i = 0; i < boundaryPoints.Count; i++)
-                boundary.Add(boundaryPoints[i]);
+            var boundary = new List<Vector2>(resolution.SourcePoints);
+            var regions = new List<List<Vector2>>(resolution.Regions);
 
             var result = new CityGenerationResult
             {
                 IsSuccess = true,
                 Error = string.Empty,
                 Boundary = boundary,
-                Regions = regions
+                Regions = regions,
+                BoundaryResolution = resolution
             };
+            result.Diagnostics.BoundaryIntersectionCount =
+                resolution.IntersectionCount;
+            result.Diagnostics.IgnoredBoundaryRegionCount =
+                resolution.IgnoredRegions == null
+                    ? 0
+                    : resolution.IgnoredRegions.Count;
+            result.Diagnostics.BoundaryWasAutoRepaired =
+                resolution.WasAutoRepaired;
 
+            var productiveRegions = new List<List<Vector2>>();
             var random = new System.Random(seed);
             for (int regionIndex = 0; regionIndex < regions.Count; regionIndex++)
             {
+                int firstRoad = result.Roads.Count;
+                int firstBlock = result.Blocks.Count;
+                int firstLot = result.Lots.Count;
+                int firstBuilding = result.Buildings.Count;
                 GenerateRegion(
                     regions[regionIndex],
                     safeSettings,
                     random,
                     result,
                     terrainSampler);
+                if (result.Roads.Count > firstRoad
+                    && result.Blocks.Count > firstBlock
+                    && result.Buildings.Count > firstBuilding)
+                {
+                    productiveRegions.Add(regions[regionIndex]);
+                    continue;
+                }
+
+                RemoveTail(result.Roads, firstRoad);
+                RemoveTail(result.Blocks, firstBlock);
+                RemoveTail(result.Lots, firstLot);
+                RemoveTail(result.Buildings, firstBuilding);
             }
+            result.Regions = productiveRegions;
 
             if (result.Roads.Count == 0
                 || result.Blocks.Count == 0
@@ -91,6 +117,26 @@ namespace CityGeneration
             }
 
             return result;
+        }
+
+        public CityGenerationResult Generate(
+            CityBoundaryResolution resolution,
+            CityGenerationSettings settings,
+            int seed)
+        {
+            if (resolution == null)
+                return CityGenerationResult.Failed("没有可用的边界解析结果。");
+            return Generate(
+                resolution.SourcePoints,
+                settings,
+                seed,
+                null);
+        }
+
+        static void RemoveTail<T>(List<T> values, int first)
+        {
+            if (first < values.Count)
+                values.RemoveRange(first, values.Count - first);
         }
 
         static void GenerateRegion(

@@ -38,7 +38,11 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
     KeyboardMouseFlightInput planarFlightInput;
     SpacecraftIfcsMotor planarIfcs;
     PlanetSurfaceFlightEnvironment planarEnvironment;
+    SurfaceFlightCameraRig surfaceCameraRig;
+    PlanetaryGravitySupportVfx gravitySupportVfx;
     float pilotSaveTimer;
+    bool pilotMenuOpen;
+    bool cityPresentationActive;
 
     public static SurfaceSpacecraftController Current { get; private set; }
     public SurfaceSpacecraftPhase Phase { get; private set; } =
@@ -50,6 +54,7 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
     public bool IsDeparting => Phase == SurfaceSpacecraftPhase.Boarding
         || Phase == SurfaceSpacecraftPhase.Departing;
     public bool IsPiloting => Phase == SurfaceSpacecraftPhase.Piloting;
+    public SurfaceFlightCameraRig SurfaceCameraRig => surfaceCameraRig;
     public bool CanBeCalled => !IsMoving && !IsDeparting && !IsPiloting;
     public string BoardPromptText =>
         surfaceRuntime != null
@@ -304,7 +309,7 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
 
         SurfaceMultifunctionController multifunction =
             player.GetComponent<SurfaceMultifunctionController>();
-        multifunction?.SetInputBlocked(true);
+        multifunction?.SetPilotMenuContext(true);
         player.CaptureFirstPersonCameraState();
         player.SetGameplayInputBlocked(true);
         player.SetSurfacePhysicsReady(false);
@@ -326,6 +331,15 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
                     - pilotCamera.transform.position,
                 Vector3.up);
             pilotCamera.clearFlags = CameraClearFlags.Skybox;
+            surfaceCameraRig =
+                pilotCamera.GetComponent<SurfaceFlightCameraRig>()
+                ?? pilotCamera.gameObject.AddComponent<SurfaceFlightCameraRig>();
+            surfaceCameraRig.Activate(
+                pilotCamera,
+                ship,
+                body,
+                surfaceRuntime,
+                localBounds);
         }
 
         pilotEnteredFrame = Time.frameCount;
@@ -347,15 +361,43 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
         if (!IsPiloting || assembly == null)
             return;
 
-        if (Time.frameCount > pilotEnteredFrame
+        bool acceptsPilotActions =
+            !pilotMenuOpen && !cityPresentationActive;
+        if (acceptsPilotActions
+            && Time.frameCount > pilotEnteredFrame
             && Input.GetKeyDown(KeyCode.F))
         {
             TryBeginPlanarLanding();
             return;
         }
-        if (Input.GetKeyDown(KeyCode.L))
+        if (acceptsPilotActions
+            && Input.GetKeyDown(KeyCode.L))
         {
             BeginInterstellarDeparture();
+            return;
+        }
+        if (acceptsPilotActions
+            && planarFlightInput != null
+            && planarFlightInput.ConsumeSecondaryActionPressed())
+        {
+            InfinitePlanarSurfaceWorld planar =
+                surfaceRuntime as InfinitePlanarSurfaceWorld;
+            string failureReason = string.Empty;
+            bool dropped = planar != null
+                && planar.TryDropPlaceholderCube(
+                    body,
+                    shipColliders,
+                    out failureReason);
+            if (dropped)
+            {
+                StatusText = "已投放物理方块";
+            }
+            else
+            {
+                StatusText = string.IsNullOrWhiteSpace(failureReason)
+                    ? "无法投放物理方块"
+                    : failureReason;
+            }
             return;
         }
 
@@ -371,6 +413,30 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
                     : 6f,
                 false);
         }
+    }
+
+    public void SetPilotMenuOpen(bool open)
+    {
+        pilotMenuOpen = open;
+        RefreshPlanarInputCapture();
+    }
+
+    public void SetCityPresentationActive(bool active)
+    {
+        cityPresentationActive = active;
+        RefreshPlanarInputCapture();
+    }
+
+    void RefreshPlanarInputCapture()
+    {
+        if (planarFlightInput == null)
+            return;
+        bool capture = IsPiloting
+            && !pilotMenuOpen
+            && !cityPresentationActive;
+        planarFlightInput.CaptureEnabled = capture;
+        if (!capture)
+            planarFlightInput.ClearTransientRequests();
     }
 
     void TryBeginPlanarLanding()
@@ -470,15 +536,23 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
                 Vector3.ProjectOnPlane(ship.forward, Vector3.up).normalized,
                 Vector3.up));
         player.SetGameplayInputBlocked(false);
-        player.GetComponent<SurfaceMultifunctionController>()
-            ?.SetInputBlocked(false);
+        SurfaceMultifunctionController multifunction =
+            player.GetComponent<SurfaceMultifunctionController>();
+        multifunction?.SetPilotMenuContext(false);
+        multifunction?.SetInputBlocked(false);
+        pilotMenuOpen = false;
+        cityPresentationActive = false;
         (surfaceRuntime as InfinitePlanarSurfaceWorld)
             ?.SetMovementTarget(player.transform);
+        surfaceCameraRig?.Deactivate();
+        surfaceCameraRig = null;
         pilotCamera = null;
     }
 
     void LateUpdate()
     {
+        if (surfaceCameraRig != null && surfaceCameraRig.IsActive)
+            return;
         if (!IsPiloting || pilotCamera == null || assembly == null)
             return;
         Transform ship = assembly.transform;
@@ -505,12 +579,28 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
     {
         if (planarEnvironment == null || body == null)
             return;
+        SpacecraftControlTelemetry telemetry =
+            planarIfcs != null ? planarIfcs.Telemetry : default;
+        string warning = planarEnvironment.IsStalling
+            ? "  失速"
+            : telemetry.gravitySupportLoad > 0.94f
+                ? "  高重力支撑接近上限"
+                : telemetry.controlAuthority < 0.45f
+                    ? "  推进器/质量导致控制余量不足"
+                    : string.Empty;
         StatusText = string.Format(
-            "IFCS驾驶｜{0:0} m/s  重力 {1:0.0} m/s²  "
-            + "空气密度 {2:0.000} kg/m³｜F着陆 L离开",
-            body.velocity.magnitude,
+            "IFCS驾驶｜空速 {0:0} m/s  升降 {1:+0.0;-0.0;0.0} m/s  高度 {2:0} m  "
+            + "重力 {3:0.0} m/s²  支撑 {4:0}%  控制 {5:0}%  迎角 {6:+0;-0;0}°{7}｜F着陆 L离开",
+            planarEnvironment.AirSpeed,
+            telemetry.planetaryFlightActive
+                ? telemetry.verticalSpeed
+                : Vector3.Dot(body.velocity, Vector3.up),
+            planarEnvironment.Altitude,
             planarEnvironment.GravityAcceleration.magnitude,
-            planarEnvironment.AirDensity);
+            telemetry.gravitySupportLoad * 100f,
+            telemetry.controlAuthority * 100f,
+            planarEnvironment.AngleOfAttack,
+            warning);
     }
 
     void ResolvePlanarFlightSystems()
@@ -540,7 +630,7 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
             assembly,
             hull,
             planarFlightInput,
-            true);
+            false);
         planarIfcs.SetAssistMode(SpacecraftAssistMode.Coupled);
         planarIfcs.SetTargetSpeed(45f);
         planarIfcs.ControlsEnabled = false;
@@ -559,6 +649,11 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
                 : PlanetCelestialProfile.CreateCompatibleDefault(),
             localBounds);
         planarEnvironment.enabled = false;
+        gravitySupportVfx =
+            flightRoot.GetComponent<PlanetaryGravitySupportVfx>()
+            ?? flightRoot.AddComponent<PlanetaryGravitySupportVfx>();
+        gravitySupportVfx.Configure(planarIfcs, localBounds);
+        gravitySupportVfx.enabled = false;
     }
 
     void SetPlanarPilotPhysics(bool enabled)
@@ -589,6 +684,8 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
         }
         if (planarEnvironment != null)
             planarEnvironment.enabled = enabled;
+        if (gravitySupportVfx != null)
+            gravitySupportVfx.enabled = enabled;
         if (planarIfcs != null)
         {
             planarIfcs.SetEnvironmentalAcceleration(Vector3.zero);
@@ -596,7 +693,11 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
             planarIfcs.ControlsEnabled = enabled;
         }
         if (planarFlightInput != null)
-            planarFlightInput.CaptureEnabled = enabled;
+        {
+            planarFlightInput.CaptureEnabled = enabled
+                && !pilotMenuOpen
+                && !cityPresentationActive;
+        }
     }
 
     IEnumerator CallRoutine(VoxelPlanetPlayerController targetPlayer)
@@ -1267,6 +1368,8 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
     IEnumerator PlanarDepartureRoutine()
     {
         SetPlanarPilotPhysics(false);
+        surfaceCameraRig?.Deactivate();
+        surfaceCameraRig = null;
         Phase = SurfaceSpacecraftPhase.Boarding;
         StatusText = "正在登船";
         SurfaceMultifunctionController multifunction =
@@ -1274,6 +1377,7 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
                 ? player.GetComponent<SurfaceMultifunctionController>()
                 : null;
         multifunction?.SetInputBlocked(true);
+        multifunction?.SetPilotMenuContext(false);
         if (player != null)
         {
             player.SetGameplayInputBlocked(true);
@@ -1578,6 +1682,7 @@ public sealed class SurfaceSpacecraftController : MonoBehaviour
 
     void OnDestroy()
     {
+        surfaceCameraRig?.Deactivate();
         if (Current == this)
             Current = null;
     }

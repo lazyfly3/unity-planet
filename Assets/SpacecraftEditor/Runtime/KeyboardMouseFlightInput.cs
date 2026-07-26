@@ -21,6 +21,7 @@ namespace SpacecraftEditor
         bool coupledToggleRequested;
         bool directToggleRequested;
         bool cruisePressed;
+        bool secondaryActionPressed;
         float speedLimitDelta;
 
         public bool CaptureEnabled
@@ -104,6 +105,8 @@ namespace SpacecraftEditor
                 directToggleRequested = true;
             if (Input.GetKeyDown(KeyCode.B))
                 cruisePressed = true;
+            if (Input.GetMouseButtonDown(1))
+                secondaryActionPressed = true;
             CruiseHeld = Input.GetKey(KeyCode.B);
 
             float wheel = Input.GetAxisRaw("Mouse ScrollWheel");
@@ -141,6 +144,13 @@ namespace SpacecraftEditor
             return value;
         }
 
+        public bool ConsumeSecondaryActionPressed()
+        {
+            bool value = secondaryActionPressed;
+            secondaryActionPressed = false;
+            return value;
+        }
+
         public float ConsumeSpeedLimitDelta()
         {
             float value = speedLimitDelta;
@@ -159,6 +169,7 @@ namespace SpacecraftEditor
             coupledToggleRequested = false;
             directToggleRequested = false;
             cruisePressed = false;
+            secondaryActionPressed = false;
             speedLimitDelta = 0f;
         }
 

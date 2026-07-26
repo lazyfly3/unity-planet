@@ -44,6 +44,7 @@ namespace CityGeneration
         public float FoundationBottomHeight { get; }
         public float FoundationUndersideHeight { get; }
         public float PlatformTopHeight { get; }
+        public Transform SpaceRoot { get; }
         public List<CityConstructionItem> Foundations { get; } =
             new List<CityConstructionItem>();
         public List<CityConstructionItem> Roads { get; } =
@@ -58,13 +59,23 @@ namespace CityGeneration
             Vector2 center,
             float foundationBottomHeight,
             float foundationUndersideHeight,
-            float platformTopHeight)
+            float platformTopHeight,
+            Transform spaceRoot = null)
         {
             Boundary = boundary ?? throw new ArgumentNullException(nameof(boundary));
             Center = center;
             FoundationBottomHeight = foundationBottomHeight;
             FoundationUndersideHeight = foundationUndersideHeight;
             PlatformTopHeight = platformTopHeight;
+            SpaceRoot = spaceRoot;
+        }
+
+        public Vector3 ToWorldPoint(Vector2 point, float height)
+        {
+            Vector3 local = new Vector3(point.x, height, point.y);
+            return SpaceRoot != null
+                ? SpaceRoot.TransformPoint(local)
+                : local;
         }
     }
 
@@ -465,8 +476,11 @@ namespace CityGeneration
             return record;
         }
 
-        void SetFoundationRevealHeight(float worldHeight)
+        void SetFoundationRevealHeight(float localHeight)
         {
+            float worldHeight = currentJob.ToWorldPoint(
+                currentJob.Center,
+                localHeight).y;
             for (int i = 0; i < reveals.Count; i++)
             {
                 RevealRecord record = reveals[i];
@@ -517,11 +531,9 @@ namespace CityGeneration
                 propertyBlock.SetFloat(BuildMaxYId, record.Bounds.max.y);
                 propertyBlock.SetVector(
                     BuildOriginId,
-                    new Vector4(
-                        currentJob.Center.x,
-                        currentJob.PlatformTopHeight,
-                        currentJob.Center.y,
-                        0f));
+                    currentJob.ToWorldPoint(
+                        currentJob.Center,
+                        currentJob.PlatformTopHeight));
                 renderer.SetPropertyBlock(propertyBlock);
             }
         }
@@ -698,10 +710,9 @@ namespace CityGeneration
                     edgeProgress);
                 scanLine.SetPosition(
                     i,
-                    new Vector3(
-                        point.x,
-                        currentJob.PlatformTopHeight + 0.8f,
-                        point.y));
+                    currentJob.ToWorldPoint(
+                        point,
+                        currentJob.PlatformTopHeight + 0.8f));
             }
             UpdateParticlePosition(
                 currentJob.Center,
@@ -731,10 +742,13 @@ namespace CityGeneration
                 float angle = Mathf.PI * 2f * i / segments;
                 scanLine.SetPosition(
                     i,
-                    new Vector3(
-                        currentJob.Center.x + Mathf.Cos(angle) * radius,
-                        currentJob.PlatformTopHeight + 0.9f,
-                        currentJob.Center.y + Mathf.Sin(angle) * radius));
+                    currentJob.ToWorldPoint(
+                        new Vector2(
+                            currentJob.Center.x
+                                + Mathf.Cos(angle) * radius,
+                            currentJob.Center.y
+                                + Mathf.Sin(angle) * radius),
+                        currentJob.PlatformTopHeight + 0.9f));
             }
         }
 
@@ -743,7 +757,7 @@ namespace CityGeneration
             if (particles != null)
             {
                 particles.transform.position =
-                    new Vector3(point.x, height, point.y);
+                    currentJob.ToWorldPoint(point, height);
             }
         }
 
@@ -753,10 +767,10 @@ namespace CityGeneration
                 return;
             var emission = particles.emission;
             emission.rateOverTime = 0f;
-            particles.transform.position = new Vector3(
-                currentJob.Center.x,
-                currentJob.PlatformTopHeight + 1f,
-                currentJob.Center.y);
+            particles.transform.position =
+                currentJob.ToWorldPoint(
+                    currentJob.Center,
+                    currentJob.PlatformTopHeight + 1f);
             particles.Emit(100);
         }
 

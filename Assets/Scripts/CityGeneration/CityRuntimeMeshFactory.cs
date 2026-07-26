@@ -141,6 +141,49 @@ namespace CityGeneration
             return gameObject;
         }
 
+        public static GameObject CreateElevatedCityPlatforms(
+            string name,
+            IReadOnlyList<List<Vector2>> footprints,
+            float topHeight,
+            float slabThickness,
+            float supportSpacing,
+            float supportWidth,
+            float minimumSupportHeight,
+            ICityTerrainSampler terrain,
+            Material material,
+            Transform parent,
+            out int supportCount,
+            out float maximumSupportHeight)
+        {
+            if (footprints == null || footprints.Count == 0)
+                throw new ArgumentException(
+                    "At least one platform footprint is required.",
+                    nameof(footprints));
+
+            var gameObject = new GameObject(name);
+            gameObject.transform.SetParent(parent, false);
+            var filter = gameObject.AddComponent<MeshFilter>();
+            filter.sharedMesh = CreateMergedElevatedCityPlatformMesh(
+                footprints,
+                topHeight,
+                slabThickness,
+                supportSpacing,
+                supportWidth,
+                minimumSupportHeight,
+                terrain,
+                name + " Mesh",
+                out supportCount,
+                out maximumSupportHeight);
+            var renderer = gameObject.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode =
+                UnityEngine.Rendering.ShadowCastingMode.On;
+            renderer.receiveShadows = true;
+            var collider = gameObject.AddComponent<MeshCollider>();
+            collider.sharedMesh = filter.sharedMesh;
+            return gameObject;
+        }
+
         public static GameObject CreatePrefabBuildingOnPlane(
             string name,
             GameObject prefab,
@@ -177,7 +220,8 @@ namespace CityGeneration
 
             float yaw = -Mathf.Atan2(primaryAxis.y, primaryAxis.x)
                 * Mathf.Rad2Deg;
-            instance.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            instance.transform.localRotation =
+                Quaternion.Euler(0f, yaw, 0f);
             Bounds sourceBounds = CalculateRendererBounds(instance);
             float scale = Mathf.Min(
                 targetWidth / Mathf.Max(0.01f, sourceBounds.size.x),
@@ -186,12 +230,19 @@ namespace CityGeneration
             instance.transform.localScale = Vector3.one * scale;
 
             Bounds fittedBounds = CalculateRendererBounds(instance);
+            Vector3 targetBase = parent != null
+                ? parent.TransformPoint(new Vector3(
+                    center.x,
+                    platformTopHeight + modelSurfaceClearance,
+                    center.y))
+                : new Vector3(
+                    center.x,
+                    platformTopHeight + modelSurfaceClearance,
+                    center.y);
             instance.transform.position += new Vector3(
-                center.x - fittedBounds.center.x,
-                platformTopHeight
-                    + modelSurfaceClearance
-                    - fittedBounds.min.y,
-                center.y - fittedBounds.center.z);
+                targetBase.x - fittedBounds.center.x,
+                targetBase.y - fittedBounds.min.y,
+                targetBase.z - fittedBounds.center.z);
 
             if (fallbackMaterial != null)
             {
@@ -373,7 +424,8 @@ namespace CityGeneration
 
             float yaw = -Mathf.Atan2(primaryAxis.y, primaryAxis.x)
                 * Mathf.Rad2Deg;
-            instance.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            instance.transform.localRotation =
+                Quaternion.Euler(0f, yaw, 0f);
             Bounds sourceBounds = CalculateRendererBounds(instance);
             float scale = Mathf.Min(
                 targetWidth / Mathf.Max(0.01f, sourceBounds.size.x),
@@ -382,13 +434,23 @@ namespace CityGeneration
             instance.transform.localScale = Vector3.one * scale;
 
             Bounds fittedBounds = CalculateRendererBounds(instance);
+            Vector3 targetBase = parent != null
+                ? parent.TransformPoint(new Vector3(
+                    center.x,
+                    padHeight
+                        + foundationTopOffset
+                        + modelSurfaceClearance,
+                    center.y))
+                : new Vector3(
+                    center.x,
+                    padHeight
+                        + foundationTopOffset
+                        + modelSurfaceClearance,
+                    center.y);
             Vector3 correction = new Vector3(
-                center.x - fittedBounds.center.x,
-                padHeight
-                    + foundationTopOffset
-                    + modelSurfaceClearance
-                    - fittedBounds.min.y,
-                center.y - fittedBounds.center.z);
+                targetBase.x - fittedBounds.center.x,
+                targetBase.y - fittedBounds.min.y,
+                targetBase.z - fittedBounds.center.z);
             instance.transform.position += correction;
 
             if (foundationMaterial != null)
@@ -768,6 +830,215 @@ namespace CityGeneration
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             return mesh;
+        }
+
+        static Mesh CreateMergedElevatedCityPlatformMesh(
+            IReadOnlyList<List<Vector2>> footprints,
+            float topHeight,
+            float slabThickness,
+            float supportSpacing,
+            float supportWidth,
+            float minimumSupportHeight,
+            ICityTerrainSampler terrain,
+            string meshName,
+            out int supportCount,
+            out float maximumSupportHeight)
+        {
+            slabThickness = Mathf.Max(0.1f, slabThickness);
+            supportSpacing = Mathf.Max(2f, supportSpacing);
+            supportWidth = Mathf.Max(0.2f, supportWidth);
+            minimumSupportHeight = Mathf.Max(0f, minimumSupportHeight);
+            float underside = topHeight - slabThickness;
+            var vertices = new List<Vector3>(1024);
+            var triangles = new List<int>(2048);
+            var edgeCounts = new Dictionary<string, int>();
+            var edgeGeometry = new Dictionary<string, Vector2[]>();
+            var supportPoints = new List<Vector2>();
+            var supportKeys = new HashSet<Vector2Int>();
+
+            for (int regionIndex = 0;
+                 regionIndex < footprints.Count;
+                 regionIndex++)
+            {
+                IReadOnlyList<Vector2> footprint = footprints[regionIndex];
+                if (!CityPolygonGeometry.TryTriangulate(
+                        footprint,
+                        out List<int> capTriangles))
+                {
+                    throw new ArgumentException(
+                        "A platform footprint could not be triangulated.",
+                        nameof(footprints));
+                }
+
+                int count = footprint.Count;
+                int vertexStart = vertices.Count;
+                for (int i = 0; i < count; i++)
+                {
+                    vertices.Add(new Vector3(
+                        footprint[i].x,
+                        underside,
+                        footprint[i].y));
+                }
+                for (int i = 0; i < count; i++)
+                {
+                    vertices.Add(new Vector3(
+                        footprint[i].x,
+                        topHeight,
+                        footprint[i].y));
+                }
+                for (int i = 0; i < capTriangles.Count; i += 3)
+                {
+                    int a = vertexStart + capTriangles[i];
+                    int b = vertexStart + capTriangles[i + 1];
+                    int c = vertexStart + capTriangles[i + 2];
+                    triangles.Add(a);
+                    triangles.Add(b);
+                    triangles.Add(c);
+                    triangles.Add(vertexStart + count + capTriangles[i + 2]);
+                    triangles.Add(vertexStart + count + capTriangles[i + 1]);
+                    triangles.Add(vertexStart + count + capTriangles[i]);
+                }
+
+                for (int i = 0; i < count; i++)
+                {
+                    Vector2 start = footprint[i];
+                    Vector2 end = footprint[(i + 1) % count];
+                    string edgeKey = MakeEdgeKey(start, end);
+                    edgeCounts.TryGetValue(edgeKey, out int edgeCount);
+                    edgeCounts[edgeKey] = edgeCount + 1;
+                    if (!edgeGeometry.ContainsKey(edgeKey))
+                        edgeGeometry.Add(edgeKey, new[] { start, end });
+
+                    AddSupportPoint(start);
+                    int intervals = Mathf.Max(
+                        1,
+                        Mathf.CeilToInt(
+                            Vector2.Distance(start, end) / supportSpacing));
+                    for (int sample = 1; sample < intervals; sample++)
+                    {
+                        AddSupportPoint(Vector2.Lerp(
+                            start,
+                            end,
+                            sample / (float)intervals));
+                    }
+                }
+
+                Vector2 minimum = footprint[0];
+                Vector2 maximum = footprint[0];
+                for (int pointIndex = 1;
+                     pointIndex < footprint.Count;
+                     pointIndex++)
+                {
+                    minimum = Vector2.Min(minimum, footprint[pointIndex]);
+                    maximum = Vector2.Max(maximum, footprint[pointIndex]);
+                }
+                float firstX =
+                    Mathf.Ceil(minimum.x / supportSpacing) * supportSpacing;
+                float firstY =
+                    Mathf.Ceil(minimum.y / supportSpacing) * supportSpacing;
+                for (float y = firstY;
+                     y <= maximum.y + 0.001f;
+                     y += supportSpacing)
+                {
+                    for (float x = firstX;
+                         x <= maximum.x + 0.001f;
+                         x += supportSpacing)
+                    {
+                        AddSupportPoint(new Vector2(x, y));
+                    }
+                }
+            }
+
+            foreach (KeyValuePair<string, int> edge in edgeCounts)
+            {
+                if (edge.Value != 1)
+                    continue;
+                Vector2[] segment = edgeGeometry[edge.Key];
+                AddSideWall(segment[0], segment[1]);
+            }
+
+            supportCount = 0;
+            maximumSupportHeight = 0f;
+            for (int i = 0; i < supportPoints.Count; i++)
+            {
+                Vector2 point = supportPoints[i];
+                float ground = terrain == null
+                    ? 0f
+                    : terrain.SampleTerrain(point).GroundHeight;
+                float supportHeight = underside - ground;
+                if (supportHeight < minimumSupportHeight)
+                    continue;
+                AddBoxColumn(
+                    vertices,
+                    triangles,
+                    point,
+                    ground - 0.25f,
+                    underside,
+                    supportWidth);
+                supportCount++;
+                maximumSupportHeight = Mathf.Max(
+                    maximumSupportHeight,
+                    supportHeight);
+            }
+
+            var mesh = new Mesh { name = meshName };
+            if (vertices.Count > ushort.MaxValue)
+                mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
+
+            void AddSupportPoint(Vector2 point)
+            {
+                bool inside = false;
+                for (int i = 0; i < footprints.Count; i++)
+                {
+                    if (CityPolygonGeometry.ContainsPoint(
+                            footprints[i],
+                            point))
+                    {
+                        inside = true;
+                        break;
+                    }
+                }
+                if (!inside)
+                    return;
+                var key = new Vector2Int(
+                    Mathf.RoundToInt(point.x * 100f),
+                    Mathf.RoundToInt(point.y * 100f));
+                if (supportKeys.Add(key))
+                    supportPoints.Add(point);
+            }
+
+            void AddSideWall(Vector2 start, Vector2 end)
+            {
+                int vertex = vertices.Count;
+                vertices.Add(new Vector3(start.x, underside, start.y));
+                vertices.Add(new Vector3(end.x, underside, end.y));
+                vertices.Add(new Vector3(end.x, topHeight, end.y));
+                vertices.Add(new Vector3(start.x, topHeight, start.y));
+                triangles.Add(vertex);
+                triangles.Add(vertex + 2);
+                triangles.Add(vertex + 1);
+                triangles.Add(vertex);
+                triangles.Add(vertex + 3);
+                triangles.Add(vertex + 2);
+            }
+
+            string MakeEdgeKey(Vector2 first, Vector2 second)
+            {
+                int firstX = Mathf.RoundToInt(first.x * 4f);
+                int firstY = Mathf.RoundToInt(first.y * 4f);
+                int secondX = Mathf.RoundToInt(second.x * 4f);
+                int secondY = Mathf.RoundToInt(second.y * 4f);
+                bool swap = firstX > secondX
+                    || firstX == secondX && firstY > secondY;
+                return swap
+                    ? $"{secondX}:{secondY}|{firstX}:{firstY}"
+                    : $"{firstX}:{firstY}|{secondX}:{secondY}";
+            }
         }
 
         static Mesh CreateElevatedCityPlatformMesh(

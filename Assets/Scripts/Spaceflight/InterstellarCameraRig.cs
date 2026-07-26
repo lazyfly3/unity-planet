@@ -40,6 +40,8 @@ public sealed class InterstellarCameraRig : MonoBehaviour
     [SerializeField, Min(0f)] float freeLookSensitivity = 2.2f;
 
     Rigidbody targetBody;
+    Transform defaultTarget;
+    Transform cinematicPresentationTarget;
     Vector3 previousVelocity;
     Vector3 localRecoil;
     Vector3 collisionKick;
@@ -66,6 +68,7 @@ public sealed class InterstellarCameraRig : MonoBehaviour
     public Vector3 CockpitAnchorLocal => cockpitAnchorLocal;
     public Camera TargetCamera => targetCamera;
     public bool CinematicThirdPersonOverride => cinematicThirdPersonOverride;
+    public Transform PresentationTarget => target;
 
     void Awake()
     {
@@ -251,6 +254,30 @@ public sealed class InterstellarCameraRig : MonoBehaviour
         velocityInitialized = true;
     }
 
+    public void PushPresentationTarget(Transform presentationTarget)
+    {
+        ResolveReferences();
+        if (presentationTarget == null)
+            return;
+        if (cinematicPresentationTarget == null)
+            defaultTarget = target;
+        cinematicPresentationTarget = presentationTarget;
+        target = presentationTarget;
+        SnapToTarget();
+    }
+
+    public void PopPresentationTarget()
+    {
+        if (cinematicPresentationTarget == null)
+            return;
+        cinematicPresentationTarget = null;
+        target = defaultTarget != null
+            ? defaultTarget
+            : ship == null ? null : ship.transform;
+        defaultTarget = null;
+        SnapToTarget();
+    }
+
     public void SnapToTarget()
     {
         ResolveReferences();
@@ -412,6 +439,8 @@ public sealed class InterstellarCameraRig : MonoBehaviour
             ship = FindObjectOfType<InterstellarShipController>();
         if (target == null && ship != null)
             target = ship.transform;
+        if (defaultTarget == null && cinematicPresentationTarget == null)
+            defaultTarget = target;
         if (targetBody == null && ship != null)
             targetBody = ship.GetComponent<Rigidbody>();
         if (runtime == null)

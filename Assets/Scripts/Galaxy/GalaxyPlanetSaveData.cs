@@ -33,6 +33,104 @@ public sealed class GalaxyPlanetSaveData
     public bool hasPlanarPlayerPosition;
     public double planarPlayerX;
     public double planarPlayerZ;
+    public GalaxyDroppedObjectSaveEntry[] droppedObjects;
+    public GalaxyPlanarCitySaveEntry[] planarCities;
+}
+
+[Serializable]
+public sealed class GalaxyDroppedObjectSaveEntry
+{
+    public string objectId;
+    public string payloadTypeId;
+    public double planarX;
+    public double planarZ;
+    public float planarY;
+    public Quaternion rotation = Quaternion.identity;
+    public Vector3 velocity;
+    public Vector3 angularVelocity;
+    public bool sleeping;
+    public string cityDraftId;
+    public int cityBoundaryOrder;
+    public bool cityBoundaryLocked;
+    public string claimedCityId;
+    public string claimedDistrictId;
+}
+
+[Serializable]
+public sealed class GalaxyPlanarCitySaveEntry
+{
+    public string cityId;
+    public GalaxyPlanarPointSaveEntry[] boundary;
+    public GalaxyPlanarCityDistrictSaveEntry[] districts;
+}
+
+[Serializable]
+public sealed class GalaxyPlanarCityDistrictSaveEntry
+{
+    public string districtId;
+    public double anchorX;
+    public double anchorZ;
+    public double minimumX;
+    public double maximumX;
+    public double minimumZ;
+    public double maximumZ;
+    public float minimumGroundHeight;
+    public float maximumGroundHeight;
+    public float platformTopHeight;
+    public float platformSlabThickness;
+    public bool constructionComplete;
+    public GalaxyCityPolygonSaveEntry[] boundaryRegions;
+    public GalaxyCityPolygonSaveEntry[] platformRegions;
+    public GalaxyCityRoadSaveEntry[] roads;
+    public GalaxyCityPolygonSaveEntry[] blocks;
+    public GalaxyCityPolygonSaveEntry[] lots;
+    public GalaxyCityBuildingSaveEntry[] buildings;
+}
+
+[Serializable]
+public struct GalaxyPlanarPointSaveEntry
+{
+    public double x;
+    public double z;
+
+    public GalaxyPlanarPointSaveEntry(double valueX, double valueZ)
+    {
+        x = valueX;
+        z = valueZ;
+    }
+}
+
+[Serializable]
+public sealed class GalaxyCityPolygonSaveEntry
+{
+    public Vector2[] points;
+}
+
+[Serializable]
+public sealed class GalaxyCityRoadSaveEntry
+{
+    public Vector2 start;
+    public Vector2 end;
+    public float width;
+    public bool major;
+    public bool connector;
+    public float startHeight;
+    public float endHeight;
+}
+
+[Serializable]
+public sealed class GalaxyCityBuildingSaveEntry
+{
+    public Vector2[] footprint;
+    public float height;
+    public int materialIndex;
+    public int prefabIndex;
+}
+
+[Serializable]
+public sealed class GalaxyPlanarCitySaveCollection
+{
+    public GalaxyPlanarCitySaveEntry[] cities;
 }
 
 [Serializable]

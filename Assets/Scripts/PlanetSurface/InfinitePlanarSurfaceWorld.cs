@@ -21,6 +21,8 @@ public sealed class InfinitePlanarSurfaceWorld :
     VoxelPlanetPlayerController player;
     PlanetLabInfiniteTerrainStreamer streamer;
     PlanarSurfaceContentStreamer contentStreamer;
+    PlanarDroppedObjectSystem droppedObjectSystem;
+    PlanarCityRuntimeSystem cityRuntimeSystem;
     Material terrainMaterial;
     Material oceanMaterial;
     Material previousSkybox;
@@ -53,6 +55,10 @@ public sealed class InfinitePlanarSurfaceWorld :
     public PlanetLabInfiniteTerrainStreamer Streamer => streamer;
     public GalaxyPlanetDefinition Definition => definition;
     public VoxelPlanetPlayerController Player => player;
+    public PlanarDroppedObjectSystem DroppedObjectSystem =>
+        droppedObjectSystem;
+    public PlanarCityRuntimeSystem CityRuntimeSystem =>
+        cityRuntimeSystem;
 
     public void Configure(
         GalaxyPlanetDefinition valueDefinition,
@@ -140,6 +146,32 @@ public sealed class InfinitePlanarSurfaceWorld :
         globalOriginZ =
             System.Math.Floor(playerZ / ChunkSize) * ChunkSize;
         streamer.SetGlobalOrigin(globalOriginX, globalOriginZ);
+        droppedObjectSystem =
+            GetComponent<PlanarDroppedObjectSystem>();
+        if (droppedObjectSystem == null)
+        {
+            droppedObjectSystem =
+                gameObject.AddComponent<PlanarDroppedObjectSystem>();
+        }
+        droppedObjectSystem.Configure(
+            this,
+            streamer,
+            definition.celestial,
+            save != null ? save.droppedObjects : null);
+        cityRuntimeSystem =
+            GetComponent<PlanarCityRuntimeSystem>();
+        if (cityRuntimeSystem == null)
+        {
+            cityRuntimeSystem =
+                gameObject.AddComponent<
+                    PlanarCityRuntimeSystem>();
+        }
+        cityRuntimeSystem.Configure(
+            this,
+            streamer,
+            droppedObjectSystem,
+            player,
+            save != null ? save.planarCities : null);
         if (player != null)
         {
             if (player.gameObject
@@ -156,16 +188,7 @@ public sealed class InfinitePlanarSurfaceWorld :
         // planar topology. Keep the streamer implementation available for
         // future authored content, but do not generate resources, trees,
         // vegetation, landmarks, or ground cover here.
-        if (surfacePropPlan != null && surfacePropPlan.Count > 0)
-        {
-            contentStreamer =
-                gameObject.AddComponent<PlanarSurfaceContentStreamer>();
-            contentStreamer.Configure(
-                this,
-                streamer,
-                new List<HarvestableResourceSpawnSettings>(),
-                surfacePropPlan);
-        }
+        contentStreamer = null;
         configured = true;
         PlanetSurfaceRuntimeRegistry.Register(this);
         PlanetWaterRegistry.Register(this);
@@ -178,6 +201,22 @@ public sealed class InfinitePlanarSurfaceWorld :
             ? value
             : player != null ? player.transform : null;
         streamer?.SetTarget(movementTarget);
+    }
+
+    public bool TryDropPlaceholderCube(
+        Rigidbody shipBody,
+        Collider[] shipColliders,
+        out string failureReason)
+    {
+        if (droppedObjectSystem == null)
+        {
+            failureReason = "投放系统尚未就绪";
+            return false;
+        }
+        return droppedObjectSystem.TryDropPlaceholderCube(
+            shipBody,
+            shipColliders,
+            out failureReason);
     }
 
     public Vector3 GetUp(Vector3 worldPosition)
@@ -303,6 +342,12 @@ public sealed class InfinitePlanarSurfaceWorld :
         data.harvestedSurfacePropIds = GetHarvestedIds();
         data.hasFullResourceSnapshot = true;
         data.hasFullSurfacePropSnapshot = true;
+        data.droppedObjects = droppedObjectSystem != null
+            ? droppedObjectSystem.CaptureSnapshots()
+            : new GalaxyDroppedObjectSaveEntry[0];
+        data.planarCities = cityRuntimeSystem != null
+            ? cityRuntimeSystem.CaptureSnapshots()
+            : new GalaxyPlanarCitySaveEntry[0];
         if (player != null)
         {
             PlanarSurfaceAddress address =

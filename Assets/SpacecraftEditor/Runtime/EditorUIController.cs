@@ -418,6 +418,17 @@ namespace SpacecraftEditor
                 return $"{part.Definition.DisplayName}  |  推力 {SpaceflightUnitFormatter.FormatForce(thruster.ActualThrust)}  |  {SpaceflightUnitFormatter.FormatMass(part.ActualMass)}";
             if (part is WeaponPart weapon && weapon.Weapon != null)
                 return $"{part.Definition.DisplayName}  |  {weapon.Weapon.MountSize}  |  {weapon.Weapon.Damage:0} 伤害  |  {SpaceflightUnitFormatter.FormatMass(part.ActualMass)}";
+            ShipAerodynamicProfile aerodynamics =
+                part.Definition.Aerodynamics;
+            if (aerodynamics != null && aerodynamics.IsEnabled)
+            {
+                float area = aerodynamics.ReferenceArea
+                    * part.UniformScale
+                    * part.UniformScale;
+                return $"{part.Definition.DisplayName}  |  气动 {aerodynamics.Role}  |  "
+                    + $"面积 {area:0.0} m²  |  "
+                    + SpaceflightUnitFormatter.FormatMass(part.ActualMass);
+            }
             return $"{part.Definition.DisplayName}  |  装饰  |  {SpaceflightUnitFormatter.FormatMass(part.ActualMass)}";
         }
 
@@ -566,11 +577,23 @@ namespace SpacecraftEditor
             if (assembly == null)
                 return;
             var metrics = assembly.Metrics;
+            ShipHullDefinition hull = hullController == null
+                ? null
+                : hullController.CurrentHull;
+            SpacecraftPerformanceMetrics performance =
+                SpacecraftPerformanceAnalyzer.Analyze(assembly, hull);
+            Vector3 acceleration =
+                performance.directionalAuthority.positiveAcceleration;
+            string aerodynamics = performance.wingArea > 0.001f
+                ? $"翼面积 {performance.wingArea:0.0} m²  翼载 {performance.wingLoading:0} kg/m²  "
+                    + $"预计失速 {performance.estimatedStallSpeed:0.0} m/s  升阻比 {performance.estimatedLiftToDrag:0.0}"
+                : "未安装有效升力面（仍可依靠 IFCS 垂直起降）";
             hierarchy.StatsText.text =
-                $"部件 {assembly.Parts.Count}    总质量 {SpaceflightUnitFormatter.FormatMass(metrics.totalMass)}    " +
-                $"合力 {SpaceflightUnitFormatter.FormatForce(metrics.localResultantForce.magnitude)}    " +
-                $"转矩 {metrics.localResultantTorque.magnitude:0.0} N·m    " +
-                $"理论加速度 {SpaceflightUnitFormatter.FormatAcceleration(metrics.Acceleration)}";
+                $"部件 {assembly.Parts.Count}  总质量 {SpaceflightUnitFormatter.FormatMass(metrics.totalMass)}  "
+                + $"加速度 X/Y/Z {acceleration.x:0.0}/{acceleration.y:0.0}/{acceleration.z:0.0} m/s²\n"
+                + "重力支撑负载 0.5g/1g/1.8g：25%/49%/88%  "
+                + $"物理爬升余量 {acceleration.y:0.0} m/s²\n"
+                + aerodynamics;
             HandleSelectionChanged(buildController.SelectedPart);
         }
 

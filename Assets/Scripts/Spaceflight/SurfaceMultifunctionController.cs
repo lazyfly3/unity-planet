@@ -50,6 +50,7 @@ public sealed class SurfaceMultifunctionController : MonoBehaviour
     int selectedVisibleIndex = -1;
     int pageIndex;
     bool externalInputBlocked;
+    bool pilotMenuContext;
     bool cancelled;
     float previousTimeScale = 1f;
     CursorLockMode previousCursorLock;
@@ -57,6 +58,7 @@ public sealed class SurfaceMultifunctionController : MonoBehaviour
 
     public bool IsOpen => menuOpen;
     public bool InputBlocked => externalInputBlocked;
+    public bool PilotMenuContext => pilotMenuContext;
     public int RegisteredActionCount => actions.Count;
     public int PageCount => GetPageCount(actions.Count);
 
@@ -144,10 +146,21 @@ public sealed class SurfaceMultifunctionController : MonoBehaviour
         if (blocked && menuOpen)
             CloseMenu();
         player?.SetGameplayInputBlocked(blocked);
-        scanner?.SetInputBlocked(blocked);
-        GetComponent<SurfaceToolController>()?.SetInputBlocked(blocked);
+        scanner?.SetInputBlocked(blocked || pilotMenuContext);
+        GetComponent<SurfaceToolController>()
+            ?.SetInputBlocked(blocked || pilotMenuContext);
         if (interactionLabel != null && blocked)
             interactionLabel.gameObject.SetActive(false);
+    }
+
+    public void SetPilotMenuContext(bool enabled)
+    {
+        if (!enabled && menuOpen && pilotMenuContext)
+            CloseMenu();
+        pilotMenuContext = enabled;
+        scanner?.SetInputBlocked(enabled || externalInputBlocked);
+        GetComponent<SurfaceToolController>()
+            ?.SetInputBlocked(enabled || externalInputBlocked);
     }
 
     public bool RegisterAction(
@@ -169,6 +182,34 @@ public sealed class SurfaceMultifunctionController : MonoBehaviour
         {
             id = id,
             getLabel = () => label,
+            isAvailable = isAvailable ?? (() => true),
+            execute = execute,
+            icon = icon
+        });
+        ClampPage();
+        if (menuGraphic != null)
+            RefreshPageLayout();
+        return true;
+    }
+
+    public bool RegisterDynamicAction(
+        string id,
+        Func<string> getLabel,
+        Action execute,
+        Func<bool> isAvailable = null,
+        SurfaceRadialIconKind icon = SurfaceRadialIconKind.None)
+    {
+        if (string.IsNullOrWhiteSpace(id)
+            || getLabel == null
+            || execute == null
+            || actions.Exists(entry => entry.id == id))
+        {
+            return false;
+        }
+        actions.Add(new RadialActionEntry
+        {
+            id = id,
+            getLabel = getLabel,
             isAvailable = isAvailable ?? (() => true),
             execute = execute,
             icon = icon
@@ -281,6 +322,9 @@ public sealed class SurfaceMultifunctionController : MonoBehaviour
         menuGroup.blocksRaycasts = false;
         player.SetGameplayInputBlocked(true);
         GetComponent<SurfaceToolController>()?.SetInputBlocked(true);
+        if (pilotMenuContext)
+            SurfaceSpacecraftController.Current
+                ?.SetPilotMenuOpen(true);
         RefreshPageLayout();
         UpdateSelection();
     }
@@ -300,7 +344,11 @@ public sealed class SurfaceMultifunctionController : MonoBehaviour
         selectedLabel.text = string.Empty;
         RefreshPageLayout();
         player.SetGameplayInputBlocked(externalInputBlocked);
-        GetComponent<SurfaceToolController>()?.SetInputBlocked(externalInputBlocked);
+        GetComponent<SurfaceToolController>()?.SetInputBlocked(
+            externalInputBlocked || pilotMenuContext);
+        if (pilotMenuContext)
+            SurfaceSpacecraftController.Current
+                ?.SetPilotMenuOpen(false);
     }
 
     void UpdateSelection()
@@ -446,7 +494,8 @@ public sealed class SurfaceMultifunctionController : MonoBehaviour
 
     static bool IsScanAvailable(SurfaceSpacecraftController ship)
     {
-        return ship == null || !ship.IsDeparting;
+        return ship == null
+            || (!ship.IsDeparting && !ship.IsPiloting);
     }
 
     string GetCallText(SurfaceSpacecraftController ship)

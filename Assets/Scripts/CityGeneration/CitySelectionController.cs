@@ -42,6 +42,10 @@ namespace CityGeneration
         [SerializeField] Color groundColor = new Color(0.16f, 0.2f, 0.17f);
         [SerializeField] Color validBoundaryColor = new Color(0.1f, 1f, 0.35f);
         [SerializeField] Color invalidBoundaryColor = new Color(1f, 0.18f, 0.12f);
+        [SerializeField] Color sourceBoundaryColor =
+            new Color(0.05f, 0.9f, 1f);
+        [SerializeField] Color ignoredBoundaryColor =
+            new Color(1f, 0.55f, 0.08f);
         [SerializeField] Color roadColor = new Color(0.09f, 0.1f, 0.12f);
         [SerializeField] Color blockColor = new Color(0.36f, 0.4f, 0.34f);
         [SerializeField] Color foundationColor =
@@ -50,6 +54,8 @@ namespace CityGeneration
 
         readonly List<Vector2> boundaryPoints = new List<Vector2>();
         readonly List<GameObject> markerObjects = new List<GameObject>();
+        readonly List<GameObject> boundaryPreviewObjects =
+            new List<GameObject>();
         readonly List<Material> runtimeMaterials = new List<Material>();
 
         Material groundMaterial;
@@ -60,6 +66,7 @@ namespace CityGeneration
         Material waterMaterial;
         Material[] buildingMaterials;
         CityGenerationResult lastResult;
+        CityBoundaryResolution currentBoundaryResolution;
         CityPlatformLayout platformLayout;
         string status = "鼠标左键选择边界点；至少 3 点后按 Enter 生成。";
         bool isGenerated;
@@ -132,7 +139,8 @@ namespace CityGeneration
             Vector2 point = new Vector2(worldPoint.x, worldPoint.z);
             for (int i = 0; i < boundaryPoints.Count; i++)
             {
-                if (Vector2.Distance(boundaryPoints[i], point) < 0.1f)
+                if (i == boundaryPoints.Count - 1
+                    && Vector2.Distance(boundaryPoints[i], point) < 0.01f)
                 {
                     status = "该位置已经有一个边界点。";
                     return false;
@@ -166,20 +174,25 @@ namespace CityGeneration
             if (isGenerated || isGenerating)
                 return false;
 
-            if (!CityPolygonGeometry.ValidateBoundary(
+            if (!CityPolygonGeometry.ResolveBoundary(
                     boundaryPoints,
                     generationSettings,
+                    out CityBoundaryResolution resolution,
                     out string validationError))
             {
+                currentBoundaryResolution = null;
                 status = validationError;
                 RefreshBoundaryVisuals();
                 return false;
             }
 
-            status = "正在生成城市平台……";
+            currentBoundaryResolution = resolution;
+            status = resolution.WasAutoRepaired
+                ? resolution.Message + " 正在规划城市……"
+                : "正在规划城市……";
             var generator = new CityGenerator();
             lastResult = generator.Generate(
-                boundaryPoints,
+                resolution,
                 generationSettings,
                 seed);
             if (!lastResult.IsSuccess)
@@ -233,6 +246,7 @@ namespace CityGeneration
             isGenerated = false;
             isGenerating = false;
             lastResult = null;
+            currentBoundaryResolution = null;
             platformLayout = null;
             boundaryPoints.Clear();
 
@@ -283,7 +297,9 @@ namespace CityGeneration
 
             if (platformLayout != null)
             {
-                for (int i = 0; i < platformLayout.Regions.Count; i++)
+                for (int i = 0;
+                     i < Mathf.Min(1, platformLayout.Regions.Count);
+                     i++)
                 {
                     int stableIndex = i;
                     IReadOnlyList<Vector2> region =
@@ -295,9 +311,9 @@ namespace CityGeneration
                         {
                             GameObject foundation =
                                 CityRuntimeMeshFactory
-                                    .CreateElevatedCityPlatform(
+                                    .CreateElevatedCityPlatforms(
                                         "Foundation_" + stableIndex,
-                                        region,
+                                        platformLayout.Regions,
                                         platformTop,
                                         platformLayout.SlabThickness,
                                         platformSupportSpacing,
@@ -547,12 +563,15 @@ namespace CityGeneration
                     point.y));
             }
 
-            bool valid = CityPolygonGeometry.ValidateBoundary(
+            bool valid = CityPolygonGeometry.ResolveBoundary(
                 boundaryPoints,
                 generationSettings,
+                out CityBoundaryResolution resolution,
                 out string validationError);
+            currentBoundaryResolution = valid ? resolution : null;
+            RefreshResolvedRegionPreviews(currentBoundaryResolution);
             Color lineColor = pointCount < 3 || valid
-                ? validBoundaryColor
+                ? sourceBoundaryColor
                 : invalidBoundaryColor;
             boundaryLine.startColor = lineColor;
             boundaryLine.endColor = lineColor;
@@ -563,17 +582,20 @@ namespace CityGeneration
                     status = $"已选择 {pointCount} 个点；至少需要 3 个。";
                 else if (valid)
                 {
-                    CityPolygonGeometry.ResolveClosedRegions(
-                        boundaryPoints,
-                        generationSettings,
-                        out List<List<Vector2>> regions,
-                        out _);
+                    IReadOnlyList<List<Vector2>> regions =
+                        resolution.Regions;
                     status =
                         $"边界有效（{pointCount} 点，{regions.Count} 个封闭区域）；" +
                         "按 Enter 生成城市。";
                 }
                 else
                     status = validationError;
+            }
+            if (!isGenerated && !isGenerating && valid)
+            {
+                status = resolution.WasAutoRepaired
+                    ? "没有识别到可建闭合区；按 Enter 将自动修复范围并生成城市。"
+                    : resolution.Message + " 按 Enter 生成城市。";
             }
         }
 
@@ -654,6 +676,81 @@ namespace CityGeneration
             if (constructionAnimator == null)
                 constructionAnimator =
                     gameObject.AddComponent<CityConstructionAnimator>();
+        }
+
+        void RefreshResolvedRegionPreviews(
+            CityBoundaryResolution resolution)
+        {
+            for (int i = boundaryPreviewObjects.Count - 1; i >= 0; i--)
+                DestroySafely(boundaryPreviewObjects[i]);
+            boundaryPreviewObjects.Clear();
+            if (resolution == null || resolution.WasAutoRepaired)
+                return;
+
+            AddRegions(
+                resolution.Regions,
+                "AcceptedRegion",
+                validBoundaryColor,
+                0.46f);
+            AddRegions(
+                resolution.IgnoredRegions,
+                "IgnoredRegion",
+                ignoredBoundaryColor,
+                0.3f);
+
+            void AddRegions(
+                IReadOnlyList<List<Vector2>> regions,
+                string prefix,
+                Color color,
+                float width)
+            {
+                if (regions == null)
+                    return;
+                for (int regionIndex = 0;
+                     regionIndex < regions.Count;
+                     regionIndex++)
+                {
+                    IReadOnlyList<Vector2> region = regions[regionIndex];
+                    var preview = new GameObject(
+                        prefix + "_" + regionIndex);
+                    preview.transform.SetParent(transform, false);
+                    var line = preview.AddComponent<LineRenderer>();
+                    line.useWorldSpace = true;
+                    line.loop = true;
+                    line.widthMultiplier = width;
+                    line.numCapVertices = 3;
+                    line.numCornerVertices = 2;
+                    line.sharedMaterial = boundaryMaterial;
+                    line.startColor = color;
+                    line.endColor = color;
+
+                    var positions = new List<Vector3>();
+                    for (int edge = 0; edge < region.Count; edge++)
+                    {
+                        Vector2 start = region[edge];
+                        Vector2 end = region[(edge + 1) % region.Count];
+                        int samples = Mathf.Max(
+                            1,
+                            Mathf.CeilToInt(
+                                Vector2.Distance(start, end) / 3f));
+                        for (int sample = 0; sample < samples; sample++)
+                        {
+                            Vector2 point = Vector2.Lerp(
+                                start,
+                                end,
+                                sample / (float)samples);
+                            positions.Add(new Vector3(
+                                point.x,
+                                GetBoundaryVisualHeight(point, 0.62f),
+                                point.y));
+                        }
+                    }
+                    line.positionCount = positions.Count;
+                    if (positions.Count > 0)
+                        line.SetPositions(positions.ToArray());
+                    boundaryPreviewObjects.Add(preview);
+                }
+            }
         }
 
         void CreateRuntimeMaterials()

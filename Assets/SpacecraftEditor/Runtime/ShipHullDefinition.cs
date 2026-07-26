@@ -14,6 +14,7 @@ namespace SpacecraftEditor
         [SerializeField] private float baseMass = 12000f;
         [SerializeField] private Vector3 dimensions = new Vector3(3f, 2.2f, 6f);
         [SerializeField] private ShipFlightProfile flightProfile;
+        [SerializeField] private ShipAerodynamicProfile aerodynamicProfile;
 
         public string HullId => hullId;
         public string DisplayName => displayName;
@@ -24,11 +25,18 @@ namespace SpacecraftEditor
         public float BaseMass => baseMass;
         public Vector3 Dimensions => dimensions;
         public ShipFlightProfile FlightProfile => flightProfile ?? ShipFlightProfile.CreateForHull(hullId);
+        public ShipAerodynamicProfile Aerodynamics =>
+            aerodynamicProfile != null && aerodynamicProfile.IsEnabled
+                ? aerodynamicProfile
+                : ShipAerodynamicProfile.CreateForHull(hullId, dimensions);
 
         void OnEnable()
         {
             if (flightProfile == null)
                 flightProfile = ShipFlightProfile.CreateForHull(hullId);
+            if (aerodynamicProfile == null)
+                aerodynamicProfile =
+                    ShipAerodynamicProfile.CreateForHull(hullId, dimensions);
         }
 
 #if UNITY_EDITOR
@@ -54,6 +62,8 @@ namespace SpacecraftEditor
                 Mathf.Max(0.01f, size.y),
                 Mathf.Max(0.01f, size.z));
             flightProfile = ShipFlightProfile.CreateForHull(hullId);
+            aerodynamicProfile =
+                ShipAerodynamicProfile.CreateForHull(hullId, dimensions);
         }
 #endif
     }

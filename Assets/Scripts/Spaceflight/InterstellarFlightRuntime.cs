@@ -34,6 +34,12 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
     bool warpCinematicOverride;
     bool tacticalPhysicsSyncPending;
     bool originalDetectCollisions = true;
+    bool planetCenteredFrameActive;
+    bool initializeNearFrameAtRest;
+    string planetFrameId;
+    InterstellarCoordinate planetFrameCoordinate;
+    UniversePosition planetFrameAddress;
+    Vector3 planetFrameVelocity;
     Transform astronomicalRoot;
     Camera astronomicalCamera;
     Camera localCamera;
@@ -58,11 +64,17 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         => SpaceKilometerScale.ToKilometerUnitsPerSecond(
             ShipVelocityMetersPerSecond);
     public Vector3 ShipRelativeVelocityMetersPerSecond
-        => shipBody != null
-            && ifcsMotor != null
-            && ifcsMotor.Telemetry.shipMass > 0f
-            ? shipBody.transform.TransformDirection(ifcsMotor.Telemetry.localVelocity)
-            : ShipVelocityMetersPerSecond;
+        => ShipVelocityMetersPerSecond;
+    public bool IsPlanetCenteredFrame => planetCenteredFrameActive;
+    public string PlanetFrameId => planetFrameId ?? string.Empty;
+    public UniversePosition PlanetFrameUniversePosition => planetFrameAddress;
+    public Vector3 PlanetFrameVelocityMetersPerSecond => planetFrameVelocity;
+    public Vector3 CurrentIfcsVelocityReferenceWorld => Vector3.zero;
+    public float ActiveRebaseThresholdMeters => planetCenteredFrameActive
+        ? floatingOriginThresholdMeters
+        : InteractionMode == SpaceflightInteractionMode.TacticalPhysics
+            ? floatingOriginThresholdMeters
+            : highSpeedRebaseThresholdMeters;
     public float HighSpeedEnterMetersPerSecond => highSpeedEnterMetersPerSecond;
     public float HighSpeedExitMetersPerSecond => highSpeedExitMetersPerSecond;
     public UniversePosition PhysicalUniverseOrigin => universeOrigin;
@@ -133,6 +145,8 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         universeOrigin = manager != null && manager.IsInterstellarGalaxy
             ? manager.SavedUniversePosition
             : default;
+        initializeNearFrameAtRest = manager != null
+            && !string.IsNullOrEmpty(manager.NearObservationPlanetId);
         if (shipBody != null)
         {
             shipBody.position = Vector3.zero;
@@ -143,6 +157,7 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
                 shipBody.rotation = departureRotation;
                 shipBody.velocity = departureVelocity;
                 shipBody.angularVelocity = Vector3.zero;
+                initializeNearFrameAtRest = false;
             }
             originalDetectCollisions = shipBody.detectCollisions;
         }
@@ -163,10 +178,9 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         if (!initialized || shipBody == null)
             return;
 
+        UpdatePlanetCenteredFrame();
         UpdateInteractionMode();
-        float rebaseThreshold = InteractionMode == SpaceflightInteractionMode.TacticalPhysics
-            ? floatingOriginThresholdMeters
-            : highSpeedRebaseThresholdMeters;
+        float rebaseThreshold = ActiveRebaseThresholdMeters;
         if (shipBody.position.sqrMagnitude >= rebaseThreshold * rebaseThreshold)
             ShiftOrigin(shipBody.position);
     }
@@ -205,6 +219,111 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         shipBody.interpolation = interpolation;
     }
 
+    public void EnterPlanetCenteredFrame(
+        GalaxyPlanetDefinition planet,
+        UniversePosition currentPlanetAddress,
+        Vector3 currentPlanetVelocity)
+    {
+        if (planet == null || shipBody == null)
+            return;
+
+        string nextPlanetId = planet.planetId ?? string.Empty;
+        if (planetCenteredFrameActive
+            && string.Equals(planetFrameId, nextPlanetId, StringComparison.Ordinal))
+        {
+            planetFrameCoordinate = planet.coordinate3D;
+            SynchronizePlanetFrame(
+                currentPlanetAddress,
+                currentPlanetVelocity);
+            return;
+        }
+
+        if (planetCenteredFrameActive)
+            ExitPlanetCenteredFrame();
+
+        planetCenteredFrameActive = true;
+        planetFrameId = nextPlanetId;
+        planetFrameCoordinate = planet.coordinate3D;
+        planetFrameAddress = currentPlanetAddress;
+        planetFrameVelocity = currentPlanetVelocity;
+
+        if (initializeNearFrameAtRest && !shipBody.isKinematic)
+        {
+            shipBody.velocity = Vector3.zero;
+            initializeNearFrameAtRest = false;
+        }
+        else if (!shipBody.isKinematic)
+        {
+            shipBody.velocity -= currentPlanetVelocity;
+        }
+        ifcsMotor?.SetVelocityReference(Vector3.zero);
+    }
+
+    public void ExitPlanetCenteredFrame()
+    {
+        if (!planetCenteredFrameActive)
+            return;
+
+        if (shipBody != null && !shipBody.isKinematic)
+            shipBody.velocity += planetFrameVelocity;
+        planetCenteredFrameActive = false;
+        planetFrameId = string.Empty;
+        planetFrameCoordinate = default;
+        planetFrameAddress = default;
+        planetFrameVelocity = Vector3.zero;
+        ifcsMotor?.ClearVelocityReference();
+    }
+
+    public Vector3 ToActiveReferenceFrameVelocity(Vector3 barycentricVelocity)
+        => planetCenteredFrameActive
+            ? barycentricVelocity - planetFrameVelocity
+            : barycentricVelocity;
+
+    public Vector3 ToBarycentricVelocity(Vector3 activeFrameVelocity)
+        => planetCenteredFrameActive
+            ? activeFrameVelocity + planetFrameVelocity
+            : activeFrameVelocity;
+
+    public Vector3 ShipPlanetRelativePositionKilometers
+    {
+        get
+        {
+            if (!planetCenteredFrameActive)
+                return Vector3.zero;
+            DoubleVector3 relative = UniversePosition.Delta(
+                planetFrameAddress,
+                ShipPhysicalUniversePosition);
+            return SpaceKilometerScale.ToKilometerUnits(relative);
+        }
+    }
+
+    void UpdatePlanetCenteredFrame()
+    {
+        if (!planetCenteredFrameActive)
+            return;
+        GalaxyTravelManager manager = GalaxyTravelManager.Instance;
+        if (manager == null || !manager.IsInterstellarGalaxy)
+            return;
+
+        UniversePosition currentAddress =
+            manager.GetInterstellarPlanetAddress(planetFrameCoordinate);
+        SynchronizePlanetFrame(
+            currentAddress,
+            manager.GetInterstellarPlanetVelocity(planetFrameCoordinate));
+    }
+
+    void SynchronizePlanetFrame(
+        UniversePosition currentAddress,
+        Vector3 currentVelocity)
+    {
+        DoubleVector3 frameTranslation = UniversePosition.Delta(
+            planetFrameAddress,
+            currentAddress);
+        universeOrigin = universeOrigin.Add(frameTranslation);
+        planetFrameAddress = currentAddress;
+        planetFrameVelocity = currentVelocity;
+    }
+
     public void SetWarpCinematic(bool active)
     {
         warpCinematicOverride = active;
@@ -220,7 +339,21 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         WarpToUniversePosition(
             UniversePosition.FromAbsoluteMeters(destination),
             exitVelocity,
-            exitRotation);
+            exitRotation,
+            Vector3.zero);
+    }
+
+    public void WarpToUniversePosition(
+        DoubleVector3 destination,
+        Vector3 exitVelocity,
+        Quaternion exitRotation,
+        Vector3 exitAngularVelocity)
+    {
+        WarpToUniversePosition(
+            UniversePosition.FromAbsoluteMeters(destination),
+            exitVelocity,
+            exitRotation,
+            exitAngularVelocity);
     }
 
     public void WarpToUniversePosition(
@@ -228,9 +361,23 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         Vector3 exitVelocity,
         Quaternion exitRotation)
     {
+        WarpToUniversePosition(
+            destination,
+            exitVelocity,
+            exitRotation,
+            Vector3.zero);
+    }
+
+    public void WarpToUniversePosition(
+        UniversePosition destination,
+        Vector3 exitVelocity,
+        Quaternion exitRotation,
+        Vector3 exitAngularVelocity)
+    {
         if (!initialized || shipBody == null)
             return;
 
+        ExitPlanetCenteredFrame();
         DoubleVector3 previousPosition = ShipUniversePosition;
         UniversePosition previousAddress = ShipPhysicalUniversePosition;
         RigidbodyInterpolation interpolation = shipBody.interpolation;
@@ -238,8 +385,11 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         universeOrigin = destination;
         shipBody.position = Vector3.zero;
         shipBody.rotation = exitRotation;
-        shipBody.velocity = exitVelocity;
-        shipBody.angularVelocity = Vector3.zero;
+        if (!shipBody.isKinematic)
+        {
+            shipBody.velocity = exitVelocity;
+            shipBody.angularVelocity = exitAngularVelocity;
+        }
         Physics.SyncTransforms();
         UniverseRelocated?.Invoke(previousPosition, destination.ToAbsoluteMeters());
         UniverseAddressRelocated?.Invoke(previousAddress, destination);
@@ -252,7 +402,8 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         if (shipBody == null)
             return;
 
-        SpaceflightInteractionMode desired = InteractionMode;
+        SpaceflightInteractionMode desired =
+            SpaceflightInteractionMode.TacticalPhysics;
         if (warpCinematicOverride)
         {
             desired = SpaceflightInteractionMode.WarpCinematic;
@@ -266,7 +417,8 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         else
         {
             float relativeSpeed = ShipRelativeVelocityMetersPerSecond.magnitude;
-            bool currentlyFast = InteractionMode != SpaceflightInteractionMode.TacticalPhysics;
+            bool currentlyFast =
+                InteractionMode == SpaceflightInteractionMode.HighSpeedTravel;
             if (!currentlyFast && ShouldEnterHighSpeed(
                 relativeSpeed,
                 highSpeedEnterMetersPerSecond))
@@ -420,7 +572,11 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
             cameraObject.GetComponent<AstronomicalCameraSynchronizer>();
         if (synchronizer == null)
             synchronizer = cameraObject.AddComponent<AstronomicalCameraSynchronizer>();
-        synchronizer.Configure(astronomicalCamera, localCamera, shipBody);
+        synchronizer.Configure(
+            astronomicalCamera,
+            localCamera,
+            shipBody,
+            this);
         presentationConfigured = true;
     }
 

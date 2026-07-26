@@ -31,9 +31,9 @@ public sealed class CityGenerationTests
     }
 
     [Test]
-    public void BoundaryValidationRejectsDuplicatesAndDegenerateArea()
+    public void BoundaryValidationAcceptsRepeatedJunctionAndRejectsDegenerateArea()
     {
-        AssertInvalid(new[]
+        AssertValid(new[]
         {
             new Vector2(-40f, -40f),
             new Vector2(40f, -40f),
@@ -64,6 +64,121 @@ public sealed class CityGenerationTests
         Assert.IsTrue(regions.All(region => region.Count == 3));
         Assert.IsTrue(regions.All(
             region => CityPolygonGeometry.SignedArea(region) > Settings.minimumBoundaryArea));
+    }
+
+    [Test]
+    public void MultiIntersectionStarResolvesDeterministicallyAndGenerates()
+    {
+        Vector2[] boundary = CreateFivePointStarBoundary();
+
+        Assert.IsTrue(
+            CityPolygonGeometry.ResolveBoundary(
+                boundary,
+                Settings,
+                out CityBoundaryResolution first,
+                out string error),
+            error);
+        Assert.IsTrue(
+            CityPolygonGeometry.ResolveBoundary(
+                boundary,
+                Settings,
+                out CityBoundaryResolution second,
+                out error),
+            error);
+        Assert.Greater(first.IntersectionCount, 1);
+        Assert.Greater(first.Regions.Count, 1);
+        Assert.AreEqual(first.Regions.Count, second.Regions.Count);
+        for (int i = 0; i < first.Regions.Count; i++)
+            CollectionAssert.AreEqual(first.Regions[i], second.Regions[i]);
+
+        CityGenerationResult result =
+            new CityGenerator().Generate(boundary, Settings, 7319);
+        Assert.IsTrue(result.IsSuccess, result.Error);
+        Assert.Greater(result.Buildings.Count, 0);
+        foreach (CityBuildingData building in result.Buildings)
+        {
+            AssertInsideAnyRegion(
+                result.Regions,
+                building.Footprint,
+                "star building");
+        }
+    }
+
+    [Test]
+    public void RepeatedAndOverlappingSegmentsRemainUsable()
+    {
+        Vector2[] boundary =
+        {
+            new Vector2(-80f, -80f),
+            new Vector2(80f, -80f),
+            new Vector2(80f, 80f),
+            new Vector2(-80f, 80f),
+            new Vector2(-80f, -80f),
+            new Vector2(0f, -80f),
+            new Vector2(80f, -80f)
+        };
+
+        Assert.IsTrue(
+            CityPolygonGeometry.ResolveBoundary(
+                boundary,
+                Settings,
+                out CityBoundaryResolution resolution,
+                out string error),
+            error);
+        Assert.AreEqual(1, resolution.Regions.Count);
+        Assert.IsFalse(resolution.WasAutoRepaired);
+    }
+
+    [Test]
+    public void NarrowClosedFragmentIsIgnoredWithoutRejectingLargeRegion()
+    {
+        Vector2[] boundary =
+        {
+            new Vector2(-80f, -80f),
+            new Vector2(80f, -80f),
+            new Vector2(80f, 80f),
+            new Vector2(-80f, 80f),
+            new Vector2(-80f, -80f),
+            new Vector2(-86f, -80f),
+            new Vector2(-83f, -75f),
+            new Vector2(-80f, -80f)
+        };
+
+        Assert.IsTrue(
+            CityPolygonGeometry.ResolveBoundary(
+                boundary,
+                Settings,
+                out CityBoundaryResolution resolution,
+                out string error),
+            error);
+        Assert.AreEqual(1, resolution.Regions.Count);
+        Assert.GreaterOrEqual(resolution.IgnoredRegions.Count, 1);
+    }
+
+    [Test]
+    public void BacktrackedOpenGraphUsesAutomaticHull()
+    {
+        Vector2[] boundary =
+        {
+            new Vector2(-100f, -60f),
+            new Vector2(100f, -60f),
+            new Vector2(0f, 120f),
+            new Vector2(100f, -60f),
+            new Vector2(-100f, -60f)
+        };
+
+        Assert.IsTrue(
+            CityPolygonGeometry.ResolveBoundary(
+                boundary,
+                Settings,
+                out CityBoundaryResolution resolution,
+                out string error),
+            error);
+        Assert.IsTrue(resolution.WasAutoRepaired);
+        Assert.AreEqual(1, resolution.Regions.Count);
+        Assert.IsFalse(
+            CityPolygonGeometry.HasSelfIntersection(
+                resolution.Regions[0]));
     }
 
     [Test]
@@ -318,9 +433,63 @@ public sealed class CityGenerationTests
     }
 
     [Test]
+    public void AdjacentPlatformRegionsUseOneMergedRendererAndCollider()
+    {
+        var regions = new List<List<Vector2>>
+        {
+            new List<Vector2>
+            {
+                new Vector2(-80f, -50f),
+                new Vector2(0f, -50f),
+                new Vector2(0f, 50f),
+                new Vector2(-80f, 50f)
+            },
+            new List<Vector2>
+            {
+                new Vector2(0f, -50f),
+                new Vector2(80f, -50f),
+                new Vector2(80f, 50f),
+                new Vector2(0f, 50f)
+            }
+        };
+        var root = new GameObject("MergedPlatformTest");
+        try
+        {
+            GameObject platform =
+                CityRuntimeMeshFactory.CreateElevatedCityPlatforms(
+                    "MergedFoundation",
+                    regions,
+                    20f,
+                    0.4f,
+                    20f,
+                    1.4f,
+                    0.6f,
+                    new SyntheticTerrainSampler(),
+                    null,
+                    root.transform,
+                    out int supports,
+                    out float maximumSupportHeight);
+            Mesh mesh = platform.GetComponent<MeshFilter>().sharedMesh;
+            Assert.AreEqual(
+                1,
+                platform.GetComponents<MeshRenderer>().Length);
+            Assert.AreSame(
+                mesh,
+                platform.GetComponent<MeshCollider>().sharedMesh);
+            Assert.Greater(supports, 0);
+            Assert.Greater(maximumSupportHeight, 0f);
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
+    }
+
+    [Test]
     public void PlaneBuildingIsUprightAndTouchesSharedPlatform()
     {
         var root = new GameObject("PlaneBuildingTest");
+        root.transform.position = new Vector3(420f, 7f, -315f);
         var prefab = GameObject.CreatePrimitive(PrimitiveType.Cube);
         try
         {
@@ -344,7 +513,17 @@ public sealed class CityGenerationTests
                 Vector3.Angle(Vector3.up, model.up),
                 Is.LessThan(0.01f));
             Bounds bounds = model.GetComponent<Renderer>().bounds;
-            Assert.That(bounds.min.y, Is.EqualTo(12.03f).Within(0.001f));
+            Assert.That(
+                bounds.center.x,
+                Is.EqualTo(root.transform.position.x).Within(0.001f));
+            Assert.That(
+                bounds.center.z,
+                Is.EqualTo(root.transform.position.z).Within(0.001f));
+            Assert.That(
+                bounds.min.y,
+                Is.EqualTo(
+                    root.transform.position.y + 12.03f)
+                    .Within(0.001f));
             Assert.AreEqual(0, building.GetComponents<MeshRenderer>().Length);
         }
         finally
@@ -956,6 +1135,26 @@ public sealed class CityGenerationTests
             new Vector2(120f, 100f),
             new Vector2(-120f, -100f),
             new Vector2(120f, -100f)
+        };
+    }
+
+    static Vector2[] CreateFivePointStarBoundary()
+    {
+        var outer = new Vector2[5];
+        for (int i = 0; i < outer.Length; i++)
+        {
+            float radians = (90f - i * 72f) * Mathf.Deg2Rad;
+            outer[i] = new Vector2(
+                Mathf.Cos(radians),
+                Mathf.Sin(radians)) * 135f;
+        }
+        return new[]
+        {
+            outer[0],
+            outer[2],
+            outer[4],
+            outer[1],
+            outer[3]
         };
     }
 }

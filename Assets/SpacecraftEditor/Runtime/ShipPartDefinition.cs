@@ -20,6 +20,7 @@ namespace SpacecraftEditor
         [SerializeField] private string defaultMaterialId = "paint.deep_space_blue";
         [SerializeField] private Color exhaustColor = Color.cyan;
         [SerializeField] private SpacecraftWeaponDefinition weapon;
+        [SerializeField] private ShipAerodynamicProfile aerodynamicProfile;
 
         public string PartId => partId;
         public string DisplayName => displayName;
@@ -36,6 +37,10 @@ namespace SpacecraftEditor
         public string DefaultMaterialId => defaultMaterialId;
         public Color ExhaustColor => exhaustColor;
         public SpacecraftWeaponDefinition Weapon => weapon;
+        public ShipAerodynamicProfile Aerodynamics =>
+            aerodynamicProfile != null && aerodynamicProfile.IsEnabled
+                ? aerodynamicProfile
+                : ShipAerodynamicProfile.CreateForPart(partId, category);
         public bool IsScalable => scaleMode == SpacecraftPartScaleMode.Free;
 
 #if UNITY_EDITOR
@@ -63,6 +68,9 @@ namespace SpacecraftEditor
             defaultMaterialId = "paint.deep_space_blue";
             exhaustColor = exhaust;
             weapon = null;
+            aerodynamicProfile = ShipAerodynamicProfile.CreateForPart(
+                partId,
+                category);
         }
 
         public void ConfigureGeneral(
@@ -93,6 +101,9 @@ namespace SpacecraftEditor
             defaultMaterialId = materialId ?? string.Empty;
             exhaustColor = Color.cyan;
             weapon = weaponDefinition;
+            aerodynamicProfile = ShipAerodynamicProfile.CreateForPart(
+                partId,
+                category);
         }
 #endif
     }

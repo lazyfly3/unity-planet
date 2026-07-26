@@ -103,7 +103,7 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
     public bool IsSelectedEntryVelocitySafe => HasLockedTarget
         && runtime != null
         && runtime.ShipBody != null
-        && (runtime.ShipBody.velocity - LockedPlanetVelocity).magnitude
+        && runtime.ShipRelativeVelocityMetersPerSecond.magnitude
             <= CalculateAllowedEntrySpeed(LockedPlanet, TargetDistance);
 
     public double GetNearExitDistance(GalaxyPlanetDefinition definition)
@@ -187,6 +187,18 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
     public void MarkNearPlanet(GalaxyPlanetDefinition definition)
     {
         nearObservationPlanetId = definition?.planetId ?? string.Empty;
+        if (definition != null)
+        {
+            int reachedIndex = targets.FindIndex(target =>
+                target.definition != null
+                && string.Equals(
+                    target.definition.planetId,
+                    nearObservationPlanetId,
+                    StringComparison.Ordinal));
+            if (reachedIndex >= 0)
+                lockedIndex = reachedIndex;
+            ActivatePlanetCenteredFrame(definition);
+        }
         if (Application.isPlaying)
         {
             GalaxyTravelManager.Instance?.SetNearObservationPlanet(
@@ -198,11 +210,11 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
 
     public void ClearNearPlanet()
     {
-        if (string.IsNullOrEmpty(nearObservationPlanetId))
-            return;
+        bool hadNearPlanet = !string.IsNullOrEmpty(nearObservationPlanetId);
         nearObservationPlanetId = string.Empty;
+        runtime?.ExitPlanetCenteredFrame();
         ifcsMotor?.ClearVelocityReference();
-        if (Application.isPlaying)
+        if (hadNearPlanet && Application.isPlaying)
         {
             GalaxyTravelManager.Instance?.SetNearObservationPlanet(
                 string.Empty,
@@ -365,10 +377,56 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
                 targets.Sort((left, right) => left.distance.CompareTo(right.distance));
             }
         }
+        EnsureNearPlanetTarget(manager);
         lockedIndex = string.IsNullOrEmpty(lockedId)
             ? -1
             : targets.FindIndex(target => target.definition.planetId == lockedId);
+        if (lockedIndex < 0 && !string.IsNullOrEmpty(nearObservationPlanetId))
+        {
+            lockedIndex = targets.FindIndex(target =>
+                target.definition != null
+                && string.Equals(
+                    target.definition.planetId,
+                    nearObservationPlanetId,
+                    StringComparison.Ordinal));
+        }
         RefreshProxySet();
+    }
+
+    void EnsureNearPlanetTarget(GalaxyTravelManager manager)
+    {
+        if (manager == null
+            || string.IsNullOrEmpty(nearObservationPlanetId)
+            || targets.Exists(target =>
+                target.definition != null
+                && string.Equals(
+                    target.definition.planetId,
+                    nearObservationPlanetId,
+                    StringComparison.Ordinal))
+            || !ProceduralInterstellarGenerator.TryDecodePlanetId(
+                nearObservationPlanetId,
+                out InterstellarCoordinate coordinate))
+        {
+            return;
+        }
+
+        GalaxyPlanetDefinition definition = manager.GetPlanetAt(coordinate);
+        if (definition == null)
+            return;
+        UniversePosition address =
+            manager.GetInterstellarPlanetAddress(coordinate);
+        targets.Add(new PlanetTarget
+        {
+            coordinate = coordinate,
+            definition = definition,
+            universePosition = address.ToAbsoluteMeters(),
+            universeAddress = address,
+            distance = UniversePosition.Distance(
+                runtime.ShipPhysicalUniversePosition,
+                address),
+            visited = IsVisited(manager, definition.planetId)
+        });
+        targets.Sort((left, right) => left.distance.CompareTo(right.distance));
     }
 
     void UpdateTargetDistances()
@@ -405,8 +463,6 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
 
     void UpdateVelocityReference()
     {
-        if (ifcsMotor == null)
-            return;
         PlanetTarget nearTarget = targets.Find(target =>
             target.definition != null
             && string.Equals(
@@ -416,13 +472,23 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
             && target.distance <= GetNearExitDistance(target.definition) * 1.35d);
         if (nearTarget == null)
         {
-            ifcsMotor.ClearVelocityReference();
+            runtime?.ExitPlanetCenteredFrame();
+            ifcsMotor?.ClearVelocityReference();
             return;
         }
-        Vector3 planetVelocity = GalaxyTravelManager.Instance
-            ?.GetInterstellarPlanetVelocity(nearTarget.coordinate)
-            ?? Vector3.zero;
-        ifcsMotor.SetVelocityReference(planetVelocity);
+        ActivatePlanetCenteredFrame(nearTarget.definition);
+        ifcsMotor?.SetVelocityReference(Vector3.zero);
+    }
+
+    void ActivatePlanetCenteredFrame(GalaxyPlanetDefinition definition)
+    {
+        GalaxyTravelManager manager = GalaxyTravelManager.Instance;
+        if (runtime == null || manager == null || definition == null)
+            return;
+        runtime.EnterPlanetCenteredFrame(
+            definition,
+            manager.GetInterstellarPlanetAddress(definition.coordinate3D),
+            manager.GetInterstellarPlanetVelocity(definition.coordinate3D));
     }
 
     void ValidateNearObservationPlanet()
@@ -451,7 +517,9 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         for (int index = 0; index < targets.Count; index++)
         {
             PlanetTarget target = targets[index];
-            bool shouldHaveProxy = index == lockedIndex
+            bool frameTarget = IsPlanetFrameTarget(target);
+            bool shouldHaveProxy = frameTarget
+                || index == lockedIndex
                 || (target.distance <= exactExitMeters && nearProxyCount++ == 0);
             if (!shouldHaveProxy && target.proxy != null)
             {
@@ -470,7 +538,7 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
             }
             if (target.proxy != null)
             {
-                target.proxy.SetDetail(index == lockedIndex
+                target.proxy.SetDetail(frameTarget || index == lockedIndex
                     ? PlanetProxyDetail.Near
                     : PlanetProxyDetail.Far);
             }
@@ -495,7 +563,7 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         manager.BeginPlanetApproach(
             targets[lockedIndex].definition,
             presentationRelative,
-            body.velocity - LockedPlanetVelocity,
+            runtime.ShipRelativeVelocityMetersPerSecond,
             body.rotation,
             automaticLandingRequested);
     }
@@ -565,6 +633,27 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
     {
         if (runtime == null || runtime.ShipBody == null || target?.proxy == null)
             return;
+        if (runtime.IsPlanetCenteredFrame)
+        {
+            DoubleVector3 centeredOffset = IsPlanetFrameTarget(target)
+                ? DoubleVector3.Zero
+                : UniversePosition.Delta(
+                    runtime.PlanetFrameUniversePosition,
+                    target.universeAddress);
+            PlanetCelestialProfile centeredCelestial =
+                target.definition?.celestial
+                ?? PlanetCelestialProfile.CreateLargeDefault();
+            centeredCelestial.ClampValues();
+            float centeredRadiusKm = Mathf.Max(
+                0.001f,
+                (float)SpaceKilometerScale.ToKilometerUnits(
+                    centeredCelestial.Physical.radiusMeters));
+            target.proxy.SetKilometerPresentation(
+                SpaceKilometerScale.ToKilometerUnits(centeredOffset),
+                centeredRadiusKm,
+                1f);
+            return;
+        }
         Vector3 direction = GetDirectionToUniversePosition(target.universeAddress);
         if (direction.sqrMagnitude < 0.0001f)
             direction = Vector3.forward;
@@ -605,6 +694,17 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
             direction * presentationDistanceKm,
             proxyRadiusKm,
             exactBlend);
+    }
+
+    bool IsPlanetFrameTarget(PlanetTarget target)
+    {
+        return runtime != null
+            && runtime.IsPlanetCenteredFrame
+            && target?.definition != null
+            && string.Equals(
+                target.definition.planetId,
+                runtime.PlanetFrameId,
+                StringComparison.Ordinal);
     }
 
     void ClearTargets()

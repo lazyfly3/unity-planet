@@ -350,12 +350,11 @@ public sealed class InterstellarFlightHud : MonoBehaviour
                 : "高速航行 · 武器离线";
         }
         bool nearPlanet = navigation != null && navigation.IsNearLockedPlanet;
-        Vector3 referenceVelocity = nearPlanet
-            ? navigation.LockedPlanetVelocity
-            : Vector3.zero;
-        Vector3 relativeVelocity = ship == null || ship.ShipBody == null
-            ? Vector3.zero
-            : ship.ShipBody.velocity - referenceVelocity;
+        Vector3 relativeVelocity = flightRuntime != null
+            ? flightRuntime.ShipRelativeVelocityMetersPerSecond
+            : ship == null || ship.ShipBody == null
+                ? Vector3.zero
+                : ship.ShipBody.velocity;
         Vector3 targetDirection = navigation != null && navigation.HasLockedTarget
             ? navigation.DirectionToTarget
             : Vector3.zero;
@@ -371,6 +370,8 @@ public sealed class InterstellarFlightHud : MonoBehaviour
             appliedLocalForce = control.appliedLocalForce,
             shipMass = control.shipMass,
             velocityReference = nearPlanet
+                || flightRuntime != null
+                    && flightRuntime.IsPlanetCenteredFrame
                 ? SpaceflightVelocityReference.PlanetInertial
                 : SpaceflightVelocityReference.SystemBarycentric,
             cinematicTransit = ship != null && (ship.CruiseActive || ship.SurfaceEntryActive),

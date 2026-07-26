@@ -36,7 +36,15 @@ namespace SpacecraftEditor
         static string BuildStats(ShipPartDefinition value)
         {
             if (value.Category == SpacecraftPartCategory.Decoration)
-                return $"装饰  质量 {SpaceflightUnitFormatter.FormatMass(value.BaseMass)}";
+            {
+                ShipAerodynamicProfile aerodynamics =
+                    value.Aerodynamics;
+                return aerodynamics != null
+                        && aerodynamics.IsEnabled
+                    ? $"气动 {aerodynamics.Role}  面积 {aerodynamics.ReferenceArea:0.0} m²  "
+                        + $"质量 {SpaceflightUnitFormatter.FormatMass(value.BaseMass)}"
+                    : $"装饰  质量 {SpaceflightUnitFormatter.FormatMass(value.BaseMass)}";
+            }
             if (value.Category == SpacecraftPartCategory.Weapon)
             {
                 SpacecraftWeaponDefinition weapon = value.Weapon;
