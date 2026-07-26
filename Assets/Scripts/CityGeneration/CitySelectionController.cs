@@ -26,6 +26,10 @@ namespace CityGeneration
         [SerializeField] bool overridePrefabMaterials;
         [SerializeField] GameObject[] buildingPrefabs = new GameObject[0];
 
+        [Header("Modern City Modular Roads")]
+        [SerializeField] ModernCityRoadModuleLibrary modernCityRoadModules =
+            new ModernCityRoadModuleLibrary();
+
         [Header("Scene")]
         [SerializeField, Min(20f)] float groundSize = 400f;
         [SerializeField] int seed = 12345;
@@ -62,22 +66,33 @@ namespace CityGeneration
         Material boundaryMaterial;
         Material roadMaterial;
         Material blockMaterial;
+        Material modularRoadMaterial;
+        Material modularPathwayMaterial;
         Material foundationMaterial;
         Material waterMaterial;
         Material[] buildingMaterials;
         CityGenerationResult lastResult;
         CityBoundaryResolution currentBoundaryResolution;
+        CityConstructionJob lastConstructionJob;
         CityPlatformLayout platformLayout;
         string status = "鼠标左键选择边界点；至少 3 点后按 Enter 生成。";
         bool isGenerated;
         bool isGenerating;
+        bool isDeconstructing;
+        Light cachedDirectionalLight;
+        PlanetSurfaceDayNightController cachedDayNight;
 
         public IReadOnlyList<Vector2> BoundaryPoints => boundaryPoints;
         public bool IsGenerated => isGenerated;
         public bool IsGenerating => isGenerating;
+        public bool IsDeconstructing => isDeconstructing;
         public float ConstructionProgress =>
             constructionAnimator != null
                 ? constructionAnimator.ConstructionProgress
+                : 0f;
+        public float DeconstructionProgress =>
+            constructionAnimator != null
+                ? constructionAnimator.DeconstructionProgress
                 : 0f;
         public string LastStatus => status;
         public CityGenerationResult LastResult => lastResult;
@@ -96,9 +111,26 @@ namespace CityGeneration
 
         void Update()
         {
+            UpdateRoadNightFactor();
+
+            if (isDeconstructing)
+            {
+                if (Input.GetKeyDown(KeyCode.R)
+                    || Input.GetKeyDown(KeyCode.Return)
+                    || Input.GetKeyDown(KeyCode.KeypadEnter)
+                    || Input.GetKeyDown(KeyCode.Space))
+                {
+                    CompleteDeconstructionImmediately();
+                }
+                return;
+            }
+
             if (Input.GetKeyDown(KeyCode.R))
             {
-                ResetCity();
+                if (isGenerated)
+                    RequestResetCity();
+                else
+                    ResetCity();
                 return;
             }
 
@@ -128,11 +160,13 @@ namespace CityGeneration
 
         public bool TryAddBoundaryPoint(Vector3 worldPoint)
         {
-            if (isGenerated || isGenerating)
+            if (isGenerated || isGenerating || isDeconstructing)
             {
-                status = isGenerating
-                    ? "城市正在施工；按 Enter 或空格立即完成，按 R 取消。"
-                    : "城市已经生成；按 R 重新选择。";
+                status = isDeconstructing
+                    ? "城市正在回收；按 R、Enter 或空格立即完成。"
+                    : isGenerating
+                        ? "城市正在施工；按 Enter 或空格立即完成，按 R 取消。"
+                        : "城市已经生成；按 R 回收城市。";
                 return false;
             }
 
@@ -155,7 +189,10 @@ namespace CityGeneration
 
         public bool UndoLastPoint()
         {
-            if (isGenerated || isGenerating || boundaryPoints.Count == 0)
+            if (isGenerated
+                || isGenerating
+                || isDeconstructing
+                || boundaryPoints.Count == 0)
                 return false;
 
             boundaryPoints.RemoveAt(boundaryPoints.Count - 1);
@@ -171,8 +208,29 @@ namespace CityGeneration
 
         public bool TryGenerate()
         {
-            if (isGenerated || isGenerating)
+            if (isGenerated || isGenerating || isDeconstructing)
                 return false;
+
+            CityRoadGeometryCalibration roadCalibration = null;
+            if (generationSettings.useModularRoadLayout)
+            {
+                string moduleError;
+                if (modernCityRoadModules == null)
+                    moduleError = "Modern City 道路模块库没有配置。";
+                else if (modernCityRoadModules.IsComplete(out moduleError)
+                    && modernCityRoadModules.TryValidateGeometry(
+                        generationSettings.modularRoadCellSize,
+                        out roadCalibration,
+                        out moduleError))
+                {
+                    moduleError = string.Empty;
+                }
+                if (!string.IsNullOrEmpty(moduleError))
+                {
+                    status = moduleError;
+                    return false;
+                }
+            }
 
             if (!CityPolygonGeometry.ResolveBoundary(
                     boundaryPoints,
@@ -200,6 +258,21 @@ namespace CityGeneration
                 status = lastResult.Error;
                 return false;
             }
+            if (roadCalibration != null)
+            {
+                lastResult.Diagnostics.MaximumRoadSocketError =
+                    roadCalibration.MaximumSocketError;
+                lastResult.Diagnostics.MaximumRoadSurfaceHeightError =
+                    roadCalibration.MaximumSurfaceHeightError;
+                if (lastResult.RoadLayoutValidation != null)
+                {
+                    lastResult.RoadLayoutValidation.MaximumSocketError =
+                        roadCalibration.MaximumSocketError;
+                    lastResult.RoadLayoutValidation
+                            .MaximumSurfaceHeightError =
+                        roadCalibration.MaximumSurfaceHeightError;
+                }
+            }
 
             platformLayout = CityElevatedPlatformPlanner.Create(
                 lastResult.Regions,
@@ -217,6 +290,7 @@ namespace CityGeneration
 
             ClearGeneratedObjects();
             CityConstructionJob job = CreateConstructionJob(lastResult);
+            lastConstructionJob = job;
             isGenerating = true;
             isGenerated = false;
             if (!constructionAnimator.Begin(
@@ -225,6 +299,7 @@ namespace CityGeneration
                     HandleConstructionCompleted))
             {
                 isGenerating = false;
+                lastConstructionJob = null;
                 status = "无法启动城市施工动画。";
                 return false;
             }
@@ -239,14 +314,51 @@ namespace CityGeneration
             constructionAnimator.CompleteImmediately();
         }
 
+        public bool RequestResetCity()
+        {
+            if (isDeconstructing)
+                return false;
+            if (!isGenerated
+                || constructionAnimator == null
+                || lastConstructionJob == null)
+            {
+                ResetCity();
+                return true;
+            }
+
+            if (!constructionAnimator.BeginDeconstruction(
+                    lastConstructionJob,
+                    HandleDeconstructionProgress,
+                    HandleDeconstructionCompleted))
+            {
+                ResetCity();
+                return false;
+            }
+
+            isGenerated = false;
+            isDeconstructing = true;
+            status = "正在回收城市 0% · 约 1.6 秒\n" +
+                "按 R、Enter 或空格立即完成。";
+            return true;
+        }
+
+        public void CompleteDeconstructionImmediately()
+        {
+            if (!isDeconstructing || constructionAnimator == null)
+                return;
+            constructionAnimator.CompleteDeconstructionImmediately();
+        }
+
         public void ResetCity()
         {
             if (constructionAnimator != null)
                 constructionAnimator.Cancel();
             isGenerated = false;
             isGenerating = false;
+            isDeconstructing = false;
             lastResult = null;
             currentBoundaryResolution = null;
+            lastConstructionJob = null;
             platformLayout = null;
             boundaryPoints.Clear();
 
@@ -338,37 +450,93 @@ namespace CityGeneration
                 }
             }
 
-            for (int i = 0; i < result.Roads.Count; i++)
+            if (generationSettings.useModularRoadLayout)
             {
-                int stableIndex = i;
-                CityRoadSegment road = result.Roads[i];
-                string roadName =
-                    (road.IsMajor ? "MajorRoad_" : "MinorRoad_") + i;
-                job.Roads.Add(new CityConstructionItem(
-                    stableIndex,
-                    (road.Start + road.End) * 0.5f,
-                    () => CityRuntimeMeshFactory.CreateFlatObject(
-                        roadName,
-                        road.GetCorners(),
-                        platformTop + 0.05f,
-                        roadMaterial,
-                        roadsRoot)));
+                List<CityRoadRenderChunk> roadChunks =
+                    CityModularRoadMeshFactory.GroupRoads(
+                        result.RoadModules,
+                        generationSettings.modularChunkSize);
+                for (int i = 0; i < roadChunks.Count; i++)
+                {
+                    int stableIndex = i;
+                    CityRoadRenderChunk chunk = roadChunks[i];
+                    job.Roads.Add(new CityConstructionItem(
+                        stableIndex,
+                        chunk.Center,
+                        () => CityModularRoadMeshFactory.CreateRoadChunk(
+                            "ModernRoadChunk_" + stableIndex,
+                            chunk,
+                            modernCityRoadModules,
+                            result.ModularRoadAxis,
+                            generationSettings.modularRoadCellSize,
+                            platformTop + 0.05f,
+                            modularRoadMaterial,
+                            roadsRoot)));
+                }
+            }
+            else
+            {
+                for (int i = 0; i < result.Roads.Count; i++)
+                {
+                    int stableIndex = i;
+                    CityRoadSegment road = result.Roads[i];
+                    string roadName =
+                        (road.IsMajor ? "MajorRoad_" : "MinorRoad_") + i;
+                    job.Roads.Add(new CityConstructionItem(
+                        stableIndex,
+                        (road.Start + road.End) * 0.5f,
+                        () => CityRuntimeMeshFactory.CreateFlatObject(
+                            roadName,
+                            road.GetCorners(),
+                            platformTop + 0.05f,
+                            roadMaterial,
+                            roadsRoot)));
+                }
             }
 
-            for (int i = 0; i < result.Blocks.Count; i++)
+            if (generationSettings.useModularRoadLayout)
             {
-                int stableIndex = i;
-                CityBlockData block = result.Blocks[i];
-                job.Blocks.Add(new CityConstructionItem(
-                    stableIndex,
-                    Average(block.Footprint),
-                    () => CityRuntimeMeshFactory.CreateExtrudedObject(
-                        "Block_" + stableIndex,
-                        block.Footprint,
-                        platformTop + 0.08f,
-                        0.14f,
-                        blockMaterial,
-                        blocksRoot)));
+                List<CityRoadRenderChunk> pathwayChunks =
+                    CityModularRoadMeshFactory.GroupPathways(
+                        result.PathwayModules,
+                        generationSettings.modularChunkSize,
+                        generationSettings.modularPathwayUnitSize,
+                        generationSettings.modularRoadCellSize);
+                for (int i = 0; i < pathwayChunks.Count; i++)
+                {
+                    int stableIndex = i;
+                    CityRoadRenderChunk chunk = pathwayChunks[i];
+                    job.Blocks.Add(new CityConstructionItem(
+                        stableIndex,
+                        chunk.Center,
+                        () => CityModularRoadMeshFactory.CreatePathwayChunk(
+                            "ModernPathwayChunk_" + stableIndex,
+                            chunk,
+                            modernCityRoadModules,
+                            result.ModularRoadAxis,
+                            generationSettings.modularPathwayUnitSize,
+                            platformTop + 0.07f,
+                            modularPathwayMaterial,
+                            blocksRoot)));
+                }
+            }
+            else
+            {
+                for (int i = 0; i < result.Blocks.Count; i++)
+                {
+                    int stableIndex = i;
+                    CityBlockData block = result.Blocks[i];
+                    job.Blocks.Add(new CityConstructionItem(
+                        stableIndex,
+                        Average(block.Footprint),
+                        () => CityRuntimeMeshFactory.CreateExtrudedObject(
+                            "Block_" + stableIndex,
+                            block.Footprint,
+                            platformTop + 0.08f,
+                            0.14f,
+                            blockMaterial,
+                            blocksRoot)));
+                }
             }
 
             for (int i = 0; i < result.Buildings.Count; i++)
@@ -466,8 +634,24 @@ namespace CityGeneration
                 $"平台顶面 {platformLayout.TopHeight:F1}m，" +
                 $"最大悬空 {platformLayout.MaximumClearance:F1}m，" +
                 $"立柱 {lastResult.Diagnostics.FoundationColumnCount} 根。" +
-                "按 R 重置。";
+                "按 R 回收城市。";
             RefreshBoundaryVisuals();
+        }
+
+        void HandleDeconstructionProgress(
+            float progress,
+            float secondsRemaining)
+        {
+            status =
+                $"正在回收城市 {progress * 100f:F0}% · " +
+                $"约 {secondsRemaining:F1} 秒\n" +
+                "按 R、Enter 或空格立即完成。";
+        }
+
+        void HandleDeconstructionCompleted()
+        {
+            isDeconstructing = false;
+            ResetCity();
         }
 
         void ClearGeneratedObjects()
@@ -771,6 +955,7 @@ namespace CityGeneration
                 "City Blocks",
                 blockColor,
                 0.04f));
+            CreateModernRoadMaterials();
             foundationMaterial = TrackMaterial(
                 CityRuntimeMeshFactory.CreateMaterial(
                     "City Elevated Foundation",
@@ -800,6 +985,102 @@ namespace CityGeneration
                     new Color(0.28f, 0.44f, 0.56f),
                     0.2f))
             };
+        }
+
+        void CreateModernRoadMaterials()
+        {
+            Shader shader = Shader.Find(
+                "CityGeneration/SciFiModularRoad");
+            if (shader == null || modernCityRoadModules == null)
+                return;
+
+            modularRoadMaterial = TrackMaterial(new Material(shader)
+            {
+                name = "Modern City Sci-Fi Road"
+            });
+            ConfigureModernMaterial(
+                modularRoadMaterial,
+                modernCityRoadModules.roadAlbedo,
+                modernCityRoadModules.roadNormal,
+                new Color(0.22f, 0.25f, 0.28f, 1f),
+                new Color(0.02f, 1.35f, 2.4f, 1f),
+                1f,
+                0.62f);
+
+            modularPathwayMaterial = TrackMaterial(new Material(shader)
+            {
+                name = "Modern City Graphite Pathway"
+            });
+            ConfigureModernMaterial(
+                modularPathwayMaterial,
+                modernCityRoadModules.pathwayAlbedo,
+                null,
+                new Color(0.34f, 0.36f, 0.38f, 1f),
+                new Color(0.08f, 0.5f, 0.7f, 1f),
+                0.06f,
+                0.78f);
+        }
+
+        void ConfigureModernMaterial(
+            Material material,
+            Texture albedo,
+            Texture normal,
+            Color baseColor,
+            Color emissionColor,
+            float emissionStrength,
+            float emissionThreshold)
+        {
+            if (material == null)
+                return;
+            material.SetTexture(
+                "_MainTex",
+                albedo);
+            material.SetTexture(
+                "_BumpMap",
+                normal);
+            material.SetColor("_BaseColor", baseColor);
+            material.SetColor("_EmissionColor", emissionColor);
+            material.SetFloat("_EmissionStrength", emissionStrength);
+            material.SetFloat("_EmissionThreshold", emissionThreshold);
+            material.SetFloat("_Metallic", 0.08f);
+            material.SetFloat("_Smoothness", 0.42f);
+            material.enableInstancing = true;
+        }
+
+        void UpdateRoadNightFactor()
+        {
+            float daylight;
+            if (cachedDayNight == null && Time.frameCount % 120 == 0)
+                cachedDayNight =
+                    FindObjectOfType<PlanetSurfaceDayNightController>();
+            if (cachedDayNight != null)
+            {
+                daylight =
+                    PlanetSurfaceDayNightController.SampleDaylight(
+                        transform.up);
+            }
+            else
+            {
+                if (cachedDirectionalLight == null)
+                {
+                    Light[] lights = FindObjectsOfType<Light>();
+                    for (int i = 0; i < lights.Length; i++)
+                    {
+                        if (lights[i].type != LightType.Directional)
+                            continue;
+                        cachedDirectionalLight = lights[i];
+                        break;
+                    }
+                }
+                daylight = cachedDirectionalLight != null
+                    ? Mathf.Clamp01(Vector3.Dot(
+                        -cachedDirectionalLight.transform.forward,
+                        transform.up))
+                    : 0.7f;
+            }
+            Shader.SetGlobalFloat(
+                "_CityNightFactor",
+                1f - Mathf.SmoothStep(0.22f, 0.72f, daylight));
         }
 
         Material TrackMaterial(Material material)
@@ -875,7 +1156,7 @@ namespace CityGeneration
                 new Rect(16f, 16f, 570f, 94f),
                 "城市边界生成测试\n" +
                 "左键选点　Backspace 撤销　Enter 生成/跳过　" +
-                "空格跳过　R 重置　WASD/滚轮移动视角\n" +
+                "空格跳过　R 取消/回收　WASD/滚轮移动视角\n" +
                 status,
                 style);
         }
@@ -893,6 +1174,7 @@ namespace CityGeneration
             for (int i = 0; i < runtimeMaterials.Count; i++)
                 DestroySafely(runtimeMaterials[i]);
             runtimeMaterials.Clear();
+            CityModularRoadMeshFactory.ClearSourceCache();
         }
 
         static Vector2 Average(IReadOnlyList<Vector2> points)

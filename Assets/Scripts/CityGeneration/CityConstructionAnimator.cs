@@ -25,6 +25,7 @@ namespace CityGeneration
         public Vector2 Position { get; }
         public Func<GameObject> Factory { get; }
         public bool IsCreated { get; internal set; }
+        public GameObject CreatedObject { get; internal set; }
 
         public CityConstructionItem(
             int stableIndex,
@@ -98,6 +99,7 @@ namespace CityGeneration
         [SerializeField, Min(0.01f)] float blockDuration = 1f;
         [SerializeField, Min(0.01f)] float buildingDuration = 2.9f;
         [SerializeField, Min(0.01f)] float completionDuration = 0.3f;
+        [SerializeField, Min(0.1f)] float deconstructionDuration = 1.6f;
 
         [Header("Frame Budget")]
         [SerializeField, Min(1)] int maximumBuildingsPerFrame = 4;
@@ -123,12 +125,26 @@ namespace CityGeneration
         ParticleSystem particles;
         Action<CityConstructionPhase, float, float> progressCallback;
         Action completionCallback;
+        Action<float, float> deconstructionProgressCallback;
+        Action deconstructionCompletionCallback;
         CityConstructionPhase phase;
         float constructionProgress;
+        float deconstructionProgress;
+        bool isDeconstructing;
+
+        readonly List<RevealRecord> deconstructionBuildings =
+            new List<RevealRecord>();
+        readonly List<ScheduledReveal> deconstructionSurfaces =
+            new List<ScheduledReveal>();
+        readonly List<RevealRecord> deconstructionFoundations =
+            new List<RevealRecord>();
 
         public bool IsRunning => routine != null;
+        public bool IsDeconstructing => isDeconstructing;
         public float ConstructionProgress => constructionProgress;
+        public float DeconstructionProgress => deconstructionProgress;
         public CityConstructionPhase CurrentPhase => phase;
+        public float DeconstructionDuration => deconstructionDuration;
         public float TotalDuration =>
             scanDuration
             + supportDuration
@@ -159,7 +175,11 @@ namespace CityGeneration
             currentJob = job;
             progressCallback = onProgress;
             completionCallback = onCompleted;
+            deconstructionProgressCallback = null;
+            deconstructionCompletionCallback = null;
             constructionProgress = 0f;
+            deconstructionProgress = 0f;
+            isDeconstructing = false;
             phase = CityConstructionPhase.Scanning;
             SortItems(job.Foundations, job.Center);
             SortItems(job.Roads, job.Center);
@@ -184,6 +204,44 @@ namespace CityGeneration
             FinishConstruction();
         }
 
+        public bool BeginDeconstruction(
+            CityConstructionJob job,
+            Action<float, float> onProgress,
+            Action onCompleted)
+        {
+            if (job == null || IsRunning)
+                return false;
+
+            currentJob = job;
+            progressCallback = null;
+            completionCallback = null;
+            deconstructionProgressCallback = onProgress;
+            deconstructionCompletionCallback = onCompleted;
+            constructionProgress = 1f;
+            deconstructionProgress = 0f;
+            isDeconstructing = true;
+            phase = CityConstructionPhase.Idle;
+            reveals.Clear();
+            deconstructionBuildings.Clear();
+            deconstructionSurfaces.Clear();
+            deconstructionFoundations.Clear();
+            DisableJobColliders(job);
+            PrepareEffects();
+            ConfigureDeconstructionEffects();
+            routine = StartCoroutine(PlayDeconstruction());
+            return true;
+        }
+
+        public void CompleteDeconstructionImmediately()
+        {
+            if (!isDeconstructing || currentJob == null)
+                return;
+            if (routine != null)
+                StopCoroutine(routine);
+            routine = null;
+            FinishDeconstruction();
+        }
+
         public void Cancel()
         {
             if (routine != null)
@@ -194,8 +252,15 @@ namespace CityGeneration
             currentJob = null;
             progressCallback = null;
             completionCallback = null;
+            deconstructionProgressCallback = null;
+            deconstructionCompletionCallback = null;
             constructionProgress = 0f;
+            deconstructionProgress = 0f;
+            isDeconstructing = false;
             phase = CityConstructionPhase.Idle;
+            deconstructionBuildings.Clear();
+            deconstructionSurfaces.Clear();
+            deconstructionFoundations.Clear();
         }
 
         public static IReadOnlyList<int> GetStableDistanceOrder(
@@ -207,6 +272,20 @@ namespace CityGeneration
 
             return Enumerable.Range(0, positions.Count)
                 .OrderBy(index => (positions[index] - center).sqrMagnitude)
+                .ThenBy(index => index)
+                .ToArray();
+        }
+
+        public static IReadOnlyList<int> GetStableDeconstructionOrder(
+            IReadOnlyList<Vector2> positions,
+            Vector2 center)
+        {
+            if (positions == null)
+                return Array.Empty<int>();
+
+            return Enumerable.Range(0, positions.Count)
+                .OrderByDescending(
+                    index => (positions[index] - center).sqrMagnitude)
                 .ThenBy(index => index)
                 .ToArray();
         }
@@ -297,6 +376,178 @@ namespace CityGeneration
 
             routine = null;
             FinishConstruction();
+        }
+
+        IEnumerator PlayDeconstruction()
+        {
+            float durationScale =
+                deconstructionDuration / 1.6f;
+            float buildingStart = 0.15f * durationScale;
+            float buildingEnd = 0.85f * durationScale;
+            float surfaceStart = 0.35f * durationScale;
+            float surfaceEnd = 1.05f * durationScale;
+            float foundationStart = 1.05f * durationScale;
+            float foundationEnd = 1.5f * durationScale;
+            float startedAt = Time.unscaledTime;
+            bool buildingsRegistered = false;
+            bool surfacesRegistered = false;
+            bool foundationsRegistered = false;
+
+            while (Time.unscaledTime - startedAt < deconstructionDuration)
+            {
+                float elapsed = Time.unscaledTime - startedAt;
+                if (!buildingsRegistered && elapsed >= buildingStart)
+                {
+                    buildingsRegistered = true;
+                    RegisterDeconstructionGroup(
+                        currentJob.Buildings,
+                        RevealKind.Height,
+                        deconstructionBuildings);
+                    EmitDeconstructionBurst(36);
+                }
+                if (!surfacesRegistered && elapsed >= surfaceStart)
+                {
+                    surfacesRegistered = true;
+                    RegisterDeconstructionSurfaces(
+                        currentJob.Roads,
+                        currentJob.Blocks,
+                        surfaceStart,
+                        surfaceEnd);
+                    EmitDeconstructionBurst(48);
+                }
+                if (!foundationsRegistered && elapsed >= foundationStart)
+                {
+                    foundationsRegistered = true;
+                    RegisterDeconstructionGroup(
+                        currentJob.Foundations,
+                        RevealKind.Height,
+                        deconstructionFoundations);
+                    EmitDeconstructionBurst(60);
+                }
+
+                float buildingProgress = 1f - Mathf.InverseLerp(
+                    buildingStart,
+                    buildingEnd,
+                    elapsed);
+                for (int i = 0; i < deconstructionBuildings.Count; i++)
+                {
+                    ApplyReveal(
+                        deconstructionBuildings[i],
+                        buildingProgress);
+                }
+
+                for (int i = 0; i < deconstructionSurfaces.Count; i++)
+                {
+                    ScheduledReveal scheduled =
+                        deconstructionSurfaces[i];
+                    float progress = 1f - Mathf.Clamp01(
+                        (elapsed - scheduled.Start)
+                        / scheduled.Duration);
+                    ApplyReveal(scheduled.Record, progress);
+                }
+
+                float foundationProgress = 1f - Mathf.InverseLerp(
+                    foundationStart,
+                    foundationEnd,
+                    elapsed);
+                for (int i = 0;
+                     i < deconstructionFoundations.Count;
+                     i++)
+                {
+                    ApplyReveal(
+                        deconstructionFoundations[i],
+                        foundationProgress);
+                }
+
+                deconstructionProgress = Mathf.Clamp01(
+                    elapsed / deconstructionDuration);
+                UpdateDeconstructionPulse(deconstructionProgress);
+                deconstructionProgressCallback?.Invoke(
+                    deconstructionProgress,
+                    Mathf.Max(0f, deconstructionDuration - elapsed));
+                yield return null;
+            }
+
+            routine = null;
+            FinishDeconstruction();
+        }
+
+        void RegisterDeconstructionGroup(
+            IReadOnlyList<CityConstructionItem> items,
+            RevealKind kind,
+            List<RevealRecord> destination)
+        {
+            for (int i = 0; i < items.Count; i++)
+            {
+                GameObject target = items[i].CreatedObject;
+                if (!items[i].IsCreated || target == null)
+                    continue;
+                RevealRecord record = RegisterReveal(
+                    target,
+                    kind,
+                    deconstructionDuration,
+                    1f);
+                if (record == null)
+                    continue;
+                destination.Add(record);
+                reveals.Add(record);
+            }
+        }
+
+        void RegisterDeconstructionSurfaces(
+            IReadOnlyList<CityConstructionItem> roads,
+            IReadOnlyList<CityConstructionItem> blocks,
+            float phaseStart,
+            float phaseEnd)
+        {
+            var items = new List<CityConstructionItem>(
+                roads.Count + blocks.Count);
+            for (int i = 0; i < roads.Count; i++)
+            {
+                if (roads[i].IsCreated && roads[i].CreatedObject != null)
+                    items.Add(roads[i]);
+            }
+            for (int i = 0; i < blocks.Count; i++)
+            {
+                if (blocks[i].IsCreated && blocks[i].CreatedObject != null)
+                    items.Add(blocks[i]);
+            }
+            items.Sort((left, right) =>
+            {
+                float leftDistance =
+                    (left.Position - currentJob.Center).sqrMagnitude;
+                float rightDistance =
+                    (right.Position - currentJob.Center).sqrMagnitude;
+                int distance = rightDistance.CompareTo(leftDistance);
+                return distance != 0
+                    ? distance
+                    : left.StableIndex.CompareTo(right.StableIndex);
+            });
+
+            float fadeDuration = Mathf.Min(
+                0.32f * deconstructionDuration / 1.6f,
+                phaseEnd - phaseStart);
+            float staggerWindow = Mathf.Max(
+                0f,
+                phaseEnd - phaseStart - fadeDuration);
+            for (int i = 0; i < items.Count; i++)
+            {
+                RevealRecord record = RegisterReveal(
+                    items[i].CreatedObject,
+                    RevealKind.Dither,
+                    deconstructionDuration,
+                    1f);
+                if (record == null)
+                    continue;
+                float normalizedIndex = items.Count <= 1
+                    ? 0f
+                    : i / (float)(items.Count - 1);
+                deconstructionSurfaces.Add(new ScheduledReveal(
+                    record,
+                    phaseStart + staggerWindow * normalizedIndex,
+                    fadeDuration));
+                reveals.Add(record);
+            }
         }
 
         IEnumerator RunTimedPhase(
@@ -408,6 +659,7 @@ namespace CityGeneration
 
             GameObject created = item.Factory();
             item.IsCreated = true;
+            item.CreatedObject = created;
             if (created == null)
                 return;
 
@@ -427,7 +679,8 @@ namespace CityGeneration
         RevealRecord RegisterReveal(
             GameObject target,
             RevealKind revealKind,
-            float revealDuration)
+            float revealDuration,
+            float initialProgress = 0f)
         {
             Renderer[] renderers =
                 target.GetComponentsInChildren<Renderer>(true);
@@ -472,7 +725,7 @@ namespace CityGeneration
                 revealKind,
                 Time.unscaledTime,
                 revealDuration);
-            ApplyReveal(record, 0f);
+            ApplyReveal(record, initialProgress);
             return record;
         }
 
@@ -557,6 +810,104 @@ namespace CityGeneration
             progressCallback = null;
             completionCallback = null;
             callback?.Invoke();
+        }
+
+        void FinishDeconstruction()
+        {
+            SetJobRenderersEnabled(currentJob, false);
+            for (int recordIndex = 0;
+                 recordIndex < reveals.Count;
+                 recordIndex++)
+            {
+                RevealRecord record = reveals[recordIndex];
+                for (int rendererIndex = 0;
+                     rendererIndex < record.Renderers.Length;
+                     rendererIndex++)
+                {
+                    if (record.Renderers[rendererIndex] != null)
+                        record.Renderers[rendererIndex].enabled = false;
+                }
+            }
+
+            reveals.Clear();
+            deconstructionBuildings.Clear();
+            deconstructionSurfaces.Clear();
+            deconstructionFoundations.Clear();
+            CleanupEffects();
+            deconstructionProgress = 1f;
+            deconstructionProgressCallback?.Invoke(1f, 0f);
+            Action callback = deconstructionCompletionCallback;
+            currentJob = null;
+            progressCallback = null;
+            completionCallback = null;
+            deconstructionProgressCallback = null;
+            deconstructionCompletionCallback = null;
+            isDeconstructing = false;
+            phase = CityConstructionPhase.Idle;
+            callback?.Invoke();
+        }
+
+        static void SetJobRenderersEnabled(
+            CityConstructionJob job,
+            bool enabled)
+        {
+            if (job == null)
+                return;
+
+            SetEnabled(job.Foundations);
+            SetEnabled(job.Roads);
+            SetEnabled(job.Blocks);
+            SetEnabled(job.Buildings);
+
+            void SetEnabled(
+                IReadOnlyList<CityConstructionItem> items)
+            {
+                for (int itemIndex = 0;
+                     itemIndex < items.Count;
+                     itemIndex++)
+                {
+                    GameObject target = items[itemIndex].CreatedObject;
+                    if (!items[itemIndex].IsCreated || target == null)
+                        continue;
+                    Renderer[] renderers =
+                        target.GetComponentsInChildren<Renderer>(true);
+                    for (int rendererIndex = 0;
+                         rendererIndex < renderers.Length;
+                         rendererIndex++)
+                    {
+                        renderers[rendererIndex].enabled = enabled;
+                    }
+                }
+            }
+        }
+
+        static void DisableJobColliders(CityConstructionJob job)
+        {
+            Disable(job.Foundations);
+            Disable(job.Roads);
+            Disable(job.Blocks);
+            Disable(job.Buildings);
+
+            static void Disable(
+                IReadOnlyList<CityConstructionItem> items)
+            {
+                for (int itemIndex = 0;
+                     itemIndex < items.Count;
+                     itemIndex++)
+                {
+                    GameObject target = items[itemIndex].CreatedObject;
+                    if (!items[itemIndex].IsCreated || target == null)
+                        continue;
+                    Collider[] colliders =
+                        target.GetComponentsInChildren<Collider>(true);
+                    for (int colliderIndex = 0;
+                         colliderIndex < colliders.Length;
+                         colliderIndex++)
+                    {
+                        colliders[colliderIndex].enabled = false;
+                    }
+                }
+            }
         }
 
         void RestoreFinalAppearance()
@@ -680,6 +1031,87 @@ namespace CityGeneration
                 particleRenderer.sharedMaterial = particleMaterial;
             }
             particles.Play();
+        }
+
+        void ConfigureDeconstructionEffects()
+        {
+            if (currentJob == null)
+                return;
+            float radius = GetMaximumCityRadius();
+            if (particles != null)
+            {
+                particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var main = particles.main;
+                main.loop = true;
+                main.startLifetime = 0.72f;
+                main.startSpeed = -Mathf.Max(2f, radius / 0.72f);
+                main.startSize = 0.24f;
+                main.maxParticles = 360;
+                var emission = particles.emission;
+                emission.rateOverTime = 110f;
+                var shape = particles.shape;
+                shape.shapeType = ParticleSystemShapeType.Sphere;
+                shape.radius = radius;
+                shape.radiusThickness = 0.08f;
+                particles.transform.position = currentJob.ToWorldPoint(
+                    currentJob.Center,
+                    currentJob.PlatformTopHeight + 1f);
+                particles.Play();
+            }
+            UpdateDeconstructionPulse(0f);
+        }
+
+        void UpdateDeconstructionPulse(float progress)
+        {
+            if (scanLine == null || currentJob == null)
+                return;
+
+            const int segments = 64;
+            float ringProgress = Mathf.Clamp01(
+                (progress - 0.08f) / 0.92f);
+            float radius = GetMaximumCityRadius()
+                * (1f - ringProgress);
+            scanLine.loop = true;
+            scanLine.positionCount = segments;
+            scanLine.widthMultiplier = Mathf.Lerp(
+                0.85f,
+                0.2f,
+                ringProgress);
+            for (int i = 0; i < segments; i++)
+            {
+                float angle = Mathf.PI * 2f * i / segments;
+                scanLine.SetPosition(
+                    i,
+                    currentJob.ToWorldPoint(
+                        new Vector2(
+                            currentJob.Center.x
+                                + Mathf.Cos(angle) * radius,
+                            currentJob.Center.y
+                                + Mathf.Sin(angle) * radius),
+                        currentJob.PlatformTopHeight + 0.9f));
+            }
+        }
+
+        float GetMaximumCityRadius()
+        {
+            float radius = 1f;
+            if (currentJob == null || currentJob.Boundary == null)
+                return radius;
+            for (int i = 0; i < currentJob.Boundary.Count; i++)
+            {
+                radius = Mathf.Max(
+                    radius,
+                    Vector2.Distance(
+                        currentJob.Center,
+                        currentJob.Boundary[i]));
+            }
+            return radius;
+        }
+
+        void EmitDeconstructionBurst(int count)
+        {
+            if (particles != null)
+                particles.Emit(Mathf.Max(1, count));
         }
 
         void UpdateBoundaryScan(float progress)
@@ -863,6 +1295,23 @@ namespace CityGeneration
             Height,
             ManualHeight,
             Dither
+        }
+
+        readonly struct ScheduledReveal
+        {
+            public readonly RevealRecord Record;
+            public readonly float Start;
+            public readonly float Duration;
+
+            public ScheduledReveal(
+                RevealRecord record,
+                float start,
+                float duration)
+            {
+                Record = record;
+                Start = start;
+                Duration = Mathf.Max(0.01f, duration);
+            }
         }
 
         sealed class RevealRecord

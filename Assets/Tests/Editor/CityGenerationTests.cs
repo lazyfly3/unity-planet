@@ -847,12 +847,53 @@ public sealed class CityGenerationTests
             var serializedController = new SerializedObject(controller);
             Assert.IsFalse(
                 serializedController.FindProperty("overridePrefabMaterials").boolValue);
+            SerializedProperty modularLibrary =
+                serializedController.FindProperty("modernCityRoadModules");
+            Assert.NotNull(modularLibrary);
+            Assert.NotNull(
+                modularLibrary.FindPropertyRelative("roadStraight")
+                    .objectReferenceValue,
+                "roadStraight");
+            Assert.NotNull(
+                modularLibrary.FindPropertyRelative("roadX")
+                    .objectReferenceValue,
+                "roadX");
+            Assert.NotNull(
+                modularLibrary.FindPropertyRelative("roadAlbedo")
+                    .objectReferenceValue,
+                "roadAlbedo");
+            Assert.NotNull(
+                modularLibrary.FindPropertyRelative("roadNormal")
+                    .objectReferenceValue,
+                "roadNormal");
+            Assert.NotNull(
+                modularLibrary.FindPropertyRelative("pathwayAlbedo")
+                    .objectReferenceValue,
+                "pathwayAlbedo");
+            Assert.AreEqual(
+                4,
+                modularLibrary.FindPropertyRelative("pathway4x4")
+                    .arraySize);
+            SerializedProperty generationSettings =
+                serializedController.FindProperty("generationSettings");
+            Assert.IsTrue(
+                generationSettings
+                    .FindPropertyRelative("useModularRoadLayout")
+                    .boolValue);
+            Assert.That(
+                generationSettings
+                    .FindPropertyRelative("modularRoadCellSize")
+                    .floatValue,
+                Is.EqualTo(10f).Within(0.001f));
             var constructionAnimator =
                 controller.GetComponent<CityConstructionAnimator>();
             Assert.NotNull(constructionAnimator);
             Assert.That(
                 constructionAnimator.TotalDuration,
                 Is.EqualTo(10f).Within(0.0001f));
+            Assert.That(
+                constructionAnimator.DeconstructionDuration,
+                Is.EqualTo(1.6f).Within(0.0001f));
             Assert.AreSame(
                 root.transform.Find("GeneratedCity/ConstructionEffects"),
                 serializedController
@@ -869,7 +910,7 @@ public sealed class CityGenerationTests
     }
 
     [Test]
-    public void ConstructionTimelineUsesTenSecondsAndStableDistanceOrder()
+    public void ConstructionAndDeconstructionTimelinesUseStableDistanceOrder()
     {
         var gameObject = new GameObject("ConstructionAnimatorTest");
         try
@@ -879,6 +920,9 @@ public sealed class CityGenerationTests
             Assert.That(
                 animator.TotalDuration,
                 Is.EqualTo(10f).Within(0.0001f));
+            Assert.That(
+                animator.DeconstructionDuration,
+                Is.EqualTo(1.6f).Within(0.0001f));
 
             Vector2[] positions =
             {
@@ -892,10 +936,96 @@ public sealed class CityGenerationTests
                 CityConstructionAnimator.GetStableDistanceOrder(
                     positions,
                     Vector2.zero));
+            CollectionAssert.AreEqual(
+                new[] { 0, 3, 1, 2 },
+                CityConstructionAnimator.GetStableDeconstructionOrder(
+                    positions,
+                    Vector2.zero));
         }
         finally
         {
             Object.DestroyImmediate(gameObject);
+        }
+    }
+
+    [Test]
+    public void CompletedConstructionCanEnterAndSkipDeconstructionSafely()
+    {
+        var animatorObject =
+            new GameObject("DeconstructionLifecycleTest");
+        var generatedRoot =
+            new GameObject("GeneratedObjects");
+        try
+        {
+            var animator =
+                animatorObject.AddComponent<CityConstructionAnimator>();
+            var effectsRoot =
+                new GameObject("ConstructionEffects");
+            effectsRoot.transform.SetParent(animatorObject.transform, false);
+            animator.Configure(effectsRoot.transform);
+
+            var job = new CityConstructionJob(
+                new[]
+                {
+                    new Vector2(-10f, -10f),
+                    new Vector2(10f, -10f),
+                    new Vector2(10f, 10f),
+                    new Vector2(-10f, 10f)
+                },
+                Vector2.zero,
+                0f,
+                1f,
+                1.4f);
+            var item = new CityConstructionItem(
+                0,
+                Vector2.zero,
+                () =>
+                {
+                    GameObject building =
+                        GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    building.transform.SetParent(
+                        generatedRoot.transform,
+                        false);
+                    return building;
+                });
+            job.Buildings.Add(item);
+
+            bool constructionCompleted = false;
+            Assert.IsTrue(animator.Begin(
+                job,
+                null,
+                () => constructionCompleted = true));
+            animator.CompleteImmediately();
+            Assert.IsTrue(constructionCompleted);
+            Assert.IsTrue(item.IsCreated);
+            Assert.NotNull(item.CreatedObject);
+
+            Collider collider = item.CreatedObject.GetComponent<Collider>();
+            Renderer renderer = item.CreatedObject.GetComponent<Renderer>();
+            Assert.IsTrue(collider.enabled);
+            Assert.IsTrue(renderer.enabled);
+
+            bool deconstructionCompleted = false;
+            Assert.IsTrue(animator.BeginDeconstruction(
+                job,
+                null,
+                () => deconstructionCompleted = true));
+            Assert.IsTrue(animator.IsDeconstructing);
+            Assert.That(animator.DeconstructionProgress, Is.EqualTo(0f));
+            Assert.IsFalse(collider.enabled);
+            Assert.IsTrue(renderer.enabled);
+
+            animator.CompleteDeconstructionImmediately();
+            Assert.IsTrue(deconstructionCompleted);
+            Assert.IsFalse(animator.IsDeconstructing);
+            Assert.That(animator.DeconstructionProgress, Is.EqualTo(1f));
+            Assert.IsFalse(renderer.enabled);
+            Assert.IsFalse(collider.enabled);
+        }
+        finally
+        {
+            Object.DestroyImmediate(animatorObject);
+            Object.DestroyImmediate(generatedRoot);
         }
     }
 
@@ -917,6 +1047,716 @@ public sealed class CityGenerationTests
         finally
         {
             Object.DestroyImmediate(material);
+        }
+    }
+
+    [Test]
+    public void ModularRoadLayoutIsDeterministicOrthogonalAndInsideBoundary()
+    {
+        var settings = new CityGenerationSettings
+        {
+            useModularRoadLayout = true,
+            modularRoadCellSize = 10f,
+            modularPathwayUnitSize = 2.5f,
+            modularChunkSize = 16,
+            minorRoadDensity = 0.72f,
+            blockDensity = 0.72f,
+            buildingDensity = 0.76f,
+            minimumBoundaryArea = 400f
+        };
+        Vector2[] boundary =
+        {
+            new Vector2(-100f, -80f),
+            new Vector2(100f, -80f),
+            new Vector2(100f, 80f),
+            new Vector2(-100f, 80f)
+        };
+
+        CityGenerationResult first =
+            new CityGenerator().Generate(boundary, settings, 481516);
+        CityGenerationResult second =
+            new CityGenerator().Generate(boundary, settings, 481516);
+        Assert.IsTrue(first.IsSuccess, first.Error);
+        Assert.IsTrue(second.IsSuccess, second.Error);
+        CityRoadLayoutValidationResult layoutValidation =
+            CityModularRoadPlanner.ValidateLayout(first.RoadModules);
+        Assert.IsTrue(layoutValidation.IsValid, layoutValidation.Error);
+        Assert.AreEqual(
+            first.Regions.Count,
+            layoutValidation.ConnectedComponentCount);
+        Assert.AreEqual(
+            first.Regions.Count,
+            first.Diagnostics.RoadConnectedComponentCount);
+        Assert.NotNull(first.RoadLayoutValidation);
+        Assert.IsTrue(
+            first.RoadLayoutValidation.IsValid,
+            first.RoadLayoutValidation.Error);
+        Assert.Greater(first.RoadModules.Count, 3);
+        Assert.Greater(first.PathwayModules.Count, 0);
+        Assert.AreEqual(first.RoadModules.Count, second.RoadModules.Count);
+        Assert.AreEqual(
+            first.PathwayModules.Count,
+            second.PathwayModules.Count);
+        Assert.IsTrue(first.RoadModules.Any(
+            value => value.Type == CityRoadModuleType.End));
+        Assert.IsTrue(first.RoadModules.Any(
+            value => value.Type == CityRoadModuleType.Straight));
+        Assert.IsTrue(first.RoadModules.Any(
+            value => value.Type == CityRoadModuleType.StraightCrossing));
+        Assert.IsTrue(first.RoadModules.Any(
+            value => value.Type == CityRoadModuleType.CurveSmall));
+        Assert.IsFalse(first.RoadModules.Any(
+            value => value.Type == CityRoadModuleType.CurveLong));
+        Assert.IsTrue(first.RoadModules.Any(
+            value => value.Type == CityRoadModuleType.TIntersection));
+        Assert.IsTrue(first.RoadModules.Any(
+            value => value.Type == CityRoadModuleType.CrossIntersection));
+
+        Vector2 axis = first.ModularRoadAxis.normalized;
+        Vector2 perpendicular = new Vector2(-axis.y, axis.x);
+        var moduleDefinitions = new ModernCityRoadModuleLibrary();
+        var moduleByGrid = first.RoadModules.ToDictionary(
+            value => new Vector2Int(value.GridX, value.GridY));
+        var occupiedRoadCells =
+            new HashSet<Vector2Int>(moduleByGrid.Keys);
+        CityRoadModulePlacement originModule =
+            first.RoadModules[0];
+        Vector2 gridOrigin =
+            originModule.Position
+            - axis
+            * (originModule.GridX
+                * settings.modularRoadCellSize)
+            - perpendicular
+            * (originModule.GridY
+                * settings.modularRoadCellSize);
+        CityRoadConnectionMask[] directionMasks =
+        {
+            CityRoadConnectionMask.North,
+            CityRoadConnectionMask.East,
+            CityRoadConnectionMask.South,
+            CityRoadConnectionMask.West
+        };
+        Vector2Int[] directionOffsets =
+        {
+            new Vector2Int(0, 1),
+            new Vector2Int(1, 0),
+            new Vector2Int(0, -1),
+            new Vector2Int(-1, 0)
+        };
+        CityRoadConnectionMask[] oppositeMasks =
+        {
+            CityRoadConnectionMask.South,
+            CityRoadConnectionMask.West,
+            CityRoadConnectionMask.North,
+            CityRoadConnectionMask.East
+        };
+        for (int i = 0; i < first.RoadModules.Count; i++)
+        {
+            CityRoadModulePlacement module = first.RoadModules[i];
+            CityRoadModulePlacement repeated = second.RoadModules[i];
+            Assert.AreEqual(module.Type, repeated.Type);
+            Assert.AreEqual(module.GridX, repeated.GridX);
+            Assert.AreEqual(module.GridY, repeated.GridY);
+            Assert.AreEqual(module.QuarterTurns, repeated.QuarterTurns);
+            Assert.AreEqual(
+                module.ConnectionMask,
+                repeated.ConnectionMask);
+            Assert.That(
+                Vector2.Distance(module.Position, repeated.Position),
+                Is.LessThan(0.0001f));
+            Assert.AreNotEqual(
+                CityRoadConnectionMask.None,
+                module.ConnectionMask);
+            CityRoadModuleDefinition definition =
+                moduleDefinitions.GetRoadDefinition(module.Type);
+            Assert.AreEqual(
+                module.ConnectionMask,
+                ModernCityRoadModuleLibrary.RotateMask(
+                    definition.CanonicalConnections,
+                    module.QuarterTurns),
+                module.Type + " used an incompatible rotation.");
+
+            for (int direction = 0;
+                 direction < directionMasks.Length;
+                 direction++)
+            {
+                if ((module.ConnectionMask
+                        & directionMasks[direction]) == 0)
+                {
+                    continue;
+                }
+                Vector2Int neighborCoordinate =
+                    new Vector2Int(module.GridX, module.GridY)
+                    + directionOffsets[direction];
+                Assert.IsTrue(
+                    moduleByGrid.TryGetValue(
+                        neighborCoordinate,
+                        out CityRoadModulePlacement neighbor),
+                    module.Type + " has a dangling road port.");
+                Assert.AreNotEqual(
+                    CityRoadConnectionMask.None,
+                    neighbor.ConnectionMask
+                        & oppositeMasks[direction],
+                    module.Type + " has a one-way module seam.");
+            }
+
+            if (module.Type
+                == CityRoadModuleType.StraightCrossing)
+            {
+                CityRoadConnectionMask expectedCrosswalk =
+                    FindExpectedCrosswalkEdge(
+                        module,
+                        moduleByGrid,
+                        directionMasks,
+                        directionOffsets);
+                Assert.AreEqual(
+                    expectedCrosswalk,
+                    ModernCityRoadModuleLibrary.RotateMask(
+                        definition.CanonicalCrosswalkEdge,
+                        module.QuarterTurns));
+            }
+
+            float half =
+                settings.modularRoadCellSize
+                * module.FootprintCells
+                * 0.5f;
+            Vector2[] footprint =
+            {
+                module.Position - axis * half - perpendicular * half,
+                module.Position + axis * half - perpendicular * half,
+                module.Position + axis * half + perpendicular * half,
+                module.Position - axis * half + perpendicular * half
+            };
+            AssertInsideAnyRegion(first.Regions, footprint, "road module");
+        }
+
+        foreach (CityRoadSegment road in first.Roads)
+        {
+            Vector2 direction = (road.End - road.Start).normalized;
+            float alignment = Mathf.Max(
+                Mathf.Abs(Vector2.Dot(direction, axis)),
+                Mathf.Abs(Vector2.Dot(direction, perpendicular)));
+            Assert.That(alignment, Is.GreaterThan(0.999f));
+            Assert.That(
+                road.Width,
+                Is.EqualTo(settings.modularRoadCellSize)
+                    .Within(0.0001f));
+        }
+
+        foreach (CityBuildingData building in first.Buildings)
+        {
+            Assert.IsFalse(
+                OverlapsAnyRoadModule(
+                    building.Footprint,
+                    occupiedRoadCells,
+                    gridOrigin,
+                    axis,
+                    perpendicular,
+                    settings.modularRoadCellSize),
+                "building overlapped a full modular road footprint.");
+        }
+
+        foreach (CityPathwayModulePlacement pathway
+                 in first.PathwayModules)
+        {
+            float halfX =
+                pathway.SizeX
+                * settings.modularPathwayUnitSize
+                * 0.5f;
+            float halfY =
+                pathway.SizeY
+                * settings.modularPathwayUnitSize
+                * 0.5f;
+            Vector2[] footprint =
+            {
+                pathway.Position - axis * halfX - perpendicular * halfY,
+                pathway.Position + axis * halfX - perpendicular * halfY,
+                pathway.Position + axis * halfX + perpendicular * halfY,
+                pathway.Position - axis * halfX + perpendicular * halfY
+            };
+            Assert.IsFalse(
+                OverlapsAnyRoadModule(
+                    footprint,
+                    occupiedRoadCells,
+                    gridOrigin,
+                    axis,
+                    perpendicular,
+                    settings.modularRoadCellSize),
+                "pathway overlapped a full modular road footprint.");
+        }
+    }
+
+    [Test]
+    public void RoadModuleDefinitionsSolveEveryEnabledOrientation()
+    {
+        var library = new ModernCityRoadModuleLibrary();
+        CityRoadModuleType[] types =
+        {
+            CityRoadModuleType.End,
+            CityRoadModuleType.Straight,
+            CityRoadModuleType.StraightCrossing,
+            CityRoadModuleType.CurveSmall,
+            CityRoadModuleType.TIntersection,
+            CityRoadModuleType.CrossIntersection
+        };
+        foreach (CityRoadModuleType type in types)
+        {
+            CityRoadModuleDefinition definition =
+                library.GetRoadDefinition(type);
+            Assert.IsTrue(definition.IsEnabled, type.ToString());
+            Assert.AreEqual(
+                definition.CanonicalConnections,
+                library.GetCanonicalSocketTags(type).RoadConnectionMask,
+                type + " canonical socket tags disagree with its topology.");
+            for (int turns = 0; turns < 4; turns++)
+            {
+                CityRoadConnectionMask desired =
+                    ModernCityRoadModuleLibrary.RotateMask(
+                        definition.CanonicalConnections,
+                        turns);
+                CityRoadConnectionMask preferredCrosswalk =
+                    ModernCityRoadModuleLibrary.RotateMask(
+                        definition.CanonicalCrosswalkEdge,
+                        turns);
+                Assert.IsTrue(
+                    library.TrySolveQuarterTurns(
+                        type,
+                        desired,
+                        preferredCrosswalk,
+                        out int solved),
+                    type + " could not solve a legal port mask.");
+                Assert.AreEqual(
+                    desired,
+                    ModernCityRoadModuleLibrary.RotateMask(
+                        definition.CanonicalConnections,
+                        solved));
+                Assert.AreEqual(
+                    desired,
+                    library.GetSocketTags(type, solved)
+                        .RoadConnectionMask);
+                if (preferredCrosswalk
+                    != CityRoadConnectionMask.None)
+                {
+                    Assert.AreEqual(
+                        preferredCrosswalk,
+                        ModernCityRoadModuleLibrary.RotateMask(
+                            definition.CanonicalCrosswalkEdge,
+                            solved));
+                }
+            }
+        }
+
+        Assert.IsFalse(
+            library.GetRoadDefinition(
+                CityRoadModuleType.CurveLong).IsEnabled);
+        Assert.IsFalse(
+            library.TrySolveQuarterTurns(
+                CityRoadModuleType.CurveLong,
+                CityRoadConnectionMask.North
+                    | CityRoadConnectionMask.West,
+                CityRoadConnectionMask.None,
+                out _));
+    }
+
+    [Test]
+    public void RoadSocketTagsConnectStraightSouthToCurveNorth()
+    {
+        var library = new ModernCityRoadModuleLibrary();
+        CityRoadSocketSet straight =
+            library.GetSocketTags(CityRoadModuleType.Straight, 0);
+        CityRoadSocketSet curve =
+            library.GetSocketTags(CityRoadModuleType.CurveSmall, 0);
+        CityRoadSocketSet end =
+            library.GetSocketTags(CityRoadModuleType.End, 0);
+
+        Assert.AreEqual(
+            CityRoadSocketTag.Road2LaneA,
+            straight.South);
+        Assert.AreEqual(
+            CityRoadSocketTag.Road2LaneA,
+            curve.North);
+        Assert.IsTrue(
+            ModernCityRoadModuleLibrary.AreOpposingSocketsCompatible(
+                straight.South,
+                curve.North));
+        Assert.AreEqual(
+            CityRoadSocketTag.SidewalkA,
+            straight.East);
+        Assert.AreEqual(
+            CityRoadSocketTag.ClosedA,
+            end.South);
+        Assert.IsFalse(
+            ModernCityRoadModuleLibrary.AreOpposingSocketsCompatible(
+                straight.East,
+                curve.North));
+    }
+
+    [Test]
+    public void RoadSocketTagsRotateWithTheirModule()
+    {
+        var library = new ModernCityRoadModuleLibrary();
+        CityRoadSocketSet curve =
+            library.GetSocketTags(CityRoadModuleType.CurveSmall, 1);
+
+        Assert.AreEqual(
+            CityRoadSocketTag.Road2LaneA,
+            curve.East);
+        Assert.AreEqual(
+            CityRoadSocketTag.Road2LaneA,
+            curve.South);
+        Assert.AreEqual(
+            CityRoadSocketTag.SidewalkA,
+            curve.North);
+        Assert.AreEqual(
+            CityRoadSocketTag.SidewalkA,
+            curve.West);
+    }
+
+    [Test]
+    public void ModularRoadWorldBasisMapsEastAndNorthToGridAxes()
+    {
+        Vector2[] axes =
+        {
+            Vector2.right,
+            new Vector2(0.6f, 0.8f).normalized,
+            Vector2.left,
+            new Vector2(-0.8f, 0.6f).normalized
+        };
+
+        foreach (Vector2 axisX in axes)
+        {
+            Vector2 axisY = new Vector2(-axisX.y, axisX.x);
+            float angle =
+                CityModularRoadMeshFactory
+                    .CalculateGridBasisAngleFromAxisX(axisX);
+            Quaternion rotation = Quaternion.Euler(0f, angle, 0f);
+            Vector3 east3 = rotation * Vector3.right;
+            Vector3 north3 = rotation * Vector3.forward;
+            Vector2 worldEast = new Vector2(east3.x, east3.z);
+            Vector2 worldNorth = new Vector2(north3.x, north3.z);
+
+            Assert.That(
+                Vector2.Distance(worldEast, axisX),
+                Is.LessThan(0.0001f),
+                "Model East did not align with grid AxisX.");
+            Assert.That(
+                Vector2.Distance(worldNorth, axisY),
+                Is.LessThan(0.0001f),
+                "Model North did not align with grid AxisY.");
+
+            Quaternion oneTurn =
+                Quaternion.Euler(0f, angle + 90f, 0f);
+            Vector3 rotatedNorth3 =
+                oneTurn * Vector3.forward;
+            Vector2 rotatedNorth =
+                new Vector2(rotatedNorth3.x, rotatedNorth3.z);
+            Assert.That(
+                Vector2.Distance(rotatedNorth, axisX),
+                Is.LessThan(0.0001f),
+                "One clockwise module turn must map North to East.");
+        }
+    }
+
+    [Test]
+    public void ModularRoadLayoutRejectsSocketTagThatDisagreesWithTopology()
+    {
+        var modules = new List<CityRoadModulePlacement>
+        {
+            new CityRoadModulePlacement(
+                0,
+                0,
+                0,
+                0,
+                Vector2.zero,
+                CityRoadModuleType.End,
+                0,
+                false,
+                1,
+                CityRoadConnectionMask.North,
+                new CityRoadSocketSet(
+                    CityRoadSocketTag.Road2LaneA,
+                    CityRoadSocketTag.SidewalkA,
+                    CityRoadSocketTag.ClosedA,
+                    CityRoadSocketTag.SidewalkA)),
+            new CityRoadModulePlacement(
+                1,
+                0,
+                0,
+                1,
+                Vector2.up * 10f,
+                CityRoadModuleType.End,
+                2,
+                false,
+                1,
+                CityRoadConnectionMask.South,
+                new CityRoadSocketSet(
+                    CityRoadSocketTag.SidewalkA,
+                    CityRoadSocketTag.SidewalkA,
+                    CityRoadSocketTag.SidewalkA,
+                    CityRoadSocketTag.SidewalkA))
+        };
+
+        CityRoadLayoutValidationResult validation =
+            CityModularRoadPlanner.ValidateLayout(modules);
+        Assert.IsFalse(validation.IsValid);
+        StringAssert.Contains(
+            "incompatible opposing sockets",
+            validation.Error);
+    }
+
+    [Test]
+    public void ModernCityRoadKitUsesSharedCoordinatesAndValidSockets()
+    {
+        ModernCityRoadModuleLibrary library =
+            CreateCompleteModernRoadLibrary();
+        try
+        {
+            Assert.AreEqual(
+                RoadModuleNormalizationMode.SharedKitCoordinates,
+                library.normalizationMode);
+            Assert.IsTrue(
+                library.TryValidateGeometry(
+                    10f,
+                    out CityRoadGeometryCalibration calibration,
+                    out string error),
+                error);
+            Assert.NotNull(calibration);
+            Assert.Greater(calibration.SourceCellSize, 0f);
+            Assert.Greater(calibration.UniformScale, 0f);
+            Assert.That(
+                calibration.MaximumSocketError,
+                Is.LessThanOrEqualTo(library.SocketPositionTolerance));
+            Assert.That(
+                calibration.MaximumSurfaceHeightError,
+                Is.LessThanOrEqualTo(library.SurfaceHeightTolerance));
+        }
+        finally
+        {
+            CityModularRoadMeshFactory.ClearSourceCache();
+        }
+    }
+
+    [Test]
+    public void ModularRoadLayoutValidationRejectsDisconnectedNetworks()
+    {
+        var modules = new List<CityRoadModulePlacement>
+        {
+            new CityRoadModulePlacement(
+                0,
+                0,
+                0,
+                0,
+                Vector2.zero,
+                CityRoadModuleType.Straight,
+                0,
+                true,
+                1,
+                CityRoadConnectionMask.North
+                    | CityRoadConnectionMask.South),
+            new CityRoadModulePlacement(
+                1,
+                0,
+                0,
+                1,
+                Vector2.up * 10f,
+                CityRoadModuleType.End,
+                2,
+                true,
+                1,
+                CityRoadConnectionMask.South),
+            new CityRoadModulePlacement(
+                2,
+                0,
+                0,
+                -1,
+                Vector2.down * 10f,
+                CityRoadModuleType.End,
+                0,
+                true,
+                1,
+                CityRoadConnectionMask.North),
+            new CityRoadModulePlacement(
+                3,
+                0,
+                4,
+                4,
+                new Vector2(40f, 40f),
+                CityRoadModuleType.End,
+                0,
+                false,
+                1,
+                CityRoadConnectionMask.North),
+            new CityRoadModulePlacement(
+                4,
+                0,
+                4,
+                5,
+                new Vector2(40f, 50f),
+                CityRoadModuleType.End,
+                2,
+                false,
+                1,
+                CityRoadConnectionMask.South)
+        };
+
+        CityRoadLayoutValidationResult validation =
+            CityModularRoadPlanner.ValidateLayout(modules);
+        Assert.IsFalse(validation.IsValid);
+        Assert.IsNotEmpty(validation.Error);
+    }
+
+    [Test]
+    public void ModernCityRoadAssetsUseTwoKTextures()
+    {
+        const string albedoPath =
+            "Assets/ModernCityRoads/Textures/ModernCityRoad_Albedo.png";
+        const string normalPath =
+            "Assets/ModernCityRoads/Textures/ModernCityRoad_Normal.png";
+        const string pathwayPath =
+            "Assets/ModernCityRoads/Textures/ModernCityPathway_Albedo.png";
+        var albedo = AssetImporter.GetAtPath(albedoPath) as TextureImporter;
+        var normal = AssetImporter.GetAtPath(normalPath) as TextureImporter;
+        var pathway =
+            AssetImporter.GetAtPath(pathwayPath) as TextureImporter;
+        Assert.NotNull(albedo);
+        Assert.NotNull(normal);
+        Assert.NotNull(pathway);
+        Assert.IsTrue(albedo.sRGBTexture);
+        Assert.IsFalse(normal.sRGBTexture);
+        Assert.AreEqual(TextureImporterType.NormalMap, normal.textureType);
+        Assert.AreEqual(2048, albedo.maxTextureSize);
+        Assert.AreEqual(2048, normal.maxTextureSize);
+        Assert.IsTrue(albedo.mipmapEnabled);
+        Assert.IsTrue(normal.mipmapEnabled);
+        Assert.AreEqual(8, albedo.anisoLevel);
+        Assert.AreEqual(8, normal.anisoLevel);
+        Assert.AreEqual(2048, pathway.maxTextureSize);
+        Assert.IsTrue(pathway.sRGBTexture);
+        Assert.IsTrue(pathway.mipmapEnabled);
+        Assert.AreEqual(8, pathway.anisoLevel);
+        Assert.AreEqual(
+            TextureImporterFormat.BC7,
+            albedo.GetPlatformTextureSettings("Standalone").format);
+        Assert.AreEqual(
+            TextureImporterFormat.BC7,
+            pathway.GetPlatformTextureSettings("Standalone").format);
+
+        string[] roadModels =
+            AssetDatabase.FindAssets(
+                "t:Model",
+                new[] { "Assets/ModernCityRoads/Models/Road" });
+        string[] pathwayModels =
+            AssetDatabase.FindAssets(
+                "t:Model",
+                new[] { "Assets/ModernCityRoads/Models/Pathway" });
+        Assert.AreEqual(7, roadModels.Length);
+        Assert.AreEqual(16, pathwayModels.Length);
+        Assert.NotNull(
+            Shader.Find("CityGeneration/SciFiModularRoad"));
+    }
+
+    [Test]
+    public void ModernCityModulesBakeIntoMergedRendererAndCollider()
+    {
+        GameObject root = new GameObject("ModernCityModuleBakeTest");
+        Material material = new Material(Shader.Find("Standard"));
+        var library = new ModernCityRoadModuleLibrary
+        {
+            roadStraight = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/ModernCityRoads/Models/Road/Road Straight.FBX"),
+            pathway4x4 = new[]
+            {
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    "Assets/ModernCityRoads/Models/Pathway/Pathway A 4x4.FBX"),
+                null,
+                null,
+                null
+            }
+        };
+        GameObject roadObject = null;
+        GameObject pathwayObject = null;
+        try
+        {
+            var roadChunk = new CityRoadRenderChunk();
+            roadChunk.Roads.Add(new CityRoadModulePlacement(
+                0,
+                0,
+                0,
+                0,
+                Vector2.zero,
+                CityRoadModuleType.Straight,
+                0,
+                true));
+            roadObject = CityModularRoadMeshFactory.CreateRoadChunk(
+                "RoadChunk",
+                roadChunk,
+                library,
+                Vector2.right,
+                10f,
+                2f,
+                material,
+                root.transform);
+
+            var pathwayChunk = new CityRoadRenderChunk();
+            pathwayChunk.Pathways.Add(new CityPathwayModulePlacement(
+                0,
+                0,
+                0,
+                0,
+                Vector2.zero,
+                4,
+                4,
+                0,
+                0));
+            pathwayObject =
+                CityModularRoadMeshFactory.CreatePathwayChunk(
+                    "PathwayChunk",
+                    pathwayChunk,
+                    library,
+                    Vector2.right,
+                    2.5f,
+                    2.1f,
+                    material,
+                    root.transform);
+
+            Assert.NotNull(roadObject);
+            Assert.NotNull(pathwayObject);
+            Assert.AreEqual(
+                1,
+                roadObject.GetComponentsInChildren<MeshRenderer>().Length);
+            Assert.AreEqual(
+                1,
+                pathwayObject.GetComponentsInChildren<MeshRenderer>().Length);
+            Assert.NotNull(roadObject.GetComponent<MeshCollider>());
+            Assert.NotNull(pathwayObject.GetComponent<MeshCollider>());
+            Assert.That(
+                roadObject.GetComponent<MeshFilter>().sharedMesh.bounds.size.x,
+                Is.LessThanOrEqualTo(10.01f));
+            Assert.That(
+                roadObject.GetComponent<MeshFilter>().sharedMesh.bounds.size.z,
+                Is.LessThanOrEqualTo(10.01f));
+            Assert.That(
+                pathwayObject.GetComponent<MeshFilter>().sharedMesh.bounds.size.x,
+                Is.EqualTo(10f).Within(0.01f));
+            Assert.That(
+                pathwayObject.GetComponent<MeshFilter>().sharedMesh.bounds.size.z,
+                Is.EqualTo(10f).Within(0.01f));
+        }
+        finally
+        {
+            if (roadObject != null)
+            {
+                Object.DestroyImmediate(
+                    roadObject.GetComponent<MeshFilter>().sharedMesh);
+            }
+            if (pathwayObject != null)
+            {
+                Object.DestroyImmediate(
+                    pathwayObject.GetComponent<MeshFilter>().sharedMesh);
+            }
+            CityModularRoadMeshFactory.ClearSourceCache();
+            Object.DestroyImmediate(material);
+            Object.DestroyImmediate(root);
         }
     }
 
@@ -984,6 +1824,142 @@ public sealed class CityGenerationTests
                 Assert.IsFalse(importer.sRGBTexture, path);
             }
         }
+    }
+
+    static CityRoadConnectionMask FindExpectedCrosswalkEdge(
+        CityRoadModulePlacement module,
+        IReadOnlyDictionary<Vector2Int, CityRoadModulePlacement> modules,
+        IReadOnlyList<CityRoadConnectionMask> directionMasks,
+        IReadOnlyList<Vector2Int> directionOffsets)
+    {
+        Vector2Int coordinate =
+            new Vector2Int(module.GridX, module.GridY);
+        for (int direction = 0;
+             direction < directionMasks.Count;
+             direction++)
+        {
+            if ((module.ConnectionMask
+                    & directionMasks[direction]) == 0
+                || !modules.TryGetValue(
+                    coordinate + directionOffsets[direction],
+                    out CityRoadModulePlacement neighbor)
+                || CountRoadConnections(
+                    neighbor.ConnectionMask) < 3)
+            {
+                continue;
+            }
+            return directionMasks[direction];
+        }
+        return CityRoadConnectionMask.None;
+    }
+
+    static int CountRoadConnections(CityRoadConnectionMask mask)
+    {
+        int value = (int)mask;
+        int count = 0;
+        while (value != 0)
+        {
+            count += value & 1;
+            value >>= 1;
+        }
+        return count;
+    }
+
+    static bool OverlapsAnyRoadModule(
+        IReadOnlyList<Vector2> polygon,
+        HashSet<Vector2Int> occupiedRoadCells,
+        Vector2 gridOrigin,
+        Vector2 axis,
+        Vector2 perpendicular,
+        float cellSize)
+    {
+        float minimumX = float.MaxValue;
+        float maximumX = float.MinValue;
+        float minimumY = float.MaxValue;
+        float maximumY = float.MinValue;
+        for (int i = 0; i < polygon.Count; i++)
+        {
+            Vector2 delta = polygon[i] - gridOrigin;
+            float x = Vector2.Dot(delta, axis) / cellSize;
+            float y =
+                Vector2.Dot(delta, perpendicular) / cellSize;
+            minimumX = Mathf.Min(minimumX, x);
+            maximumX = Mathf.Max(maximumX, x);
+            minimumY = Mathf.Min(minimumY, y);
+            maximumY = Mathf.Max(maximumY, y);
+        }
+
+        int firstX = Mathf.FloorToInt(minimumX + 0.5f);
+        int lastX = Mathf.CeilToInt(maximumX - 0.5f);
+        int firstY = Mathf.FloorToInt(minimumY + 0.5f);
+        int lastY = Mathf.CeilToInt(maximumY - 0.5f);
+        for (int y = firstY; y <= lastY; y++)
+        {
+            for (int x = firstX; x <= lastX; x++)
+            {
+                if (occupiedRoadCells.Contains(
+                        new Vector2Int(x, y)))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    static ModernCityRoadModuleLibrary CreateCompleteModernRoadLibrary()
+    {
+        const string roadRoot =
+            "Assets/ModernCityRoads/Models/Road/";
+        const string pathwayRoot =
+            "Assets/ModernCityRoads/Models/Pathway/";
+        var library = new ModernCityRoadModuleLibrary
+        {
+            normalizationMode =
+                RoadModuleNormalizationMode.SharedKitCoordinates,
+            roadStraight = AssetDatabase.LoadAssetAtPath<GameObject>(
+                roadRoot + "Road Straight.FBX"),
+            roadStraightCrossing =
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    roadRoot + "Road Straight Cross.FBX"),
+            roadEnd = AssetDatabase.LoadAssetAtPath<GameObject>(
+                roadRoot + "Road End.FBX"),
+            roadCurveSmall = AssetDatabase.LoadAssetAtPath<GameObject>(
+                roadRoot + "Road Curve Small.FBX"),
+            roadCurveLong = AssetDatabase.LoadAssetAtPath<GameObject>(
+                roadRoot + "Road Curve Long.FBX"),
+            roadT = AssetDatabase.LoadAssetAtPath<GameObject>(
+                roadRoot + "Road T.FBX"),
+            roadX = AssetDatabase.LoadAssetAtPath<GameObject>(
+                roadRoot + "Road X.FBX"),
+            roadAlbedo = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/ModernCityRoads/Textures/"
+                + "ModernCityRoad_Albedo.png"),
+            roadNormal = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/ModernCityRoads/Textures/"
+                + "ModernCityRoad_Normal.png"),
+            pathwayAlbedo = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/ModernCityRoads/Textures/"
+                + "ModernCityPathway_Albedo.png")
+        };
+
+        for (int variant = 0; variant < 4; variant++)
+        {
+            char label = (char)('A' + variant);
+            library.pathway1x1[variant] =
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    pathwayRoot + $"Pathway {label} 1x1.FBX");
+            library.pathway2x1[variant] =
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    pathwayRoot + $"Pathway {label} 2x1.FBX");
+            library.pathway2x2[variant] =
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    pathwayRoot + $"Pathway {label} 2x2.FBX");
+            library.pathway4x4[variant] =
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    pathwayRoot + $"Pathway {label} 4x4.FBX");
+        }
+        return library;
     }
 
     static void AssertValid(IReadOnlyList<Vector2> points)

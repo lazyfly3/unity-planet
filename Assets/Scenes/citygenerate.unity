@@ -585,6 +585,48 @@ MonoBehaviour:
   - {fileID: 919132149155446097, guid: 13ebfb12a64b9be449548d3e86a0c6c7, type: 3}
   - {fileID: 919132149155446097, guid: 5d111ada7bdd38246a9f972b08e6f3ba, type: 3}
   - {fileID: 919132149155446097, guid: fa35c1b920529e3498881bac845c8df6, type: 3}
+  modernCityRoadModules:
+    normalizationMode: 0
+    socketPositionTolerance: 0.01
+    surfaceHeightTolerance: 0.005
+    maximumAutomaticOffset: 0.25
+    roadStraight: {fileID: 100000, guid: d89d663693d46a342b47cc8900056eed, type: 3}
+    roadStraightCrossing: {fileID: 100000, guid: cf16f6115a8f62e4f924172705f297b0, type: 3}
+    roadEnd: {fileID: 100000, guid: 6e0ac347b431c7845badfbad9c9b0e0c, type: 3}
+    roadCurveSmall: {fileID: 100000, guid: 2192b28a3fb183d4997d27eaac8535e4, type: 3}
+    roadCurveLong: {fileID: 100000, guid: 7256e8c2d80cc78469211ea25e16988e, type: 3}
+    roadT: {fileID: 100000, guid: fe68ae021b8f96a4585c4b37705694d0, type: 3}
+    roadX: {fileID: 100000, guid: f03ef2d3ea7a87e4aa9acb3c932f06d8, type: 3}
+    roadStraightQuarterTurnCorrection: 0
+    roadCrossingQuarterTurnCorrection: 0
+    roadEndQuarterTurnCorrection: 0
+    roadCurveSmallQuarterTurnCorrection: 0
+    roadCurveLongQuarterTurnCorrection: 0
+    roadTQuarterTurnCorrection: 0
+    roadXQuarterTurnCorrection: 0
+    pathway1x1:
+    - {fileID: 100000, guid: dfb57b5a810de4d4ea260dc6e90a63c3, type: 3}
+    - {fileID: 100000, guid: baa93c58f2acbe34ea6575a3a5f5e748, type: 3}
+    - {fileID: 100000, guid: 1e1f4a0e42ef68e4e9350b5927a95c48, type: 3}
+    - {fileID: 100000, guid: 542bb96216ca0784b9281912f555d374, type: 3}
+    pathway2x1:
+    - {fileID: 100000, guid: c3e259bdd02af8b4986385bc51267139, type: 3}
+    - {fileID: 100000, guid: 23493758be8802d49bddb9f530dba54f, type: 3}
+    - {fileID: 100000, guid: 66eef9ebe3980944daadbb22547f03aa, type: 3}
+    - {fileID: 100000, guid: e78f64a84435b0c45a79113102e6efee, type: 3}
+    pathway2x2:
+    - {fileID: 100000, guid: a91bb405183a1054ca7e5dd270530abb, type: 3}
+    - {fileID: 100000, guid: 8ad56d9a246c70b48b601f29ca78bebd, type: 3}
+    - {fileID: 100000, guid: 90e0e17028f621d4088e8b2d5ef89362, type: 3}
+    - {fileID: 100000, guid: 8d2cb0a2c814e2041b4b1b62787e271f, type: 3}
+    pathway4x4:
+    - {fileID: 100000, guid: 1637fb94112caae4994cc072a03d1ede, type: 3}
+    - {fileID: 100000, guid: 69f039e159e4c8341b750817a43522ad, type: 3}
+    - {fileID: 100000, guid: 51130f8dfff56a6459406f8fb70d8f7f, type: 3}
+    - {fileID: 100000, guid: ee69fd5d0fd5c394c9db6ae8fefdb5fb, type: 3}
+    roadAlbedo: {fileID: 2800000, guid: 6d2ba50f92b84a819236bcffcf3fb06d, type: 3}
+    roadNormal: {fileID: 2800000, guid: 2b29f14ae2aa46a8b3ec98bb451ab8b2, type: 3}
+    pathwayAlbedo: {fileID: 2800000, guid: 56a9ecba9b2b44ea9670824719d82637, type: 3}
   groundSize: 400
   seed: 12345
   generationSettings:
@@ -592,7 +634,7 @@ MonoBehaviour:
     majorRoadWidth: 5
     minorRoadWidth: 3
     blockSpacing: 32
-    sidewalkWidth: 1.5
+    sidewalkWidth: 2.5
     lotGap: 1.5
     buildingSetback: 1.5
     minimumBuildingHeight: 8
@@ -605,6 +647,10 @@ MonoBehaviour:
     minimumLotFrontage: 8
     blockIrregularity: 0.18
     buildingChamferChance: 0.48
+    useModularRoadLayout: 1
+    modularRoadCellSize: 10
+    modularPathwayUnitSize: 2.5
+    modularChunkSize: 16
     maximumRoadGrade: 0.1
     terrainBlendWidth: 5
     minimumBranchSegments: 3

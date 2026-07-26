@@ -24,6 +24,10 @@ namespace CityGeneration
         [Min(4f)] public float minimumLotFrontage = 8f;
         [Range(0f, 0.35f)] public float blockIrregularity = 0.18f;
         [Range(0f, 1f)] public float buildingChamferChance = 0.48f;
+        public bool useModularRoadLayout;
+        [Min(4f)] public float modularRoadCellSize = 10f;
+        [Min(0.5f)] public float modularPathwayUnitSize = 2.5f;
+        [Range(4, 32)] public int modularChunkSize = 16;
         [Range(0.02f, 0.3f)] public float maximumRoadGrade = 0.1f;
         [Min(0.5f)] public float terrainBlendWidth = 5f;
         [Min(1)] public int minimumBranchSegments = 3;
@@ -56,6 +60,13 @@ namespace CityGeneration
                 minimumLotFrontage = Mathf.Max(4f, minimumLotFrontage),
                 blockIrregularity = Mathf.Clamp(blockIrregularity, 0f, 0.35f),
                 buildingChamferChance = Mathf.Clamp01(buildingChamferChance),
+                useModularRoadLayout = useModularRoadLayout,
+                modularRoadCellSize = Mathf.Max(4f, modularRoadCellSize),
+                modularPathwayUnitSize = Mathf.Clamp(
+                    modularPathwayUnitSize,
+                    0.5f,
+                    Mathf.Max(0.5f, modularRoadCellSize * 0.5f)),
+                modularChunkSize = Mathf.Clamp(modularChunkSize, 4, 32),
                 maximumRoadGrade = Mathf.Clamp(maximumRoadGrade, 0.02f, 0.3f),
                 terrainBlendWidth = Mathf.Max(0.5f, terrainBlendWidth),
                 minimumBranchSegments = Mathf.Max(1, minimumBranchSegments),
@@ -188,10 +199,20 @@ namespace CityGeneration
         public IReadOnlyList<Vector2> Boundary { get; internal set; }
         public IReadOnlyList<List<Vector2>> Regions { get; internal set; }
         public CityBoundaryResolution BoundaryResolution { get; internal set; }
+        public Vector2 ModularRoadAxis { get; internal set; } = Vector2.right;
         public List<CityRoadSegment> Roads { get; } = new List<CityRoadSegment>();
         public List<CityBlockData> Blocks { get; } = new List<CityBlockData>();
         public List<CityLotData> Lots { get; } = new List<CityLotData>();
         public List<CityBuildingData> Buildings { get; } = new List<CityBuildingData>();
+        public List<CityRoadModulePlacement> RoadModules { get; } =
+            new List<CityRoadModulePlacement>();
+        public List<CityPathwayModulePlacement> PathwayModules { get; } =
+            new List<CityPathwayModulePlacement>();
+        public CityRoadLayoutValidationResult RoadLayoutValidation
+        {
+            get;
+            internal set;
+        }
         public CityGenerationDiagnostics Diagnostics { get; } =
             new CityGenerationDiagnostics();
 
@@ -221,5 +242,9 @@ namespace CityGeneration
         public int BoundaryIntersectionCount { get; internal set; }
         public int IgnoredBoundaryRegionCount { get; internal set; }
         public bool BoundaryWasAutoRepaired { get; internal set; }
+        public int RoadConnectedComponentCount { get; internal set; }
+        public int RoadTopologyRepairCount { get; internal set; }
+        public float MaximumRoadSocketError { get; internal set; }
+        public float MaximumRoadSurfaceHeightError { get; internal set; }
     }
 }

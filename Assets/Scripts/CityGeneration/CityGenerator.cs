@@ -81,18 +81,26 @@ namespace CityGeneration
 
             var productiveRegions = new List<List<Vector2>>();
             var random = new System.Random(seed);
+            CityModularGridBasis modularBasis =
+                CityModularRoadPlanner.CreateGlobalBasis(regions);
+            result.ModularRoadAxis = modularBasis.AxisX;
             for (int regionIndex = 0; regionIndex < regions.Count; regionIndex++)
             {
                 int firstRoad = result.Roads.Count;
                 int firstBlock = result.Blocks.Count;
                 int firstLot = result.Lots.Count;
                 int firstBuilding = result.Buildings.Count;
+                int firstRoadModule = result.RoadModules.Count;
+                int firstPathwayModule = result.PathwayModules.Count;
                 GenerateRegion(
                     regions[regionIndex],
+                    regionIndex,
+                    seed,
                     safeSettings,
                     random,
                     result,
-                    terrainSampler);
+                    terrainSampler,
+                    modularBasis);
                 if (result.Roads.Count > firstRoad
                     && result.Blocks.Count > firstBlock
                     && result.Buildings.Count > firstBuilding)
@@ -105,6 +113,8 @@ namespace CityGeneration
                 RemoveTail(result.Blocks, firstBlock);
                 RemoveTail(result.Lots, firstLot);
                 RemoveTail(result.Buildings, firstBuilding);
+                RemoveTail(result.RoadModules, firstRoadModule);
+                RemoveTail(result.PathwayModules, firstPathwayModule);
             }
             result.Regions = productiveRegions;
 
@@ -114,6 +124,24 @@ namespace CityGeneration
             {
                 return CityGenerationResult.Failed(
                     "当前范围太窄，无法容纳道路、街区和建筑。");
+            }
+
+            if (safeSettings.useModularRoadLayout)
+            {
+                CityRoadLayoutValidationResult roadValidation =
+                    CityModularRoadPlanner.ValidateLayout(
+                        result.RoadModules);
+                if (!roadValidation.IsValid)
+                {
+                    return CityGenerationResult.Failed(
+                        "Modular road validation failed: "
+                        + roadValidation.Error);
+                }
+                roadValidation.RepairCount =
+                    result.Diagnostics.RoadTopologyRepairCount;
+                result.RoadLayoutValidation = roadValidation;
+                result.Diagnostics.RoadConnectedComponentCount =
+                    roadValidation.ConnectedComponentCount;
             }
 
             return result;
@@ -141,10 +169,13 @@ namespace CityGeneration
 
         static void GenerateRegion(
             IReadOnlyList<Vector2> region,
+            int regionIndex,
+            int seed,
             CityGenerationSettings settings,
             System.Random random,
             CityGenerationResult result,
-            ICityTerrainSampler terrainSampler)
+            ICityTerrainSampler terrainSampler,
+            CityModularGridBasis modularBasis)
         {
             int firstRoad = result.Roads.Count;
             int firstBlock = result.Blocks.Count;
@@ -152,13 +183,27 @@ namespace CityGeneration
             int firstBuilding = result.Buildings.Count;
 
             var regionRoads = new List<CityRoadSegment>();
-            GenerateRoadNetwork(
-                region,
-                settings,
-                random,
-                result,
-                regionRoads,
-                terrainSampler);
+            if (settings.useModularRoadLayout)
+            {
+                CityModularRoadPlanner.GenerateRoads(
+                    region,
+                    regionIndex,
+                    modularBasis,
+                    settings,
+                    random,
+                    result,
+                    regionRoads);
+            }
+            else
+            {
+                GenerateRoadNetwork(
+                    region,
+                    settings,
+                    random,
+                    result,
+                    regionRoads,
+                    terrainSampler);
+            }
             GenerateRoadsideDevelopment(
                 region,
                 settings,
@@ -193,7 +238,19 @@ namespace CityGeneration
                 }
             }
 
-            if (result.Roads.Count == firstRoad)
+            if (settings.useModularRoadLayout)
+            {
+                CityModularRoadPlanner
+                    .RemoveBuildingsOverlappingRoadModules(
+                        result,
+                        regionIndex,
+                        firstBuilding,
+                        modularBasis,
+                        settings.modularRoadCellSize);
+            }
+
+            if (!settings.useModularRoadLayout
+                && result.Roads.Count == firstRoad)
             {
                 Vector2 center = FindInteriorPoint(region, random);
                 Vector2 direction = FindPrimaryDirection(region);
@@ -212,6 +269,7 @@ namespace CityGeneration
             }
 
             if (terrainSampler != null
+                && !settings.useModularRoadLayout
                 && result.Diagnostics.WaterRoadCount == 0)
             {
                 TryAddWaterAccessRoad(
@@ -221,6 +279,21 @@ namespace CityGeneration
                     result,
                     terrainSampler,
                     firstBuilding);
+            }
+
+            if (settings.useModularRoadLayout
+                && result.Roads.Count > firstRoad
+                && result.Blocks.Count > firstBlock)
+            {
+                CityModularRoadPlanner.GeneratePathways(
+                    region,
+                    regionIndex,
+                    modularBasis,
+                    settings,
+                    result,
+                    firstBlock,
+                    firstBuilding,
+                    seed);
             }
         }
 
