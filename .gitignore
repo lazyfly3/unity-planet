@@ -51,6 +51,11 @@ sysinfo.txt
 /Assets/Hovl Studio/
 /Assets/Hovl Studio.meta
 
+# Local runtimes and development captures are not required to run the project.
+/python-2.5.4/
+/Captures/
+/Assets/Screenshots/
+
 # LogTrack 本地生成物（插件本身仍提交）
 Assets/LogTrackGenerated/LogPdb.pdb.*
 Assets/LogTrackGenerated/*.json
