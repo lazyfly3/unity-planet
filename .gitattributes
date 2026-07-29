@@ -3,3 +3,6 @@ Assets/PlanetLab/Materials/TerrainPbr*Array.asset filter=lfs diff=lfs merge=lfs 
 
 # Keep imported PlanetLab skybox source textures out of normal Git history.
 Assets/PlanetLab/Skyboxes/AllSkySelected/**/*.png filter=lfs diff=lfs merge=lfs -text
+
+# Authorized NeoX runtime model AssetBundles.
+ModularContent/Windows/** filter=lfs diff=lfs merge=lfs -text

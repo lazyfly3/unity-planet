@@ -42,8 +42,10 @@ sysinfo.txt
 /APKExtracted/
 
 # Local generated content and licensed asset source packages.
-# Keep local project references, but do not publish source assets or bundles.
-/ModularContent/
+# Publish only the authorized runtime AssetBundles; keep conversion inputs local.
+/ModularContent/*
+!/ModularContent/Windows/
+!/ModularContent/Windows/**
 /Assets/Pack/
 /Assets/Pack.meta
 /Assets/Hovl Studio/
