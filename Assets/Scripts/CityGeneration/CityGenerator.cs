@@ -1089,7 +1089,7 @@ namespace CityGeneration
                 building,
                 height,
                 random.Next(0, 4),
-                random.Next(0, 12)));
+                random.Next()));
             return true;
         }
 

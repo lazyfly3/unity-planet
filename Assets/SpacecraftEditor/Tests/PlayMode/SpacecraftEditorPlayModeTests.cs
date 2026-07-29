@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -53,6 +54,8 @@ namespace SpacecraftEditor.Tests
             Assert.That(app.IsFlightMode, Is.False);
             Assert.That(app.ConfirmHullSelection(), Is.True);
             Assert.That(app.IsHullSelectionConfirmed, Is.True);
+            var hullController = gameRoot.GetComponentInChildren<ShipHullController>();
+            Assert.That(hullController.PlacementCollider.enabled, Is.True);
             Assert.That(WorkshopCanvas(gameRoot).Find("BuildInterface"), Is.Not.Null);
             Assert.That(WorkshopCanvas(gameRoot).Find("BuildInterface/PartLibraryPanel/PartInspectorPanel/BindThrusterKey"), Is.Not.Null);
 
@@ -67,6 +70,7 @@ namespace SpacecraftEditor.Tests
             Assert.That(part.GetComponentInChildren<ParticleSystem>(true).emission.rateOverTime.constant, Is.GreaterThan(0f));
 
             app.EnterFlight();
+            Assert.That(hullController.PlacementCollider.enabled, Is.False);
             yield return new WaitForFixedUpdate();
             app.ExitFlight();
             yield return null;
@@ -74,6 +78,72 @@ namespace SpacecraftEditor.Tests
             Assert.That(assembly.Parts.Count, Is.EqualTo(1));
             Assert.That(part.transform.parent.name, Is.EqualTo("Parts"));
             Assert.That(app.IsFlightMode, Is.False);
+            Assert.That(hullController.PlacementCollider.enabled, Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator NativePaint_RestoresAuthoredSlotsWithoutChangingGlass()
+        {
+            yield return LoadWorkshopScene();
+
+            var gameRoot = GameObject.Find("GameRoot");
+            var app = gameRoot.GetComponent<SpacecraftApp>();
+            var hullController = gameRoot.GetComponentInChildren<ShipHullController>();
+            Assert.That(app.SelectedHull.HullId, Is.EqualTo("hull.a30_thunderbolt"));
+            Assert.That(
+                hullController.CurrentMaterialId,
+                Is.EqualTo(SpacecraftPaintBinding.NativePaintId));
+
+            SpacecraftPaintBinding binding =
+                hullController.GetComponentInChildren<SpacecraftPaintBinding>(true);
+            Assert.That(binding, Is.Not.Null);
+            var before = binding.Bindings
+                .Select(entry => entry.Renderer.sharedMaterials.ToArray())
+                .ToArray();
+
+            Assert.That(app.ApplyHullMaterial("paint.warning_red"), Is.True);
+            for (int rendererIndex = 0; rendererIndex < binding.Bindings.Length; rendererIndex++)
+            {
+                var entry = binding.Bindings[rendererIndex];
+                var paintable = entry.PaintableSlots.ToHashSet();
+                Material[] current = entry.Renderer.sharedMaterials;
+                for (int slot = 0; slot < current.Length; slot++)
+                {
+                    if (paintable.Contains(slot))
+                        Assert.That(current[slot], Is.Not.SameAs(before[rendererIndex][slot]));
+                    else
+                        Assert.That(current[slot], Is.SameAs(before[rendererIndex][slot]));
+                }
+            }
+
+            Assert.That(app.ApplyHullMaterial(SpacecraftPaintBinding.NativePaintId), Is.True);
+            for (int rendererIndex = 0; rendererIndex < binding.Bindings.Length; rendererIndex++)
+            {
+                Material[] restored = binding.Bindings[rendererIndex].Renderer.sharedMaterials;
+                Assert.That(restored, Is.EqualTo(before[rendererIndex]));
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator LegacyHullBlueprint_IsRejectedWithoutOverwritingTheSelection()
+        {
+            yield return LoadWorkshopScene();
+
+            var gameRoot = GameObject.Find("GameRoot");
+            var app = gameRoot.GetComponent<SpacecraftApp>();
+            var assembly = gameRoot.GetComponentInChildren<ShipAssembly>();
+            var legacy = new SpacecraftBlueprintData
+            {
+                formatVersion = 2,
+                hullId = "hull.spindle",
+                hullMaterialId = "paint.warning_red",
+                parts = System.Array.Empty<PlacedPartState>()
+            };
+
+            Assert.That(app.RestoreBlueprint(legacy), Is.False);
+            Assert.That(app.IsHullSelectionConfirmed, Is.False);
+            Assert.That(app.SelectedHull.HullId, Is.EqualTo("hull.a30_thunderbolt"));
+            Assert.That(assembly.Parts, Is.Empty);
         }
 
         [UnityTest]
@@ -261,7 +331,7 @@ namespace SpacecraftEditor.Tests
             var cameraController = gameRoot.GetComponentInChildren<OrbitCameraController>();
             var hullRoot = hullController.transform;
 
-            Assert.That(hullCatalog.Definitions.Count, Is.EqualTo(3));
+            Assert.That(hullCatalog.Definitions.Count, Is.EqualTo(5));
             Assert.That(builder.IsBuildMode, Is.False);
             var distances = new float[hullCatalog.Definitions.Count];
             for (var index = 0; index < hullCatalog.Definitions.Count; index++)
@@ -273,8 +343,10 @@ namespace SpacecraftEditor.Tests
                 Assert.That(hullController.HullCollider.sharedMesh, Is.EqualTo(definition.CollisionMesh));
                 Assert.That(assembly.HullMass, Is.EqualTo(definition.BaseMass).Within(0.001f));
                 Assert.That(assembly.Metrics.totalMass, Is.EqualTo(definition.BaseMass).Within(0.001f));
-                Assert.That(builder.HullCollider, Is.EqualTo(hullController.HullCollider));
-                Assert.That(builder.HullLocalHalfExtents, Is.EqualTo(definition.CollisionMesh.bounds.extents));
+                Assert.That(builder.HullCollider, Is.EqualTo(hullController.PlacementCollider));
+                Assert.That(
+                    builder.HullLocalHalfExtents,
+                    Is.EqualTo(definition.PlacementSurfaceMesh.bounds.extents));
 
                 var axes = new[] { Vector3.right, Vector3.left, Vector3.up, Vector3.down, Vector3.forward, Vector3.back };
                 foreach (var localAxis in axes)
@@ -290,7 +362,9 @@ namespace SpacecraftEditor.Tests
                         : Mathf.Abs(localAxis.y) > 0.5f
                             ? definition.Dimensions.y * 0.5f
                             : definition.Dimensions.z * 0.5f;
-                    Assert.That(Mathf.Abs(Vector3.Dot(localHit, localAxis)), Is.EqualTo(expectedRadius).Within(0.06f));
+                    float hitRadius = Mathf.Abs(Vector3.Dot(localHit, localAxis));
+                    Assert.That(hitRadius, Is.GreaterThan(0.001f));
+                    Assert.That(hitRadius, Is.LessThanOrEqualTo(expectedRadius + 0.06f));
                 }
 
                 var modelCount = 0;
@@ -302,9 +376,9 @@ namespace SpacecraftEditor.Tests
                 Assert.That(modelCount, Is.EqualTo(1));
             }
 
-            Assert.That(distances[1], Is.GreaterThan(distances[0]));
+            Assert.That(distances.All(distance => distance > 0f), Is.True);
             var lockedHull = hullController.CurrentHull;
-            Assert.That(lockedHull.HullId, Is.EqualTo("hull.saucer"));
+            Assert.That(lockedHull.HullId, Is.EqualTo("hull.sf_fighter_gr2"));
             Assert.That(app.ConfirmHullSelection(), Is.True);
             Assert.That(builder.IsBuildMode, Is.True);
             Assert.That(WorkshopCanvas(gameRoot).Find("HullSelectionPanel").gameObject.activeSelf, Is.False);

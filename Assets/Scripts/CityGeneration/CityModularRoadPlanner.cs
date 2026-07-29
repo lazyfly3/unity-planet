@@ -42,6 +42,8 @@ namespace CityGeneration
         const int East = 2;
         const int South = 4;
         const int West = 8;
+        const float MaximumCrosswalkRatio = 0.15f;
+        const int MinimumSpecialCellSpacing = 3;
 
         static readonly GridCoord[] Directions =
         {
@@ -110,21 +112,20 @@ namespace CityGeneration
                 .ToArray();
             for (int i = 0; i < majorSnapshot.Length; i++)
             {
-                if (i % 2 != 0
+                GridCoord cell = majorSnapshot[i];
+                int primaryOffset = Math.Abs(cell.X - seed.X);
+                if (cell.Y != seed.Y
+                    || primaryOffset < MinimumSpecialCellSpacing
+                    || primaryOffset % 4 != 0
                     || random.NextDouble() > settings.minorRoadDensity)
                 {
                     continue;
                 }
 
-                GridCoord cell = majorSnapshot[i];
-                GridCoord direction = Math.Abs(cell.X - seed.X)
-                    >= Math.Abs(cell.Y - seed.Y)
-                    ? (random.NextDouble() < 0.5d
+                GridCoord direction =
+                    random.NextDouble() < 0.5d
                         ? Directions[0]
-                        : Directions[2])
-                    : (random.NextDouble() < 0.5d
-                        ? Directions[1]
-                        : Directions[3]);
+                        : Directions[2];
                 int length = random.Next(
                     settings.minimumBranchSegments,
                     settings.maximumBranchSegments + 1);
@@ -148,6 +149,11 @@ namespace CityGeneration
                 .OrderBy(value => value.X)
                 .ThenBy(value => value.Y)
                 .ToArray();
+            HashSet<GridCoord> crosswalkCells =
+                SelectCrosswalkCells(
+                    ordered,
+                    maskByCell,
+                    major);
             int firstRoadModule = result.RoadModules.Count;
             for (int i = 0; i < ordered.Length; i++)
             {
@@ -160,6 +166,7 @@ namespace CityGeneration
                     cell,
                     mask,
                     maskByCell,
+                    crosswalkCells.Contains(cell),
                     out CityRoadModuleType type,
                     out int quarterTurns,
                     out CityRoadConnectionMask connections))
@@ -220,19 +227,8 @@ namespace CityGeneration
             {
                 GridCoord current = start;
                 GridCoord direction = initialDirection;
-                int turnAt = maximumLength >= 4
-                    ? random.Next(2, maximumLength - 1)
-                    : -1;
-                int turnSign = random.NextDouble() < 0.5d ? -1 : 1;
                 for (int step = 0; step < maximumLength; step++)
                 {
-                    if (step == turnAt)
-                    {
-                        GridCoord turned = Rotate(direction, turnSign);
-                        if (candidates.Contains(current + turned))
-                            direction = turned;
-                    }
-
                     GridCoord next = current + direction;
                     if (!candidates.Contains(next))
                         break;
@@ -257,8 +253,160 @@ namespace CityGeneration
             }
         }
 
+        public static int GenerateModulesFromRoadSegments(
+            IReadOnlyList<CityRoadSegment> roads,
+            int regionIndex,
+            CityModularGridBasis basis,
+            float cellSize,
+            CityGenerationResult result)
+        {
+            CityModularNetworkResult network =
+                GenerateNetworkFromRoadSegments(
+                    roads,
+                    regionIndex,
+                    basis,
+                    cellSize,
+                    result);
+            return network.GeneratedModuleCount;
+        }
+
+        public static CityModularNetworkResult
+            GenerateNetworkFromRoadSegments(
+                IReadOnlyList<CityRoadSegment> roads,
+                int regionIndex,
+                CityModularGridBasis basis,
+                float cellSize,
+                CityGenerationResult result)
+        {
+            var network = new CityModularNetworkResult();
+            if (roads == null || result == null || cellSize <= 0f)
+            {
+                network.IsValid = false;
+                network.Error = "Road input or modular cell size is invalid.";
+                return network;
+            }
+
+            var occupied = new HashSet<GridCoord>();
+            var major = new HashSet<GridCoord>();
+            for (int i = 0; i < roads.Count; i++)
+            {
+                CityRoadSegment road = roads[i];
+                Vector2 start = basis.ToGrid(road.Start, cellSize);
+                Vector2 end = basis.ToGrid(road.End, cellSize);
+                int startX = Mathf.RoundToInt(start.x);
+                int startY = Mathf.RoundToInt(start.y);
+                int endX = Mathf.RoundToInt(end.x);
+                int endY = Mathf.RoundToInt(end.y);
+                bool vertical = Mathf.Abs(start.x - end.x) <= 0.15f
+                    && Mathf.Abs(start.x - startX) <= 0.15f
+                    && Mathf.Abs(end.x - endX) <= 0.15f
+                    && Mathf.Abs(start.y - startY) <= 0.15f
+                    && Mathf.Abs(end.y - endY) <= 0.15f;
+                bool horizontal = Mathf.Abs(start.y - end.y) <= 0.15f
+                    && Mathf.Abs(start.x - startX) <= 0.15f
+                    && Mathf.Abs(end.x - endX) <= 0.15f
+                    && Mathf.Abs(start.y - startY) <= 0.15f
+                    && Mathf.Abs(end.y - endY) <= 0.15f;
+                if (!vertical && !horizontal)
+                {
+                    network.UnsupportedRoadSegmentCount++;
+                    continue;
+                }
+
+                int stepX = Math.Sign(endX - startX);
+                int stepY = Math.Sign(endY - startY);
+                int steps = Mathf.Max(
+                    Mathf.Abs(endX - startX),
+                    Mathf.Abs(endY - startY));
+                for (int step = 0; step <= steps; step++)
+                {
+                    var cell = new GridCoord(
+                        startX + stepX * step,
+                        startY + stepY * step);
+                    occupied.Add(cell);
+                    if (road.IsMajor)
+                        major.Add(cell);
+                }
+            }
+
+            RemoveIsolatedCells(occupied);
+            var masks = new Dictionary<GridCoord, int>();
+            foreach (GridCoord cell in occupied)
+                masks[cell] = GetNeighborMask(cell, occupied);
+            GridCoord[] ordered = occupied
+                .OrderBy(value => value.X)
+                .ThenBy(value => value.Y)
+                .ToArray();
+            HashSet<GridCoord> crosswalkCells =
+                SelectCrosswalkCells(
+                    ordered,
+                    masks,
+                    major);
+
+            int firstModule = result.RoadModules.Count;
+            foreach (GridCoord cell in ordered)
+            {
+                int mask = masks[cell];
+                if (CountBits(mask) == 0
+                    || !ResolveModule(
+                        cell,
+                        mask,
+                        masks,
+                        crosswalkCells.Contains(cell),
+                        out CityRoadModuleType type,
+                        out int quarterTurns,
+                        out CityRoadConnectionMask connections))
+                {
+                    network.UncoveredRoadSegmentCount++;
+                    continue;
+                }
+                result.RoadModules.Add(new CityRoadModulePlacement(
+                    result.RoadModules.Count,
+                    regionIndex,
+                    cell.X,
+                    cell.Y,
+                    basis.ToWorld(cell.X, cell.Y, cellSize),
+                    type,
+                    quarterTurns,
+                    major.Contains(cell),
+                    1,
+                    connections,
+                    ModuleDefinitions.GetSocketTags(
+                        type,
+                        quarterTurns)));
+            }
+            network.GeneratedModuleCount =
+                result.RoadModules.Count - firstModule;
+            CityRoadLayoutValidationResult validation =
+                ValidateLayout(
+                    result.RoadModules
+                        .Where(value => value.RegionIndex == regionIndex)
+                        .ToArray());
+            network.IsValid =
+                network.GeneratedModuleCount > 0
+                && network.UnsupportedRoadSegmentCount == 0
+                && network.UncoveredRoadSegmentCount == 0
+                && validation.IsValid;
+            if (!network.IsValid)
+            {
+                network.Error =
+                    network.UnsupportedRoadSegmentCount > 0
+                        ? $"{network.UnsupportedRoadSegmentCount} road "
+                            + "segments are not aligned to the 10m module grid."
+                        : network.UncoveredRoadSegmentCount > 0
+                            ? $"{network.UncoveredRoadSegmentCount} road "
+                                + "segments could not be represented by package "
+                                + "modules."
+                            : validation.Error;
+            }
+            result.ModularNetworkResult = network;
+            return network;
+        }
+
         public static CityRoadLayoutValidationResult ValidateLayout(
-            IReadOnlyList<CityRoadModulePlacement> modules)
+            IReadOnlyList<CityRoadModulePlacement> modules,
+            IReadOnlyList<CityPathwayModulePlacement> pathways = null,
+            int pathwayCellsPerRoadCell = 4)
         {
             var validation = new CityRoadLayoutValidationResult
             {
@@ -268,6 +416,78 @@ namespace CityGeneration
             {
                 validation.IsValid = false;
                 validation.Error = "The modular road layout is empty.";
+                return validation;
+            }
+
+            if (pathways != null && pathways.Count > 0)
+            {
+                int cellsPerRoad =
+                    Mathf.Max(1, pathwayCellsPerRoadCell);
+                float roadHalf = cellsPerRoad * 0.5f;
+                for (int pathwayIndex = 0;
+                     pathwayIndex < pathways.Count;
+                     pathwayIndex++)
+                {
+                    CityPathwayModulePlacement pathway =
+                        pathways[pathwayIndex];
+                    float pathwayMinimumX = pathway.GridX;
+                    float pathwayMaximumX =
+                        pathway.GridX + pathway.SizeX;
+                    float pathwayMinimumY = pathway.GridY;
+                    float pathwayMaximumY =
+                        pathway.GridY + pathway.SizeY;
+                    for (int roadIndex = 0;
+                         roadIndex < modules.Count;
+                         roadIndex++)
+                    {
+                        CityRoadModulePlacement road =
+                            modules[roadIndex];
+                        if (road.RegionIndex != pathway.RegionIndex)
+                            continue;
+                        float roadCenterX =
+                            road.GridX * cellsPerRoad;
+                        float roadCenterY =
+                            road.GridY * cellsPerRoad;
+                        bool overlapsX =
+                            pathwayMinimumX
+                                < roadCenterX + roadHalf - 0.0001f
+                            && pathwayMaximumX
+                                > roadCenterX - roadHalf + 0.0001f;
+                        bool overlapsY =
+                            pathwayMinimumY
+                                < roadCenterY + roadHalf - 0.0001f
+                            && pathwayMaximumY
+                                > roadCenterY - roadHalf + 0.0001f;
+                        if (overlapsX && overlapsY)
+                        {
+                            validation
+                                .RoadToPathwayMismatchCount++;
+                        }
+                    }
+                }
+                if (validation.RoadToPathwayMismatchCount > 0)
+                {
+                    validation.IsValid = false;
+                    validation.Error =
+                        $"{validation.RoadToPathwayMismatchCount} "
+                        + "Pathway modules overlap package road cells.";
+                    return validation;
+                }
+            }
+
+            int crosswalkCount = modules.Count(
+                value => value.Type
+                    == CityRoadModuleType.StraightCrossing);
+            validation.CrosswalkRatio =
+                crosswalkCount / (float)modules.Count;
+            if (validation.CrosswalkRatio
+                > MaximumCrosswalkRatio + 0.0001f)
+            {
+                validation.IsValid = false;
+                validation.Error =
+                    $"Crosswalk module ratio "
+                    + $"{validation.CrosswalkRatio:P1} exceeds "
+                    + $"{MaximumCrosswalkRatio:P0}.";
                 return validation;
             }
 
@@ -292,10 +512,81 @@ namespace CityGeneration
                     byCell.Add(coordinate, module);
                 }
 
+                CityRoadModulePlacement[] intersections = region
+                    .Where(value => CountBits(
+                        (int)value.ConnectionMask) >= 3)
+                    .ToArray();
+                for (int first = 0;
+                     first < intersections.Length;
+                     first++)
+                {
+                    for (int second = first + 1;
+                         second < intersections.Length;
+                         second++)
+                    {
+                        int distance =
+                            Mathf.Abs(
+                                intersections[first].GridX
+                                - intersections[second].GridX)
+                            + Mathf.Abs(
+                                intersections[first].GridY
+                                - intersections[second].GridY);
+                        if (distance < MinimumSpecialCellSpacing)
+                        {
+                            validation
+                                .IntersectionSpacingViolationCount++;
+                        }
+                    }
+                }
+                CityRoadModulePlacement[] crosswalks = region
+                    .Where(value => value.Type
+                        == CityRoadModuleType.StraightCrossing)
+                    .ToArray();
+                for (int first = 0; first < crosswalks.Length; first++)
+                {
+                    for (int second = first + 1;
+                         second < crosswalks.Length;
+                         second++)
+                    {
+                        int distance =
+                            Mathf.Abs(
+                                crosswalks[first].GridX
+                                - crosswalks[second].GridX)
+                            + Mathf.Abs(
+                                crosswalks[first].GridY
+                                - crosswalks[second].GridY);
+                        if (distance < MinimumSpecialCellSpacing)
+                        {
+                            validation.CrosswalkSpacingViolationCount++;
+                        }
+                    }
+                }
+                if (validation.IntersectionSpacingViolationCount > 0
+                    || validation.CrosswalkSpacingViolationCount > 0)
+                {
+                    validation.IsValid = false;
+                    validation.Error =
+                        "Modular intersections or crosswalks are closer "
+                        + "than three road cells.";
+                    return validation;
+                }
+
                 foreach (KeyValuePair<Vector2Int, CityRoadModulePlacement>
                          pair in byCell)
                 {
                     CityRoadModulePlacement module = pair.Value;
+                    if (module.EffectiveConnections
+                        != module.RequiredConnections)
+                    {
+                        validation.VisualSocketMismatchCount++;
+                        validation.IsValid = false;
+                        validation.Error =
+                            $"Region {region.Key} road cell {pair.Key} "
+                            + $"renders {module.EffectiveConnections} but "
+                            + $"topology requires "
+                            + $"{module.RequiredConnections}.";
+                        return validation;
+                    }
                     if (module.SocketTags.RoadConnectionMask
                         != module.ConnectionMask)
                     {
@@ -324,9 +615,10 @@ namespace CityGeneration
                                 out CityRoadModulePlacement neighbor);
                         if (!hasNeighbor)
                         {
-                            if (socket
-                                == CityRoadSocketTag.Road2LaneA)
+                            if (ModernCityRoadModuleLibrary
+                                .IsRoadSocket(socket))
                             {
+                                validation.DanglingRoadSocketCount++;
                                 validation.IsValid = false;
                                 validation.Error =
                                     $"Region {region.Key} road cell "
@@ -380,7 +672,8 @@ namespace CityGeneration
             CityGenerationResult result,
             int firstBlock,
             int firstBuilding,
-            int seed)
+            int seed,
+            bool publicSpaceOnly = false)
         {
             float unit = settings.modularPathwayUnitSize;
             var occupiedRoadCells = new HashSet<GridCoord>(
@@ -389,13 +682,70 @@ namespace CityGeneration
                         value.RegionIndex == regionIndex)
                     .Select(value =>
                         new GridCoord(value.GridX, value.GridY)));
+            var occupiedBuildingCells = new HashSet<GridCoord>();
+            for (int buildingIndex = firstBuilding;
+                 buildingIndex < result.Buildings.Count;
+                 buildingIndex++)
+            {
+                IReadOnlyList<Vector2> footprint =
+                    result.Buildings[buildingIndex].Footprint;
+                GetGridBounds(
+                    footprint,
+                    basis,
+                    unit,
+                    out int buildingMinX,
+                    out int buildingMaxX,
+                    out int buildingMinY,
+                    out int buildingMaxY);
+                for (int y = buildingMinY; y <= buildingMaxY; y++)
+                {
+                    for (int x = buildingMinX;
+                         x <= buildingMaxX;
+                         x++)
+                    {
+                        var cell = new GridCoord(x, y);
+                        if (PolygonsOverlap(
+                                GetPathwayCellPolygon(
+                                    basis,
+                                    cell,
+                                    unit),
+                                footprint))
+                        {
+                            occupiedBuildingCells.Add(cell);
+                        }
+                    }
+                }
+            }
             var available = new HashSet<GridCoord>();
+            var zoneByCell =
+                new Dictionary<GridCoord, CityZoneType>();
+            var blockByCell = new Dictionary<GridCoord, int>();
+            var blockCenterByIndex =
+                new Dictionary<int, Vector2>();
             for (int blockIndex = firstBlock;
                  blockIndex < result.Blocks.Count;
                  blockIndex++)
             {
                 IReadOnlyList<Vector2> block =
                     result.Blocks[blockIndex].Footprint;
+                if (publicSpaceOnly
+                    && result.Blocks[blockIndex].ZoneType
+                        != CityZoneType.Park
+                    && result.Blocks[blockIndex].ZoneType
+                        != CityZoneType.Civic
+                    && ((result.Blocks[blockIndex].ZoneType
+                            != CityZoneType.Commercial
+                         && result.Blocks[blockIndex].ZoneType
+                            != CityZoneType.MixedUse)
+                        || blockIndex % 3 != 0))
+                {
+                    continue;
+                }
+                CityZoneType zoneType =
+                    result.Blocks[blockIndex].ZoneType;
+                blockCenterByIndex[blockIndex] =
+                    basis.ToGrid(Average(block), unit)
+                    - new Vector2(0.5f, 0.5f);
                 GetGridBounds(block, basis, unit, out int minX, out int maxX,
                     out int minY, out int maxY);
                 for (int y = minY; y <= maxY; y++)
@@ -403,11 +753,10 @@ namespace CityGeneration
                     for (int x = minX; x <= maxX; x++)
                     {
                         GridCoord cell = new GridCoord(x, y);
-                        Vector2[] square = GetCellPolygon(
+                        Vector2[] square = GetPathwayCellPolygon(
                             basis,
                             cell,
-                            unit,
-                            0.5f);
+                            unit);
                         if (!CityPolygonGeometry.ContainsPolygon(block, square)
                             || !CityPolygonGeometry.ContainsPolygon(region, square)
                             || OverlapsRoadGrid(
@@ -415,16 +764,80 @@ namespace CityGeneration
                                 basis,
                                 settings.modularRoadCellSize,
                                 occupiedRoadCells)
-                            || OverlapsBuildings(
-                                square,
-                                result.Buildings,
-                                firstBuilding))
+                            || occupiedBuildingCells.Contains(cell))
                         {
                             continue;
                         }
                         available.Add(cell);
+                        zoneByCell[cell] = zoneType;
+                        blockByCell[cell] = blockIndex;
                     }
                 }
+            }
+
+            var variantByCell = new Dictionary<GridCoord, int>();
+            foreach (GridCoord cell in available)
+            {
+                int blockIndex = blockByCell[cell];
+                bool perimeter = Directions.Any(direction =>
+                {
+                    GridCoord neighbor = cell + direction;
+                    return !blockByCell.TryGetValue(
+                            neighbor,
+                            out int neighborBlock)
+                        || neighborBlock != blockIndex;
+                });
+                CityZoneType zoneType = zoneByCell[cell];
+                Vector2 centerGrid = blockCenterByIndex[blockIndex];
+                int variant;
+                if (perimeter)
+                {
+                    // Pathway C is the package's light concrete surface.
+                    variant = 2;
+                }
+                else if (zoneType == CityZoneType.Park)
+                {
+                    bool centralPath =
+                        Mathf.Abs(cell.X - centerGrid.x) < 0.6f
+                        || Mathf.Abs(cell.Y - centerGrid.y) < 0.6f;
+                    variant = centralPath ? 0 : 3;
+                }
+                else if (zoneType == CityZoneType.Civic)
+                {
+                    variant = StableHash(
+                            seed,
+                            regionIndex,
+                            cell.X,
+                            cell.Y) % 5 == 0
+                        ? 1
+                        : 0;
+                }
+                else if (zoneType == CityZoneType.Commercial
+                    || zoneType == CityZoneType.MixedUse)
+                {
+                    variant = StableHash(
+                            seed,
+                            regionIndex,
+                            cell.X,
+                            cell.Y) % 7 == 0
+                        ? 1
+                        : 0;
+                }
+                else if (zoneType == CityZoneType.Residential)
+                {
+                    variant = StableHash(
+                            seed,
+                            regionIndex,
+                            cell.X,
+                            cell.Y) % 4 == 0
+                        ? 3
+                        : 1;
+                }
+                else
+                {
+                    variant = 2;
+                }
+                variantByCell[cell] = variant;
             }
 
             GridCoord[] anchors = available
@@ -439,23 +852,24 @@ namespace CityGeneration
                 if (!available.Contains(anchor))
                     continue;
 
+                int variant = variantByCell[anchor];
                 int sizeX = 1;
                 int sizeY = 1;
-                if (CanTake(anchor, 4, 4))
+                if (CanTake(anchor, 4, 4, variant))
                 {
                     sizeX = 4;
                     sizeY = 4;
                 }
-                else if (CanTake(anchor, 2, 2))
+                else if (CanTake(anchor, 2, 2, variant))
                 {
                     sizeX = 2;
                     sizeY = 2;
                 }
-                else if (CanTake(anchor, 2, 1))
+                else if (CanTake(anchor, 2, 1, variant))
                 {
                     sizeX = 2;
                 }
-                else if (CanTake(anchor, 1, 2))
+                else if (CanTake(anchor, 1, 2, variant))
                 {
                     sizeY = 2;
                 }
@@ -470,13 +884,11 @@ namespace CityGeneration
                     anchor.X,
                     anchor.Y,
                     unit)
-                    + basis.AxisX * ((sizeX - 1) * unit * 0.5f)
-                    + basis.AxisY * ((sizeY - 1) * unit * 0.5f);
-                int stableHash = StableHash(
-                    seed,
-                    regionIndex,
-                    anchor.X,
-                    anchor.Y);
+                    + basis.AxisX * (sizeX * unit * 0.5f)
+                    + basis.AxisY * (sizeY * unit * 0.5f);
+                CityPathwayModuleDescriptor descriptor =
+                    ModernCityRoadModuleLibrary
+                        .GetPathwayDescriptor(variant);
                 result.PathwayModules.Add(
                     new CityPathwayModulePlacement(
                         result.PathwayModules.Count,
@@ -486,18 +898,29 @@ namespace CityGeneration
                         center,
                         sizeX,
                         sizeY,
-                        stableHash,
-                        sizeY > sizeX ? 1 : 0));
+                        variant,
+                        0,
+                        descriptor.SurfaceType));
             }
 
-            bool CanTake(GridCoord anchor, int width, int height)
+            bool CanTake(
+                GridCoord anchor,
+                int width,
+                int height,
+                int expectedVariant)
             {
                 for (int y = 0; y < height; y++)
                 {
                     for (int x = 0; x < width; x++)
                     {
                         if (!available.Contains(
-                                new GridCoord(anchor.X + x, anchor.Y + y)))
+                                new GridCoord(anchor.X + x, anchor.Y + y))
+                            || !variantByCell.TryGetValue(
+                                new GridCoord(
+                                    anchor.X + x,
+                                    anchor.Y + y),
+                                out int candidateVariant)
+                            || candidateVariant != expectedVariant)
                         {
                             return false;
                         }
@@ -569,6 +992,25 @@ namespace CityGeneration
             Vector2 center = basis.ToWorld(cell.X, cell.Y, size);
             Vector2 x = basis.AxisX * (size * halfExtentScale);
             Vector2 y = basis.AxisY * (size * halfExtentScale);
+            return new[]
+            {
+                center - x - y,
+                center + x - y,
+                center + x + y,
+                center - x + y
+            };
+        }
+
+        static Vector2[] GetPathwayCellPolygon(
+            CityModularGridBasis basis,
+            GridCoord cell,
+            float size)
+        {
+            Vector2 center =
+                basis.ToWorld(cell.X, cell.Y, size)
+                + (basis.AxisX + basis.AxisY) * (size * 0.5f);
+            Vector2 x = basis.AxisX * (size * 0.5f);
+            Vector2 y = basis.AxisY * (size * 0.5f);
             return new[]
             {
                 center - x - y,
@@ -655,6 +1097,7 @@ namespace CityGeneration
             GridCoord cell,
             int mask,
             IReadOnlyDictionary<GridCoord, int> masks,
+            bool useCrosswalk,
             out CityRoadModuleType type,
             out int quarterTurns,
             out CityRoadConnectionMask connections)
@@ -671,7 +1114,7 @@ namespace CityGeneration
             {
                 if (mask == (North | South) || mask == (East | West))
                 {
-                    type = HasAdjacentIntersection(cell, mask, masks)
+                    type = useCrosswalk
                         ? CityRoadModuleType.StraightCrossing
                         : CityRoadModuleType.Straight;
                     if (type == CityRoadModuleType.StraightCrossing)
@@ -702,6 +1145,53 @@ namespace CityGeneration
                 connections,
                 preferredCrosswalkEdge,
                 out quarterTurns);
+        }
+
+        static HashSet<GridCoord> SelectCrosswalkCells(
+            IReadOnlyList<GridCoord> ordered,
+            IReadOnlyDictionary<GridCoord, int> masks,
+            IReadOnlyCollection<GridCoord> major)
+        {
+            var selected = new HashSet<GridCoord>();
+            if (ordered == null || ordered.Count == 0)
+                return selected;
+
+            int maximum = Mathf.FloorToInt(
+                ordered.Count * MaximumCrosswalkRatio);
+            if (maximum <= 0)
+                return selected;
+            var majorSet = major as HashSet<GridCoord>
+                ?? new HashSet<GridCoord>(major);
+            GridCoord[] candidates = ordered
+                .Where(cell =>
+                {
+                    if (!majorSet.Contains(cell)
+                        || !masks.TryGetValue(cell, out int mask)
+                        || CountBits(mask) != 2
+                        || (mask != (North | South)
+                            && mask != (East | West)))
+                    {
+                        return false;
+                    }
+                    return HasAdjacentIntersection(cell, mask, masks);
+                })
+                .OrderBy(cell => cell.X)
+                .ThenBy(cell => cell.Y)
+                .ToArray();
+            for (int index = 0;
+                 index < candidates.Length
+                 && selected.Count < maximum;
+                 index++)
+            {
+                GridCoord candidate = candidates[index];
+                bool tooClose = selected.Any(value =>
+                    Mathf.Abs(value.X - candidate.X)
+                    + Mathf.Abs(value.Y - candidate.Y)
+                    < MinimumSpecialCellSpacing);
+                if (!tooClose)
+                    selected.Add(candidate);
+            }
+            return selected;
         }
 
         static bool HasAdjacentIntersection(

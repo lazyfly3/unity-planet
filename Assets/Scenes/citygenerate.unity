@@ -262,8 +262,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4b2e1aa6e0c344beaa1f5a38f4a84211, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   panSpeed: 70
   zoomSpeed: 24
   minimumZoom: 20
@@ -480,8 +480,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b50a699be40f4e1d834ad5ccad447571, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   planetPreset: {fileID: 11400000, guid: 8ab44d3f8c828654a8b30e9317a9d70b, type: 2}
   size: 400
   resolution: 200
@@ -528,6 +528,7 @@ GameObject:
   - component: {fileID: 5001}
   - component: {fileID: 5002}
   - component: {fileID: 5003}
+  - component: {fileID: 5004}
   m_Layer: 0
   m_Name: CitySelectionController
   m_TagString: Untagged
@@ -581,10 +582,31 @@ MonoBehaviour:
   useBuildingPrefabs: 1
   overridePrefabMaterials: 0
   buildingPrefabs:
-  - {fileID: 919132149155446097, guid: bb766385d2035094d9d3bf66d489fe66, type: 3}
-  - {fileID: 919132149155446097, guid: 13ebfb12a64b9be449548d3e86a0c6c7, type: 3}
-  - {fileID: 919132149155446097, guid: 5d111ada7bdd38246a9f972b08e6f3ba, type: 3}
-  - {fileID: 919132149155446097, guid: fa35c1b920529e3498881bac845c8df6, type: 3}
+  - {fileID: 100000, guid: d339821715c96734ea068bbf87a512d9, type: 3}
+  - {fileID: 100000, guid: d7257bd2f569a5c45bbf063a14da3c0c, type: 3}
+  - {fileID: 100000, guid: 0a9d5dc7d79fac34cb712543410a9594, type: 3}
+  - {fileID: 100000, guid: 40175e7d6e2d68f4d8999b0bef5f8f03, type: 3}
+  - {fileID: 100000, guid: 465807bd42797a647be4b85039bded4b, type: 3}
+  - {fileID: 100000, guid: a15d5b9cf7b702149bfe59c2718af5fe, type: 3}
+  - {fileID: 100000, guid: 37a8f61293f36c048a46224d39a5c752, type: 3}
+  - {fileID: 100000, guid: 1b8267bcdc84e35419dda6ee1fda06ee, type: 3}
+  - {fileID: 100000, guid: 2c6d545a98955314e8890830cb1a8ca3, type: 3}
+  - {fileID: 100000, guid: bd1501d590d7011449297a408fc07567, type: 3}
+  - {fileID: 100000, guid: 851cca8252cb1f24c9fd580c745bac92, type: 3}
+  - {fileID: 100000, guid: f62dd95845abb51468642bffd9fc3523, type: 3}
+  - {fileID: 100000, guid: 844db206c0badd049bcbd0a23c725bc7, type: 3}
+  - {fileID: 100000, guid: 1aaaea0a57f400a468cbb102a72d7fbb, type: 3}
+  - {fileID: 100000, guid: a0b31ea4a61dcd746aa7c1fd8b047df6, type: 3}
+  - {fileID: 100000, guid: bc9af838826e5a746ab6275930f62686, type: 3}
+  - {fileID: 100000, guid: 8da524f1b1c7089498ac75c55e38c145, type: 3}
+  - {fileID: 100000, guid: 99a49906637b03b42b3c0fdf0e02bc10, type: 3}
+  - {fileID: 100000, guid: c374a00615eb8a943aeea0b58d50eb7f, type: 3}
+  - {fileID: 100000, guid: f76154eaaf4ccc84da31ba081fbf468f, type: 3}
+  - {fileID: 100000, guid: 88d9e570a89dbe442843b634d654f1ae, type: 3}
+  - {fileID: 100000, guid: ef64fdb81a8a05946ad7e78ab7603982, type: 3}
+  - {fileID: 100000, guid: 088675aeb864c3047bf25948a1515046, type: 3}
+  - {fileID: 100000, guid: bace37f38592cd648851dd9f75000b74, type: 3}
+  - {fileID: 100000, guid: ad4bb0a9571fdb943be6639c297534a2, type: 3}
   modernCityRoadModules:
     normalizationMode: 0
     socketPositionTolerance: 0.01
@@ -627,6 +649,22 @@ MonoBehaviour:
     roadAlbedo: {fileID: 2800000, guid: 6d2ba50f92b84a819236bcffcf3fb06d, type: 3}
     roadNormal: {fileID: 2800000, guid: 2b29f14ae2aa46a8b3ec98bb451ab8b2, type: 3}
     pathwayAlbedo: {fileID: 2800000, guid: 56a9ecba9b2b44ea9670824719d82637, type: 3}
+  modernCityEnvironment:
+    streetLights:
+    - {fileID: 100000, guid: b444e83a218908d49ad0ff610ce04c62, type: 3}
+    - {fileID: 100000, guid: 8d7bdc964672ecb43ad252175b37d644, type: 3}
+    - {fileID: 100000, guid: 87474cbce44c03e4193174ba47c41aee, type: 3}
+    - {fileID: 100000, guid: 4f2d1b53b3146fe4d82285afccb2945d, type: 3}
+    trees:
+    - {fileID: 100000, guid: 957980c18fb9e53479d603b5608e0717, type: 3}
+    - {fileID: 100000, guid: df6a5c6dc8242b640b3fd13ea3e3f204, type: 3}
+    - {fileID: 100000, guid: f494d156006aa8d41b3c17431672e0f9, type: 3}
+    benches:
+    - {fileID: 100000, guid: 0922df567401cb144af6600deb5c2e64, type: 3}
+    - {fileID: 100000, guid: 5f1c2bc8fe6e27243b34258771a946a4, type: 3}
+    - {fileID: 100000, guid: 04d3feb25b079c246a38336a920b4278, type: 3}
+    busStops:
+    - {fileID: 100000, guid: 4d83fa1428f80124fa50002bfabc13c1, type: 3}
   groundSize: 400
   seed: 12345
   generationSettings:
@@ -659,6 +697,8 @@ MonoBehaviour:
     maxMinorRoadSegments: 1200
     minimumBoundaryEdge: 5
     minimumBoundaryArea: 400
+    boundarySnapTolerance: 0.25
+    maximumBoundaryPoints: 128
   platformTopClearance: 0.5
   platformSlabThickness: 0.4
   platformSupportSpacing: 20
@@ -667,8 +707,11 @@ MonoBehaviour:
   groundColor: {r: 0.16, g: 0.2, b: 0.17, a: 1}
   validBoundaryColor: {r: 0.1, g: 1, b: 0.35, a: 1}
   invalidBoundaryColor: {r: 1, g: 0.18, b: 0.12, a: 1}
+  sourceBoundaryColor: {r: 0.05, g: 0.9, b: 1, a: 1}
+  ignoredBoundaryColor: {r: 1, g: 0.55, b: 0.08, a: 1}
   roadColor: {r: 0.09, g: 0.1, b: 0.12, a: 1}
-  blockColor: {r: 0.36, g: 0.4, b: 0.34, a: 1}
+  blockColor: {r: 0.43, g: 0.44, b: 0.45, a: 1}
+  parkColor: {r: 0.22, g: 0.38, b: 0.24, a: 1}
   foundationColor: {r: 0.18, g: 0.23, b: 0.28, a: 1}
   waterColor: {r: 0.03, g: 0.42, b: 0.62, a: 0.72}
 --- !u!114 &5003
@@ -690,6 +733,7 @@ MonoBehaviour:
   blockDuration: 1
   buildingDuration: 2.9
   completionDuration: 0.3
+  deconstructionDuration: 1.6
   maximumBuildingsPerFrame: 4
   maximumSimpleObjectsPerFrame: 24
   creationBudgetMilliseconds: 3
@@ -697,6 +741,23 @@ MonoBehaviour:
   buildingRevealDuration: 0.7
   effectsRoot: {fileID: 210270010}
   hologramColor: {r: 0.05, g: 0.9, b: 1, a: 1}
+--- !u!114 &5004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e6a766492ae3164f84aef45bf01a469, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  selectionController: {fileID: 0}
+  planningCamera: {fileID: 0}
+  groundCollider: {fileID: 0}
+  anchorMarkerSize: 4
+  zoneBrushRadius: 10
 --- !u!1 &5100
 GameObject:
   m_ObjectHideFlags: 0

@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: decor_sensor_mast
   m_EditorClassIdentifier: 
   partId: decor.sensor_mast
-  displayName: "\u4F20\u611F\u5668\u6845\u6746"
-  prefab: {fileID: 8714895151928722762, guid: cb4d99f49a4befb498aef3c64b6af8ad, type: 3}
+  displayName: "\u539F\u5382\u5929\u7EBF"
+  prefab: {fileID: 8538823194734581237, guid: fa4abd60a9b327648a08ff3e88751e10, type: 3}
   thumbnail: {fileID: 21300000, guid: b44e4057c6f14f34abf80cd6706d3242, type: 3}
   category: 0
   scaleMode: 0
@@ -24,7 +24,7 @@ MonoBehaviour:
   minimumScale: 0.6
   maximumScale: 1.5
   fixedScale: 1
-  defaultMaterialId: paint.deep_space_blue
+  defaultMaterialId: paint.native
   exhaustColor: {r: 0, g: 1, b: 1, a: 1}
   weapon:
     damageChannel: 0
@@ -45,3 +45,13 @@ MonoBehaviour:
     heatDissipation: 0.22
     recoilImpulse: 0.45
     impactImpulse: 5
+  aerodynamicProfile:
+    role: 0
+    referenceArea: 0
+    baseDragCoefficient: 0.08
+    liftSlopePerRadian: 3.2
+    zeroLiftAngleDegrees: 0
+    stallAngleDegrees: 24
+    inducedDragFactor: 0.12
+    sideStabilityCoefficient: 0
+    centerOffset: {x: 0, y: 0, z: 0}

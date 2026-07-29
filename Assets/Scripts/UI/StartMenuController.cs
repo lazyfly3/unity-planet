@@ -34,9 +34,11 @@ public sealed class StartMenuController : MonoBehaviour
 
     [Header("Scenes")]
     [SerializeField] string workshopSceneName = "SpacecraftWorkshop";
+    [SerializeField] string modularAssemblySceneName = "ModularAssemblyLab";
 
     readonly List<StartMenuSaveRow> rows = new List<StartMenuSaveRow>();
     StartMenuSaveRow selectedRow;
+    bool launchModularAssembly;
 
     void Awake()
     {
@@ -57,6 +59,18 @@ titleImage.SetActive(true);
 }
 
     public void ShowSaveBrowser()
+    {
+        launchModularAssembly = false;
+        ShowSaveBrowserPage();
+    }
+
+    public void ShowModularAssemblyBrowser()
+    {
+        launchModularAssembly = true;
+        ShowSaveBrowserPage();
+    }
+
+    void ShowSaveBrowserPage()
     {
 titleImage.SetActive(false);
         mainPanel.SetActive(false);
@@ -94,7 +108,9 @@ int? seed = null;
         {
             GalaxySaveSlotMetadata metadata = GalaxySaveSlotService.CreateSlot(createNameInput.text, seed);
             GalaxyLaunchContext.SelectSlot(metadata.slotId);
-            SceneManager.LoadScene(workshopSceneName, LoadSceneMode.Single);
+            SceneManager.LoadScene(
+                launchModularAssembly ? modularAssemblySceneName : workshopSceneName,
+                LoadSceneMode.Single);
         }
         catch (Exception exception)
         {
@@ -163,7 +179,9 @@ if (selectedRow == null)
 if (!HasUsableSelection())
             return;
         GalaxyLaunchContext.SelectSlot(selectedRow.Slot.SlotId);
-        SceneManager.LoadScene(workshopSceneName, LoadSceneMode.Single);
+        SceneManager.LoadScene(
+            launchModularAssembly ? modularAssemblySceneName : workshopSceneName,
+            LoadSceneMode.Single);
     
 }
 

@@ -12,8 +12,8 @@ namespace SpacecraftEditor
             new Color(0.24f, 0.29f, 0.34f, 1f);
         [SerializeField] private Color ambientGround =
             new Color(0.12f, 0.14f, 0.17f, 1f);
-        [SerializeField, Range(0f, 3f)] private float ambientIntensity = 1.25f;
-        [SerializeField, Range(0f, 3f)] private float reflectionIntensity = 1.35f;
+        [SerializeField, Range(0f, 3f)] private float ambientIntensity = 0.9f;
+        [SerializeField, Range(0f, 3f)] private float reflectionIntensity = 0.95f;
 
         private void Awake()
         {
@@ -52,25 +52,25 @@ namespace SpacecraftEditor
             ConfigureDirectional(
                 "KeyLight",
                 new Color(1f, 0.91f, 0.80f),
-                1.75f,
+                0.8f,
                 new Vector3(36f, -28f, 0f),
                 true);
             ConfigureDirectional(
                 "FillLight",
                 new Color(0.65f, 0.82f, 1f),
-                0.82f,
+                0.22f,
                 new Vector3(325f, 145f, 0f),
                 false);
             ConfigurePoint(
                 "TopLight",
                 new Color(0.82f, 0.91f, 1f),
-                5.2f,
+                1.25f,
                 18f,
                 new Vector3(0f, 6.5f, -1.5f));
             ConfigurePoint(
                 "RimLight",
                 new Color(0.30f, 0.72f, 1f),
-                4.8f,
+                0.65f,
                 18f,
                 new Vector3(-4.5f, 2.5f, 3.5f));
         }

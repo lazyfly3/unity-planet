@@ -23,4 +23,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/GalaxyMap.unity
     guid: 525bd0908fc24835862ef5679ebca60f
+  - enabled: 1
+    path: Assets/Scenes/ModularAssemblyLab.unity
+    guid: c59d487d1306f68479f9648ae5b2586b
   m_configObjects: {}

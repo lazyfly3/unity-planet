@@ -37,6 +37,18 @@ sysinfo.txt
 *.aab
 *.unitypackage
 
+# Local reverse-engineering and extracted research artifacts.
+# Keep these files on disk only; never commit or publish them.
+/APKExtracted/
+
+# Local generated content and licensed asset source packages.
+# Keep local project references, but do not publish source assets or bundles.
+/ModularContent/
+/Assets/Pack/
+/Assets/Pack.meta
+/Assets/Hovl Studio/
+/Assets/Hovl Studio.meta
+
 # LogTrack 本地生成物（插件本身仍提交）
 Assets/LogTrackGenerated/LogPdb.pdb.*
 Assets/LogTrackGenerated/*.json

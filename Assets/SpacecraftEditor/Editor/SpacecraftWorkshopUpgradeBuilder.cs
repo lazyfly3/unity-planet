@@ -157,16 +157,16 @@ namespace SpacecraftEditor.Editor
                 EditorUtility.SetDirty(rig);
                 EnsureDirectionalLight(
                     lights, "KeyLight", new Vector3(36f, -28f, 0f),
-                    new Color(1.00f, 0.91f, 0.80f), 1.75f, LightShadows.Soft);
+                    new Color(1.00f, 0.91f, 0.80f), 0.8f, LightShadows.Soft);
                 EnsureDirectionalLight(
                     lights, "FillLight", new Vector3(325f, 145f, 0f),
-                    new Color(0.65f, 0.82f, 1.00f), 0.82f, LightShadows.None);
+                    new Color(0.65f, 0.82f, 1.00f), 0.22f, LightShadows.None);
                 EnsurePointLight(
                     lights, "TopLight", new Vector3(0f, 6.5f, -1.5f),
-                    new Color(0.82f, 0.91f, 1.00f), 5.2f, 18f);
+                    new Color(0.82f, 0.91f, 1.00f), 1.25f, 18f);
                 EnsurePointLight(
                     lights, "RimLight", new Vector3(-4.5f, 2.5f, 3.5f),
-                    new Color(0.30f, 0.72f, 1.00f), 4.8f, 18f);
+                    new Color(0.30f, 0.72f, 1.00f), 0.65f, 18f);
                 EnsureReflectionProbe(lights);
             }
 

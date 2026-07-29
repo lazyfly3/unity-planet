@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7d5097404570fe47a547343b2238334, type: 3}
+  m_Name: sf_dropship_r35
+  m_EditorClassIdentifier: 
+  hullId: hull.sf_dropship_r35
+  displayName: SF Dropship R35
+  description: "\u5916\u90E8\u5BA1\u6838\u8230\u4F53\uFF1B\u4FDD\u7559\u539F\u5382
+    PBR \u6750\u8D28\u5E76\u652F\u6301\u81EA\u7531\u8868\u9762\u88C5\u8F7D\u3002"
+  modelPrefab: {fileID: 4513857939547908321, guid: 103168e24e5d733489465c9a5bfc0773, type: 3}
+  thumbnail: {fileID: 21300000, guid: 12b8a5154f2749442aa33d40768a6ae3, type: 3}
+  collisionMesh: {fileID: 4300000, guid: e77c5640c2b15de4bb10a0d5d2ec5d25, type: 2}
+  placementSurfaceMesh: {fileID: 4300000, guid: e1337f0a22841c6418ea7a0bc807f57d, type: 2}
+  baseMass: 12000
+  dimensions: {x: 4.5406, y: 1.970763, z: 6}
+  flightProfile:
+    rcsAcceleration: {x: 3.5, y: 3.5, z: 6}
+    integratedRcsNozzleForce: {x: 10500, y: 10500, z: 18000}
+    maximumAngularSpeed: {x: 75, y: 65, z: 95}
+    maximumAngularAcceleration: {x: 180, y: 180, z: 180}
+    velocityResponse: 3.2
+    angularRateResponse: 7
+    defaultTargetSpeed: 250
+    minimumTargetSpeed: 25
+    maximumTargetSpeed: 10000
+    boostMultiplier: 1.5
+    boostCapacitySeconds: 4
+    boostRegenerationPerSecond: 0.65
+  aerodynamicProfile:
+    role: 1
+    referenceArea: 8.948446
+    baseDragCoefficient: 0.18714355
+    liftSlopePerRadian: 0
+    zeroLiftAngleDegrees: 0
+    stallAngleDegrees: 24
+    inducedDragFactor: 0
+    sideStabilityCoefficient: 0.094596624
+    centerOffset: {x: 0, y: 0, z: 0}

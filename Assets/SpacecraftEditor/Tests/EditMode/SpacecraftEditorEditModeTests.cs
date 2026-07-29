@@ -24,14 +24,16 @@ namespace SpacecraftEditor.Tests
             Assert.That(definition.Thumbnail, Is.Not.Null);
         }
 
-        [TestCase("hull_balanced", "hull.balanced", 12000f, 3f, 2.2f, 6f)]
-        [TestCase("hull_spindle", "hull.spindle", 9000f, 2.2f, 1.8f, 7.5f)]
-        [TestCase("hull_saucer", "hull.saucer", 18000f, 5.2f, 1.4f, 4.6f)]
+        [TestCase("a30_thunderbolt", "hull.a30_thunderbolt", 12000f, 5.197218f, 1.942475f, 6f)]
+        [TestCase("sf_stealth_fighter", "hull.sf_stealth_fighter", 12000f, 5.457865f, 1.905999f, 6f)]
+        [TestCase("sf_modular_pirate", "hull.sf_modular_pirate", 12000f, 6f, 1.898015f, 5.462247f)]
+        [TestCase("sf_dropship_r35", "hull.sf_dropship_r35", 12000f, 4.5406f, 1.970763f, 6f)]
+        [TestCase("sf_fighter_gr2", "hull.sf_fighter_gr2", 12000f, 5.739501f, 1.834595f, 6f)]
         public void HullDefinitions_HaveUniquePlayableModelsAndColliderBounds(
             string assetName, string expectedId, float expectedMass, float width, float height, float length)
         {
             var definition = AssetDatabase.LoadAssetAtPath<ShipHullDefinition>(
-                "Assets/SpacecraftEditor/Data/" + assetName + ".asset");
+                "Assets/SpacecraftEditor/ExternalFleet/Data/Hulls/" + assetName + ".asset");
             Assert.That(definition, Is.Not.Null);
             Assert.That(definition.HullId, Is.EqualTo(expectedId));
             Assert.That(definition.BaseMass, Is.EqualTo(expectedMass).Within(0.001f));
@@ -39,23 +41,23 @@ namespace SpacecraftEditor.Tests
             Assert.That(definition.ModelPrefab, Is.Not.Null);
             Assert.That(definition.Thumbnail, Is.Not.Null);
             Assert.That(definition.CollisionMesh, Is.Not.Null);
+            Assert.That(definition.PlacementSurfaceMesh, Is.Not.Null);
             Assert.That(definition.CollisionMesh.bounds.size.x, Is.EqualTo(width).Within(0.01f));
-            // Source FBX meshes use X/Z as the horizontal/vertical cross-section and
-            // Y as the longitudinal axis. The prefab rotates that authored basis into
-            // Unity's gameplay X/Y/Z convention.
-            Assert.That(definition.CollisionMesh.bounds.size.y, Is.EqualTo(length).Within(0.01f));
-            Assert.That(definition.CollisionMesh.bounds.size.z, Is.EqualTo(height).Within(0.01f));
+            Assert.That(definition.CollisionMesh.bounds.size.y, Is.EqualTo(height).Within(0.01f));
+            Assert.That(definition.CollisionMesh.bounds.size.z, Is.EqualTo(length).Within(0.01f));
         }
 
         [Test]
         public void HullDefinitions_UseUniqueIds()
         {
-            var definitions = AssetDatabase.FindAssets("t:ShipHullDefinition", new[] { "Assets/SpacecraftEditor/Data" })
+            var definitions = AssetDatabase.FindAssets(
+                    "t:ShipHullDefinition",
+                    new[] { "Assets/SpacecraftEditor/ExternalFleet/Data/Hulls" })
                 .Select(guid => AssetDatabase.LoadAssetAtPath<ShipHullDefinition>(AssetDatabase.GUIDToAssetPath(guid)))
                 .Where(definition => definition != null)
                 .ToArray();
-            Assert.That(definitions.Length, Is.EqualTo(3));
-            Assert.That(definitions.Select(definition => definition.HullId).Distinct().Count(), Is.EqualTo(3));
+            Assert.That(definitions.Length, Is.EqualTo(5));
+            Assert.That(definitions.Select(definition => definition.HullId).Distinct().Count(), Is.EqualTo(5));
         }
 
         [Test]
@@ -662,7 +664,14 @@ namespace SpacecraftEditor.Tests
         [Test]
         public void PirateHardpointLayouts_SeparateThrustersWeaponsAndDecorations()
         {
-            string[] hullIds = { "hull.balanced", "hull.saucer", "hull.spindle" };
+            string[] hullIds =
+            {
+                "hull.a30_thunderbolt",
+                "hull.sf_stealth_fighter",
+                "hull.sf_modular_pirate",
+                "hull.sf_dropship_r35",
+                "hull.sf_fighter_gr2"
+            };
             foreach (string hullId in hullIds)
             {
                 string safeId = hullId.Replace('.', '_');

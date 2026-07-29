@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45571e99e48460845bae7ccc18281763, type: 3}
+  m_Name: weapon_missile_rack_s1
+  m_EditorClassIdentifier: 
+  partId: weapon.missile_rack.s1
+  displayName: "\u5BFC\u5F39\u67B6 S1"
+  prefab: {fileID: 2048662648824646332, guid: a6c1595b2dd57e7428ca5cf90c0ca1f9, type: 3}
+  thumbnail: {fileID: 21300000, guid: f07b1cae1090c9741bf1780cc3cfca96, type: 3}
+  category: 2
+  scaleMode: 1
+  placementMode: 0
+  baseMass: 16
+  baseThrust: 0
+  minimumScale: 0.6
+  maximumScale: 1.5
+  fixedScale: 1
+  defaultMaterialId: paint.native
+  exhaustColor: {r: 0, g: 1, b: 1, a: 1}
+  weapon:
+    damageChannel: 3
+    fireMode: 4
+    mountSize: 1
+    mountMode: 0
+    gimbalConeDegrees: 18
+    gimbalTrackingDegreesPerSecond: 120
+    defaultFireGroup: 1
+    roundsPerSecond: 1.5
+    damage: 24
+    projectileSpeed: 360
+    range: 1500
+    spreadDegrees: 0.15
+    ammunitionCapacity: 12
+    capacitorCost: 0
+    heatPerShot: 0.05
+    heatDissipation: 0.25
+    recoilImpulse: 0.55
+    impactImpulse: 12
+  aerodynamicProfile:
+    role: 0
+    referenceArea: 0
+    baseDragCoefficient: 0.08
+    liftSlopePerRadian: 3.2
+    zeroLiftAngleDegrees: 0
+    stallAngleDegrees: 24
+    inducedDragFactor: 0.12
+    sideStabilityCoefficient: 0
+    centerOffset: {x: 0, y: 0, z: 0}

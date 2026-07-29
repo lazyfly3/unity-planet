@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   partId: weapon.kinetic_repeater.gimbal.s2
   displayName: "\u52A8\u80FD\u901F\u5C04\u70AE \u4E91\u53F0 S2"
-  prefab: {fileID: 6313399298333308045, guid: 49c7b494836ec8344a049d5ccb38c68f, type: 3}
+  prefab: {fileID: 3551493337102314479, guid: fd872a8fa226f2147b453d1bdfff96ee, type: 3}
   thumbnail: {fileID: 21300000, guid: 42cf5f42bd7e45845b295bfac5812a7d, type: 3}
   category: 2
   scaleMode: 1
@@ -24,7 +24,7 @@ MonoBehaviour:
   minimumScale: 0.6
   maximumScale: 1.5
   fixedScale: 1
-  defaultMaterialId: paint.deep_space_blue
+  defaultMaterialId: paint.native
   exhaustColor: {r: 0, g: 1, b: 1, a: 1}
   weapon:
     damageChannel: 0
@@ -45,3 +45,13 @@ MonoBehaviour:
     heatDissipation: 0.24
     recoilImpulse: 0.74399996
     impactImpulse: 7.75
+  aerodynamicProfile:
+    role: 0
+    referenceArea: 0
+    baseDragCoefficient: 0.08
+    liftSlopePerRadian: 3.2
+    zeroLiftAngleDegrees: 0
+    stallAngleDegrees: 24
+    inducedDragFactor: 0.12
+    sideStabilityCoefficient: 0
+    centerOffset: {x: 0, y: 0, z: 0}

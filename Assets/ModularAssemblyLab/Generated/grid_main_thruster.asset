@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45571e99e48460845bae7ccc18281763, type: 3}
+  m_Name: grid_main_thruster
+  m_EditorClassIdentifier: 
+  partId: grid_main_thruster
+  displayName: "\u4E3B\u63A8\u8FDB\u5668"
+  prefab: {fileID: 1045799512922085548, guid: 222c6eeb2f473274789f8be16007d720, type: 3}
+  thumbnail: {fileID: 0}
+  category: 1
+  scaleMode: 0
+  placementMode: 0
+  baseMass: 180
+  baseThrust: 6000
+  minimumScale: 0.6
+  maximumScale: 1.5
+  fixedScale: 1
+  defaultMaterialId: paint.deep_space_blue
+  exhaustColor: {r: 0.2, g: 0.8, b: 1, a: 1}
+  weapon:
+    damageChannel: 0
+    fireMode: 0
+    mountSize: 1
+    mountMode: 0
+    gimbalConeDegrees: 18
+    gimbalTrackingDegreesPerSecond: 120
+    defaultFireGroup: 1
+    roundsPerSecond: 8
+    damage: 6
+    projectileSpeed: 420
+    range: 1600
+    spreadDegrees: 0.25
+    ammunitionCapacity: 240
+    capacitorCost: 0
+    heatPerShot: 0.045
+    heatDissipation: 0.22
+    recoilImpulse: 0.45
+    impactImpulse: 5
+  aerodynamicProfile:
+    role: 0
+    referenceArea: 0
+    baseDragCoefficient: 0.08
+    liftSlopePerRadian: 3.2
+    zeroLiftAngleDegrees: 0
+    stallAngleDegrees: 24
+    inducedDragFactor: 0.12
+    sideStabilityCoefficient: 0
+    centerOffset: {x: 0, y: 0, z: 0}

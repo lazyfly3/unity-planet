@@ -16,6 +16,7 @@ namespace SpacecraftEditor
         [Header("Allocation")]
         [SerializeField, Min(0.1f)] float torqueWeight = 1.35f;
         [SerializeField] bool allowDirectMode = true;
+        [SerializeField] bool useBuiltInRcsWithoutHull;
         [SerializeField] SpacecraftAssistMode assistMode = SpacecraftAssistMode.Coupled;
 
         [Header("Planetary Flight")]
@@ -172,7 +173,8 @@ namespace SpacecraftEditor
             ShipAssembly targetAssembly,
             ShipHullController targetHull,
             MonoBehaviour input,
-            bool directModeAllowed)
+            bool directModeAllowed,
+            bool builtInRcsWithoutHull = false)
         {
             if (assembly != null)
                 assembly.AssemblyChanged -= HandleAssemblyChanged;
@@ -184,6 +186,7 @@ namespace SpacecraftEditor
             hullController = targetHull;
             SetCommandSource(input);
             allowDirectMode = directModeAllowed;
+            useBuiltInRcsWithoutHull = builtInRcsWithoutHull;
 
             if (assembly != null)
                 assembly.AssemblyChanged += HandleAssemblyChanged;
@@ -279,7 +282,10 @@ namespace SpacecraftEditor
                 return;
             }
 
-            if (!allocator.Matches(assembly, hullController == null ? null : hullController.CurrentHull))
+            if (!allocator.Matches(
+                    assembly,
+                    hullController == null ? null : hullController.CurrentHull,
+                    useBuiltInRcsWithoutHull))
                 RefreshProfileAndAllocator();
 
             SpacecraftFlightCommand command = commandSource == null ? default : commandSource.Command;
@@ -721,7 +727,10 @@ namespace SpacecraftEditor
                     profile.MinimumTargetSpeed,
                     profile.MaximumTargetSpeed);
             boostSeconds = boostSeconds <= 0f ? profile.BoostCapacitySeconds : Mathf.Min(boostSeconds, profile.BoostCapacitySeconds);
-            allocator.Rebuild(assembly, hull);
+            allocator.Rebuild(
+                assembly,
+                hull,
+                useBuiltInRcsWithoutHull);
         }
 
         void HandleAssemblyChanged()

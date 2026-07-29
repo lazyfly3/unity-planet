@@ -48,7 +48,9 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
     [SerializeField, Min(1000f)] float exactPresentationEnterDistanceKm = 80000f;
     [SerializeField, Min(1000f)] float exactPresentationExitDistanceKm = 100000f;
     [FormerlySerializedAs("nearProxyDistance")]
+#pragma warning disable 0414
     [SerializeField, HideInInspector] float legacyNearProxyDistanceMeters = 30000f;
+#pragma warning restore 0414
     [FormerlySerializedAs("approachDistance")]
     [SerializeField, Min(100f)] float approachDistanceMeters = 720f;
     [FormerlySerializedAs("maximumEntrySpeed")]

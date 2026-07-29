@@ -46,7 +46,11 @@ namespace SpacecraftEditor
             assembly.Configure(body, assembly.transform.Find("Parts"), catalog,
                 defaultHull == null ? 12000f : defaultHull.BaseMass);
             history.Configure(assembly, hullController);
-            buildController.Configure(assembly, history, mainCamera, hullCollider);
+            buildController.Configure(
+                assembly,
+                history,
+                mainCamera,
+                hullController == null ? hullCollider : hullController.PlacementCollider);
             buildController.SetBuildMode(false);
             flightController.Configure(this, assembly, body);
             forceVisualizer.Configure(assembly, buildController, centerOfMassMarker);
@@ -65,9 +69,10 @@ namespace SpacecraftEditor
                 !hullController.ApplyHull(definition))
                 return false;
 
-            hullCollider = hullController.HullCollider;
+            hullCollider = hullController.PlacementCollider;
             assembly.SetHullMass(definition.BaseMass);
             buildController.SetHullCollider(hullCollider);
+            hullController.SetPlacementEnabled(true);
             cameraController.FrameHull(hullController.LocalBounds);
             return true;
         }
@@ -84,6 +89,8 @@ namespace SpacecraftEditor
             }
 
             hullSelectionConfirmed = true;
+            hullController.SetPlacementEnabled(true);
+            buildController.SetHullCollider(hullController.PlacementCollider);
             uiController.SetHullSelectionMode(false);
             cameraController.SetEditorViewport(uiController.BuildViewport);
             cameraController.FrameHull(hullController.LocalBounds);
@@ -103,6 +110,7 @@ namespace SpacecraftEditor
                 ExitFlight();
 
             buildController.SetBuildMode(false);
+            hullController?.SetPlacementEnabled(false);
             forceVisualizer.SetVisible(false);
             hullSelectionConfirmed = false;
             assembly.RestoreStates(Array.Empty<PlacedPartState>());
@@ -158,6 +166,7 @@ namespace SpacecraftEditor
             if (!hullSelectionConfirmed || IsFlightMode)
                 return;
             buildController.SetBuildMode(false);
+            hullController?.SetPlacementEnabled(false);
             forceVisualizer.SetVisible(false);
             uiController.SetFlightMode(true);
             cameraController.SetFlightMode(true);
@@ -183,6 +192,7 @@ namespace SpacecraftEditor
 
             sceneLoadRequested = true;
             buildController.SetBuildMode(false);
+            hullController?.SetPlacementEnabled(false);
             forceVisualizer.SetVisible(false);
             SceneManager.LoadScene(interstellarSceneName);
         }
@@ -192,6 +202,7 @@ namespace SpacecraftEditor
             if (!IsFlightMode)
                 return;
             flightController.ExitFlight();
+            hullController?.SetPlacementEnabled(true);
             cameraController.SetFlightMode(false);
             buildController.SetBuildMode(true);
             forceVisualizer.SetVisible(true);

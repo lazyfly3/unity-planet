@@ -11,6 +11,7 @@ namespace SpacecraftEditor
         [SerializeField] private GameObject modelPrefab;
         [SerializeField] private Sprite thumbnail;
         [SerializeField] private Mesh collisionMesh;
+        [SerializeField] private Mesh placementSurfaceMesh;
         [SerializeField] private float baseMass = 12000f;
         [SerializeField] private Vector3 dimensions = new Vector3(3f, 2.2f, 6f);
         [SerializeField] private ShipFlightProfile flightProfile;
@@ -22,6 +23,7 @@ namespace SpacecraftEditor
         public GameObject ModelPrefab => modelPrefab;
         public Sprite Thumbnail => thumbnail;
         public Mesh CollisionMesh => collisionMesh;
+        public Mesh PlacementSurfaceMesh => placementSurfaceMesh;
         public float BaseMass => baseMass;
         public Vector3 Dimensions => dimensions;
         public ShipFlightProfile FlightProfile => flightProfile ?? ShipFlightProfile.CreateForHull(hullId);
@@ -47,6 +49,7 @@ namespace SpacecraftEditor
             GameObject model,
             Sprite icon,
             Mesh colliderMesh,
+            Mesh placementMesh,
             float mass,
             Vector3 size)
         {
@@ -56,6 +59,7 @@ namespace SpacecraftEditor
             modelPrefab = model;
             thumbnail = icon;
             collisionMesh = colliderMesh;
+            placementSurfaceMesh = placementMesh;
             baseMass = Mathf.Max(0.01f, mass);
             dimensions = new Vector3(
                 Mathf.Max(0.01f, size.x),
@@ -64,6 +68,19 @@ namespace SpacecraftEditor
             flightProfile = ShipFlightProfile.CreateForHull(hullId);
             aerodynamicProfile =
                 ShipAerodynamicProfile.CreateForHull(hullId, dimensions);
+        }
+
+        public void Configure(
+            string id,
+            string label,
+            string hullDescription,
+            GameObject model,
+            Sprite icon,
+            Mesh colliderMesh,
+            float mass,
+            Vector3 size)
+        {
+            Configure(id, label, hullDescription, model, icon, colliderMesh, null, mass, size);
         }
 #endif
     }

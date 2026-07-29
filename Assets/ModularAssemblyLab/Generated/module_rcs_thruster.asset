@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae25ffa4c1f76bd448493f801d106b0b, type: 3}
+  m_Name: module_rcs_thruster
+  m_EditorClassIdentifier: 
+  moduleId: rcs_thruster
+  displayName: "RCS\u63A8\u8FDB\u5668"
+  category: 4
+  prefab: {fileID: 1981475640701269994, guid: 63af34700325a9848ae5ac199bd6d3f4, type: 3}
+  footprint: {x: 1, y: 1, z: 1}
+  massKg: 60
+  energyCapacity: 0
+  energyCost: 6
+  maxIntegrity: 80
+  thrustNewtons: 1500
+  runtimePartDefinition: {fileID: 11400000, guid: 22b4328a3a0aaa0419a7354796270fcc, type: 2}

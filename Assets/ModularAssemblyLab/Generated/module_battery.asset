@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae25ffa4c1f76bd448493f801d106b0b, type: 3}
+  m_Name: module_battery
+  m_EditorClassIdentifier: 
+  moduleId: battery
+  displayName: "\u7535\u6C60"
+  category: 6
+  prefab: {fileID: 2888832219433664762, guid: 86659976e98e7504689e9b07af894869, type: 3}
+  footprint: {x: 1, y: 1, z: 1}
+  massKg: 120
+  energyCapacity: 50
+  energyCost: 0
+  maxIntegrity: 80
+  thrustNewtons: 0
+  runtimePartDefinition: {fileID: 11400000, guid: ee8ed125ced1feb408927680d7018fb9, type: 2}

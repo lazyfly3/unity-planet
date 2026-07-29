@@ -36,7 +36,73 @@ namespace CityGeneration
     {
         ClosedA,
         Road2LaneA,
-        SidewalkA
+        SidewalkA,
+        Road2LaneOffsetLeftA,
+        Road2LaneOffsetRightA
+    }
+
+    public enum CityModularSurfaceType
+    {
+        Road,
+        Crosswalk,
+        SidewalkPaving,
+        CourtyardBrick,
+        SidewalkConcrete,
+        Grass
+    }
+
+    [Serializable]
+    public readonly struct CityRoadModuleDescriptor
+    {
+        public readonly CityRoadModuleType Type;
+        public readonly CityRoadConnectionMask SourceConnections;
+        public readonly CityRoadConnectionMask CanonicalConnections;
+        public readonly int SourceQuarterTurnCorrection;
+        public readonly bool IsEnabled;
+        public readonly bool IsCrosswalk;
+
+        public CityRoadModuleDescriptor(
+            CityRoadModuleType type,
+            CityRoadConnectionMask sourceConnections,
+            CityRoadConnectionMask canonicalConnections,
+            int sourceQuarterTurnCorrection,
+            bool isEnabled,
+            bool isCrosswalk = false)
+        {
+            Type = type;
+            SourceConnections = sourceConnections;
+            CanonicalConnections = canonicalConnections;
+            SourceQuarterTurnCorrection =
+                ((sourceQuarterTurnCorrection % 4) + 4) % 4;
+            IsEnabled = isEnabled;
+            IsCrosswalk = isCrosswalk;
+        }
+
+        public CityRoadConnectionMask GetEffectiveConnections(
+            int placementQuarterTurns)
+        {
+            return ModernCityRoadModuleLibrary.RotateMask(
+                SourceConnections,
+                SourceQuarterTurnCorrection + placementQuarterTurns);
+        }
+    }
+
+    [Serializable]
+    public readonly struct CityPathwayModuleDescriptor
+    {
+        public readonly int Variant;
+        public readonly CityModularSurfaceType SurfaceType;
+        public readonly bool IsStreetSidewalk;
+
+        public CityPathwayModuleDescriptor(
+            int variant,
+            CityModularSurfaceType surfaceType,
+            bool isStreetSidewalk)
+        {
+            Variant = Mathf.Abs(variant) % 4;
+            SurfaceType = surfaceType;
+            IsStreetSidewalk = isStreetSidewalk;
+        }
     }
 
     public readonly struct CityRoadSocketSet
@@ -64,13 +130,13 @@ namespace CityGeneration
             {
                 CityRoadConnectionMask mask =
                     CityRoadConnectionMask.None;
-                if (North == CityRoadSocketTag.Road2LaneA)
+                if (ModernCityRoadModuleLibrary.IsRoadSocket(North))
                     mask |= CityRoadConnectionMask.North;
-                if (East == CityRoadSocketTag.Road2LaneA)
+                if (ModernCityRoadModuleLibrary.IsRoadSocket(East))
                     mask |= CityRoadConnectionMask.East;
-                if (South == CityRoadSocketTag.Road2LaneA)
+                if (ModernCityRoadModuleLibrary.IsRoadSocket(South))
                     mask |= CityRoadConnectionMask.South;
-                if (West == CityRoadSocketTag.Road2LaneA)
+                if (ModernCityRoadModuleLibrary.IsRoadSocket(West))
                     mask |= CityRoadConnectionMask.West;
                 return mask;
             }
@@ -164,6 +230,11 @@ namespace CityGeneration
         public int FootprintCells { get; }
         public CityRoadConnectionMask ConnectionMask { get; }
         public CityRoadSocketSet SocketTags { get; }
+        public CityRoadConnectionMask SourceConnections { get; }
+        public int SourceQuarterTurnCorrection { get; }
+        public CityRoadConnectionMask RequiredConnections =>
+            ConnectionMask;
+        public CityRoadConnectionMask EffectiveConnections { get; }
 
         public CityRoadModulePlacement(
             int stableIndex,
@@ -191,6 +262,13 @@ namespace CityGeneration
             ConnectionMask = connectionMask;
             SocketTags = socketTags
                 ?? CityRoadSocketSet.FromRoadMask(connectionMask);
+            CityRoadModuleDescriptor descriptor =
+                ModernCityRoadModuleLibrary.GetDescriptor(type);
+            SourceConnections = descriptor.SourceConnections;
+            SourceQuarterTurnCorrection =
+                descriptor.SourceQuarterTurnCorrection;
+            EffectiveConnections = descriptor.GetEffectiveConnections(
+                QuarterTurns);
         }
     }
 
@@ -205,6 +283,7 @@ namespace CityGeneration
         public int SizeY { get; }
         public int Variant { get; }
         public int QuarterTurns { get; }
+        public CityModularSurfaceType SurfaceType { get; }
 
         public CityPathwayModulePlacement(
             int stableIndex,
@@ -215,7 +294,8 @@ namespace CityGeneration
             int sizeX,
             int sizeY,
             int variant,
-            int quarterTurns)
+            int quarterTurns,
+            CityModularSurfaceType? surfaceType = null)
         {
             StableIndex = stableIndex;
             RegionIndex = regionIndex;
@@ -226,7 +306,20 @@ namespace CityGeneration
             SizeY = Mathf.Max(1, sizeY);
             Variant = Mathf.Abs(variant) % 4;
             QuarterTurns = ((quarterTurns % 4) + 4) % 4;
+            SurfaceType = surfaceType
+                ?? ModernCityRoadModuleLibrary
+                    .GetPathwayDescriptor(Variant)
+                    .SurfaceType;
         }
+    }
+
+    public sealed class CityModularNetworkResult
+    {
+        public bool IsValid { get; internal set; }
+        public int GeneratedModuleCount { get; internal set; }
+        public int UncoveredRoadSegmentCount { get; internal set; }
+        public int UnsupportedRoadSegmentCount { get; internal set; }
+        public string Error { get; internal set; } = string.Empty;
     }
 
     public sealed class CityRoadLayoutValidationResult
@@ -236,6 +329,13 @@ namespace CityGeneration
         public int RepairCount { get; internal set; }
         public float MaximumSocketError { get; internal set; }
         public float MaximumSurfaceHeightError { get; internal set; }
+        public int VisualSocketMismatchCount { get; internal set; }
+        public int DanglingRoadSocketCount { get; internal set; }
+        public int RoadToPathwayMismatchCount { get; internal set; }
+        public float CrosswalkRatio { get; internal set; }
+        public int IntersectionSpacingViolationCount { get; internal set; }
+        public int CrosswalkSpacingViolationCount { get; internal set; }
+        public float MaximumRenderedSocketGap { get; internal set; }
         public string Error { get; internal set; } = string.Empty;
     }
 
@@ -367,57 +467,150 @@ namespace CityGeneration
         public CityRoadModuleDefinition GetRoadDefinition(
             CityRoadModuleType type)
         {
+            CityRoadModuleDescriptor descriptor = GetDescriptor(type);
             switch (type)
             {
                 case CityRoadModuleType.End:
                     return new CityRoadModuleDefinition(
                         roadEnd,
-                        CityRoadConnectionMask.North,
+                        descriptor.CanonicalConnections,
                         1,
-                        true);
+                        descriptor.IsEnabled);
                 case CityRoadModuleType.StraightCrossing:
                     return new CityRoadModuleDefinition(
                         roadStraightCrossing,
-                        CityRoadConnectionMask.North
-                            | CityRoadConnectionMask.South,
+                        descriptor.CanonicalConnections,
                         1,
-                        true,
+                        descriptor.IsEnabled,
                         CityRoadConnectionMask.North);
                 case CityRoadModuleType.CurveSmall:
                     return new CityRoadModuleDefinition(
                         roadCurveSmall,
-                        CityRoadConnectionMask.North
-                            | CityRoadConnectionMask.East,
+                        descriptor.CanonicalConnections,
                         1,
-                        true);
+                        descriptor.IsEnabled);
                 case CityRoadModuleType.CurveLong:
                     return new CityRoadModuleDefinition(
                         roadCurveLong,
-                        CityRoadConnectionMask.North
-                            | CityRoadConnectionMask.West,
+                        descriptor.CanonicalConnections,
                         2,
-                        false);
+                        descriptor.IsEnabled);
                 case CityRoadModuleType.TIntersection:
                     return new CityRoadModuleDefinition(
                         roadT,
+                        descriptor.CanonicalConnections,
+                        1,
+                        descriptor.IsEnabled);
+                case CityRoadModuleType.CrossIntersection:
+                    return new CityRoadModuleDefinition(
+                        roadX,
+                        descriptor.CanonicalConnections,
+                        1,
+                        descriptor.IsEnabled);
+                default:
+                    return new CityRoadModuleDefinition(
+                        roadStraight,
+                        descriptor.CanonicalConnections,
+                        1,
+                        descriptor.IsEnabled);
+            }
+        }
+
+        public static CityRoadModuleDescriptor GetDescriptor(
+            CityRoadModuleType type)
+        {
+            switch (type)
+            {
+                case CityRoadModuleType.End:
+                    return new CityRoadModuleDescriptor(
+                        type,
+                        CityRoadConnectionMask.West,
+                        CityRoadConnectionMask.North,
+                        1,
+                        true);
+                case CityRoadModuleType.StraightCrossing:
+                    return new CityRoadModuleDescriptor(
+                        type,
+                        CityRoadConnectionMask.East
+                            | CityRoadConnectionMask.West,
+                        CityRoadConnectionMask.North
+                            | CityRoadConnectionMask.South,
+                        1,
+                        true,
+                        true);
+                case CityRoadModuleType.CurveSmall:
+                    return new CityRoadModuleDescriptor(
+                        type,
+                        CityRoadConnectionMask.North
+                            | CityRoadConnectionMask.East,
+                        CityRoadConnectionMask.North
+                            | CityRoadConnectionMask.East,
+                        0,
+                        true);
+                case CityRoadModuleType.CurveLong:
+                    return new CityRoadModuleDescriptor(
+                        type,
+                        CityRoadConnectionMask.East
+                            | CityRoadConnectionMask.South,
+                        CityRoadConnectionMask.North
+                            | CityRoadConnectionMask.East,
+                        3,
+                        false);
+                case CityRoadModuleType.TIntersection:
+                    return new CityRoadModuleDescriptor(
+                        type,
+                        CityRoadConnectionMask.North
+                            | CityRoadConnectionMask.East
+                            | CityRoadConnectionMask.West,
                         CityRoadConnectionMask.North
                             | CityRoadConnectionMask.East
                             | CityRoadConnectionMask.South,
                         1,
                         true);
                 case CityRoadModuleType.CrossIntersection:
-                    return new CityRoadModuleDefinition(
-                        roadX,
+                    return new CityRoadModuleDescriptor(
+                        type,
                         CityRoadConnectionMask.All,
-                        1,
+                        CityRoadConnectionMask.All,
+                        0,
                         true);
                 default:
-                    return new CityRoadModuleDefinition(
-                        roadStraight,
+                    return new CityRoadModuleDescriptor(
+                        CityRoadModuleType.Straight,
+                        CityRoadConnectionMask.East
+                            | CityRoadConnectionMask.West,
                         CityRoadConnectionMask.North
                             | CityRoadConnectionMask.South,
                         1,
                         true);
+            }
+        }
+
+        public static CityPathwayModuleDescriptor GetPathwayDescriptor(
+            int variant)
+        {
+            switch (Mathf.Abs(variant) % 4)
+            {
+                case 0:
+                    return new CityPathwayModuleDescriptor(
+                        0,
+                        CityModularSurfaceType.SidewalkPaving,
+                        true);
+                case 1:
+                    return new CityPathwayModuleDescriptor(
+                        1,
+                        CityModularSurfaceType.CourtyardBrick,
+                        false);
+                case 2:
+                    return new CityPathwayModuleDescriptor(
+                        2,
+                        CityModularSurfaceType.SidewalkConcrete,
+                        true);
+                default:
+                    return new CityPathwayModuleDescriptor(
+                        3,
+                        CityModularSurfaceType.Grass,
+                        false);
             }
         }
 
@@ -440,10 +633,10 @@ namespace CityGeneration
                         CityRoadSocketTag.SidewalkA);
                 case CityRoadModuleType.CurveLong:
                     return new CityRoadSocketSet(
-                        CityRoadSocketTag.Road2LaneA,
+                        CityRoadSocketTag.Road2LaneOffsetLeftA,
+                        CityRoadSocketTag.Road2LaneOffsetRightA,
                         CityRoadSocketTag.SidewalkA,
-                        CityRoadSocketTag.SidewalkA,
-                        CityRoadSocketTag.Road2LaneA);
+                        CityRoadSocketTag.SidewalkA);
                 case CityRoadModuleType.TIntersection:
                     return new CityRoadSocketSet(
                         CityRoadSocketTag.Road2LaneA,
@@ -491,12 +684,31 @@ namespace CityGeneration
             }
         }
 
+        public static bool IsRoadSocket(CityRoadSocketTag tag)
+        {
+            return tag == CityRoadSocketTag.Road2LaneA
+                || tag == CityRoadSocketTag.Road2LaneOffsetLeftA
+                || tag == CityRoadSocketTag.Road2LaneOffsetRightA;
+        }
+
         public static bool AreOpposingSocketsCompatible(
             CityRoadSocketTag first,
             CityRoadSocketTag second)
         {
-            return first == CityRoadSocketTag.Road2LaneA
-                && second == CityRoadSocketTag.Road2LaneA;
+            if (first == CityRoadSocketTag.Road2LaneA
+                || second == CityRoadSocketTag.Road2LaneA)
+            {
+                return first == CityRoadSocketTag.Road2LaneA
+                    && second == CityRoadSocketTag.Road2LaneA;
+            }
+            return (first
+                        == CityRoadSocketTag.Road2LaneOffsetLeftA
+                    && second
+                        == CityRoadSocketTag.Road2LaneOffsetRightA)
+                || (first
+                        == CityRoadSocketTag.Road2LaneOffsetRightA
+                    && second
+                        == CityRoadSocketTag.Road2LaneOffsetLeftA);
         }
 
         public bool TrySolveQuarterTurns(

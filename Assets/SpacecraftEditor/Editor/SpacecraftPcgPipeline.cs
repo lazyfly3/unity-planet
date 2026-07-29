@@ -735,47 +735,11 @@ namespace SpacecraftEditor.Editor
 
         static void RebuildHullCatalogsAndPirateLayouts()
         {
-            ShipHullDefinition[] hulls = LoadPcgHulls();
-            var layouts = new List<SpacecraftHardpointLayout>(hulls.Length);
-            foreach (ShipHullDefinition hull in hulls)
-                layouts.Add(UpsertHardpointLayout(hull));
-
-            string[] prefabGuids = AssetDatabase.FindAssets(
-                "t:Prefab",
-                new[] { "Assets/Resources/Spacecraft", "Assets/Resources/Spaceflight/Pirates" });
-            foreach (string guid in prefabGuids)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                GameObject root = PrefabUtility.LoadPrefabContents(path);
-                bool changed = false;
-                try
-                {
-                    foreach (HullCatalog catalog in root.GetComponentsInChildren<HullCatalog>(true))
-                    {
-                        catalog.Configure(hulls);
-                        EditorUtility.SetDirty(catalog);
-                        changed = true;
-                    }
-                    foreach (ProceduralPirateShipGenerator generator in
-                             root.GetComponentsInChildren<ProceduralPirateShipGenerator>(true))
-                    {
-                        var serialized = new SerializedObject(generator);
-                        SerializedProperty property = serialized.FindProperty("layouts");
-                        property.arraySize = layouts.Count;
-                        for (int index = 0; index < layouts.Count; index++)
-                            property.GetArrayElementAtIndex(index).objectReferenceValue = layouts[index];
-                        serialized.ApplyModifiedPropertiesWithoutUndo();
-                        EditorUtility.SetDirty(generator);
-                        changed = true;
-                    }
-                    if (changed)
-                        PrefabUtility.SaveAsPrefabAsset(root, path);
-                }
-                finally
-                {
-                    PrefabUtility.UnloadPrefabContents(root);
-                }
-            }
+            // PCG generation remains available for experimentation and review, but the
+            // active runtime catalog is now owned exclusively by External Fleet V1.
+            // Never reactivate the archived 24-hull catalog from this legacy publisher.
+            UnityEngine.Debug.Log(
+                "PCG hulls were generated for review only; active catalogs remain on External Fleet V1.");
         }
 
         static SpacecraftHardpointLayout UpsertHardpointLayout(ShipHullDefinition hull)

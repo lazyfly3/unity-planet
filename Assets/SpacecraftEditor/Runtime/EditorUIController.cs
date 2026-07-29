@@ -290,6 +290,7 @@ namespace SpacecraftEditor
         {
             switch (materialId)
             {
+                case "paint.native": return "OEM";
                 case "paint.deep_space_blue": return "Ti";
                 case "paint.gunmetal": return "GM";
                 case "paint.ceramic_white": return "Al";

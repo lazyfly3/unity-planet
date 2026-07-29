@@ -30,6 +30,10 @@ namespace CityGeneration
         [SerializeField] ModernCityRoadModuleLibrary modernCityRoadModules =
             new ModernCityRoadModuleLibrary();
 
+        [Header("Modern City Environment Models")]
+        [SerializeField] ModernCityEnvironmentLibrary modernCityEnvironment =
+            new ModernCityEnvironmentLibrary();
+
         [Header("Scene")]
         [SerializeField, Min(20f)] float groundSize = 400f;
         [SerializeField] int seed = 12345;
@@ -51,7 +55,10 @@ namespace CityGeneration
         [SerializeField] Color ignoredBoundaryColor =
             new Color(1f, 0.55f, 0.08f);
         [SerializeField] Color roadColor = new Color(0.09f, 0.1f, 0.12f);
-        [SerializeField] Color blockColor = new Color(0.36f, 0.4f, 0.34f);
+        [SerializeField] Color blockColor =
+            new Color(0.43f, 0.44f, 0.45f);
+        [SerializeField] Color parkColor =
+            new Color(0.22f, 0.38f, 0.24f);
         [SerializeField] Color foundationColor =
             new Color(0.18f, 0.23f, 0.28f);
         [SerializeField] Color waterColor = new Color(0.03f, 0.42f, 0.62f, 0.72f);
@@ -66,6 +73,7 @@ namespace CityGeneration
         Material boundaryMaterial;
         Material roadMaterial;
         Material blockMaterial;
+        Material parkMaterial;
         Material modularRoadMaterial;
         Material modularPathwayMaterial;
         Material foundationMaterial;
@@ -75,14 +83,25 @@ namespace CityGeneration
         CityBoundaryResolution currentBoundaryResolution;
         CityConstructionJob lastConstructionJob;
         CityPlatformLayout platformLayout;
+        CitySemanticPointData[] plannedSemanticPoints =
+            System.Array.Empty<CitySemanticPointData>();
         string status = "鼠标左键选择边界点；至少 3 点后按 Enter 生成。";
         bool isGenerated;
         bool isGenerating;
         bool isDeconstructing;
+        bool legacyInputEnabled = true;
         Light cachedDirectionalLight;
         PlanetSurfaceDayNightController cachedDayNight;
 
         public IReadOnlyList<Vector2> BoundaryPoints => boundaryPoints;
+        public Camera SelectionCamera => selectionCamera;
+        public Collider GroundCollider => groundCollider;
+        public ICityTerrainSampler TerrainSampler => noiseTerrain;
+        public CityGenerationSettings GenerationSettings =>
+            generationSettings;
+        public int Seed => seed;
+        public IReadOnlyList<GameObject> BuildingPrefabs =>
+            buildingPrefabs;
         public bool IsGenerated => isGenerated;
         public bool IsGenerating => isGenerating;
         public bool IsDeconstructing => isDeconstructing;
@@ -112,6 +131,9 @@ namespace CityGeneration
         void Update()
         {
             UpdateRoadNightFactor();
+
+            if (!legacyInputEnabled)
+                return;
 
             if (isDeconstructing)
             {
@@ -307,6 +329,125 @@ namespace CityGeneration
             return true;
         }
 
+        public void SetLegacyInputEnabled(bool value)
+        {
+            legacyInputEnabled = value;
+        }
+
+        public void SetExternalStatus(string value)
+        {
+            status = value ?? string.Empty;
+        }
+
+        public bool TryBeginPlannedConstruction(
+            CityGenerationResult result)
+        {
+            return TryBeginPlannedConstructionInternal(
+                result,
+                System.Array.Empty<CitySemanticPointData>());
+        }
+
+        public bool TryBeginPlannedConstruction(
+            CityGenerationOutput output)
+        {
+            return output != null
+                && TryBeginPlannedConstructionInternal(
+                    output.legacyResult,
+                    output.semanticPoints);
+        }
+
+        bool TryBeginPlannedConstructionInternal(
+            CityGenerationResult result,
+            CitySemanticPointData[] semanticPoints)
+        {
+            if (result == null
+                || !result.IsSuccess
+                || result.Regions == null
+                || result.Regions.Count == 0
+                || isGenerated
+                || isGenerating
+                || isDeconstructing)
+            {
+                return false;
+            }
+            if (result.EnforcePackageOnlyRoads)
+            {
+                if (result.ModularNetworkResult == null
+                    || !result.ModularNetworkResult.IsValid
+                    || result.RoadModules.Count == 0
+                    || result.RoadLayoutValidation == null
+                    || !result.RoadLayoutValidation.IsValid)
+                {
+                    status =
+                        result.ModularNetworkResult?.Error
+                        ?? result.RoadLayoutValidation?.Error
+                        ?? "模型包道路没有完整覆盖规划路网。";
+                    return false;
+                }
+                string moduleError =
+                    "Modern City 道路模块库没有配置。";
+                CityRoadGeometryCalibration calibration = null;
+                if (modernCityRoadModules == null
+                    || !modernCityRoadModules.IsComplete(
+                        out moduleError)
+                    || !modernCityRoadModules.TryValidateGeometry(
+                        generationSettings.modularRoadCellSize,
+                        out calibration,
+                        out moduleError))
+                {
+                    status = moduleError;
+                    return false;
+                }
+                result.Diagnostics.MaximumRoadSocketError =
+                    calibration.MaximumSocketError;
+                result.Diagnostics.MaximumRoadSurfaceHeightError =
+                    calibration.MaximumSurfaceHeightError;
+                result.RoadLayoutValidation.MaximumSocketError =
+                    calibration.MaximumSocketError;
+                result.RoadLayoutValidation.MaximumSurfaceHeightError =
+                    calibration.MaximumSurfaceHeightError;
+                result.RoadLayoutValidation.MaximumRenderedSocketGap =
+                    calibration.MaximumSocketError;
+            }
+
+            lastResult = result;
+            plannedSemanticPoints = semanticPoints
+                ?? System.Array.Empty<CitySemanticPointData>();
+            platformLayout = CityElevatedPlatformPlanner.Create(
+                result.Regions,
+                noiseTerrain,
+                platformTopClearance,
+                platformSlabThickness);
+            result.Diagnostics.MaximumGroundHeight =
+                platformLayout.MaximumGroundHeight;
+            result.Diagnostics.PlatformTopHeight =
+                platformLayout.TopHeight;
+            result.Diagnostics.MaximumFoundationClearance =
+                platformLayout.MaximumClearance;
+            result.Diagnostics.FoundationCount =
+                platformLayout.FoundationCount;
+
+            ClearGeneratedObjects();
+            CityConstructionJob job = CreateConstructionJob(result);
+            lastConstructionJob = job;
+            isGenerating = true;
+            isGenerated = false;
+            if (!constructionAnimator.Begin(
+                    job,
+                    HandleConstructionProgress,
+                    HandleConstructionCompleted))
+            {
+                isGenerating = false;
+                lastConstructionJob = null;
+                status = "无法启动城市施工。";
+                return false;
+            }
+
+            status = "规划已通过，正在施工。";
+            RefreshBoundaryVisuals();
+            return true;
+        }
+
         public void CompleteConstructionImmediately()
         {
             if (!isGenerating || constructionAnimator == null)
@@ -357,6 +498,8 @@ namespace CityGeneration
             isGenerating = false;
             isDeconstructing = false;
             lastResult = null;
+            plannedSemanticPoints =
+                System.Array.Empty<CitySemanticPointData>();
             currentBoundaryResolution = null;
             lastConstructionJob = null;
             platformLayout = null;
@@ -392,6 +535,11 @@ namespace CityGeneration
         CityConstructionJob CreateConstructionJob(
             CityGenerationResult result)
         {
+            bool hasModularRoads =
+                generationSettings.useModularRoadLayout
+                && result.RoadModules.Count > 0
+                && (result.RoadLayoutValidation == null
+                    || result.RoadLayoutValidation.IsValid);
             float platformTop = platformLayout?.TopHeight ?? 0f;
             float platformUnderside = platformLayout != null
                 ? platformTop - platformLayout.SlabThickness
@@ -450,7 +598,35 @@ namespace CityGeneration
                 }
             }
 
-            if (generationSettings.useModularRoadLayout)
+            for (int i = 0; i < result.Roads.Count; i++)
+            {
+                int stableIndex = i;
+                CityRoadSegment road = result.Roads[i];
+                if (result.EnforcePackageOnlyRoads)
+                    continue;
+                if (hasModularRoads
+                    && IsRoadRepresentedByTaggedModules(
+                        road,
+                        result.RoadModules,
+                        result.ModularRoadAxis,
+                        generationSettings.modularRoadCellSize))
+                {
+                    continue;
+                }
+                string roadName =
+                    (road.IsMajor ? "MajorRoadBase_" : "MinorRoadBase_") + i;
+                job.Roads.Add(new CityConstructionItem(
+                    stableIndex,
+                    (road.Start + road.End) * 0.5f,
+                    () => CityRuntimeMeshFactory.CreateFlatObject(
+                        roadName,
+                        road.GetCorners(),
+                        platformTop + 0.045f,
+                        roadMaterial,
+                        roadsRoot)));
+            }
+
+            if (hasModularRoads)
             {
                 List<CityRoadRenderChunk> roadChunks =
                     CityModularRoadMeshFactory.GroupRoads(
@@ -461,7 +637,7 @@ namespace CityGeneration
                     int stableIndex = i;
                     CityRoadRenderChunk chunk = roadChunks[i];
                     job.Roads.Add(new CityConstructionItem(
-                        stableIndex,
+                        result.Roads.Count + stableIndex,
                         chunk.Center,
                         () => CityModularRoadMeshFactory.CreateRoadChunk(
                             "ModernRoadChunk_" + stableIndex,
@@ -474,27 +650,30 @@ namespace CityGeneration
                             roadsRoot)));
                 }
             }
-            else
+
+            for (int i = 0; i < result.Blocks.Count; i++)
             {
-                for (int i = 0; i < result.Roads.Count; i++)
-                {
-                    int stableIndex = i;
-                    CityRoadSegment road = result.Roads[i];
-                    string roadName =
-                        (road.IsMajor ? "MajorRoad_" : "MinorRoad_") + i;
-                    job.Roads.Add(new CityConstructionItem(
-                        stableIndex,
-                        (road.Start + road.End) * 0.5f,
-                        () => CityRuntimeMeshFactory.CreateFlatObject(
-                            roadName,
-                            road.GetCorners(),
-                            platformTop + 0.05f,
-                            roadMaterial,
-                            roadsRoot)));
-                }
+                if (result.EnforcePackageOnlySurfaces)
+                    break;
+                int stableIndex = i;
+                CityBlockData block = result.Blocks[i];
+                Material surfaceMaterial =
+                    block.ZoneType == CityZoneType.Park
+                        ? parkMaterial
+                        : blockMaterial;
+                job.Blocks.Add(new CityConstructionItem(
+                    stableIndex,
+                    Average(block.Footprint),
+                    () => CityRuntimeMeshFactory.CreateExtrudedObject(
+                        "Block_" + stableIndex,
+                        block.Footprint,
+                        platformTop + 0.025f,
+                        0.04f,
+                        surfaceMaterial,
+                        blocksRoot)));
             }
 
-            if (generationSettings.useModularRoadLayout)
+            if (result.PathwayModules.Count > 0)
             {
                 List<CityRoadRenderChunk> pathwayChunks =
                     CityModularRoadMeshFactory.GroupPathways(
@@ -507,7 +686,7 @@ namespace CityGeneration
                     int stableIndex = i;
                     CityRoadRenderChunk chunk = pathwayChunks[i];
                     job.Blocks.Add(new CityConstructionItem(
-                        stableIndex,
+                        result.Blocks.Count + stableIndex,
                         chunk.Center,
                         () => CityModularRoadMeshFactory.CreatePathwayChunk(
                             "ModernPathwayChunk_" + stableIndex,
@@ -517,24 +696,6 @@ namespace CityGeneration
                             generationSettings.modularPathwayUnitSize,
                             platformTop + 0.07f,
                             modularPathwayMaterial,
-                            blocksRoot)));
-                }
-            }
-            else
-            {
-                for (int i = 0; i < result.Blocks.Count; i++)
-                {
-                    int stableIndex = i;
-                    CityBlockData block = result.Blocks[i];
-                    job.Blocks.Add(new CityConstructionItem(
-                        stableIndex,
-                        Average(block.Footprint),
-                        () => CityRuntimeMeshFactory.CreateExtrudedObject(
-                            "Block_" + stableIndex,
-                            block.Footprint,
-                            platformTop + 0.08f,
-                            0.14f,
-                            blockMaterial,
                             blocksRoot)));
                 }
             }
@@ -565,7 +726,8 @@ namespace CityGeneration
                                     platformTop,
                                     material,
                                     overridePrefabMaterials,
-                                    buildingsRoot);
+                                    buildingsRoot,
+                                    building.FrontageDirection);
                         }
 
                         return CityRuntimeMeshFactory.CreateExtrudedObject(
@@ -578,7 +740,81 @@ namespace CityGeneration
                     }));
             }
 
+            if (modernCityEnvironment != null
+                && modernCityEnvironment.IsConfigured)
+            {
+                for (int i = 0; i < plannedSemanticPoints.Length; i++)
+                {
+                    int stableIndex = i;
+                    CitySemanticPointData semantic =
+                        plannedSemanticPoints[i];
+                    GameObject environmentPrefab =
+                        modernCityEnvironment.GetPrefab(
+                            semantic.type,
+                            stableIndex);
+                    if (environmentPrefab == null)
+                        continue;
+                    job.Buildings.Add(new CityConstructionItem(
+                        result.Buildings.Count + stableIndex,
+                        semantic.position,
+                        () => CityRuntimeMeshFactory
+                            .CreateGroundedPrefabObject(
+                                "Environment_"
+                                    + semantic.type
+                                    + "_"
+                                    + stableIndex,
+                                environmentPrefab,
+                                semantic.position,
+                                semantic.forward,
+                                platformTop + 0.07f,
+                                blocksRoot)));
+                }
+            }
+
             return job;
+        }
+
+        static bool IsRoadRepresentedByTaggedModules(
+            CityRoadSegment road,
+            IReadOnlyList<CityRoadModulePlacement> modules,
+            Vector2 gridAxis,
+            float cellSize)
+        {
+            Vector2 direction = (road.End - road.Start).normalized;
+            Vector2 axis = gridAxis.sqrMagnitude > 0.001f
+                ? gridAxis.normalized
+                : Vector2.right;
+            Vector2 crossAxis = new Vector2(-axis.y, axis.x);
+            bool aligned =
+                Mathf.Abs(Vector2.Dot(direction, axis)) >= 0.999f
+                || Mathf.Abs(Vector2.Dot(direction, crossAxis)) >= 0.999f;
+            if (!aligned)
+                return false;
+
+            float toleranceSquared = Mathf.Pow(
+                Mathf.Max(0.25f, cellSize * 0.08f),
+                2f);
+            bool startCovered = false;
+            bool endCovered = false;
+            for (int i = 0; i < modules.Count; i++)
+            {
+                Vector2 position = modules[i].Position;
+                if (!startCovered
+                    && Vector2.SqrMagnitude(
+                        position - road.Start) <= toleranceSquared)
+                {
+                    startCovered = true;
+                }
+                if (!endCovered
+                    && Vector2.SqrMagnitude(
+                        position - road.End) <= toleranceSquared)
+                {
+                    endCovered = true;
+                }
+                if (startCovered && endCovered)
+                    return true;
+            }
+            return false;
         }
 
         void HandleConstructionProgress(
@@ -952,9 +1188,13 @@ namespace CityGeneration
                 roadColor,
                 0.08f));
             blockMaterial = TrackMaterial(CityRuntimeMeshFactory.CreateMaterial(
-                "City Blocks",
+                "City Concrete Sidewalk Blocks",
                 blockColor,
-                0.04f));
+                0.18f));
+            parkMaterial = TrackMaterial(CityRuntimeMeshFactory.CreateMaterial(
+                "City Park Ground",
+                parkColor,
+                0.03f));
             CreateModernRoadMaterials();
             foundationMaterial = TrackMaterial(
                 CityRuntimeMeshFactory.CreateMaterial(
@@ -1144,6 +1384,9 @@ namespace CityGeneration
 
         void OnGUI()
         {
+            if (!legacyInputEnabled)
+                return;
+
             var style = new GUIStyle(GUI.skin.box)
             {
                 alignment = TextAnchor.UpperLeft,

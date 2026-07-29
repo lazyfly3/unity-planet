@@ -191,7 +191,8 @@ namespace CityGeneration
             float platformTopHeight,
             Material fallbackMaterial,
             bool overrideMaterials,
-            Transform parent)
+            Transform parent,
+            Vector2 frontageDirection = default)
         {
             const float modelSurfaceClearance = 0.03f;
 
@@ -201,14 +202,22 @@ namespace CityGeneration
                 prefab,
                 container.transform);
             instance.name = prefab.name;
+            Quaternion sourceRotation = instance.transform.localRotation;
+            Vector3 sourceScale = instance.transform.localScale;
             instance.transform.localPosition = Vector3.zero;
-            instance.transform.localRotation = Quaternion.identity;
-            instance.transform.localScale = Vector3.one;
 
             Vector2 center = Average(footprint);
-            Vector2 primaryAxis = FindLongestEdgeDirection(footprint);
-            Vector2 secondaryAxis =
-                new Vector2(-primaryAxis.y, primaryAxis.x);
+            bool hasFrontageDirection =
+                frontageDirection.sqrMagnitude > 0.001f;
+            Vector2 forward = hasFrontageDirection
+                ? frontageDirection.normalized
+                : Vector2.zero;
+            Vector2 primaryAxis = hasFrontageDirection
+                ? new Vector2(forward.y, -forward.x)
+                : FindLongestEdgeDirection(footprint);
+            Vector2 secondaryAxis = hasFrontageDirection
+                ? forward
+                : new Vector2(-primaryAxis.y, primaryAxis.x);
             ProjectSize(
                 footprint,
                 primaryAxis,
@@ -218,16 +227,18 @@ namespace CityGeneration
             targetWidth = Mathf.Max(2f, targetWidth * 0.88f);
             targetDepth = Mathf.Max(2f, targetDepth * 0.88f);
 
-            float yaw = -Mathf.Atan2(primaryAxis.y, primaryAxis.x)
-                * Mathf.Rad2Deg;
+            float yaw = hasFrontageDirection
+                ? Mathf.Atan2(forward.x, forward.y) * Mathf.Rad2Deg
+                : -Mathf.Atan2(primaryAxis.y, primaryAxis.x)
+                    * Mathf.Rad2Deg;
             instance.transform.localRotation =
-                Quaternion.Euler(0f, yaw, 0f);
+                Quaternion.Euler(0f, yaw, 0f) * sourceRotation;
             Bounds sourceBounds = CalculateRendererBounds(instance);
             float scale = Mathf.Min(
                 targetWidth / Mathf.Max(0.01f, sourceBounds.size.x),
                 targetDepth / Mathf.Max(0.01f, sourceBounds.size.z));
             scale = Mathf.Clamp(scale, 0.0001f, 100f);
-            instance.transform.localScale = Vector3.one * scale;
+            instance.transform.localScale = sourceScale * scale;
 
             Bounds fittedBounds = CalculateRendererBounds(instance);
             Vector3 targetBase = parent != null
@@ -265,6 +276,51 @@ namespace CityGeneration
                 }
             }
 
+            return container;
+        }
+
+        public static GameObject CreateGroundedPrefabObject(
+            string name,
+            GameObject prefab,
+            Vector2 position,
+            Vector2 forward,
+            float surfaceHeight,
+            Transform parent)
+        {
+            const float surfaceClearance = 0.025f;
+            var container = new GameObject(name);
+            container.transform.SetParent(parent, false);
+            if (prefab == null)
+                return container;
+
+            GameObject instance = UnityEngine.Object.Instantiate(
+                prefab,
+                container.transform);
+            instance.name = prefab.name;
+            Quaternion sourceRotation = instance.transform.localRotation;
+            Vector3 sourceScale = instance.transform.localScale;
+            instance.transform.localPosition = Vector3.zero;
+            float yaw = forward.sqrMagnitude > 0.001f
+                ? Mathf.Atan2(forward.x, forward.y) * Mathf.Rad2Deg
+                : 0f;
+            instance.transform.localRotation =
+                Quaternion.Euler(0f, yaw, 0f) * sourceRotation;
+            instance.transform.localScale = sourceScale;
+
+            Bounds bounds = CalculateRendererBounds(instance);
+            Vector3 targetBase = parent != null
+                ? parent.TransformPoint(new Vector3(
+                    position.x,
+                    surfaceHeight + surfaceClearance,
+                    position.y))
+                : new Vector3(
+                    position.x,
+                    surfaceHeight + surfaceClearance,
+                    position.y);
+            instance.transform.position += new Vector3(
+                targetBase.x - bounds.center.x,
+                targetBase.y - bounds.min.y,
+                targetBase.z - bounds.center.z);
             return container;
         }
 
@@ -407,9 +463,9 @@ namespace CityGeneration
                 prefab,
                 container.transform);
             instance.name = prefab.name;
+            Quaternion sourceRotation = instance.transform.localRotation;
+            Vector3 sourceScale = instance.transform.localScale;
             instance.transform.localPosition = Vector3.zero;
-            instance.transform.localRotation = Quaternion.identity;
-            instance.transform.localScale = Vector3.one;
 
             Vector2 primaryAxis = FindLongestEdgeDirection(footprint);
             Vector2 secondaryAxis = new Vector2(-primaryAxis.y, primaryAxis.x);
@@ -425,13 +481,13 @@ namespace CityGeneration
             float yaw = -Mathf.Atan2(primaryAxis.y, primaryAxis.x)
                 * Mathf.Rad2Deg;
             instance.transform.localRotation =
-                Quaternion.Euler(0f, yaw, 0f);
+                Quaternion.Euler(0f, yaw, 0f) * sourceRotation;
             Bounds sourceBounds = CalculateRendererBounds(instance);
             float scale = Mathf.Min(
                 targetWidth / Mathf.Max(0.01f, sourceBounds.size.x),
                 targetDepth / Mathf.Max(0.01f, sourceBounds.size.z));
             scale = Mathf.Clamp(scale, 0.0001f, 100f);
-            instance.transform.localScale = Vector3.one * scale;
+            instance.transform.localScale = sourceScale * scale;
 
             Bounds fittedBounds = CalculateRendererBounds(instance);
             Vector3 targetBase = parent != null
@@ -544,7 +600,9 @@ namespace CityGeneration
                 prefab,
                 container.transform);
             instance.name = prefab.name;
-            instance.transform.localScale = Vector3.one;
+            Quaternion sourceRotation = instance.transform.localRotation;
+            Vector3 sourceScale = instance.transform.localScale;
+            instance.transform.localPosition = Vector3.zero;
 
             Vector2 primaryAxis = FindLongestEdgeDirection(footprint);
             Vector2 secondaryAxis = new Vector2(-primaryAxis.y, primaryAxis.x);
@@ -562,22 +620,32 @@ namespace CityGeneration
             // Measure the original horizontal footprint before tilt. Using the
             // world AABB of a tall, tilted tower makes its height contribute to
             // width and produces inconsistent scaling.
-            instance.transform.rotation = Quaternion.identity;
-            instance.transform.position = Vector3.zero;
+            instance.transform.localRotation = sourceRotation;
             Bounds sourceBounds = CalculateRendererBounds(instance);
             float scale = Mathf.Min(
                 targetWidth / Mathf.Max(0.01f, sourceBounds.size.x),
                 targetDepth / Mathf.Max(0.01f, sourceBounds.size.z));
             scale = Mathf.Clamp(scale, 0.0001f, 100f);
-            instance.transform.localScale = Vector3.one * scale;
+            instance.transform.localScale = sourceScale * scale;
 
             Quaternion tilt = Quaternion.FromToRotation(
                 Vector3.up,
                 platformNormal);
             instance.transform.rotation =
-                tilt * Quaternion.Euler(0f, yaw, 0f);
-            instance.transform.position =
-                planeCenter + platformNormal * modelSurfaceClearance;
+                tilt * Quaternion.Euler(0f, yaw, 0f) * sourceRotation;
+            Bounds fittedBounds = CalculateRendererBounds(instance);
+            instance.transform.position += new Vector3(
+                planeCenter.x - fittedBounds.center.x,
+                planeCenter.y - fittedBounds.center.y,
+                planeCenter.z - fittedBounds.center.z);
+            float minimumProjection = CalculateRendererMinimumProjection(
+                instance,
+                platformNormal);
+            float targetProjection = Vector3.Dot(
+                planeCenter + platformNormal * modelSurfaceClearance,
+                platformNormal);
+            instance.transform.position += platformNormal
+                * (targetProjection - minimumProjection);
 
             if (foundationMaterial != null)
             {

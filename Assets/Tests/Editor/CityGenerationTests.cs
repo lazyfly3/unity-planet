@@ -534,6 +534,67 @@ public sealed class CityGenerationTests
     }
 
     [Test]
+    public void ModernBuildingPreservesImportedAxisAndUsesRendererBottomAsBase()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Pack/Models/Building/Building 01.FBX");
+        Assert.NotNull(prefab);
+
+        var root = new GameObject("ModernBuildingAxisTest");
+        GameObject sourceInstance = Object.Instantiate(prefab);
+        try
+        {
+            Bounds sourceBounds =
+                sourceInstance.GetComponentInChildren<Renderer>().bounds;
+            GameObject building =
+                CityRuntimeMeshFactory.CreatePrefabBuildingOnPlane(
+                    "Building",
+                    prefab,
+                    new[]
+                    {
+                        new Vector2(-10f, -6f),
+                        new Vector2(10f, -6f),
+                        new Vector2(10f, 6f),
+                        new Vector2(-10f, 6f)
+                    },
+                    4f,
+                    null,
+                    false,
+                    root.transform);
+
+            Transform model = building.transform.GetChild(0);
+            Bounds fittedBounds =
+                model.GetComponentInChildren<Renderer>().bounds;
+            Assert.That(
+                Quaternion.Angle(
+                    model.localRotation,
+                    prefab.transform.localRotation),
+                Is.LessThan(0.01f));
+            Assert.That(
+                fittedBounds.min.y,
+                Is.EqualTo(4.03f).Within(0.001f));
+            Assert.That(
+                fittedBounds.size.y / fittedBounds.size.x,
+                Is.EqualTo(sourceBounds.size.y / sourceBounds.size.x)
+                    .Within(0.001f));
+
+            float scaleX =
+                model.localScale.x / prefab.transform.localScale.x;
+            float scaleY =
+                model.localScale.y / prefab.transform.localScale.y;
+            float scaleZ =
+                model.localScale.z / prefab.transform.localScale.z;
+            Assert.That(scaleY, Is.EqualTo(scaleX).Within(0.0001f));
+            Assert.That(scaleZ, Is.EqualTo(scaleX).Within(0.0001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+            Object.DestroyImmediate(sourceInstance);
+        }
+    }
+
+    [Test]
     public void NoiseTerrainBuildsDeterministicClickableMesh()
     {
         var ground = new GameObject("NoiseTerrainTest");
@@ -840,6 +901,11 @@ public sealed class CityGenerationTests
                 1,
                 root.GetComponentsInChildren<CitySelectionController>(true).Length);
             Assert.AreEqual(
+                1,
+                root.GetComponentsInChildren<CityPlanningPrototypeController>(true)
+                    .Length,
+                "citygenerate must start with the boundary-only automatic planner.");
+            Assert.AreEqual(
                 0,
                 root.GetComponentsInChildren<SimplePlayerController>(true).Length);
             var controller =
@@ -847,6 +913,18 @@ public sealed class CityGenerationTests
             var serializedController = new SerializedObject(controller);
             Assert.IsFalse(
                 serializedController.FindProperty("overridePrefabMaterials").boolValue);
+            SerializedProperty buildingPrefabs =
+                serializedController.FindProperty("buildingPrefabs");
+            Assert.AreEqual(25, buildingPrefabs.arraySize);
+            for (int i = 0; i < buildingPrefabs.arraySize; i++)
+            {
+                Object buildingPrefab =
+                    buildingPrefabs.GetArrayElementAtIndex(i).objectReferenceValue;
+                Assert.NotNull(buildingPrefab, $"buildingPrefabs[{i}]");
+                Assert.That(
+                    AssetDatabase.GetAssetPath(buildingPrefab),
+                    Does.StartWith("Assets/Pack/Models/Building/Building "));
+            }
             SerializedProperty modularLibrary =
                 serializedController.FindProperty("modernCityRoadModules");
             Assert.NotNull(modularLibrary);
@@ -874,6 +952,22 @@ public sealed class CityGenerationTests
                 4,
                 modularLibrary.FindPropertyRelative("pathway4x4")
                     .arraySize);
+            SerializedProperty environmentLibrary =
+                serializedController.FindProperty("modernCityEnvironment");
+            Assert.NotNull(environmentLibrary);
+            AssertPackageEnvironmentArray("streetLights", 4);
+            AssertPackageEnvironmentArray("trees", 3);
+            AssertPackageEnvironmentArray("benches", 3);
+            AssertPackageEnvironmentArray("busStops", 1);
+            Color blockColor =
+                serializedController.FindProperty("blockColor").colorValue;
+            Color parkColor =
+                serializedController.FindProperty("parkColor").colorValue;
+            Assert.That(blockColor.g, Is.EqualTo(0.44f).Within(0.001f));
+            Assert.That(
+                Vector4.Distance(blockColor, parkColor),
+                Is.GreaterThan(0.1f),
+                "Only actual parks should use green ground.");
             SerializedProperty generationSettings =
                 serializedController.FindProperty("generationSettings");
             Assert.IsTrue(
@@ -900,12 +994,451 @@ public sealed class CityGenerationTests
                     .FindProperty("constructionEffectsRoot")
                     .objectReferenceValue);
 
+            void AssertPackageEnvironmentArray(
+                string propertyName,
+                int expectedCount)
+            {
+                SerializedProperty values =
+                    environmentLibrary.FindPropertyRelative(propertyName);
+                Assert.AreEqual(expectedCount, values.arraySize);
+                for (int index = 0; index < values.arraySize; index++)
+                {
+                    Object value =
+                        values.GetArrayElementAtIndex(index)
+                            .objectReferenceValue;
+                    Assert.NotNull(value, $"{propertyName}[{index}]");
+                    Assert.That(
+                        AssetDatabase.GetAssetPath(value),
+                        Does.StartWith("Assets/Pack/Models/"));
+                }
+            }
+
             Assert.IsFalse(EditorBuildSettings.scenes.Any(
                 item => item.path == scenePath && item.enabled));
         }
         finally
         {
             EditorSceneManager.CloseScene(scene, true);
+        }
+    }
+
+    [Test]
+    public void AutomaticPlanningDerivesAnchorsAndZonesFromBoundaryOnly()
+    {
+        CityPlanData plan = CreateBoundaryOnlyPlanningTestPlan();
+
+        CityPreviewResult preview =
+            new CityPlanningPipeline(Settings, 25)
+                .GenerateAutomaticPreview(plan);
+
+        Assert.IsTrue(preview.Validation.CanCommit);
+        Assert.That(
+            preview.Plan.anchors.Count(anchor =>
+                anchor.type == CityPlanningAnchorType.CityGate),
+            Is.InRange(2, 3));
+        Assert.AreEqual(
+            1,
+            preview.Plan.anchors.Count(anchor =>
+                anchor.type == CityPlanningAnchorType.Cbd));
+        Assert.IsTrue(preview.Plan.anchors.All(anchor =>
+            CityPolygonGeometry.ContainsPoint(
+                preview.Plan.boundary,
+                anchor.position)));
+        Assert.Greater(preview.Plan.zonePaintGrid.CellCount, 0);
+        Assert.IsTrue(preview.Plan.zonePaintGrid.Decode().Any(zone =>
+            zone == CityZoneType.Commercial));
+        Assert.IsTrue(preview.Plan.zonePaintGrid.Decode().Any(zone =>
+            zone == CityZoneType.Industrial));
+        Assert.IsTrue(preview.Plan.zonePaintGrid.Decode().Any(zone =>
+            zone == CityZoneType.Park));
+    }
+
+    [Test]
+    public void AutomaticPlanningProducesDeterministicConnectedBestCity()
+    {
+        CityPlanData plan = CreateBoundaryOnlyPlanningTestPlan();
+        var pipeline = new CityPlanningPipeline(Settings, 25);
+
+        CityPreviewResult first =
+            pipeline.GenerateAutomaticPreview(plan);
+        CityPreviewResult second =
+            pipeline.GenerateAutomaticPreview(plan);
+
+        Assert.AreEqual(first.CandidateIndex, second.CandidateIndex);
+        Assert.AreEqual(
+            first.Output.layoutChecksum,
+            second.Output.layoutChecksum);
+        Assert.That(
+            first.Score,
+            Is.EqualTo(second.Score).Within(0.0001f));
+
+        CityPreviewResult best = first;
+        Assert.IsTrue(best.Validation.CanCommit);
+        Assert.That(best.Score, Is.GreaterThanOrEqualTo(80f));
+        Assert.That(best.Output.buildings.Length, Is.InRange(200, 500));
+        Assert.That(
+            best.Output.buildings.Length
+                / (float)best.Output.blocks.Length,
+            Is.GreaterThanOrEqualTo(2.5f),
+            "Standard city blocks should no longer contain one sparse building row.");
+        Assert.AreEqual(
+            1,
+            best.Output.legacyResult.Regions.Count,
+            "The prototype city must use one continuous platform region.");
+        Assert.AreEqual(
+            1,
+            best.Output.legacyResult.Diagnostics.RoadConnectedComponentCount);
+        Assert.IsTrue(best.Output.roadEdges.Any(
+            edge => edge.hierarchy == CityRoadHierarchy.Arterial));
+        Assert.IsTrue(best.Output.roadEdges.Any(
+            edge => edge.hierarchy == CityRoadHierarchy.Collector));
+        Assert.IsTrue(best.Output.roadEdges.Any(
+            edge => edge.hierarchy == CityRoadHierarchy.Local));
+        Assert.IsTrue(
+            best.Output.roadEdges.All(
+                edge => edge.controlPoints.Length == 2),
+            "Package-only road runs must not contain free curves.");
+        Assert.IsNotEmpty(best.Output.roadPatternId);
+        Assert.Greater(
+            best.Output.legacyResult.RoadModules.Count,
+            0,
+            "Grid-aligned roads should use the supplied Modern City road kit.");
+        Assert.Greater(
+            best.Output.legacyResult.PathwayModules.Count,
+            0,
+            "Open block surfaces should use the supplied pathway/courtyard kit.");
+        Assert.IsTrue(
+            best.Output.legacyResult.RoadLayoutValidation.IsValid);
+        Assert.That(
+            best.Output.legacyResult.RoadLayoutValidation.CrosswalkRatio,
+            Is.LessThanOrEqualTo(0.1501f));
+        Assert.AreEqual(
+            0,
+            best.Output.legacyResult.ModularNetworkResult
+                .UnsupportedRoadSegmentCount);
+        Assert.AreEqual(
+            0,
+            best.Output.legacyResult.ModularNetworkResult
+                .UncoveredRoadSegmentCount);
+        Assert.IsTrue(
+            best.Output.legacyResult.EnforcePackageOnlyRoads);
+        Assert.IsTrue(
+            best.Output.legacyResult.EnforcePackageOnlySurfaces);
+        Assert.IsTrue(best.Output.semanticPoints.Any(point =>
+            point.type == CitySemanticPointType.StreetLight));
+        Assert.IsTrue(best.Output.semanticPoints.Any(point =>
+            point.type == CitySemanticPointType.Tree));
+        Assert.IsTrue(best.Output.semanticPoints.Any(point =>
+            point.type == CitySemanticPointType.Bench));
+        Assert.IsTrue(best.Output.semanticPoints.Any(point =>
+            point.type == CitySemanticPointType.BusStop));
+        int expectedParkBlocks = Mathf.Max(
+            1,
+            Mathf.CeilToInt(best.Output.blocks.Length * 0.06f));
+        Assert.That(
+            best.Output.blocks.Count(block =>
+                block.zoneType == CityZoneType.Park),
+            Is.GreaterThanOrEqualTo(expectedParkBlocks));
+        CityRoadModulePlacement[] coverageModules =
+            best.Output.legacyResult.RoadModules.ToArray();
+        Assert.That(
+            coverageModules.Max(value => value.Position.x)
+                - coverageModules.Min(value => value.Position.x),
+            Is.GreaterThanOrEqualTo(430f),
+            "The road network should use nearly all of the 480m platform.");
+        Assert.That(
+            coverageModules.Max(value => value.Position.y)
+                - coverageModules.Min(value => value.Position.y),
+            Is.GreaterThanOrEqualTo(350f),
+            "The road network should use nearly all of the 400m platform.");
+        CitySemanticPointData[] streetLights =
+            best.Output.semanticPoints
+                .Where(point =>
+                    point.type == CitySemanticPointType.StreetLight)
+                .ToArray();
+        Assert.IsNotEmpty(streetLights);
+        foreach (CitySemanticPointData light in streetLights)
+        {
+            float nearestRoad = best.Output.roadEdges.Min(edge =>
+            {
+                float nearest = float.MaxValue;
+                for (int point = 0;
+                     point + 1 < edge.controlPoints.Length;
+                     point++)
+                {
+                    Vector2 start = edge.controlPoints[point];
+                    Vector2 end = edge.controlPoints[point + 1];
+                    Vector2 segment = end - start;
+                    float t = segment.sqrMagnitude <= 0.0001f
+                        ? 0f
+                        : Mathf.Clamp01(
+                            Vector2.Dot(
+                                light.position - start,
+                                segment)
+                            / segment.sqrMagnitude);
+                    nearest = Mathf.Min(
+                        nearest,
+                        Vector2.Distance(
+                            light.position,
+                            start + segment * t)
+                        - edge.width * 0.5f);
+                }
+                return nearest;
+            });
+            Assert.That(
+                nearestRoad,
+                Is.GreaterThanOrEqualTo(1f),
+                "Street lights must stand on Pathway C, not on a road.");
+        }
+        CityPlannedLotData[] residentialLots =
+            best.Output.lots
+                .Where(lot =>
+                    lot.zoneType == CityZoneType.Residential)
+                .ToArray();
+        Assert.That(
+            residentialLots
+                .Select(lot => Mathf.RoundToInt(lot.setback * 10f))
+                .Distinct()
+                .Count(),
+            Is.GreaterThanOrEqualTo(3),
+            "Residential street walls need deterministic setback variation.");
+        Assert.That(
+            residentialLots
+                .Select(lot => Mathf.RoundToInt(
+                    Vector2.Distance(
+                        lot.frontageStart,
+                        lot.frontageEnd)
+                    * 10f))
+                .Distinct()
+                .Count(),
+            Is.GreaterThanOrEqualTo(4),
+            "Residential lots should not be equal repeated strips.");
+        float[] blockAreas =
+            best.Output.blocks.Select(block => block.area).ToArray();
+        Assert.That(
+            blockAreas.Max() / blockAreas.Min(),
+            Is.GreaterThanOrEqualTo(2f),
+            "A real city needs several block scales, not one repeated square.");
+        Assert.That(
+            blockAreas
+                .Select(area => Mathf.RoundToInt(area / 100f))
+                .Distinct()
+                .Count(),
+            Is.GreaterThanOrEqualTo(4));
+        HashSet<string> highRiseCatalog = new HashSet<string>(
+            new[]
+            {
+                "modern-building-02",
+                "modern-building-06",
+                "modern-building-07",
+                "modern-building-08",
+                "modern-building-14",
+                "modern-building-15",
+                "modern-building-19",
+                "modern-building-23",
+                "modern-building-24",
+                "modern-building-25"
+            });
+        CityPlannedBuildingData[] commercialBuildings =
+            best.Output.buildings
+                .Where(building =>
+                    building.zoneType == CityZoneType.Commercial)
+                .ToArray();
+        Assert.IsNotEmpty(commercialBuildings);
+        Assert.That(
+            commercialBuildings.Count(building =>
+                highRiseCatalog.Contains(building.catalogId))
+                / (float)commercialBuildings.Length,
+            Is.GreaterThanOrEqualTo(0.85f),
+            "CBD buildings should predominantly use calibrated tower models.");
+        Assert.IsTrue(
+            best.Output.lots
+                .Where(lot => lot.zoneType == CityZoneType.Commercial)
+                .All(lot => lot.setback <= 0.5f),
+            "CBD facades should meet the sidewalk as a continuous street wall.");
+    }
+
+    [Test]
+    public void AutomaticPreviewMeetsFiveSecondStandardBoundaryBudget()
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        CityPreviewResult preview =
+            new CityPlanningPipeline(Settings, 25)
+                .GenerateAutomaticPreview(
+                    CreateBoundaryOnlyPlanningTestPlan());
+        stopwatch.Stop();
+
+        Assert.IsTrue(preview.Validation.CanCommit);
+        Assert.That(
+            stopwatch.Elapsed.TotalSeconds,
+            Is.LessThanOrEqualTo(5d),
+            "A 480x400m package-only preview exceeded five seconds.");
+    }
+
+    [Test]
+    public void SuburbanResidentialLotsUseCorrelatedCovingVariation()
+    {
+        CityPreviewResult preview =
+            new CityPlanningPipeline(Settings, 25)
+                .GenerateAutomaticPreview(
+                    CreateBoundaryOnlyPlanningTestPlan());
+        Assert.IsTrue(preview.Validation.CanCommit);
+
+        CityPlannedLotData[] residentialLots =
+            preview.Output.lots
+                .Where(lot =>
+                    lot.zoneType == CityZoneType.Residential)
+                .ToArray();
+        CityPlannedBuildingData[] residentialBuildings =
+            preview.Output.buildings
+                .Where(building =>
+                    building.zoneType == CityZoneType.Residential)
+                .ToArray();
+        Assert.That(residentialLots.Length, Is.GreaterThan(20));
+        Assert.That(residentialBuildings.Length, Is.GreaterThan(20));
+
+        float[] frontages = residentialLots
+            .Select(lot => Vector2.Distance(
+                lot.frontageStart,
+                lot.frontageEnd))
+            .ToArray();
+        Assert.That(
+            frontages.Max() - frontages.Min(),
+            Is.GreaterThan(5f),
+            "Suburban parcel widths should vary by neighborhood.");
+        Assert.That(
+            frontages
+                .Select(value => Mathf.RoundToInt(value * 2f))
+                .Distinct()
+                .Count(),
+            Is.GreaterThanOrEqualTo(8),
+            "Suburban parcels should not repeat one frontage module.");
+
+        float[] setbacks =
+            residentialLots.Select(lot => lot.setback).ToArray();
+        Assert.That(
+            setbacks.Max() - setbacks.Min(),
+            Is.GreaterThan(1.2f),
+            "Coving needs a visibly varying street setback line.");
+        Assert.That(
+            setbacks
+                .Select(value => Mathf.RoundToInt(value * 10f))
+                .Distinct()
+                .Count(),
+            Is.GreaterThanOrEqualTo(8));
+
+        float[] frontageAngles = residentialBuildings
+            .Select(building =>
+                Mathf.Atan2(
+                    building.frontageDirection.y,
+                    building.frontageDirection.x)
+                * Mathf.Rad2Deg)
+            .ToArray();
+        int nonCardinalCount = frontageAngles.Count(angle =>
+        {
+            float nearestCardinal = Mathf.Round(angle / 90f) * 90f;
+            return Mathf.Abs(
+                Mathf.DeltaAngle(angle, nearestCardinal)) > 0.5f;
+        });
+        Assert.That(
+            nonCardinalCount / (float)frontageAngles.Length,
+            Is.GreaterThan(0.35f),
+            "Residential houses need restrained orientation variation.");
+        Assert.That(
+            frontageAngles
+                .Select(Mathf.RoundToInt)
+                .Distinct()
+                .Count(),
+            Is.GreaterThanOrEqualTo(7));
+    }
+
+    [Test]
+    public void PlanningLotsAreFrontingAndBuildingsStayInsideTheirLots()
+    {
+        CityPlanData plan = CreateBoundaryOnlyPlanningTestPlan();
+        CityPreviewResult best =
+            new CityPlanningPipeline(Settings, 25)
+                .GenerateAutomaticPreview(plan);
+        Assert.IsTrue(best.Validation.CanCommit);
+
+        Dictionary<string, CityPlannedBlockData> blocks =
+            best.Output.blocks.ToDictionary(block => block.stableId);
+        Dictionary<string, CityPlannedLotData> lots =
+            best.Output.lots.ToDictionary(lot => lot.stableId);
+        HashSet<string> roadIds = new HashSet<string>(
+            best.Output.roadEdges.Select(road => road.stableId));
+
+        foreach (CityPlannedBlockData block in best.Output.blocks)
+        {
+            AssertFootprintInside(
+                best.Plan.boundary,
+                block.footprint,
+                "planned block");
+            Assert.IsNotEmpty(block.frontageRoadIds);
+            Assert.IsTrue(
+                block.frontageRoadIds.All(roadIds.Contains),
+                "Every block frontage must reference an actual road edge ID.");
+        }
+        foreach (CityPlannedLotData lot in best.Output.lots)
+        {
+            Assert.IsTrue(blocks.ContainsKey(lot.blockId));
+            Assert.That(
+                Vector2.Distance(lot.frontageStart, lot.frontageEnd),
+                Is.GreaterThanOrEqualTo(Settings.minimumLotFrontage - 0.001f));
+            AssertFootprintInside(
+                blocks[lot.blockId].footprint,
+                lot.footprint,
+                "frontage lot");
+        }
+        foreach (CityPlannedBuildingData building in best.Output.buildings)
+        {
+            Assert.IsTrue(lots.ContainsKey(building.lotId));
+            AssertFootprintInside(
+                lots[building.lotId].footprint,
+                building.footprint,
+                "planned building");
+            Assert.That(building.uniformScale, Is.InRange(0.85f, 1.15f));
+            Assert.That(
+                building.catalogId,
+                Does.StartWith("modern-building-"));
+        }
+    }
+
+    [Test]
+    public void AutomaticZoneRatiosStayNearModernMixedCityTargets()
+    {
+        CityPreviewResult preview =
+            new CityPlanningPipeline(Settings, 25)
+                .GenerateAutomaticPreview(
+                    CreateBoundaryOnlyPlanningTestPlan());
+        Assert.IsTrue(preview.Validation.CanCommit);
+
+        CityZoneType[] zones =
+            preview.Plan.zonePaintGrid.Decode();
+        int assigned = zones.Count(zone =>
+            zone != CityZoneType.Unassigned);
+        AssertZoneRatio(CityZoneType.Commercial, 0.12f, 0.025f);
+        AssertZoneRatio(CityZoneType.MixedUse, 0.23f, 0.04f);
+        AssertZoneRatio(CityZoneType.Residential, 0.40f, 0.04f);
+        AssertZoneRatio(CityZoneType.Industrial, 0.10f, 0.025f);
+        AssertZoneRatio(CityZoneType.Civic, 0.05f, 0.02f);
+        AssertZoneRatio(CityZoneType.Park, 0.10f, 0.025f);
+        Assert.AreEqual(
+            0,
+            CountIndustrialResidentialContacts(
+                preview.Plan.zonePaintGrid));
+
+        void AssertZoneRatio(
+            CityZoneType type,
+            float target,
+            float tolerance)
+        {
+            float actual = zones.Count(zone => zone == type)
+                / (float)assigned;
+            Assert.That(
+                actual,
+                Is.EqualTo(target).Within(tolerance),
+                type.ToString());
         }
     }
 
@@ -1103,8 +1636,6 @@ public sealed class CityGenerationTests
             value => value.Type == CityRoadModuleType.Straight));
         Assert.IsTrue(first.RoadModules.Any(
             value => value.Type == CityRoadModuleType.StraightCrossing));
-        Assert.IsTrue(first.RoadModules.Any(
-            value => value.Type == CityRoadModuleType.CurveSmall));
         Assert.IsFalse(first.RoadModules.Any(
             value => value.Type == CityRoadModuleType.CurveLong));
         Assert.IsTrue(first.RoadModules.Any(
@@ -1287,6 +1818,170 @@ public sealed class CityGenerationTests
     }
 
     [Test]
+    public void PackageRoadDescriptorsUseFixedSourceInterfaces()
+    {
+        var expected = new[]
+        {
+            (
+                CityRoadModuleType.End,
+                CityRoadConnectionMask.West,
+                CityRoadConnectionMask.North,
+                1,
+                true),
+            (
+                CityRoadModuleType.Straight,
+                CityRoadConnectionMask.East
+                    | CityRoadConnectionMask.West,
+                CityRoadConnectionMask.North
+                    | CityRoadConnectionMask.South,
+                1,
+                true),
+            (
+                CityRoadModuleType.StraightCrossing,
+                CityRoadConnectionMask.East
+                    | CityRoadConnectionMask.West,
+                CityRoadConnectionMask.North
+                    | CityRoadConnectionMask.South,
+                1,
+                true),
+            (
+                CityRoadModuleType.CurveSmall,
+                CityRoadConnectionMask.North
+                    | CityRoadConnectionMask.East,
+                CityRoadConnectionMask.North
+                    | CityRoadConnectionMask.East,
+                0,
+                true),
+            (
+                CityRoadModuleType.TIntersection,
+                CityRoadConnectionMask.North
+                    | CityRoadConnectionMask.East
+                    | CityRoadConnectionMask.West,
+                CityRoadConnectionMask.North
+                    | CityRoadConnectionMask.East
+                    | CityRoadConnectionMask.South,
+                1,
+                true),
+            (
+                CityRoadModuleType.CrossIntersection,
+                CityRoadConnectionMask.All,
+                CityRoadConnectionMask.All,
+                0,
+                true),
+            (
+                CityRoadModuleType.CurveLong,
+                CityRoadConnectionMask.East
+                    | CityRoadConnectionMask.South,
+                CityRoadConnectionMask.North
+                    | CityRoadConnectionMask.East,
+                3,
+                false)
+        };
+
+        foreach (var item in expected)
+        {
+            CityRoadModuleDescriptor descriptor =
+                ModernCityRoadModuleLibrary.GetDescriptor(item.Item1);
+            Assert.AreEqual(item.Item2, descriptor.SourceConnections);
+            Assert.AreEqual(item.Item3, descriptor.CanonicalConnections);
+            Assert.AreEqual(
+                item.Item4,
+                descriptor.SourceQuarterTurnCorrection);
+            Assert.AreEqual(item.Item5, descriptor.IsEnabled);
+            Assert.AreEqual(
+                descriptor.CanonicalConnections,
+                descriptor.GetEffectiveConnections(0));
+        }
+    }
+
+    [Test]
+    public void ParkPathwaysUseConcretePerimeterAndGrassOnlyInside()
+    {
+        Vector2[] boundary =
+        {
+            new Vector2(-10f, -10f),
+            new Vector2(10f, -10f),
+            new Vector2(10f, 10f),
+            new Vector2(-10f, 10f)
+        };
+        var settings = new CityGenerationSettings
+        {
+            modularRoadCellSize = 10f,
+            modularPathwayUnitSize = 2.5f
+        };
+        var result = new CityGenerationResult();
+        result.Blocks.Add(new CityBlockData(
+            boundary,
+            CityZoneType.Park));
+        var basis = new CityModularGridBasis(
+            Vector2.zero,
+            Vector2.right);
+
+        CityModularRoadPlanner.GeneratePathways(
+            boundary,
+            0,
+            basis,
+            settings,
+            result,
+            0,
+            0,
+            1234,
+            false);
+
+        Assert.IsNotEmpty(result.PathwayModules);
+        Assert.IsTrue(result.PathwayModules.All(
+            value => value.QuarterTurns == 0));
+        Assert.IsTrue(result.PathwayModules.All(value =>
+        {
+            Vector2 expected =
+                basis.ToWorld(
+                    value.GridX,
+                    value.GridY,
+                    settings.modularPathwayUnitSize)
+                + basis.AxisX
+                    * (value.SizeX
+                       * settings.modularPathwayUnitSize
+                       * 0.5f)
+                + basis.AxisY
+                    * (value.SizeY
+                       * settings.modularPathwayUnitSize
+                       * 0.5f);
+            return Vector2.Distance(expected, value.Position) < 0.0001f;
+        }));
+        Assert.IsTrue(result.PathwayModules.All(value =>
+            value.SurfaceType
+            == ModernCityRoadModuleLibrary
+                .GetPathwayDescriptor(value.Variant)
+                .SurfaceType));
+        var covered = new Dictionary<Vector2Int, int>();
+        foreach (CityPathwayModulePlacement module
+                 in result.PathwayModules)
+        {
+            for (int y = 0; y < module.SizeY; y++)
+            {
+                for (int x = 0; x < module.SizeX; x++)
+                {
+                    covered[new Vector2Int(
+                        module.GridX + x,
+                        module.GridY + y)] = module.Variant;
+                }
+            }
+        }
+        int minimumX = covered.Keys.Min(value => value.x);
+        int maximumX = covered.Keys.Max(value => value.x);
+        int minimumY = covered.Keys.Min(value => value.y);
+        int maximumY = covered.Keys.Max(value => value.y);
+        Assert.IsTrue(covered.Any(pair => pair.Value == 3));
+        Assert.IsTrue(covered.All(pair =>
+            pair.Key.x != minimumX
+            && pair.Key.x != maximumX
+            && pair.Key.y != minimumY
+            && pair.Key.y != maximumY
+                || pair.Value == 2),
+            "Pathway D grass must never replace the Pathway C perimeter.");
+    }
+
+    [Test]
     public void RoadModuleDefinitionsSolveEveryEnabledOrientation()
     {
         var library = new ModernCityRoadModuleLibrary();
@@ -1413,6 +2108,37 @@ public sealed class CityGenerationTests
     }
 
     [Test]
+    public void CurveLongUsesPairedOffsetSockets()
+    {
+        var library = new ModernCityRoadModuleLibrary();
+        CityRoadSocketSet curve =
+            library.GetSocketTags(CityRoadModuleType.CurveLong, 0);
+
+        Assert.AreEqual(
+            CityRoadSocketTag.Road2LaneOffsetLeftA,
+            curve.North);
+        Assert.AreEqual(
+            CityRoadSocketTag.Road2LaneOffsetRightA,
+            curve.East);
+        Assert.AreEqual(
+            CityRoadConnectionMask.North
+                | CityRoadConnectionMask.East,
+            curve.RoadConnectionMask);
+        Assert.IsFalse(
+            ModernCityRoadModuleLibrary.AreOpposingSocketsCompatible(
+                curve.North,
+                CityRoadSocketTag.Road2LaneA));
+        Assert.IsTrue(
+            ModernCityRoadModuleLibrary.AreOpposingSocketsCompatible(
+                curve.North,
+                CityRoadSocketTag.Road2LaneOffsetRightA));
+        Assert.IsTrue(
+            ModernCityRoadModuleLibrary.AreOpposingSocketsCompatible(
+                curve.East,
+                CityRoadSocketTag.Road2LaneOffsetLeftA));
+    }
+
+    [Test]
     public void ModularRoadWorldBasisMapsEastAndNorthToGridAxes()
     {
         Vector2[] axes =
@@ -1534,6 +2260,66 @@ public sealed class CityGenerationTests
         {
             CityModularRoadMeshFactory.ClearSourceCache();
         }
+    }
+
+    [Test]
+    public void ModularRoadLayoutRejectsPathwayOverlappingRoadCell()
+    {
+        var library = new ModernCityRoadModuleLibrary();
+        var modules = new[]
+        {
+            new CityRoadModulePlacement(
+                0,
+                0,
+                0,
+                0,
+                Vector2.zero,
+                CityRoadModuleType.End,
+                0,
+                false,
+                1,
+                CityRoadConnectionMask.North,
+                library.GetSocketTags(
+                    CityRoadModuleType.End,
+                    0)),
+            new CityRoadModulePlacement(
+                1,
+                0,
+                0,
+                1,
+                new Vector2(0f, 10f),
+                CityRoadModuleType.End,
+                2,
+                false,
+                1,
+                CityRoadConnectionMask.South,
+                library.GetSocketTags(
+                    CityRoadModuleType.End,
+                    2))
+        };
+        var pathways = new[]
+        {
+            new CityPathwayModulePlacement(
+                0,
+                0,
+                -2,
+                -2,
+                new Vector2(-3.75f, -3.75f),
+                1,
+                1,
+                2,
+                0)
+        };
+
+        CityRoadLayoutValidationResult validation =
+            CityModularRoadPlanner.ValidateLayout(
+                modules,
+                pathways);
+
+        Assert.IsFalse(validation.IsValid);
+        Assert.AreEqual(
+            1,
+            validation.RoadToPathwayMismatchCount);
     }
 
     [Test]
@@ -1967,6 +2753,61 @@ public sealed class CityGenerationTests
         Assert.IsTrue(
             CityPolygonGeometry.ValidateBoundary(points, Settings, out string error),
             error);
+    }
+
+    static CityPlanData CreateBoundaryOnlyPlanningTestPlan()
+    {
+        return new CityPlanData
+        {
+            cityId = "citygenerate-test",
+            seed = 7319,
+            boundary = new[]
+            {
+                new Vector2(-240f, -200f),
+                new Vector2(240f, -200f),
+                new Vector2(240f, 200f),
+                new Vector2(-240f, 200f)
+            }
+        };
+    }
+
+    static int CountIndustrialResidentialContacts(
+        CityZonePaintGrid grid)
+    {
+        CityZoneType[] zones = grid.Decode();
+        int contacts = 0;
+        for (int y = 0; y < grid.height; y++)
+        {
+            for (int x = 0; x < grid.width; x++)
+            {
+                int index = y * grid.width + x;
+                if (x + 1 < grid.width
+                    && IsIndustrialResidentialPair(
+                        zones[index],
+                        zones[index + 1]))
+                {
+                    contacts++;
+                }
+                if (y + 1 < grid.height
+                    && IsIndustrialResidentialPair(
+                        zones[index],
+                        zones[index + grid.width]))
+                {
+                    contacts++;
+                }
+            }
+        }
+        return contacts;
+    }
+
+    static bool IsIndustrialResidentialPair(
+        CityZoneType first,
+        CityZoneType second)
+    {
+        return first == CityZoneType.Industrial
+            && second == CityZoneType.Residential
+            || first == CityZoneType.Residential
+            && second == CityZoneType.Industrial;
     }
 
     static void ConfigureTestTerrain(

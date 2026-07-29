@@ -1531,6 +1531,7 @@ MonoBehaviour:
   automaticApproachMaximumSpeed: 220
   warpGate: {fileID: 0}
   cameraRig: {fileID: 0}
+  shipPresentation: {fileID: 0}
 --- !u!114 &449002368
 MonoBehaviour:
   m_ObjectHideFlags: 0

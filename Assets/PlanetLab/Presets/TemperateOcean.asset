@@ -13,25 +13,25 @@ MonoBehaviour:
   m_Name: TemperateOcean
   m_EditorClassIdentifier: 
   version: 2
-  displayName: Temperate Ocean
-  template: 0
-  seed: 7319
-  radius: 100
-  maximumTerrainElevation: 16
+  displayName: Crystal
+  template: 4
+  seed: 40427
+  radius: 404
+  maximumTerrainElevation: 21
   previewResolution: 64
   terrain:
     shapeVersion: 2
     continentScale: 0.018
     continentHeight: 11
     detailScale: 0.065
-    detailHeight: 3.6
-    ridgeHeight: 7
-    continentThreshold: 0.5
-    continentWarp: 0.6
-    continentSharpness: 1.25
-    mountainMask: 0.52
+    detailHeight: 1.8
+    ridgeHeight: 15
+    continentThreshold: 0.373
+    continentWarp: 1.05
+    continentSharpness: 1.9
+    mountainMask: 0.38
     oceanFloorDepth: 0.58
-    terraceStrength: 0.08
+    terraceStrength: 0.56
     surfaceLayerDepth: 1
     stoneDepth: 4
     generateCaves: 0
@@ -40,25 +40,25 @@ MonoBehaviour:
     caveSurfaceClearance: 2
   visual:
     visualVersion: 3
-    lowlandColor: {r: 0.12, g: 0.42, b: 0.12, a: 1}
-    highlandColor: {r: 0.45, g: 0.68, b: 0.2, a: 1}
-    cliffColor: {r: 0.2, g: 0.16, b: 0.1, a: 1}
-    rockColor: {r: 0.28, g: 0.25, b: 0.18, a: 1}
-    accentColor: {r: 0.6, g: 0.82, b: 0.22, a: 1}
-    facetStrength: 0.72
-    lightingBands: 4
+    lowlandColor: {r: 0.08, g: 0.18, b: 0.25, a: 1}
+    highlandColor: {r: 0.18, g: 0.55, b: 0.68, a: 1}
+    cliffColor: {r: 0.08, g: 0.08, b: 0.16, a: 1}
+    rockColor: {r: 0.18, g: 0.12, b: 0.32, a: 1}
+    accentColor: {r: 0.6, g: 0.18, b: 0.9, a: 1}
+    facetStrength: 0.96
+    lightingBands: 3
     macroColorSize: 18
     cliffSlope: 0.58
-    macroVariation: 0.16
+    macroVariation: 0.28
     oceanEnabled: 1
-    deepOceanColor: {r: 0.01, g: 0.09, b: 0.2, a: 1}
-    shallowOceanColor: {r: 0.02, g: 0.48, b: 0.62, a: 1}
-    shoreColor: {r: 0.78, g: 0.68, b: 0.38, a: 1}
-    snowColor: {r: 0.94, g: 0.95, b: 0.86, a: 1}
-    oceanLevel: 0.005
+    deepOceanColor: {r: 0.025, g: 0.02, b: 0.12, a: 1}
+    shallowOceanColor: {r: 0.16, g: 0.55, b: 0.82, a: 1}
+    shoreColor: {r: 0.18, g: 0.72, b: 0.8, a: 1}
+    snowColor: {r: 0.68, g: 0.92, b: 1, a: 1}
+    oceanLevel: -0.025
     shoreWidth: 0.018
-    snowLine: 0.72
-    snowAmount: 0.65
+    snowLine: 0.78
+    snowAmount: 0.4
     oceanSmoothness: 0.86
     oceanWaveStrength: 0.32
     oceanWaveScale: 1
@@ -89,18 +89,18 @@ MonoBehaviour:
   preview:
     backgroundColor: {r: 0, g: 0, b: 0, a: 1}
     ambientColor: {r: 0.16, g: 0.18, b: 0.22, a: 1}
-    sunColor: {r: 1, g: 0.94, b: 0.82, a: 1}
+    sunColor: {r: 0.72, g: 0.88, b: 1, a: 1}
     sunEuler: {x: 35, y: -35, z: 0}
     sunIntensity: 1.25
-    fillColor: {r: 0.36, g: 0.52, b: 1, a: 1}
+    fillColor: {r: 0.65, g: 0.24, b: 1, a: 1}
     fillEuler: {x: 18, y: 145, z: 0}
-    fillIntensity: 0.32
+    fillIntensity: 0.5
     cameraYaw: 35
     cameraPitch: 20
-    cameraDistance: 8
+    cameraDistance: 3.45
     autoRotate: 0
     rotationSpeed: 8
   planar:
     autoAnchor: 1
-    anchorLatitude: 35.45604
-    anchorLongitude: -46.670074
+    anchorLatitude: -3.4712036
+    anchorLongitude: -175.39713

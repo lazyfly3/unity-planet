@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae25ffa4c1f76bd448493f801d106b0b, type: 3}
+  m_Name: module_structure
+  m_EditorClassIdentifier: 
+  moduleId: structure
+  displayName: "\u7ED3\u6784\u5757"
+  category: 1
+  prefab: {fileID: 3888591240046160795, guid: 07570b01b6bf2df4d9ec04f4f92f088e, type: 3}
+  footprint: {x: 1, y: 1, z: 1}
+  massKg: 50
+  energyCapacity: 0
+  energyCost: 0
+  maxIntegrity: 100
+  thrustNewtons: 0
+  runtimePartDefinition: {fileID: 11400000, guid: 0b15241f54772834cae194d3956ee490, type: 2}

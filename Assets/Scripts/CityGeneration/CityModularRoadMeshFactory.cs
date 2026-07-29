@@ -267,15 +267,15 @@ namespace CityGeneration
                     continue;
                 float width = placement.SizeX * unitSize;
                 float depth = placement.SizeY * unitSize;
+                int quarterTurns = correction;
+                bool swapsAxes = (quarterTurns & 1) != 0;
                 Mesh source = GetNormalizedSourceMesh(
                     prefab,
-                    width,
-                    depth,
+                    swapsAxes ? depth : width,
+                    swapsAxes ? width : depth,
                     true);
                 if (source == null)
                     continue;
-                int quarterTurns =
-                    placement.QuarterTurns + correction;
                 instances.Add(new CombineInstance
                 {
                     mesh = source,
@@ -450,8 +450,21 @@ namespace CityGeneration
                     + $"{straightDefinition.CanonicalConnections}.";
                 return false;
             }
+            int expectedStraightCorrection =
+                ModernCityRoadModuleLibrary
+                    .GetDescriptor(CityRoadModuleType.Straight)
+                    .SourceQuarterTurnCorrection;
+            if (straightCorrection != expectedStraightCorrection)
+            {
+                error =
+                    $"Road Straight detected correction "
+                    + $"{straightCorrection} does not match its explicit "
+                    + $"descriptor {expectedStraightCorrection}.";
+                return false;
+            }
             shared.QuarterTurnCorrections[
-                CityRoadModuleType.Straight] = straightCorrection;
+                CityRoadModuleType.Straight] =
+                expectedStraightCorrection;
             float maximumSocketError = referenceSocketError;
             float maximumSurfaceError = 0f;
             for (int i = 0; i < enabledTypes.Length; i++)
@@ -539,7 +552,20 @@ namespace CityGeneration
                         + $"{definition.CanonicalConnections}.";
                     return false;
                 }
-                shared.QuarterTurnCorrections[type] = correction;
+                int expectedCorrection =
+                    ModernCityRoadModuleLibrary
+                        .GetDescriptor(type)
+                        .SourceQuarterTurnCorrection;
+                if (correction != expectedCorrection)
+                {
+                    error =
+                        $"Road module {type} detected correction "
+                        + $"{correction} does not match its explicit "
+                        + $"descriptor {expectedCorrection}.";
+                    return false;
+                }
+                shared.QuarterTurnCorrections[type] =
+                    expectedCorrection;
                 if (profileError > socketError)
                 {
                     socketError = profileError;
@@ -585,17 +611,11 @@ namespace CityGeneration
             float targetCellSize)
         {
             if (library.normalizationMode
-                    == RoadModuleNormalizationMode.SharedKitCoordinates
-                && TryGetSharedKitCalibration(
-                    library,
-                    targetCellSize,
-                    out SharedKitCalibration calibration,
-                    out _)
-                && calibration.QuarterTurnCorrections.TryGetValue(
-                    type,
-                    out int correction))
+                    == RoadModuleNormalizationMode.SharedKitCoordinates)
             {
-                return correction;
+                return ModernCityRoadModuleLibrary
+                    .GetDescriptor(type)
+                    .SourceQuarterTurnCorrection;
             }
             return library.GetRoadQuarterTurnCorrection(type);
         }

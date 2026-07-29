@@ -347,9 +347,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   definitions:
-  - {fileID: 11400000, guid: 72bcbef385f28c74593785b91e180fc5, type: 2}
-  - {fileID: 11400000, guid: 07ea960b540ab794fae06bbb7e3344d2, type: 2}
-  - {fileID: 11400000, guid: dfb09f8ee160767458e186e76eeae09d, type: 2}
+  - {fileID: 11400000, guid: d1016fb6e8b65584ba31a2d0d33b19ce, type: 2}
+  - {fileID: 11400000, guid: 99108094e83ca6545a45e2f86b20e16a, type: 2}
+  - {fileID: 11400000, guid: 4ac83530b7e81e94daa35526a51762ee, type: 2}
+  - {fileID: 11400000, guid: 03c3db7ddb28edc498501c5e20462902, type: 2}
+  - {fileID: 11400000, guid: d4c89d608797cfb4d8c8e3baef3132ec, type: 2}
 --- !u!114 &52408165
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -367,7 +369,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a6a5685ca3b1b0f46873527ac48aa6ec, type: 2}
   - {fileID: 11400000, guid: e9b3179b5e3598740a1d57d111e3ba46, type: 2}
   - {fileID: 11400000, guid: dfdf9542f58f887498a66948054dc395, type: 2}
+  - {fileID: 11400000, guid: 87959006f78eab34d8e190ac1de5e9f5, type: 2}
+  - {fileID: 11400000, guid: d8759027e9c75314aa1823558e8ad0a2, type: 2}
   - {fileID: 11400000, guid: e8b1dd13a2233bb4bb3afc8e17c820e3, type: 2}
+  - {fileID: 11400000, guid: b318f34477818334da899e3395ef7505, type: 2}
   - {fileID: 11400000, guid: ee7e879c031e5b044818d00fbb67940b, type: 2}
   - {fileID: 11400000, guid: c0e6847208d8e8f4887e934445b34ad5, type: 2}
   - {fileID: 11400000, guid: 9c0b1eb7fc0510a4baea4dcd7517d330, type: 2}
@@ -380,12 +385,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3f1319aafbece7646b6db378ccfc887f, type: 2}
   - {fileID: 11400000, guid: 24ea3ed6c0401a245be090549f93d68e, type: 2}
   - {fileID: 11400000, guid: 560fbd05977579a42abb54b517cca81f, type: 2}
+  - {fileID: 11400000, guid: 7256694dee2e2464ab7b96a9e9bbbfd5, type: 2}
+  - {fileID: 11400000, guid: 3e1f7aab5846b1d4185c336fdfe98e3d, type: 2}
   - {fileID: 11400000, guid: 8112448281506f2459168422f2add071, type: 2}
   - {fileID: 11400000, guid: b3d9b132dc717e243920c91df215061d, type: 2}
   - {fileID: 11400000, guid: 6cd514ec6b079b84391bc1f3f7798c9b, type: 2}
   - {fileID: 11400000, guid: e98489326bbacfa428d8a8de292dd023, type: 2}
   - {fileID: 11400000, guid: 8092fef4ab9ec2d44b9553a3947a0862, type: 2}
   - {fileID: 11400000, guid: 5a5ba1889cd53af4086db90ca3246a44, type: 2}
+  - {fileID: 11400000, guid: 9a93448b19157134c9cac94c90173f63, type: 2}
+  - {fileID: 11400000, guid: 403972ee82847d84e9de7d6339057e65, type: 2}
+  - {fileID: 11400000, guid: b5cff547c7d10a14da9acec71eed2bf4, type: 2}
 --- !u!114 &52408166
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -425,6 +435,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   definitions:
+  - materialId: paint.native
+    displayName: "\u539F\u5382"
+    material: {fileID: 0}
+    previewColor: {r: 0.36, g: 0.42, b: 0.48, a: 1}
   - materialId: paint.deep_space_blue
     displayName: "\u6DF1\u7A7A\u949B\u84DD"
     material: {fileID: 2100000, guid: cd2c25d143d1e1c4eb2c60a2b929bac5, type: 2}
@@ -3226,7 +3240,7 @@ Light:
   m_Type: 2
   m_Shape: 0
   m_Color: {r: 0.82, g: 0.91, b: 1, a: 1}
-  m_Intensity: 5.2
+  m_Intensity: 1.25
   m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -5384,7 +5398,7 @@ Light:
   m_Type: 2
   m_Shape: 0
   m_Color: {r: 0.3, g: 0.72, b: 1, a: 1}
-  m_Intensity: 4.8
+  m_Intensity: 0.65
   m_Range: 18
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -6379,6 +6393,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   modelRoot: {fileID: 1394287370}
   hullCollider: {fileID: 1394287371}
+  placementCollider: {fileID: 0}
   hullMaterial: {fileID: 2100000, guid: 6c4c4cf7f3424244aaaafa6ed0c1e22c, type: 2}
   accentMaterial: {fileID: 2100000, guid: cf5c973fe492398478e4ee27ae635593, type: 2}
   currentHull: {fileID: 0}
@@ -8941,7 +8956,7 @@ Light:
   m_Type: 1
   m_Shape: 0
   m_Color: {r: 0.65, g: 0.82, b: 1, a: 1}
-  m_Intensity: 0.82
+  m_Intensity: 0.22
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -9043,8 +9058,8 @@ MonoBehaviour:
   ambientSky: {r: 0.34, g: 0.42, b: 0.5, a: 1}
   ambientEquator: {r: 0.24, g: 0.29, b: 0.34, a: 1}
   ambientGround: {r: 0.12, g: 0.14, b: 0.17, a: 1}
-  ambientIntensity: 1.25
-  reflectionIntensity: 1.35
+  ambientIntensity: 0.9
+  reflectionIntensity: 0.95
 --- !u!1 &1947138210
 GameObject:
   m_ObjectHideFlags: 0
@@ -9242,6 +9257,12 @@ MonoBehaviour:
   torqueWeight: 1.35
   allowDirectMode: 1
   assistMode: 0
+  maximumGravitySupportAcceleration: 20
+  planetaryClimbSpeed: 10
+  planetaryDescentSpeed: 8
+  lowAltitudeClimbSpeed: 6
+  planetaryStrafeSpeed: 20
+  comfortAccelerationLimit: 35
 --- !u!114 &1975299685
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9859,7 +9880,7 @@ Light:
   m_Type: 1
   m_Shape: 0
   m_Color: {r: 1, g: 0.91, b: 0.8, a: 1}
-  m_Intensity: 1.75
+  m_Intensity: 0.8
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208

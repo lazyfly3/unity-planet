@@ -189,11 +189,11 @@ public sealed class ProceduralPlanetOcean : MonoBehaviour, IPlanetWaterSampler
     void Cleanup()
     {
         if (oceanObject != null)
-            DestroyObject(oceanObject);
+            DestroyGeneratedObject(oceanObject);
         if (runtimeMesh != null)
-            DestroyObject(runtimeMesh);
+            DestroyGeneratedObject(runtimeMesh);
         if (runtimeMaterial != null)
-            DestroyObject(runtimeMaterial);
+            DestroyGeneratedObject(runtimeMaterial);
         oceanObject = null;
         runtimeMesh = null;
         runtimeMaterial = null;
@@ -201,7 +201,7 @@ public sealed class ProceduralPlanetOcean : MonoBehaviour, IPlanetWaterSampler
         maximumVisualWaveHeight = 0f;
     }
 
-    static void DestroyObject(Object value)
+    static void DestroyGeneratedObject(Object value)
     {
         if (value == null)
             return;

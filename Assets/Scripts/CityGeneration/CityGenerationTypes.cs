@@ -155,10 +155,14 @@ namespace CityGeneration
     public sealed class CityBlockData
     {
         public IReadOnlyList<Vector2> Footprint { get; }
+        public CityZoneType ZoneType { get; }
 
-        public CityBlockData(IReadOnlyList<Vector2> footprint)
+        public CityBlockData(
+            IReadOnlyList<Vector2> footprint,
+            CityZoneType zoneType = CityZoneType.Residential)
         {
             Footprint = footprint;
+            ZoneType = zoneType;
         }
     }
 
@@ -178,17 +182,20 @@ namespace CityGeneration
         public float Height { get; }
         public int MaterialIndex { get; }
         public int PrefabIndex { get; }
+        public Vector2 FrontageDirection { get; }
 
         public CityBuildingData(
             IReadOnlyList<Vector2> footprint,
             float height,
             int materialIndex,
-            int prefabIndex = 0)
+            int prefabIndex = 0,
+            Vector2 frontageDirection = default)
         {
             Footprint = footprint;
             Height = height;
             MaterialIndex = materialIndex;
             PrefabIndex = prefabIndex;
+            FrontageDirection = frontageDirection;
         }
     }
 
@@ -208,11 +215,18 @@ namespace CityGeneration
             new List<CityRoadModulePlacement>();
         public List<CityPathwayModulePlacement> PathwayModules { get; } =
             new List<CityPathwayModulePlacement>();
+        public CityModularNetworkResult ModularNetworkResult
+        {
+            get;
+            internal set;
+        }
         public CityRoadLayoutValidationResult RoadLayoutValidation
         {
             get;
             internal set;
         }
+        public bool EnforcePackageOnlyRoads { get; internal set; }
+        public bool EnforcePackageOnlySurfaces { get; internal set; }
         public CityGenerationDiagnostics Diagnostics { get; } =
             new CityGenerationDiagnostics();
 

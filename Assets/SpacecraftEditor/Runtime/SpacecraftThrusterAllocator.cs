@@ -27,6 +27,7 @@ namespace SpacecraftEditor
         float[] appliedThrottles = Array.Empty<float>();
         ShipAssembly sourceAssembly;
         ShipHullDefinition sourceHull;
+        bool sourceBuiltInRcsWithoutHull;
         float referenceLength = 1f;
 
         public int ActuatorCount => actuators.Length;
@@ -40,10 +41,14 @@ namespace SpacecraftEditor
             private set;
         }
 
-        public void Rebuild(ShipAssembly assembly, ShipHullDefinition hull)
+        public void Rebuild(
+            ShipAssembly assembly,
+            ShipHullDefinition hull,
+            bool builtInRcsWithoutHull = false)
         {
             sourceAssembly = assembly;
             sourceHull = hull;
+            sourceBuiltInRcsWithoutHull = builtInRcsWithoutHull;
             int externalCount = 0;
             if (assembly != null)
             {
@@ -54,7 +59,10 @@ namespace SpacecraftEditor
                 }
             }
 
-            int count = externalCount + (hull == null ? 0 : RcsActuatorCount);
+            bool includeBuiltInRcs =
+                hull != null || builtInRcsWithoutHull;
+            int count = externalCount
+                + (includeBuiltInRcs ? RcsActuatorCount : 0);
             actuators = new Actuator[count];
             localForces = new Vector3[count];
             localTorques = new Vector3[count];
@@ -80,9 +88,24 @@ namespace SpacecraftEditor
                 }
             }
 
-            if (hull != null)
-                AppendBuiltInRcs(hull, ref cursor);
-            referenceLength = hull == null ? 1f : Mathf.Max(0.5f, hull.Dimensions.magnitude * 0.25f);
+            Vector3 rcsCenter = Vector3.zero;
+            Vector3 rcsDimensions = hull == null
+                ? ResolveAssemblyBounds(assembly, out rcsCenter)
+                : hull.Dimensions;
+            if (includeBuiltInRcs)
+            {
+                ShipFlightProfile rcsProfile = hull == null
+                    ? ShipFlightProfile.CreateForHull(string.Empty)
+                    : hull.FlightProfile;
+                AppendBuiltInRcs(
+                    rcsDimensions,
+                    rcsCenter,
+                    rcsProfile,
+                    ref cursor);
+            }
+            referenceLength = Mathf.Max(
+                0.5f,
+                rcsDimensions.magnitude * 0.25f);
             ControlAuthority = 1f;
             MaximumAppliedThrottle = 0f;
             AppliedLocalForce = Vector3.zero;
@@ -147,11 +170,19 @@ namespace SpacecraftEditor
             ControlAuthority = 1f;
         }
 
-        public bool Matches(ShipAssembly assembly, ShipHullDefinition hull)
+        public bool Matches(
+            ShipAssembly assembly,
+            ShipHullDefinition hull,
+            bool builtInRcsWithoutHull = false)
         {
-            if (sourceAssembly != assembly || sourceHull != hull)
+            if (sourceAssembly != assembly
+                || sourceHull != hull
+                || sourceBuiltInRcsWithoutHull != builtInRcsWithoutHull)
                 return false;
-            int expected = hull == null ? 0 : RcsActuatorCount;
+            int expected =
+                hull != null || builtInRcsWithoutHull
+                    ? RcsActuatorCount
+                    : 0;
             if (assembly != null)
             {
                 for (int index = 0; index < assembly.Thrusters.Count; index++)
@@ -163,18 +194,112 @@ namespace SpacecraftEditor
             return expected == actuators.Length;
         }
 
-        void AppendBuiltInRcs(ShipHullDefinition hull, ref int cursor)
+        void AppendBuiltInRcs(
+            Vector3 dimensions,
+            Vector3 center,
+            ShipFlightProfile profile,
+            ref int cursor)
         {
-            Vector3 halfSize = Vector3.Scale(hull.Dimensions, new Vector3(0.42f, 0.42f, 0.42f));
-            Vector3 perNozzleForce = hull.FlightProfile.IntegratedRcsNozzleForce;
+            Vector3 halfSize = Vector3.Scale(
+                dimensions,
+                new Vector3(0.42f, 0.42f, 0.42f));
+            Vector3 perNozzleForce =
+                profile.IntegratedRcsNozzleForce;
             for (int x = -1; x <= 1; x += 2)
             for (int y = -1; y <= 1; y += 2)
             for (int z = -1; z <= 1; z += 2)
             {
-                Vector3 position = new Vector3(x * halfSize.x, y * halfSize.y, z * halfSize.z);
+                Vector3 position = center + new Vector3(
+                    x * halfSize.x,
+                    y * halfSize.y,
+                    z * halfSize.z);
                 actuators[cursor++] = BuiltIn(position, new Vector3(-x, 0f, 0f), perNozzleForce.x);
                 actuators[cursor++] = BuiltIn(position, new Vector3(0f, -y, 0f), perNozzleForce.y);
                 actuators[cursor++] = BuiltIn(position, new Vector3(0f, 0f, -z), perNozzleForce.z);
+            }
+        }
+
+        static Vector3 ResolveAssemblyBounds(
+            ShipAssembly assembly,
+            out Vector3 center)
+        {
+            center = Vector3.zero;
+            if (assembly == null)
+                return new Vector3(2f, 2f, 2f);
+
+            bool initialized = false;
+            Bounds localBounds = new Bounds();
+            Collider[] colliders =
+                assembly.GetComponentsInChildren<Collider>(true);
+            for (int index = 0; index < colliders.Length; index++)
+            {
+                Collider collider = colliders[index];
+                if (collider == null || !collider.enabled || collider.isTrigger)
+                    continue;
+                EncapsulateWorldBounds(
+                    assembly.transform,
+                    collider.bounds,
+                    ref localBounds,
+                    ref initialized);
+            }
+
+            if (!initialized)
+            {
+                Renderer[] renderers =
+                    assembly.GetComponentsInChildren<Renderer>(true);
+                for (int index = 0; index < renderers.Length; index++)
+                {
+                    Renderer renderer = renderers[index];
+                    if (renderer == null || !renderer.enabled)
+                        continue;
+                    EncapsulateWorldBounds(
+                        assembly.transform,
+                        renderer.bounds,
+                        ref localBounds,
+                        ref initialized);
+                }
+            }
+
+            if (!initialized)
+                return new Vector3(2f, 2f, 2f);
+
+            center = localBounds.center;
+            Vector3 size = localBounds.size;
+            return new Vector3(
+                Mathf.Max(1f, size.x),
+                Mathf.Max(1f, size.y),
+                Mathf.Max(1f, size.z));
+        }
+
+        static void EncapsulateWorldBounds(
+            Transform root,
+            Bounds worldBounds,
+            ref Bounds localBounds,
+            ref bool initialized)
+        {
+            Vector3 min = worldBounds.min;
+            Vector3 max = worldBounds.max;
+            for (int x = 0; x <= 1; x++)
+            for (int y = 0; y <= 1; y++)
+            for (int z = 0; z <= 1; z++)
+            {
+                Vector3 worldPoint = new Vector3(
+                    x == 0 ? min.x : max.x,
+                    y == 0 ? min.y : max.y,
+                    z == 0 ? min.z : max.z);
+                Vector3 localPoint =
+                    root.InverseTransformPoint(worldPoint);
+                if (!initialized)
+                {
+                    localBounds = new Bounds(
+                        localPoint,
+                        Vector3.zero);
+                    initialized = true;
+                }
+                else
+                {
+                    localBounds.Encapsulate(localPoint);
+                }
             }
         }
 

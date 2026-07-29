@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45571e99e48460845bae7ccc18281763, type: 3}
+  m_Name: decor_resource_platform
+  m_EditorClassIdentifier: 
+  partId: decor.resource_platform
+  displayName: "\u8D44\u6E90\u88C5\u5378\u5E73\u53F0"
+  prefab: {fileID: 2581413134612883116, guid: 83d1e0d1420d8a54e9a9edc281141c32, type: 3}
+  thumbnail: {fileID: 21300000, guid: f07b1cae1090c9741bf1780cc3cfca96, type: 3}
+  category: 0
+  scaleMode: 0
+  placementMode: 0
+  baseMass: 16
+  baseThrust: 0
+  minimumScale: 0.6
+  maximumScale: 1.5
+  fixedScale: 1
+  defaultMaterialId: paint.native
+  exhaustColor: {r: 0, g: 1, b: 1, a: 1}
+  weapon:
+    damageChannel: 0
+    fireMode: 0
+    mountSize: 1
+    mountMode: 0
+    gimbalConeDegrees: 18
+    gimbalTrackingDegreesPerSecond: 120
+    defaultFireGroup: 1
+    roundsPerSecond: 8
+    damage: 6
+    projectileSpeed: 420
+    range: 1600
+    spreadDegrees: 0.25
+    ammunitionCapacity: 240
+    capacitorCost: 0
+    heatPerShot: 0.045
+    heatDissipation: 0.22
+    recoilImpulse: 0.45
+    impactImpulse: 5
+  aerodynamicProfile:
+    role: 0
+    referenceArea: 0
+    baseDragCoefficient: 0.08
+    liftSlopePerRadian: 3.2
+    zeroLiftAngleDegrees: 0
+    stallAngleDegrees: 24
+    inducedDragFactor: 0.12
+    sideStabilityCoefficient: 0
+    centerOffset: {x: 0, y: 0, z: 0}

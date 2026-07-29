@@ -67,12 +67,28 @@ namespace SpacecraftEditor
 
         public virtual void ApplyMaterial(string paintId)
         {
+            SpacecraftPaintBinding[] bindings =
+                GetComponentsInChildren<SpacecraftPaintBinding>(true);
+            if (paintId == SpacecraftPaintBinding.NativePaintId)
+            {
+                materialId = paintId;
+                foreach (SpacecraftPaintBinding binding in bindings)
+                    binding.RestoreNative();
+                return;
+            }
             if (materialCatalog == null)
                 materialCatalog = FindObjectOfType<SpacecraftMaterialCatalog>();
             var selected = materialCatalog == null ? null : materialCatalog.Find(paintId);
             materialId = selected == null ? paintId ?? string.Empty : selected.MaterialId;
             if (selected == null || selected.Material == null)
                 return;
+
+            if (bindings.Length > 0)
+            {
+                foreach (SpacecraftPaintBinding binding in bindings)
+                    binding.ApplyPaint(selected.Material);
+                return;
+            }
 
             foreach (var renderer in GetComponentsInChildren<MeshRenderer>(true))
             {
