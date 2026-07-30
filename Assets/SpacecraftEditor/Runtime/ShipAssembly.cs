@@ -112,10 +112,34 @@ namespace SpacecraftEditor
         {
             if (part == null)
                 return;
-            UnindexPart(part);
-            parts.Remove(part);
-            Destroy(part.gameObject);
-            Recalculate();
+            RemoveParts(new[] { part });
+        }
+
+        public void RemoveParts(
+            IEnumerable<SpacecraftPart> removing,
+            bool recalculate = true)
+        {
+            if (removing == null)
+                return;
+
+            bool changed = false;
+            var visited = new HashSet<SpacecraftPart>();
+            foreach (SpacecraftPart part in removing)
+            {
+                if (part == null ||
+                    !visited.Add(part))
+                {
+                    continue;
+                }
+
+                changed |= parts.Remove(part);
+                UnindexPart(part);
+                part.gameObject.SetActive(false);
+                Destroy(part.gameObject);
+            }
+
+            if (changed && recalculate)
+                Recalculate();
         }
 
         public void RemovePartAndMirror(SpacecraftPart part)

@@ -2,6 +2,54 @@ using System;
 using UnityEngine;
 
 [Serializable]
+public sealed class PlanetWindProfile
+{
+    public bool enabled;
+    public int seed;
+    [Min(0f)] public float referenceWindSpeed;
+    public Vector3 referenceDirection = Vector3.forward;
+    [Range(0f, 1f)] public float shearExponent = 0.14f;
+    [Min(0f)] public float gustPeakSpeed;
+    public Vector2 gustFrequencyRange = new Vector2(0.02f, 0.12f);
+    [Min(1f)] public float coherenceLength = 120f;
+    [Range(0f, 1f)] public float verticalGustRatio = 0.35f;
+
+    public void ClampValues(bool hasAtmosphere)
+    {
+        enabled &= hasAtmosphere;
+        referenceWindSpeed = Mathf.Clamp(referenceWindSpeed, 0f, 80f);
+        referenceDirection = Vector3.ProjectOnPlane(
+            referenceDirection,
+            Vector3.up);
+        if (referenceDirection.sqrMagnitude < 0.0001f)
+            referenceDirection = Vector3.forward;
+        referenceDirection.Normalize();
+        shearExponent = Mathf.Clamp(shearExponent, 0f, 1f);
+        gustPeakSpeed = Mathf.Clamp(gustPeakSpeed, 0f, 40f);
+        gustFrequencyRange.x = Mathf.Clamp(
+            gustFrequencyRange.x,
+            0.001f,
+            2f);
+        gustFrequencyRange.y = Mathf.Clamp(
+            gustFrequencyRange.y,
+            gustFrequencyRange.x,
+            2f);
+        coherenceLength = Mathf.Clamp(coherenceLength, 1f, 10000f);
+        verticalGustRatio = Mathf.Clamp01(verticalGustRatio);
+        if (!enabled)
+        {
+            referenceWindSpeed = 0f;
+            gustPeakSpeed = 0f;
+        }
+    }
+
+    public PlanetWindProfile Clone()
+    {
+        return (PlanetWindProfile)MemberwiseClone();
+    }
+}
+
+[Serializable]
 public sealed class PlanetPhysicalProfile
 {
     public const double GravitationalConstant = 6.67430e-11d;
@@ -18,6 +66,7 @@ public sealed class PlanetPhysicalProfile
     [Min(1f)] public double atmosphereScaleHeightMeters = 8500d;
     [Min(0f)] public double atmosphereTopAltitudeMeters = 100_000d;
     [Min(0f)] public double visualExosphereAltitudeMeters = 600_000d;
+    public PlanetWindProfile wind = new PlanetWindProfile();
 
     public bool HasAtmosphere => atmosphereSurfaceDensityKgPerCubicMeter > 0.000001d
         && atmosphereScaleHeightMeters > 0d
@@ -68,11 +117,14 @@ public sealed class PlanetPhysicalProfile
         visualExosphereAltitudeMeters = HasAtmosphere
             ? Math.Max(atmosphereTopAltitudeMeters, visualExosphereAltitudeMeters)
             : 0d;
+        wind = wind ?? new PlanetWindProfile();
+        wind.ClampValues(HasAtmosphere);
     }
 
     public PlanetPhysicalProfile Clone()
     {
         var copy = (PlanetPhysicalProfile)MemberwiseClone();
+        copy.wind = wind != null ? wind.Clone() : new PlanetWindProfile();
         copy.ClampValues();
         return copy;
     }

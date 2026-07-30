@@ -1,0 +1,7 @@
+ManifestFileVersion: 0
+CRC: 3151969924
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: modules/block
+      Dependencies: {}

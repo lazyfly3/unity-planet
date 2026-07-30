@@ -45,11 +45,8 @@ namespace UnityPlanet.ModularAssembly.Editor
         [MenuItem("Tools/Modular Assembly/Build NeoX Weapon Effect Catalog")]
         public static void BuildCatalog()
         {
-            string projectRoot = Directory.GetParent(
-                Application.dataPath).FullName;
             string sourceRoot = Path.Combine(
-                projectRoot,
-                "APKExtracted",
+                NeoXExternalPaths.RawRoot,
                 "g98_release_out_netease_94_nxpk",
                 "sfx");
             if (!Directory.Exists(sourceRoot))

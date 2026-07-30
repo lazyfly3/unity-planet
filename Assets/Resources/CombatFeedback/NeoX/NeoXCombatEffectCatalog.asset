@@ -1,0 +1,96 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afd886522278bf74bb0b53c9fe50f5b0, type: 3}
+  m_Name: NeoXCombatEffectCatalog
+  m_EditorClassIdentifier: 
+  entries:
+  - sourceId: metal_hit
+    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/behit/metal_medium.sfx
+    family: Hull
+    stage: 0
+    prefab: {fileID: 219710131986270236, guid: ba276c7a8e22d9e4a83677ff1fb87481, type: 3}
+    audioClip: {fileID: 0}
+    degraded: 1
+    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
+      Unity/Forge3D approximation.
+  - sourceId: gatlin_hit
+    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/behit/metal_gatlin_end.sfx
+    family: Gatlin
+    stage: 0
+    prefab: {fileID: 6088369790446456384, guid: 712c21b0702d5c54f803d4ff308de654, type: 3}
+    audioClip: {fileID: 0}
+    degraded: 1
+    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
+      Unity/Forge3D approximation.
+  - sourceId: sniper_hit
+    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/behit/metal_snipercannon_bullet_end.sfx
+    family: Sniper
+    stage: 0
+    prefab: {fileID: 2957716326780973606, guid: 0fa968c75ecb2194db955dcff21fcb1a, type: 3}
+    audioClip: {fileID: 0}
+    degraded: 1
+    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
+      Unity/Forge3D approximation.
+  - sourceId: module_break
+    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/mc/break_01.sfx
+    family: Structure
+    stage: 1
+    prefab: {fileID: 3154563593632691227, guid: c641e3c6258d7cd4c9a46f5a543d6bab, type: 3}
+    audioClip: {fileID: 0}
+    degraded: 1
+    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
+      Unity/Forge3D approximation.
+  - sourceId: detached_smoke
+    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/mc/smoke_fire.sfx
+    family: Structure
+    stage: 2
+    prefab: {fileID: 4198933037546638975, guid: 9e78c7c692d5c594e8708f9a613dd189, type: 3}
+    audioClip: {fileID: 0}
+    degraded: 1
+    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
+      Unity/Forge3D approximation.
+  - sourceId: missile_explosion
+    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/mc/guide_missle_end_01.sfx
+    family: Missile
+    stage: 3
+    prefab: {fileID: 7587109434391191324, guid: 0135bf524d665364b91666716d4d1408, type: 3}
+    audioClip: {fileID: 0}
+    degraded: 1
+    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
+      Unity/Forge3D approximation.
+  - sourceId: shield_break
+    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/mc/shield_break.sfx
+    family: Shield
+    stage: 1
+    prefab: {fileID: 8705640822383758055, guid: 52520a7afbbaf1e49a46698393f2ad5c, type: 3}
+    audioClip: {fileID: 0}
+    degraded: 1
+    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
+      Unity/Forge3D approximation.
+  - sourceId: energy_impact
+    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/mc/energy_cannon_end.sfx
+    family: EnergyCannon
+    stage: 0
+    prefab: {fileID: 2914702905809520846, guid: 4ccaa76bcde025641a3adcfd763bb088, type: 3}
+    audioClip: {fileID: 0}
+    degraded: 1
+    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
+      Unity/Forge3D approximation.
+  - sourceId: laser_impact
+    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/mc/laser_bullet_end.sfx
+    family: HeavyLaser
+    stage: 0
+    prefab: {fileID: 4599651589783558857, guid: cba5a2e8f7211334f8638999d097d936, type: 3}
+    audioClip: {fileID: 0}
+    degraded: 1
+    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
+      Unity/Forge3D approximation.

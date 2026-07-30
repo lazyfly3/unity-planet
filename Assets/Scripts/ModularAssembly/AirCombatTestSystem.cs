@@ -99,14 +99,18 @@ namespace UnityPlanet.ModularAssembly
         GameObject resultPanel;
         Text resultText;
         bool pendingCombat;
+        bool waitingForPreparation;
         bool combatActive;
         bool resolving;
         float outsideSeconds;
         float ineffectiveSeconds;
         Vector3 battleCenter;
-        float basePlayerDrag;
-        float basePlayerAngularDrag;
         GameObject targetObject;
+        ICombatArenaProvider arena;
+        readonly CombatTtkTelemetry playerTtk =
+            new CombatTtkTelemetry();
+        readonly CombatTtkTelemetry enemyTtk =
+            new CombatTtkTelemetry();
 
         public GridFlightSessionKind SessionKind { get; private set; } =
             GridFlightSessionKind.FreeFlight;
@@ -115,7 +119,8 @@ namespace UnityPlanet.ModularAssembly
             RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Install()
         {
-            if (SceneManager.GetActiveScene().name != "ModularAssemblyLab" ||
+            if (!ModularLabSceneProfile.AllowsCombatTest(
+                    SceneManager.GetActiveScene()) ||
                 FindObjectOfType<CombatTestController>() != null)
                 return;
             new GameObject("CombatTestController")
@@ -144,6 +149,16 @@ namespace UnityPlanet.ModularAssembly
             flight.StateChanged += HandleFlightState;
             DisableLegacyTargetAi();
             BuildUi();
+
+            CombatPreparationCoordinator preparation =
+                FindObjectOfType<CombatPreparationCoordinator>(true);
+            if (preparation == null)
+            {
+                GameObject host = new GameObject(
+                    "CombatPreparationCoordinator");
+                preparation =
+                    host.AddComponent<CombatPreparationCoordinator>();
+            }
         }
 
         void ResolveReferences()
@@ -317,8 +332,8 @@ namespace UnityPlanet.ModularAssembly
             }
             if (playerMotion != null &&
                 playerMotion.Telemetry.hoverRatio < 0.35f &&
-                playerMotion.CoreAssistMode ==
-                VehicleCoreAssistMode.Standard)
+                playerMotion.CoreAssistMode !=
+                VehicleCoreAssistMode.Training)
             {
                 reason = "缺少持续飞行能力";
                 return false;
@@ -349,6 +364,37 @@ namespace UnityPlanet.ModularAssembly
                     warningText.text = message;
                 return false;
             }
+            CombatPreparationCoordinator preparation =
+                FindObjectOfType<CombatPreparationCoordinator>(true);
+            if (preparation != null &&
+                preparation.State != CombatPreparationState.Ready)
+            {
+                if (!waitingForPreparation)
+                {
+                    waitingForPreparation = true;
+                    preparation.EnsureReady(
+                        (success, preparationMessage) =>
+                        {
+                            waitingForPreparation = false;
+                            if (success)
+                            {
+                                string ignored;
+                                TryBeginCombat(out ignored);
+                            }
+                            else if (warningText != null)
+                            {
+                                warningText.text =
+                                    preparationMessage;
+                            }
+                        });
+                }
+                message =
+                    "正在后台准备战斗资源 " +
+                    Mathf.RoundToInt(preparation.Progress * 100f) +
+                    "%";
+                return false;
+            }
+
             playerSnapshot = lab.Model.CaptureBlueprint();
             pendingCombat = true;
             SessionKind = GridFlightSessionKind.CombatTest;
@@ -367,12 +413,17 @@ namespace UnityPlanet.ModularAssembly
             else if (state == GridFlightState.Build &&
                      SessionKind == GridFlightSessionKind.CombatTest)
             {
+                ModularBlueprintData beforeCombat = playerSnapshot;
+                ModularBlueprintData result =
+                    BuildPostCombatBlueprint();
                 CleanupCombat(true);
+                CommitPostCombatBlueprint(result, beforeCombat);
             }
         }
 
         IEnumerator StartCombatAfterPhysicsReady()
         {
+            VehicleDetachedDebris.ClearAll();
             yield return new WaitForFixedUpdate();
             ResolveReferences();
             if (playerBody == null)
@@ -381,33 +432,49 @@ namespace UnityPlanet.ModularAssembly
                 yield break;
             }
 
-            battleCenter = playerBody.position +
-                           Vector3.up * BattleAltitude;
+            FlightEnvironmentManager environmentManager =
+                FindObjectOfType<FlightEnvironmentManager>(true);
+            arena = environmentManager != null
+                ? environmentManager.ActiveArena
+                : null;
+            Vector3 playerSpawn = playerBody.position +
+                                  Vector3.up * BattleAltitude;
+            Quaternion playerRotation = Quaternion.identity;
+            if (arena != null)
+            {
+                battleCenter = arena.BattleCenter;
+                arena.TryGetPlayerSpawn(
+                    out playerSpawn,
+                    out playerRotation);
+            }
+            else
+            {
+                battleCenter = playerSpawn;
+            }
             if (!playerBody.isKinematic)
             {
                 playerBody.velocity = Vector3.zero;
                 playerBody.angularVelocity = Vector3.zero;
             }
             playerBody.isKinematic = true;
-            playerBody.position = battleCenter;
-            playerBody.rotation = Quaternion.identity;
-            basePlayerDrag = playerBody.drag;
-            basePlayerAngularDrag = playerBody.angularDrag;
+            playerBody.position = playerSpawn;
+            playerBody.rotation = playerRotation;
             playerBody.isKinematic = false;
 
             playerGraph = weapons.StructureGraph;
             if (playerGraph != null)
             {
                 playerGraph.SetAutomaticReturnToBuild(false);
-                playerGraph.EndFlight();
-                playerGraph.BeginFlight();
+                playerGraph.SetDamageEnabled(true);
+                playerGraph.ResetCombatSession();
             }
-            playerMotion?.SetLegacyDamageEnabled(false);
             if (targetObject != null)
                 targetObject.SetActive(false);
             SpawnEnemy();
             outsideSeconds = 0f;
             ineffectiveSeconds = 0f;
+            playerTtk.Reset("player");
+            enemyTtk.Reset("enemy");
             combatActive = true;
             resolving = false;
             if (combatCanvas != null)
@@ -418,22 +485,66 @@ namespace UnityPlanet.ModularAssembly
 
         void SpawnEnemy()
         {
-            DestroyEnemy();
-            GameObject root = new GameObject("StandardAirCombatEnemy");
-            root.transform.position =
+            Vector3 position =
                 battleCenter + Vector3.forward * EnemySpawnDistance +
                 Vector3.up * 20f;
-            root.transform.rotation = Quaternion.LookRotation(
-                battleCenter - root.transform.position,
+            Quaternion rotation = Quaternion.LookRotation(
+                battleCenter - position,
                 Vector3.up);
+            if (arena != null)
+                arena.TryGetEnemySpawn(out position, out rotation);
+
+            if (enemy == null)
+            {
+                GameObject root =
+                    new GameObject("StandardAirCombatEnemy");
+                root.transform.SetPositionAndRotation(position, rotation);
+                enemy = root.AddComponent<EnemyAirCombatVehicle>();
+                WeaponVisualPool pool =
+                    weapons.GetComponent<WeaponVisualPool>();
+                enemy.Initialize(
+                    this,
+                    playerGraph,
+                    playerBody,
+                    pool);
+            }
+            else
+            {
+                enemy.gameObject.SetActive(true);
+                enemy.ResetForCombat(
+                    this,
+                    playerGraph,
+                    playerBody,
+                    position,
+                    rotation);
+            }
+        }
+
+        public void PrepareEnemyPool()
+        {
+            if (enemy != null || weapons == null)
+                return;
+            GameObject root =
+                new GameObject("StandardAirCombatEnemy_Prewarmed");
+            root.transform.position = new Vector3(0f, -10000f, 0f);
             enemy = root.AddComponent<EnemyAirCombatVehicle>();
-            WeaponVisualPool pool =
-                weapons.GetComponent<WeaponVisualPool>();
             enemy.Initialize(
                 this,
                 playerGraph,
                 playerBody,
-                pool);
+                weapons.GetComponent<WeaponVisualPool>());
+            enemy.StopCombat();
+            root.SetActive(false);
+        }
+
+        public void RecordPlayerDamage(float amount)
+        {
+            playerTtk.RecordDamage(amount);
+        }
+
+        public void RecordEnemyDamage(float amount)
+        {
+            enemyTtk.RecordDamage(amount);
         }
 
         void CheckBattleOutcome()
@@ -449,15 +560,19 @@ namespace UnityPlanet.ModularAssembly
                 return;
             }
 
+            float warningRadius =
+                arena != null ? arena.WarningRadius : WarningRadius;
+            float forfeitRadius =
+                arena != null ? arena.ForfeitRadius : ForfeitRadius;
             float distance = Vector3.Distance(
                 playerBody.position,
                 battleCenter);
-            if (distance > WarningRadius)
+            if (distance > warningRadius)
             {
                 outsideSeconds += Time.deltaTime;
                 warningText.text =
                     $"正在脱离战斗空域  {outsideSeconds:0.0}/{ForfeitSeconds:0.0}秒";
-                if (distance > ForfeitRadius &&
+                if (distance > forfeitRadius &&
                     outsideSeconds >= ForfeitSeconds)
                 {
                     CompleteBattle(false, "脱离战斗空域");
@@ -480,10 +595,6 @@ namespace UnityPlanet.ModularAssembly
             if (ineffectiveSeconds >= 5f)
                 CompleteBattle(false, "载具失去持续战斗能力");
 
-            float damage = 1f - playerGraph.OverallHealthRatio;
-            playerBody.drag = basePlayerDrag + damage * 0.22f;
-            playerBody.angularDrag =
-                basePlayerAngularDrag + damage * 0.45f;
         }
 
         void UpdateCombatHud()
@@ -538,6 +649,10 @@ namespace UnityPlanet.ModularAssembly
                 return;
             resolving = true;
             combatActive = false;
+            if (playerWon)
+                enemyTtk.Complete(reason);
+            else
+                playerTtk.Complete(reason);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             if (playerBody != null)
@@ -570,13 +685,16 @@ namespace UnityPlanet.ModularAssembly
         IEnumerator RestartRoutine()
         {
             resolving = true;
+            VehicleDetachedDebris.ClearAll();
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
             DestroyEnemy();
+            playerGraph?.EndFlight();
+            presenter?.ClearVisuals();
             lab.Model.RestoreBlueprint(playerSnapshot, out string ignored);
+            presenter?.ForceRebuildFromModel();
             yield return null;
             yield return new WaitForFixedUpdate();
-            playerGraph?.EndFlight();
             playerGraph?.BeginFlight();
             if (!playerBody.isKinematic)
             {
@@ -597,34 +715,98 @@ namespace UnityPlanet.ModularAssembly
 
         void ExitCombat()
         {
-            if (lab?.Model != null && playerSnapshot != null)
-                lab.Model.RestoreBlueprint(
-                    playerSnapshot,
-                    out string ignored);
+            ModularBlueprintData beforeCombat = playerSnapshot;
+            ModularBlueprintData result =
+                BuildPostCombatBlueprint();
             CleanupCombat(false);
             if (flight != null &&
                 flight.State != GridFlightState.Build)
                 flight.ExitFlight();
+            CommitPostCombatBlueprint(result, beforeCombat);
+        }
+
+        ModularBlueprintData BuildPostCombatBlueprint()
+        {
+            if (playerSnapshot == null)
+                return null;
+            ModularBlueprintData result =
+                JsonUtility.FromJson<ModularBlueprintData>(
+                    JsonUtility.ToJson(playerSnapshot));
+            if (result == null || result.modules == null)
+                return result;
+            HashSet<string> unavailable =
+                playerGraph != null
+                    ? playerGraph.CaptureUnavailableRuntimeIds()
+                    : new HashSet<string>(StringComparer.Ordinal);
+            unavailable.Remove(GridAssemblyModel.CoreRuntimeId);
+            result.modules = result.modules
+                .Where(module =>
+                    module != null &&
+                    (module.runtimeId == GridAssemblyModel.CoreRuntimeId ||
+                     !unavailable.Contains(module.runtimeId)))
+                .ToArray();
+            result.savedUtcTicks = DateTime.UtcNow.Ticks;
+            return result;
+        }
+
+        void CommitPostCombatBlueprint(
+            ModularBlueprintData result,
+            ModularBlueprintData beforeCombat)
+        {
+            if (lab?.Model == null || result == null)
+                return;
+            presenter?.ClearVisuals();
+            if (!lab.Model.RestoreBlueprint(
+                    result,
+                    out string error))
+            {
+                Debug.LogError(
+                    "Failed to commit post-combat blueprint: " + error);
+                return;
+            }
+            GridAssemblyValidation validation = lab.Model.Validate();
+            if (validation.DisconnectedIds.Count > 0)
+            {
+                lab.Model.RemoveIds(
+                    validation.DisconnectedIds.ToArray());
+            }
+            GridAssemblyValidation finalValidation =
+                lab.Model.Validate();
+            if (finalValidation.DisconnectedIds.Count > 0)
+            {
+                Debug.LogError(
+                    "Post-combat blueprint still contains disconnected " +
+                    "modules: " +
+                    string.Join(
+                        ", ",
+                        finalValidation.DisconnectedIds));
+            }
+            presenter?.ForceRebuildFromModel();
+            lab.FinalizePostCombatBuild(beforeCombat);
         }
 
         void CleanupCombat(bool flightAlreadyExited)
         {
+            VehicleDetachedDebris.ClearAll();
+            CombatTransientRoot.ClearVisuals();
             DestroyEnemy();
             combatActive = false;
             pendingCombat = false;
             resolving = false;
             SessionKind = GridFlightSessionKind.FreeFlight;
             if (playerGraph != null)
+            {
                 playerGraph.SetAutomaticReturnToBuild(true);
-            playerMotion?.SetLegacyDamageEnabled(true);
+                playerGraph.SetDamageEnabled(false);
+                playerGraph.EndFlight();
+            }
             if (targetObject != null)
                 targetObject.SetActive(true);
-            if (playerBody != null)
+            if (playerBody != null &&
+                playerBody.isKinematic &&
+                !flightAlreadyExited)
             {
-                playerBody.drag = basePlayerDrag;
-                playerBody.angularDrag = basePlayerAngularDrag;
-                if (playerBody.isKinematic && !flightAlreadyExited)
-                    playerBody.isKinematic = false;
+                playerBody.isKinematic = false;
             }
             if (combatCanvas != null)
                 combatCanvas.gameObject.SetActive(false);
@@ -635,8 +817,8 @@ namespace UnityPlanet.ModularAssembly
         {
             if (enemy == null)
                 return;
-            Destroy(enemy.gameObject);
-            enemy = null;
+            enemy.StopCombat();
+            enemy.gameObject.SetActive(false);
         }
 
         static Button CreateButton(
@@ -712,38 +894,11 @@ namespace UnityPlanet.ModularAssembly
         }
     }
 
-    public sealed class EnemyCombatModuleReceiver :
-        MonoBehaviour,
-        ISpaceDamageable
-    {
-        EnemyAirCombatVehicle owner;
-        string runtimeId;
-
-        public float Integrity =>
-            owner == null ? 0f : owner.Integrity(runtimeId);
-        public float MaximumIntegrity =>
-            owner == null ? 0f : owner.MaximumIntegrity(runtimeId);
-        public bool IsDestroyed =>
-            owner == null || owner.IsDestroyed(runtimeId);
-
-        public void Initialize(
-            EnemyAirCombatVehicle source,
-            string id)
-        {
-            owner = source;
-            runtimeId = id;
-        }
-
-        public void ApplyDamage(SpaceDamageInfo damage)
-        {
-            owner?.ApplyDamage(runtimeId, damage);
-        }
-    }
-
     public sealed class EnemyAirCombatVehicle :
         MonoBehaviour,
         IVehicleMotionCommandSource,
-        IVehicleWeaponCommandSource
+        IVehicleWeaponCommandSource,
+        IVehicleModuleDamageAuthority
     {
         enum ModuleRole
         {
@@ -767,18 +922,11 @@ namespace UnityPlanet.ModularAssembly
             public float Mass;
             public int Cpu;
             public bool Destroyed;
-            public string SupportId;
             public readonly HashSet<string> Edges =
-                new HashSet<string>(StringComparer.Ordinal);
-            public readonly HashSet<string> Dependents =
                 new HashSet<string>(StringComparer.Ordinal);
 
             public float FunctionScale =>
-                Destroyed
-                    ? 0f
-                    : Health / Mathf.Max(1f, MaximumHealth) > 0.5f
-                        ? 1f
-                        : 0.85f;
+                Destroyed ? 0f : 1f;
         }
 
         readonly Dictionary<string, Node> nodes =
@@ -788,6 +936,8 @@ namespace UnityPlanet.ModularAssembly
         readonly VehicleDependencyGraph dependencyGraph =
             new VehicleDependencyGraph();
         readonly RaycastHit[] obstacleHits = new RaycastHit[12];
+        readonly VehicleForceLedger forceLedger =
+            new VehicleForceLedger();
         CombatTestController owner;
         VehicleStructureGraph playerGraph;
         Rigidbody playerBody;
@@ -814,6 +964,27 @@ namespace UnityPlanet.ModularAssembly
         Vector3 desiredWorldVelocity;
         Vector3 desiredAimDirection;
         WeaponCommandFrame weaponCommand;
+        float thrusterThrottle;
+        float initialThrusterCapacity;
+        float initialLeftWingCapacity;
+        float initialRightWingCapacity;
+        float targetPropulsionIntegrity = 1f;
+        float targetLeftWingIntegrity = 1f;
+        float targetRightWingIntegrity = 1f;
+        float propulsionIntegrity = 1f;
+        float leftWingIntegrity = 1f;
+        float rightWingIntegrity = 1f;
+        float capabilityLostAt = -1f;
+
+        const float ThrusterMaximumForce = 120000f;
+        const float WingArea = 1f;
+        const float WingIncidenceRadians = 0.19f;
+        const float WingLiftSlope = 4.2f;
+        const float WingZeroLiftDrag = 0.035f;
+        const float WingInducedDrag = 0.08f;
+        const float DamageBlendSeconds = 0.55f;
+        const float MaximumDamageBankDegrees = 22f;
+        const float MaximumDamageYawDegrees = 6f;
 
         public Vector3 DesiredWorldVelocity => desiredWorldVelocity;
         public Vector3 DesiredAimDirection => desiredAimDirection;
@@ -840,11 +1011,31 @@ namespace UnityPlanet.ModularAssembly
                 return CombatCapabilityState.Operational;
             }
         }
-        public bool IsCombatCapable =>
-            !stopped &&
-            ConnectedRatio >= 0.2f &&
-            ActiveWeaponCount > 0 &&
-            movementScale > 0.15f;
+        public bool IsCombatCapable
+        {
+            get
+            {
+                if (stopped)
+                    return false;
+                if (nodes.TryGetValue(coreId, out Node core) &&
+                    core.Destroyed)
+                    return false;
+                bool capable =
+                    ConnectedRatio >= 0.2f &&
+                    ActiveWeaponCount > 0 &&
+                    movementScale > 0.15f;
+                if (capable)
+                {
+                    capabilityLostAt = -1f;
+                    return true;
+                }
+                if (capabilityLostAt < 0f)
+                    capabilityLostAt = Time.time;
+                return Time.time - capabilityLostAt <
+                       CombatBalanceRuntime.Profile
+                           .capabilityLossConfirmation;
+            }
+        }
 
         public void Initialize(
             CombatTestController session,
@@ -858,16 +1049,65 @@ namespace UnityPlanet.ModularAssembly
             visuals = effectPool;
             body = gameObject.AddComponent<Rigidbody>();
             body.useGravity = false;
-            body.drag = 0.08f;
-            body.angularDrag = 0.72f;
+            body.drag = 0f;
+            body.angularDrag = 0f;
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode =
                 CollisionDetectionMode.ContinuousDynamic;
+            body.solverIterations = 8;
+            body.solverVelocityIterations = 3;
+            body.maxAngularVelocity = 12f;
             orbitDirection = UnityEngine.Random.value < 0.5f ? -1f : 1f;
             CreateMaterials();
             BuildStandardEnemy();
+            CaptureInitialArcadeCapabilities();
             RebuildGraphsAndMass();
             initialCpu = currentCpu;
+            Vector3 horizontalForward =
+                Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+            if (horizontalForward.sqrMagnitude < 0.001f)
+                horizontalForward = Vector3.forward;
+            body.velocity = horizontalForward.normalized * 55f;
+            body.angularVelocity = Vector3.zero;
+        }
+
+        public void ResetForCombat(
+            CombatTestController session,
+            VehicleStructureGraph targetGraph,
+            Rigidbody targetBody,
+            Vector3 position,
+            Quaternion rotation)
+        {
+            owner = session;
+            playerGraph = targetGraph;
+            playerBody = targetBody;
+            stopped = false;
+            capabilityLostAt = -1f;
+            nextDecision = 0f;
+            nextShot = 0f;
+            burstUntil = 0f;
+            burstCooldownUntil = 0f;
+            desiredWorldVelocity = Vector3.zero;
+            desiredAimDirection = rotation * Vector3.forward;
+            weaponCommand = default;
+            foreach (Node node in nodes.Values)
+            {
+                node.Destroyed = false;
+                node.Health = node.MaximumHealth;
+                if (node.Object != null)
+                    node.Object.SetActive(true);
+            }
+            transform.SetPositionAndRotation(position, rotation);
+            RebuildGraphsAndMass();
+            if (body != null)
+            {
+                body.isKinematic = true;
+                body.position = position;
+                body.rotation = rotation;
+                body.velocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+                body.isKinematic = false;
+            }
         }
 
         void CreateMaterials()
@@ -957,7 +1197,7 @@ namespace UnityPlanet.ModularAssembly
             occupancy[cell] = id;
             if (role == ModuleRole.Core)
                 coreId = id;
-            part.AddComponent<EnemyCombatModuleReceiver>()
+            part.AddComponent<VehicleModuleDamageReceiver>()
                 .Initialize(this, id);
         }
 
@@ -1043,14 +1283,12 @@ namespace UnityPlanet.ModularAssembly
             }
         }
 
-        void RebuildGraphsAndMass()
+        void RebuildGraphsAndMass(
+            Vector3 damageImpulse = default,
+            Vector3 damagePoint = default)
         {
             foreach (Node node in nodes.Values)
-            {
                 node.Edges.Clear();
-                node.SupportId = null;
-                node.Dependents.Clear();
-            }
             foreach (Node node in nodes.Values)
             {
                 if (node.Destroyed)
@@ -1065,14 +1303,50 @@ namespace UnityPlanet.ModularAssembly
                         node.Edges.Add(otherId);
                 }
             }
-            RebuildMountDependencies();
-
             HashSet<string> connected = ConnectedToCore();
-            foreach (Node node in nodes.Values)
+            var detachedIds = new HashSet<string>(
+                nodes.Values
+                    .Where(item =>
+                        !item.Destroyed &&
+                        !connected.Contains(item.Id))
+                    .Select(item => item.Id),
+                StringComparer.Ordinal);
+            foreach (List<Node> component in
+                     BuildDetachedComponents(detachedIds))
             {
-                if (!node.Destroyed && !connected.Contains(node.Id))
+                List<DetachedDebrisPart> debrisParts = component
+                    .Where(item => item.Object != null)
+                    .Select(item => new DetachedDebrisPart(
+                        item.Id,
+                        item.Object,
+                        item.Mass))
+                    .ToList();
+                GameObject debris = VehicleDetachedDebris.Spawn(
+                    debrisParts,
+                    body,
+                    damageImpulse,
+                    damagePoint);
+                if (debris != null)
+                {
+                    Renderer[] debrisRenderers =
+                        debris.GetComponentsInChildren<Renderer>(true);
+                    Bounds debrisBounds = debrisRenderers.Length > 0
+                        ? debrisRenderers[0].bounds
+                        : new Bounds(debris.transform.position, Vector3.one);
+                    for (int index = 1;
+                         index < debrisRenderers.Length;
+                         index++)
+                        debrisBounds.Encapsulate(
+                            debrisRenderers[index].bounds);
+                    NeoXCombatFeedbackRuntime.TrySpawnDetached(
+                        debrisBounds.center,
+                        damageImpulse,
+                        debrisBounds.size.magnitude);
+                }
+                foreach (Node node in component)
                     DestroyNode(node, true);
             }
+            connected = ConnectedToCore();
 
             dependencyGraph.Clear();
             dependencyGraph.AddEdge("core", "control");
@@ -1108,12 +1382,16 @@ namespace UnityPlanet.ModularAssembly
             List<Node> movers = massNodes.Where(item =>
                 item.Role == ModuleRole.Thruster ||
                 item.Role == ModuleRole.Wing).ToList();
-            int initialMovers = nodes.Values.Count(item =>
-                item.Role == ModuleRole.Thruster ||
-                item.Role == ModuleRole.Wing);
-            movementScale = initialMovers <= 0
+            UpdateArcadeDamageTargets(massNodes);
+            float averageWing =
+                (targetLeftWingIntegrity +
+                 targetRightWingIntegrity) * 0.5f;
+            float mobility =
+                targetPropulsionIntegrity * 0.6f +
+                averageWing * 0.4f;
+            movementScale = movers.Count == 0 || mobility <= 0.001f
                 ? 0f
-                : movers.Sum(item => item.FunctionScale) / initialMovers;
+                : Mathf.Lerp(0.2f, 1f, mobility);
 
             if (coreId == null || !nodes.ContainsKey(coreId) ||
                 nodes[coreId].Destroyed ||
@@ -1125,82 +1403,6 @@ namespace UnityPlanet.ModularAssembly
                 owner?.NotifyEnemyDestroyed(
                     "敌机拓扑结构失去战斗能力");
             }
-        }
-
-        void RebuildMountDependencies()
-        {
-            Dictionary<string, int> depth = BuildCoreDepths();
-            foreach (Node node in nodes.Values)
-            {
-                if (node.Destroyed ||
-                    !RequiresMountSupport(node) ||
-                    !depth.TryGetValue(node.Id, out int nodeDepth))
-                    continue;
-                string supportId = node.Edges
-                    .Where(depth.ContainsKey)
-                    .OrderBy(id => depth[id] < nodeDepth ? 0 : 1)
-                    .ThenBy(id => depth[id])
-                    .ThenBy(id => id, StringComparer.Ordinal)
-                    .FirstOrDefault();
-                if (string.IsNullOrEmpty(supportId))
-                    continue;
-                node.SupportId = supportId;
-                nodes[supportId].Dependents.Add(node.Id);
-            }
-        }
-
-        Dictionary<string, int> BuildCoreDepths()
-        {
-            var result = new Dictionary<string, int>(
-                StringComparer.Ordinal);
-            if (string.IsNullOrEmpty(coreId) ||
-                !nodes.TryGetValue(coreId, out Node core) ||
-                core.Destroyed)
-                return result;
-            var queue = new Queue<string>();
-            queue.Enqueue(coreId);
-            result[coreId] = 0;
-            while (queue.Count > 0)
-            {
-                string current = queue.Dequeue();
-                foreach (string edge in nodes[current].Edges)
-                {
-                    if (!nodes.TryGetValue(edge, out Node other) ||
-                        other.Destroyed ||
-                        result.ContainsKey(edge))
-                        continue;
-                    result[edge] = result[current] + 1;
-                    queue.Enqueue(edge);
-                }
-            }
-            return result;
-        }
-
-        static bool RequiresMountSupport(Node node)
-        {
-            return node != null &&
-                   (node.Role == ModuleRole.Weapon ||
-                    node.Role == ModuleRole.Energy ||
-                    node.Role == ModuleRole.Thruster);
-        }
-
-        HashSet<string> CollectMountDependents(string supportId)
-        {
-            var result = new HashSet<string>(
-                StringComparer.Ordinal);
-            if (!nodes.TryGetValue(supportId, out Node support))
-                return result;
-            var queue = new Queue<string>(support.Dependents);
-            while (queue.Count > 0)
-            {
-                string id = queue.Dequeue();
-                if (!result.Add(id) ||
-                    !nodes.TryGetValue(id, out Node dependent))
-                    continue;
-                foreach (string child in dependent.Dependents)
-                    queue.Enqueue(child);
-            }
-            return result;
         }
 
         static readonly Vector3Int[] NeighborOffsets =
@@ -1231,6 +1433,36 @@ namespace UnityPlanet.ModularAssembly
                         !other.Destroyed &&
                         result.Add(edge))
                         queue.Enqueue(edge);
+            }
+            return result;
+        }
+
+        List<List<Node>> BuildDetachedComponents(
+            HashSet<string> detachedIds)
+        {
+            var remaining = new HashSet<string>(
+                detachedIds,
+                StringComparer.Ordinal);
+            var result = new List<List<Node>>();
+            while (remaining.Count > 0)
+            {
+                string seed = remaining.First();
+                remaining.Remove(seed);
+                var component = new List<Node>();
+                var queue = new Queue<string>();
+                queue.Enqueue(seed);
+                while (queue.Count > 0)
+                {
+                    string current = queue.Dequeue();
+                    if (!nodes.TryGetValue(current, out Node node))
+                        continue;
+                    component.Add(node);
+                    foreach (string adjacent in node.Edges)
+                        if (remaining.Remove(adjacent))
+                            queue.Enqueue(adjacent);
+                }
+                if (component.Count > 0)
+                    result.Add(component);
             }
             return result;
         }
@@ -1275,40 +1507,48 @@ namespace UnityPlanet.ModularAssembly
             node.Health = Mathf.Max(
                 0f,
                 node.Health - Mathf.Max(0f, damage.amount));
+            owner?.RecordEnemyDamage(
+                Mathf.Max(0f, damage.amount));
             if (node.Health > 0f)
-            {
-                if (node.Health / node.MaximumHealth <= 0.5f &&
-                    node.Renderer != null)
-                    node.Renderer.sharedMaterial = structureMaterial;
-                RebuildGraphsAndMass();
                 return;
-            }
-            HashSet<string> removed =
-                CollectMountDependents(id);
-            DestroyNode(node, false);
-            foreach (string dependentId in removed)
-                if (nodes.TryGetValue(
-                        dependentId,
-                        out Node dependent))
-                    DestroyNode(dependent, true);
-            RebuildGraphsAndMass();
+            DestroyNode(
+                node,
+                false,
+                damage.impulse,
+                damage.point);
+            RebuildGraphsAndMass(
+                damage.impulse,
+                damage.point);
         }
 
-        void DestroyNode(Node node, bool disconnected)
+        void DestroyNode(
+            Node node,
+            bool disconnected,
+            Vector3 impulse = default,
+            Vector3 hitPoint = default)
         {
             if (node == null || node.Destroyed)
                 return;
+            if (!disconnected && node.Object != null)
+            {
+                Renderer[] renderers =
+                    node.Object.GetComponentsInChildren<Renderer>(true);
+                Bounds bounds = renderers.Length > 0
+                    ? renderers[0].bounds
+                    : new Bounds(node.Object.transform.position, Vector3.one);
+                for (int index = 1; index < renderers.Length; index++)
+                    bounds.Encapsulate(renderers[index].bounds);
+                NeoXCombatFeedbackRuntime.TrySpawnModuleBreak(
+                    hitPoint.sqrMagnitude > 0.0001f
+                        ? hitPoint
+                        : bounds.center,
+                    impulse,
+                    bounds.size.magnitude);
+            }
             node.Destroyed = true;
             node.Health = 0f;
             if (node.Object != null)
-            {
-                Renderer renderer = node.Renderer;
-                Bounds bounds = renderer != null
-                    ? renderer.bounds
-                    : new Bounds(node.Object.transform.position, Vector3.one);
-                visuals?.SpawnBreakup(bounds);
                 node.Object.SetActive(false);
-            }
         }
 
         void Update()
@@ -1329,12 +1569,17 @@ namespace UnityPlanet.ModularAssembly
                     650f,
                     0f,
                     1.2f);
-            Vector3 direction = target - body.worldCenterOfMass;
+            Vector3 aimDirection = target - body.worldCenterOfMass;
+            Vector3 maneuverTarget = target + Vector3.up * 18f;
+            Vector3 direction =
+                maneuverTarget - body.worldCenterOfMass;
             if (direction.sqrMagnitude < 0.01f)
                 direction = transform.forward;
             desiredAimDirection =
                 Quaternion.Euler(aimErrorPitch, aimErrorYaw, 0f) *
-                direction.normalized;
+                (aimDirection.sqrMagnitude > 0.01f
+                    ? aimDirection.normalized
+                    : transform.forward);
             float distance = direction.magnitude;
             Vector3 orbit = Vector3.Cross(Vector3.up, direction.normalized) *
                             orbitDirection;
@@ -1368,40 +1613,218 @@ namespace UnityPlanet.ModularAssembly
                 body.isKinematic)
                 return;
 
-            Vector3 velocityError =
-                desiredWorldVelocity - body.velocity;
-            Vector3 acceleration = Vector3.ClampMagnitude(
-                velocityError * 1.8f,
-                22f * Mathf.Max(0.15f, movementScale));
-            Vector3 hover = Vector3.up * 9.81f;
-            body.AddForce(
-                (acceleration + hover) * body.mass,
-                ForceMode.Force);
+            IPlanetEnvironmentProvider provider =
+                PlanetEnvironmentRuntime.Active;
+            PlanetEnvironmentSample environment = provider != null
+                ? provider.Sample(
+                    body.worldCenterOfMass,
+                    Time.fixedTimeAsDouble)
+                : PlanetEnvironmentSample.EarthLike(
+                    Vector3.down * 9.81f,
+                    body.worldCenterOfMass.y);
 
-            Quaternion desiredRotation = Quaternion.LookRotation(
-                desiredAimDirection.sqrMagnitude > 0.001f
-                    ? desiredAimDirection
-                    : transform.forward,
-                Vector3.up);
-            Quaternion delta =
-                desiredRotation * Quaternion.Inverse(body.rotation);
-            delta.ToAngleAxis(out float angle, out Vector3 axis);
-            if (angle > 180f)
-                angle -= 360f;
-            Vector3 torque =
-                axis.normalized * (angle * Mathf.Deg2Rad) *
-                body.mass * 7f * movementScale -
-                body.angularVelocity * body.mass * 2.4f;
-            body.AddTorque(
-                Vector3.ClampMagnitude(
-                    torque,
-                    body.mass * 30f * movementScale),
-                ForceMode.Force);
+            forceLedger.Begin(body);
+            forceLedger.AddForce(
+                body.mass * environment.gravityAcceleration);
 
-            ApplyObstacleAvoidance();
+            SmoothArcadeDamageState();
+            float speedScale = Mathf.Lerp(
+                0.3f,
+                1f,
+                Mathf.Clamp01(
+                    propulsionIntegrity * 0.6f +
+                    (leftWingIntegrity + rightWingIntegrity) * 0.2f));
+            Vector3 commandedVelocity =
+                ResolveObstacleAvoidance(
+                    desiredWorldVelocity * speedScale);
+            AccumulateExposedFaceDrag(environment);
+            AccumulateWingAerodynamics(environment);
+            AccumulateThrusterForces(
+                environment,
+                commandedVelocity);
+            AccumulateArcadeAltitudeSupport(
+                environment,
+                commandedVelocity);
+            AccumulateArcadeAttitudeControl(environment);
+            forceLedger.Apply();
         }
 
-        void ApplyObstacleAvoidance()
+        void CaptureInitialArcadeCapabilities()
+        {
+            initialThrusterCapacity = nodes.Values
+                .Where(item => item.Role == ModuleRole.Thruster)
+                .Sum(CapacityWeight);
+            initialLeftWingCapacity =
+                WingCapacity(nodes.Values, true);
+            initialRightWingCapacity =
+                WingCapacity(nodes.Values, false);
+            targetPropulsionIntegrity = 1f;
+            targetLeftWingIntegrity = 1f;
+            targetRightWingIntegrity = 1f;
+            propulsionIntegrity = 1f;
+            leftWingIntegrity = 1f;
+            rightWingIntegrity = 1f;
+        }
+
+        void UpdateArcadeDamageTargets(
+            IEnumerable<Node> activeNodes)
+        {
+            List<Node> active = activeNodes
+                .Where(item => item != null && !item.Destroyed)
+                .ToList();
+            float thrusters = active
+                .Where(item => item.Role == ModuleRole.Thruster)
+                .Sum(CapacityWeight);
+            targetPropulsionIntegrity =
+                CapacityRatio(thrusters, initialThrusterCapacity);
+            targetLeftWingIntegrity = CapacityRatio(
+                WingCapacity(active, true),
+                initialLeftWingCapacity);
+            targetRightWingIntegrity = CapacityRatio(
+                WingCapacity(active, false),
+                initialRightWingCapacity);
+        }
+
+        float WingCapacity(
+            IEnumerable<Node> source,
+            bool left)
+        {
+            float coreX = !string.IsNullOrEmpty(coreId) &&
+                          nodes.TryGetValue(coreId, out Node core)
+                ? core.Cell.x
+                : 0f;
+            float result = 0f;
+            foreach (Node node in source)
+            {
+                if (node == null ||
+                    node.Destroyed ||
+                    node.Role != ModuleRole.Wing)
+                    continue;
+                float offset = node.Cell.x - coreX;
+                float sideWeight = Mathf.Abs(offset) < 0.5f
+                    ? 0.5f
+                    : left == offset < 0f
+                        ? 1f
+                        : 0f;
+                result += CapacityWeight(node) * sideWeight;
+            }
+            return result;
+        }
+
+        static float CapacityWeight(Node node)
+        {
+            return node == null
+                ? 0f
+                : Mathf.Max(1f, node.Cpu);
+        }
+
+        static float CapacityRatio(
+            float current,
+            float initial)
+        {
+            return initial <= 0.001f
+                ? 1f
+                : Mathf.Clamp01(current / initial);
+        }
+
+        void SmoothArcadeDamageState()
+        {
+            float blend = 1f - Mathf.Exp(
+                -Time.fixedDeltaTime /
+                Mathf.Max(0.01f, DamageBlendSeconds));
+            propulsionIntegrity = Mathf.Lerp(
+                propulsionIntegrity,
+                targetPropulsionIntegrity,
+                blend);
+            leftWingIntegrity = Mathf.Lerp(
+                leftWingIntegrity,
+                targetLeftWingIntegrity,
+                blend);
+            rightWingIntegrity = Mathf.Lerp(
+                rightWingIntegrity,
+                targetRightWingIntegrity,
+                blend);
+        }
+
+        void AccumulateArcadeAltitudeSupport(
+            PlanetEnvironmentSample environment,
+            Vector3 commandedVelocity)
+        {
+            Vector3 gravity = environment.gravityAcceleration;
+            float gravityMagnitude = gravity.magnitude;
+            if (gravityMagnitude <= 0.001f)
+                return;
+
+            Vector3 up = -gravity / gravityMagnitude;
+            float averageWing =
+                (leftWingIntegrity + rightWingIntegrity) * 0.5f;
+            float liftHealth = Mathf.Clamp01(
+                propulsionIntegrity * 0.7f +
+                averageWing * 0.3f);
+            float supportFraction =
+                Mathf.Lerp(0.45f, 1f, liftHealth);
+            float desiredVertical =
+                Vector3.Dot(commandedVelocity, up);
+            float currentVertical =
+                Vector3.Dot(body.velocity, up);
+            float correctionAcceleration = Mathf.Clamp(
+                (desiredVertical - currentVertical) * 2.2f,
+                -gravityMagnitude * 0.7f,
+                gravityMagnitude * 0.7f);
+            float supportAcceleration =
+                gravityMagnitude * supportFraction +
+                correctionAcceleration * supportFraction;
+            forceLedger.AddForce(
+                up * body.mass * supportAcceleration);
+        }
+
+        void AccumulateArcadeAttitudeControl(
+            PlanetEnvironmentSample environment)
+        {
+            Vector3 gravity = environment.gravityAcceleration;
+            Vector3 up = gravity.sqrMagnitude > 0.001f
+                ? -gravity.normalized
+                : Vector3.up;
+            Vector3 aim = desiredAimDirection.sqrMagnitude > 0.001f
+                ? desiredAimDirection.normalized
+                : transform.forward;
+            float imbalance = Mathf.Clamp(
+                rightWingIntegrity - leftWingIntegrity,
+                -1f,
+                1f);
+            Vector3 damagedAim =
+                Quaternion.AngleAxis(
+                    imbalance * MaximumDamageYawDegrees,
+                    up) * aim;
+            Vector3 desiredUp =
+                Quaternion.AngleAxis(
+                    -imbalance * MaximumDamageBankDegrees,
+                    damagedAim) * up;
+
+            Vector3 orientationError =
+                Vector3.Cross(transform.forward, damagedAim) * 3.4f +
+                Vector3.Cross(transform.up, desiredUp) * 2.2f;
+            float weakerWing =
+                Mathf.Min(leftWingIntegrity, rightWingIntegrity);
+            float controlHealth = Mathf.Clamp01(
+                propulsionIntegrity * 0.55f +
+                weakerWing * 0.45f);
+            Vector3 targetAngularAcceleration =
+                orientationError * Mathf.Lerp(1.4f, 4.2f, controlHealth) -
+                body.angularVelocity *
+                Mathf.Lerp(1.1f, 2.8f, controlHealth);
+            float maximumAcceleration =
+                Mathf.Lerp(0.35f, 4.5f, controlHealth);
+            targetAngularAcceleration =
+                Vector3.ClampMagnitude(
+                    targetAngularAcceleration,
+                    maximumAcceleration);
+            forceLedger.AddTorque(
+                TorqueForAngularAcceleration(
+                    targetAngularAcceleration));
+        }
+
+        Vector3 ResolveObstacleAvoidance(Vector3 requestedVelocity)
         {
             int count = Physics.SphereCastNonAlloc(
                 body.worldCenterOfMass,
@@ -1418,12 +1841,328 @@ namespace UnityPlanet.ModularAssembly
                     collider.transform.IsChildOf(transform) ||
                     collider.transform.IsChildOf(playerBody.transform))
                     continue;
-                body.AddForce(
-                    (obstacleHits[index].normal + Vector3.up * 0.6f) *
-                    body.mass * 14f,
-                    ForceMode.Force);
-                break;
+                Vector3 avoidance =
+                    obstacleHits[index].normal + Vector3.up * 0.6f;
+                return requestedVelocity +
+                       avoidance.normalized * 35f;
             }
+            return requestedVelocity;
+        }
+
+        void AccumulateExposedFaceDrag(
+            PlanetEnvironmentSample environment)
+        {
+            if (!environment.hasAtmosphere ||
+                environment.airDensity <= 0.0001f)
+                return;
+            foreach (Node node in nodes.Values)
+            {
+                if (node.Destroyed ||
+                    node.Object == null ||
+                    node.Role == ModuleRole.Wing)
+                    continue;
+                float cd =
+                    node.Role == ModuleRole.Structure ||
+                    node.Role == ModuleRole.Core
+                        ? 0.7f
+                        : 0.9f;
+                foreach (Vector3Int offset in NeighborOffsets)
+                {
+                    if (occupancy.TryGetValue(
+                            node.Cell + offset,
+                            out string adjacentId) &&
+                        nodes.TryGetValue(adjacentId, out Node adjacent) &&
+                        !adjacent.Destroyed)
+                    {
+                        continue;
+                    }
+                    Vector3 normal = transform.TransformDirection(
+                        (Vector3)offset).normalized;
+                    Vector3 point =
+                        node.Object.transform.position + normal * 0.5f;
+                    Vector3 relativeVelocity =
+                        body.GetPointVelocity(point) -
+                        environment.atmosphereVelocity;
+                    float closing =
+                        Vector3.Dot(relativeVelocity, normal);
+                    if (closing <= 0f)
+                        continue;
+                    float pressure =
+                        0.5f * environment.airDensity *
+                        closing * closing;
+                    forceLedger.AddForceAtPoint(
+                        -normal * pressure * cd,
+                        point);
+                }
+            }
+        }
+
+        void AccumulateWingAerodynamics(
+            PlanetEnvironmentSample environment)
+        {
+            if (!environment.hasAtmosphere ||
+                environment.airDensity <= 0.0001f)
+                return;
+            foreach (Node node in nodes.Values)
+            {
+                if (node.Destroyed ||
+                    node.Role != ModuleRole.Wing ||
+                    node.Object == null ||
+                    !IsFunctional(node))
+                    continue;
+                Vector3 point = node.Object.transform.position;
+                Vector3 relativeVelocity =
+                    body.GetPointVelocity(point) -
+                    environment.atmosphereVelocity;
+                float speedSquared = relativeVelocity.sqrMagnitude;
+                if (speedSquared <= 0.25f)
+                    continue;
+                Vector3 localVelocity =
+                    transform.InverseTransformDirection(relativeVelocity);
+                float angleOfAttack = Mathf.Atan2(
+                    -localVelocity.y,
+                    Mathf.Max(0.1f, Mathf.Abs(localVelocity.z))) +
+                    WingIncidenceRadians;
+                float stallBlend = Mathf.InverseLerp(
+                    35f * Mathf.Deg2Rad,
+                    18f * Mathf.Deg2Rad,
+                    Mathf.Abs(angleOfAttack));
+                float liftCoefficient =
+                    WingLiftSlope * angleOfAttack *
+                    Mathf.Lerp(0.28f, 1f, stallBlend);
+                liftCoefficient =
+                    Mathf.Clamp(liftCoefficient, -1.35f, 1.35f);
+                float dynamicPressure =
+                    0.5f * environment.airDensity * speedSquared;
+                Vector3 liftDirection =
+                    Vector3.Cross(
+                        relativeVelocity.normalized,
+                        transform.right).normalized;
+                if (Vector3.Dot(liftDirection, transform.up) < 0f)
+                    liftDirection = -liftDirection;
+                float dragCoefficient =
+                    WingZeroLiftDrag +
+                    WingInducedDrag *
+                    liftCoefficient * liftCoefficient;
+                Vector3 force =
+                    liftDirection *
+                    (dynamicPressure * WingArea * liftCoefficient) -
+                    relativeVelocity.normalized *
+                    (dynamicPressure * WingArea * dragCoefficient);
+                forceLedger.AddForceAtPoint(force, point);
+            }
+        }
+
+        void AccumulateThrusterForces(
+            PlanetEnvironmentSample environment,
+            Vector3 commandedVelocity)
+        {
+            int activeThrusters = nodes.Values.Count(node =>
+                node.Role == ModuleRole.Thruster &&
+                node.Object != null &&
+                IsFunctional(node));
+            if (activeThrusters <= 0)
+            {
+                thrusterThrottle = 0f;
+                return;
+            }
+            Vector3 relativeVelocity =
+                body.velocity - environment.atmosphereVelocity;
+            float targetForwardSpeed = Mathf.Max(
+                0f,
+                Vector3.Dot(
+                    commandedVelocity,
+                    transform.forward));
+            float currentForwardSpeed =
+                Vector3.Dot(
+                    relativeVelocity,
+                    transform.forward);
+            float requestedAcceleration = Mathf.Clamp(
+                (targetForwardSpeed - currentForwardSpeed) * 0.8f,
+                0f,
+                30f);
+            float pressureRatio = Mathf.Clamp01(
+                environment.ambientPressure / 101325f);
+            float environmentScale =
+                Mathf.Clamp(
+                    1f - pressureRatio * 0.06f,
+                    0.88f,
+                    1f);
+            float availableForce =
+                activeThrusters *
+                ThrusterMaximumForce *
+                environmentScale;
+            float requestedForce =
+                body.mass * requestedAcceleration;
+            float targetThrottle = availableForce > 0.001f
+                ? Mathf.Clamp01(
+                    requestedForce / availableForce)
+                : 0f;
+            thrusterThrottle = Mathf.MoveTowards(
+                thrusterThrottle,
+                targetThrottle,
+                Time.fixedDeltaTime / 0.12f);
+            Vector3 forcePerThruster =
+                transform.forward *
+                (ThrusterMaximumForce *
+                 environmentScale *
+                 thrusterThrottle);
+            foreach (Node node in nodes.Values)
+            {
+                if (node.Role != ModuleRole.Thruster ||
+                    node.Object == null ||
+                    !IsFunctional(node))
+                    continue;
+                forceLedger.AddForceAtPoint(
+                    forcePerThruster,
+                    node.Object.transform.position);
+            }
+        }
+
+        void AccumulateAerodynamicControl(
+            PlanetEnvironmentSample environment,
+            Vector3 commandedVelocity)
+        {
+            if (!environment.hasAtmosphere ||
+                environment.airDensity <= 0.0001f)
+                return;
+            Vector3 desiredForward =
+                commandedVelocity.sqrMagnitude > 1f
+                    ? commandedVelocity.normalized
+                    : desiredAimDirection.sqrMagnitude > 0.001f
+                        ? desiredAimDirection.normalized
+                        : transform.forward;
+            if (Mathf.Abs(
+                    Vector3.Dot(
+                        desiredForward,
+                        Vector3.up)) > 0.98f)
+            {
+                desiredForward =
+                    Vector3.ProjectOnPlane(
+                        desiredForward,
+                        Vector3.up);
+                if (desiredForward.sqrMagnitude < 0.001f)
+                    desiredForward = transform.forward;
+                desiredForward.Normalize();
+            }
+            Quaternion desiredRotation =
+                Quaternion.LookRotation(
+                    desiredForward,
+                    Vector3.up);
+            Quaternion delta =
+                desiredRotation *
+                Quaternion.Inverse(body.rotation);
+            delta.ToAngleAxis(
+                out float angle,
+                out Vector3 axis);
+            if (angle > 180f)
+                angle -= 360f;
+            if (!Finite(axis))
+                axis = Vector3.zero;
+            Vector3 desiredAngularAcceleration =
+                Vector3.ClampMagnitude(
+                    axis.normalized *
+                    (angle * Mathf.Deg2Rad * 2.6f) -
+                    body.angularVelocity * 1.7f,
+                    5f * Mathf.Max(
+                        0.15f,
+                        movementScale));
+            Vector3 residualTorque =
+                TorqueForAngularAcceleration(
+                    desiredAngularAcceleration);
+
+            float relativeSpeed =
+                (body.velocity -
+                 environment.atmosphereVelocity).magnitude;
+            float dynamicPressure =
+                0.5f *
+                environment.airDensity *
+                relativeSpeed *
+                relativeSpeed;
+            float forceLimit =
+                dynamicPressure *
+                WingArea *
+                0.65f *
+                Mathf.Max(0.15f, movementScale);
+            if (forceLimit <= 0.01f)
+                return;
+
+            foreach (Node node in nodes.Values)
+            {
+                if (node.Destroyed ||
+                    node.Role != ModuleRole.Wing ||
+                    node.Object == null ||
+                    !IsFunctional(node))
+                    continue;
+                Vector3 point =
+                    node.Object.transform.position;
+                Vector3 arm =
+                    point - body.worldCenterOfMass;
+                residualTorque = AllocateControlForce(
+                    point,
+                    arm,
+                    transform.up,
+                    forceLimit,
+                    residualTorque);
+                residualTorque = AllocateControlForce(
+                    point,
+                    arm,
+                    transform.right,
+                    forceLimit * 0.45f,
+                    residualTorque);
+            }
+        }
+
+        Vector3 AllocateControlForce(
+            Vector3 point,
+            Vector3 arm,
+            Vector3 forceDirection,
+            float forceLimit,
+            Vector3 residualTorque)
+        {
+            Vector3 torquePerNewton =
+                Vector3.Cross(arm, forceDirection);
+            float denominator =
+                torquePerNewton.sqrMagnitude;
+            if (denominator <= 0.000001f)
+                return residualTorque;
+            float scalar = Mathf.Clamp(
+                Vector3.Dot(
+                    residualTorque,
+                    torquePerNewton) /
+                denominator,
+                -forceLimit,
+                forceLimit);
+            forceLedger.AddForceAtPoint(
+                forceDirection * scalar,
+                point);
+            return residualTorque -
+                   torquePerNewton * scalar;
+        }
+
+        Vector3 TorqueForAngularAcceleration(
+            Vector3 worldAngularAcceleration)
+        {
+            Quaternion principalToWorld =
+                body.rotation *
+                body.inertiaTensorRotation;
+            Vector3 principalAcceleration =
+                Quaternion.Inverse(principalToWorld) *
+                worldAngularAcceleration;
+            return principalToWorld *
+                   Vector3.Scale(
+                       body.inertiaTensor,
+                       principalAcceleration);
+        }
+
+        static bool Finite(Vector3 value)
+        {
+            return !float.IsNaN(value.x) &&
+                   !float.IsInfinity(value.x) &&
+                   !float.IsNaN(value.y) &&
+                   !float.IsInfinity(value.y) &&
+                   !float.IsNaN(value.z) &&
+                   !float.IsInfinity(value.z);
         }
 
         void TryFire(Vector3 target)
@@ -1432,40 +2171,66 @@ namespace UnityPlanet.ModularAssembly
                 Time.time < nextShot ||
                 ActiveWeaponCount <= 0)
                 return;
-            nextShot = Time.time + 0.16f / Mathf.Max(0.35f, movementScale);
-            Node weapon = nodes.Values
+            WeaponProfile baseProfile =
+                WeaponProfileLibrary.Resolve(null);
+            List<Node> firingWeapons = nodes.Values
                 .Where(item =>
                     item.Role == ModuleRole.Weapon &&
                     IsFunctional(item) &&
                     item.Object != null)
-                .OrderBy(item => UnityEngine.Random.value)
-                .FirstOrDefault();
-            if (weapon == null)
+                .ToList();
+            if (firingWeapons.Count == 0)
                 return;
-            Vector3 origin = weapon.Object.transform.position +
-                             transform.forward * 0.7f;
-            Vector3 direction = (target - origin).normalized;
-            WeaponProfile profile = WeaponProfileLibrary.Resolve(null);
-            profile.damage = 14f * weapon.FunctionScale;
-            profile.range = 650f;
-            WeaponDamageUtility.Trace(
-                origin,
-                direction,
-                profile.range,
-                transform,
-                gameObject,
-                profile,
-                visuals,
-                out RaycastHit hit);
-            Vector3 end = hit.collider != null
-                ? hit.point
-                : origin + direction * profile.range;
-            visuals?.SpawnTracer(
-                origin,
-                end,
-                new Color(1f, 0.22f, 0.08f),
-                0.07f,
-                "sfx/mc/machinegun_bullet_shoot.sfx");
+            nextShot =
+                Time.time +
+                1f / Mathf.Max(
+                    1f,
+                    baseProfile.shotsPerSecond *
+                    Mathf.Max(0.35f, movementScale));
+            float rawDps =
+                firingWeapons.Count *
+                baseProfile.damage *
+                baseProfile.shotsPerSecond;
+            float damageScale =
+                CombatBalanceRuntime.DamageScale(rawDps);
+            for (int index = 0;
+                 index < firingWeapons.Count;
+                 index++)
+            {
+                Node weapon = firingWeapons[index];
+                Vector3 origin =
+                    weapon.Object.transform.position +
+                    transform.forward * 0.7f;
+                Vector3 direction =
+                    (target - origin).normalized;
+                WeaponProfile profile =
+                    WeaponProfileLibrary.Resolve(null);
+                profile.damage =
+                    baseProfile.damage *
+                    damageScale *
+                    weapon.FunctionScale;
+                profile.range = 650f;
+                WeaponDamageUtility.Trace(
+                    origin,
+                    direction,
+                    profile.range,
+                    transform,
+                    gameObject,
+                    profile,
+                    visuals,
+                    out RaycastHit hit);
+                if (hit.collider != null)
+                    owner?.RecordPlayerDamage(profile.damage);
+                Vector3 end = hit.collider != null
+                    ? hit.point
+                    : origin + direction * profile.range;
+                visuals?.SpawnTracer(
+                    origin,
+                    end,
+                    new Color(1f, 0.22f, 0.08f),
+                    0.07f,
+                    "sfx/mc/machinegun_bullet_shoot.sfx");
+            }
         }
 
         public void StopCombat()

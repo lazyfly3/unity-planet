@@ -439,6 +439,7 @@ namespace UnityPlanet.ModularAssembly
         GridAssemblyModel model;
         GridTargetController target;
         Camera sceneCamera;
+        GridLabCameraController cameraController;
         RuntimeEnergyBus energy;
         WeaponVisualPool visuals;
         WeaponProjectilePool projectiles;
@@ -471,6 +472,7 @@ namespace UnityPlanet.ModularAssembly
             model = assemblyModel;
             target = targetController;
             sceneCamera = camera != null ? camera : Camera.main;
+            this.cameraController = cameraController;
             if (sceneCamera != null)
                 baseFov = sceneCamera.fieldOfView;
             energy = GetComponent<RuntimeEnergyBus>() ??
@@ -483,6 +485,13 @@ namespace UnityPlanet.ModularAssembly
             structureGraph = GetComponent<VehicleStructureGraph>() ??
                              gameObject.AddComponent<VehicleStructureGraph>();
             structureGraph.Initialize(model, presenter, flight, visuals);
+            VehicleDamageFeedbackPresenter damageFeedback =
+                GetComponent<VehicleDamageFeedbackPresenter>() ??
+                gameObject.AddComponent<VehicleDamageFeedbackPresenter>();
+            damageFeedback.Initialize(
+                structureGraph,
+                sceneCamera,
+                transform);
             presenter.Rebuilt += RebuildWeapons;
             flight.StateChanged += HandleFlightState;
             RebuildWeapons();
@@ -547,6 +556,20 @@ namespace UnityPlanet.ModularAssembly
                 }
                 weapons.Add(runtime);
             }
+
+            CombatWeaponBudgetController budget =
+                GetComponent<CombatWeaponBudgetController>() ??
+                gameObject.AddComponent<CombatWeaponBudgetController>();
+            budget.Bind(this);
+            budget.RefreshNow();
+        }
+
+        public void PrewarmCombatResources()
+        {
+            if (visuals != null)
+                visuals.Prewarm();
+            if (projectiles != null)
+                projectiles.Prewarm(24);
         }
 
         void Update()
@@ -773,15 +796,6 @@ namespace UnityPlanet.ModularAssembly
                         command.LockedTarget);
                     break;
             }
-            RobocraftMotionCoordinator rc1 =
-                GetComponent<RobocraftMotionCoordinator>();
-            if (rc1 != null && rc1.IsActive)
-                rc1.QueueVisualRecoil(
-                    -direction * Mathf.Clamp(
-                        profile.damage * 1.5f,
-                        20f,
-                        300f),
-                    muzzle);
         }
 
         static Vector3 ApplySpread(Vector3 direction, float degrees)
@@ -795,13 +809,18 @@ namespace UnityPlanet.ModularAssembly
 
         void UpdateFov(bool aiming)
         {
-            if (sceneCamera == null)
-                return;
             bool sniper = weapons.Any(item =>
                 item.Group == activeGroup &&
                 item.Profile.sourceId.IndexOf(
                     "snipercannon_422",
                     StringComparison.OrdinalIgnoreCase) >= 0);
+            if (cameraController != null)
+            {
+                cameraController.SetAimPresentation(aiming, sniper);
+                return;
+            }
+            if (sceneCamera == null)
+                return;
             float targetFov = aiming
                 ? sniper ? 22f : 38f
                 : baseFov;
@@ -813,6 +832,11 @@ namespace UnityPlanet.ModularAssembly
 
         void RestoreFov()
         {
+            if (cameraController != null)
+            {
+                cameraController.SetAimPresentation(false, false);
+                return;
+            }
             if (sceneCamera != null)
                 sceneCamera.fieldOfView = Mathf.Lerp(
                     sceneCamera.fieldOfView,
@@ -1087,6 +1111,20 @@ namespace UnityPlanet.ModularAssembly
                 "WeaponEffects/HovlLaserRay");
         }
 
+        public void Prewarm()
+        {
+            LineSlot line = AcquireLine();
+            if (line != null && line.Root != null)
+                line.Root.SetActive(false);
+            LaserSlot laser = AcquireLaser();
+            if (laser != null && laser.Root != null)
+                laser.Root.SetActive(false);
+
+            Resources.Load<GameObject>("WeaponEffects/HovlLaserRay");
+            Resources.Load<GameObject>("WeaponEffects/Forge3DProjectile");
+            Resources.Load<GameObject>("WeaponEffects/Forge3DExplosion");
+        }
+
         void Update()
         {
             foreach (LineSlot slot in lines)
@@ -1255,6 +1293,12 @@ namespace UnityPlanet.ModularAssembly
                     "HovlLaserRayHit",
                     StringComparison.Ordinal))
                 return;
+            if (NeoXCombatFeedbackRuntime.TrySpawnImpact(
+                    position,
+                    normal,
+                    sourceEffect,
+                    radius))
+                return;
             if (Forge3DWeaponPresentation.TrySpawnImpact(
                     transform,
                     position,
@@ -1274,6 +1318,11 @@ namespace UnityPlanet.ModularAssembly
 
         public void SpawnBreakup(Bounds bounds)
         {
+            if (NeoXCombatFeedbackRuntime.TrySpawnModuleBreak(
+                    bounds.center,
+                    Vector3.up,
+                    bounds.size.magnitude))
+                return;
             EmitParticles(
                 "DisconnectedModuleBreakup",
                 bounds.center,
@@ -1394,6 +1443,12 @@ namespace UnityPlanet.ModularAssembly
             ParticleSystemRenderer renderer =
                 root.GetComponent<ParticleSystemRenderer>();
             renderer.sharedMaterial = particleMaterial;
+            renderer.renderMode =
+                ParticleSystemRenderMode.Stretch;
+            renderer.alignment =
+                ParticleSystemRenderSpace.Velocity;
+            renderer.velocityScale = 0.08f;
+            renderer.lengthScale = 2f;
             particles.Add(system);
             return system;
         }
@@ -1422,6 +1477,16 @@ namespace UnityPlanet.ModularAssembly
             visuals = effectPool;
         }
 
+        public void Prewarm(int count)
+        {
+            int targetCount = Mathf.Clamp(count, 0, 64);
+            while (projectiles.Count < targetCount)
+            {
+                WeaponProjectile projectile = CreateProjectile();
+                projectile.gameObject.SetActive(false);
+            }
+        }
+
         public void Launch(
             Vector3 position,
             Vector3 direction,
@@ -1434,20 +1499,7 @@ namespace UnityPlanet.ModularAssembly
                 projectiles.Find(item => item != null &&
                                          !item.gameObject.activeSelf);
             if (projectile == null)
-            {
-                GameObject root =
-                    GameObject.CreatePrimitive(PrimitiveType.Cube);
-                root.name = "PooledWeaponProjectile";
-                root.transform.SetParent(
-                    CombatTransientRoot.GetOrCreate(),
-                    false);
-                Collider collider = root.GetComponent<Collider>();
-                if (collider != null)
-                    Destroy(collider);
-                projectile = root.AddComponent<WeaponProjectile>();
-                projectile.Initialize(this);
-                projectiles.Add(projectile);
-            }
+                projectile = CreateProjectile();
             projectile.Launch(
                 position,
                 direction,
@@ -1456,6 +1508,24 @@ namespace UnityPlanet.ModularAssembly
                 owner,
                 lockedTarget,
                 visuals);
+        }
+
+        WeaponProjectile CreateProjectile()
+        {
+            GameObject root =
+                GameObject.CreatePrimitive(PrimitiveType.Cube);
+            root.name = "PooledWeaponProjectile";
+            root.transform.SetParent(
+                CombatTransientRoot.GetOrCreate(),
+                false);
+            Collider collider = root.GetComponent<Collider>();
+            if (collider != null)
+                Destroy(collider);
+            WeaponProjectile projectile =
+                root.AddComponent<WeaponProjectile>();
+            projectile.Initialize(this);
+            projectiles.Add(projectile);
+            return projectile;
         }
 
         public void Release(WeaponProjectile projectile)
@@ -1741,35 +1811,45 @@ namespace UnityPlanet.ModularAssembly
         }
     }
 
+    public interface IVehicleModuleDamageAuthority
+    {
+        float Integrity(string runtimeId);
+        float MaximumIntegrity(string runtimeId);
+        bool IsDestroyed(string runtimeId);
+        void ApplyDamage(string runtimeId, SpaceDamageInfo damage);
+    }
+
     public sealed class VehicleModuleDamageReceiver :
         MonoBehaviour,
         ISpaceDamageable
     {
-        VehicleStructureGraph graph;
+        IVehicleModuleDamageAuthority authority;
         string runtimeId;
 
         public float Integrity =>
-            graph == null ? 0f : graph.Integrity(runtimeId);
+            authority == null ? 0f : authority.Integrity(runtimeId);
         public float MaximumIntegrity =>
-            graph == null ? 0f : graph.MaximumIntegrity(runtimeId);
+            authority == null ? 0f : authority.MaximumIntegrity(runtimeId);
         public bool IsDestroyed =>
-            graph == null || graph.IsDestroyed(runtimeId);
+            authority == null || authority.IsDestroyed(runtimeId);
 
         public void Initialize(
-            VehicleStructureGraph source,
+            IVehicleModuleDamageAuthority source,
             string id)
         {
-            graph = source;
+            authority = source;
             runtimeId = id;
         }
 
         public void ApplyDamage(SpaceDamageInfo damage)
         {
-            graph?.ApplyDamage(runtimeId, damage);
+            authority?.ApplyDamage(runtimeId, damage);
         }
     }
 
-    public sealed class VehicleStructureGraph : MonoBehaviour
+    public sealed class VehicleStructureGraph :
+        MonoBehaviour,
+        IVehicleModuleDamageAuthority
     {
         sealed class Node
         {
@@ -1779,10 +1859,7 @@ namespace UnityPlanet.ModularAssembly
             public float MaximumHealth;
             public int Cpu;
             public bool Destroyed;
-            public string SupportId;
             public readonly HashSet<string> Edges =
-                new HashSet<string>(StringComparer.Ordinal);
-            public readonly HashSet<string> Dependents =
                 new HashSet<string>(StringComparer.Ordinal);
         }
 
@@ -1798,6 +1875,10 @@ namespace UnityPlanet.ModularAssembly
 
         readonly Dictionary<string, Node> nodes =
             new Dictionary<string, Node>(StringComparer.Ordinal);
+        readonly HashSet<string> combatDamagedRuntimeIds =
+            new HashSet<string>(StringComparer.Ordinal);
+        readonly HashSet<string> combatRemovedRuntimeIds =
+            new HashSet<string>(StringComparer.Ordinal);
         GridAssemblyModel model;
         GridAssemblyPresenter presenter;
         GridFlightBridge flight;
@@ -1806,11 +1887,12 @@ namespace UnityPlanet.ModularAssembly
         int initialCpu;
         bool active;
         bool processingDamage;
-        bool rebuildPending;
         bool vehicleDestroyed;
         bool automaticReturnToBuild = true;
+        bool damageEnabled;
 
-        public bool Active => active && !vehicleDestroyed;
+        public bool Active =>
+            active && damageEnabled && !vehicleDestroyed;
         public bool IsVehicleDestroyed => vehicleDestroyed;
         public float ConnectedCpuRatio =>
             initialCpu <= 0
@@ -1840,12 +1922,20 @@ namespace UnityPlanet.ModularAssembly
                 return CombatCapabilityState.Operational;
             }
         }
-        public event Action StructureChanged;
+        public event Action<VehicleStructureDelta> StructureChanged;
+        public event Action<VehicleModuleDamageFeedback> ModuleDamaged;
         public event Action Destroyed;
 
         public void SetAutomaticReturnToBuild(bool value)
         {
             automaticReturnToBuild = value;
+        }
+
+        public void SetDamageEnabled(bool value)
+        {
+            damageEnabled = value;
+            if (!value)
+                VehicleDetachedDebris.ClearAll();
         }
 
         public void Initialize(
@@ -1858,6 +1948,7 @@ namespace UnityPlanet.ModularAssembly
             presenter = assemblyPresenter;
             flight = flightBridge;
             visuals = effectPool;
+            presenter.Rebuilt -= HandlePresenterRebuilt;
             presenter.Rebuilt += HandlePresenterRebuilt;
             RebuildGraph();
         }
@@ -1866,24 +1957,59 @@ namespace UnityPlanet.ModularAssembly
         {
             active = true;
             vehicleDestroyed = false;
+            combatDamagedRuntimeIds.Clear();
+            combatRemovedRuntimeIds.Clear();
             flightBlueprint = model.CaptureBlueprint();
             RebuildGraph();
+            ResetNodeDamage();
             initialCpu = ConnectedCpu();
-            StructureChanged?.Invoke();
+            StructureChanged?.Invoke(
+                VehicleStructureDelta.Initial(nodes.Keys));
+        }
+
+        public void ResetCombatSession()
+        {
+            active = true;
+            vehicleDestroyed = false;
+            processingDamage = false;
+            combatDamagedRuntimeIds.Clear();
+            combatRemovedRuntimeIds.Clear();
+            flightBlueprint = model.CaptureBlueprint();
+            if (nodes.Count == 0)
+                RebuildGraph();
+            ResetNodeDamage();
+            initialCpu = ConnectedCpu();
+            StructureChanged?.Invoke(
+                VehicleStructureDelta.Initial(nodes.Keys));
+        }
+
+        public void PrepareCombatCache()
+        {
+            if (!active)
+                RebuildGraph();
         }
 
         public void EndFlight()
         {
             active = false;
+            processingDamage = false;
+            vehicleDestroyed = false;
+            ResetNodeDamage();
+        }
+
+        void ResetNodeDamage()
+        {
+            foreach (Node node in nodes.Values)
+            {
+                node.Health = node.MaximumHealth;
+                node.Destroyed = false;
+            }
         }
 
         void HandlePresenterRebuilt()
         {
             if (processingDamage)
-            {
-                rebuildPending = true;
                 return;
-            }
             RebuildGraph();
         }
 
@@ -1921,6 +2047,13 @@ namespace UnityPlanet.ModularAssembly
                     occupancy[cell] = record.RuntimeId;
                 if (view != null)
                 {
+                    GridModuleDamageReceiver legacyTarget =
+                        view.GetComponent<GridModuleDamageReceiver>();
+                    if (legacyTarget != null)
+                    {
+                        legacyTarget.enabled = false;
+                        Destroy(legacyTarget);
+                    }
                     VehicleModuleDamageReceiver receiver =
                         view.GetComponent<VehicleModuleDamageReceiver>() ??
                         view.gameObject.AddComponent<
@@ -1939,88 +2072,6 @@ namespace UnityPlanet.ModularAssembly
                 nodes[pair.Value].Edges.Add(other);
                 nodes[other].Edges.Add(pair.Value);
             }
-            RebuildMountDependencies();
-        }
-
-        void RebuildMountDependencies()
-        {
-            foreach (Node node in nodes.Values)
-            {
-                node.SupportId = null;
-                node.Dependents.Clear();
-            }
-            Dictionary<string, int> depth = BuildCoreDepths();
-            foreach (KeyValuePair<string, Node> pair in nodes)
-            {
-                Node node = pair.Value;
-                if (!RequiresMountSupport(node) ||
-                    !depth.TryGetValue(pair.Key, out int nodeDepth))
-                    continue;
-                string supportId = node.Edges
-                    .Where(depth.ContainsKey)
-                    .OrderBy(id => depth[id] < nodeDepth ? 0 : 1)
-                    .ThenBy(id => depth[id])
-                    .ThenBy(id => id, StringComparer.Ordinal)
-                    .FirstOrDefault();
-                if (string.IsNullOrEmpty(supportId))
-                    continue;
-                node.SupportId = supportId;
-                nodes[supportId].Dependents.Add(pair.Key);
-            }
-        }
-
-        Dictionary<string, int> BuildCoreDepths()
-        {
-            var result = new Dictionary<string, int>(
-                StringComparer.Ordinal);
-            if (!nodes.ContainsKey(GridAssemblyModel.CoreRuntimeId))
-                return result;
-            var queue = new Queue<string>();
-            queue.Enqueue(GridAssemblyModel.CoreRuntimeId);
-            result[GridAssemblyModel.CoreRuntimeId] = 0;
-            while (queue.Count > 0)
-            {
-                string current = queue.Dequeue();
-                foreach (string edge in nodes[current].Edges)
-                {
-                    if (!nodes.ContainsKey(edge) ||
-                        result.ContainsKey(edge))
-                        continue;
-                    result[edge] = result[current] + 1;
-                    queue.Enqueue(edge);
-                }
-            }
-            return result;
-        }
-
-        static bool RequiresMountSupport(Node node)
-        {
-            if (node?.Record?.Definition == null)
-                return false;
-            GridModuleCategory category =
-                node.Record.Definition.Category;
-            return category != GridModuleCategory.Core &&
-                   category != GridModuleCategory.Structure &&
-                   category != GridModuleCategory.Armor;
-        }
-
-        HashSet<string> CollectMountDependents(string supportId)
-        {
-            var result = new HashSet<string>(
-                StringComparer.Ordinal);
-            if (!nodes.TryGetValue(supportId, out Node support))
-                return result;
-            var queue = new Queue<string>(support.Dependents);
-            while (queue.Count > 0)
-            {
-                string id = queue.Dequeue();
-                if (!result.Add(id) ||
-                    !nodes.TryGetValue(id, out Node dependent))
-                    continue;
-                foreach (string child in dependent.Dependents)
-                    queue.Enqueue(child);
-            }
-            return result;
         }
 
         public float Integrity(string runtimeId)
@@ -2043,6 +2094,15 @@ namespace UnityPlanet.ModularAssembly
                    node.Destroyed;
         }
 
+        public HashSet<string> CaptureUnavailableRuntimeIds()
+        {
+            var result = new HashSet<string>(
+                combatDamagedRuntimeIds,
+                StringComparer.Ordinal);
+            result.UnionWith(combatRemovedRuntimeIds);
+            return result;
+        }
+
         public void ApplyDamage(
             string runtimeId,
             SpaceDamageInfo damage)
@@ -2052,51 +2112,313 @@ namespace UnityPlanet.ModularAssembly
                 !nodes.TryGetValue(runtimeId, out Node node) ||
                 node.Destroyed)
                 return;
+            float appliedDamage = Mathf.Max(0f, damage.amount);
+            if (appliedDamage <= 0f)
+                return;
+            combatDamagedRuntimeIds.Add(runtimeId);
             node.Health = Mathf.Max(
                 0f,
-                node.Health - Mathf.Max(0f, damage.amount));
-            StructureChanged?.Invoke();
+                node.Health - appliedDamage);
+            string moduleName = node.Record.Definition.DisplayName;
+            if (string.IsNullOrWhiteSpace(moduleName))
+                moduleName = runtimeId;
+            ModuleDamaged?.Invoke(
+                new VehicleModuleDamageFeedback(
+                    runtimeId,
+                    moduleName,
+                    damage.point,
+                    damage.impulse,
+                    ResolveNodeBounds(node),
+                    node.Health /
+                    Mathf.Max(1f, node.MaximumHealth),
+                    node.Health <= 0f));
             if (node.Health > 0f)
                 return;
             node.Destroyed = true;
             if (runtimeId == GridAssemblyModel.CoreRuntimeId)
             {
-                DestroyVehicle();
+                DisableGameplay(node);
+                var coreDelta = new VehicleStructureDelta
+                {
+                    DirectHitRuntimeId = runtimeId,
+                    HitPoint = damage.point,
+                    Impulse = damage.impulse,
+                    CoreDestroyed = true
+                };
+                coreDelta.RemovedRuntimeIds.AddRange(nodes.Keys);
+                combatRemovedRuntimeIds.UnionWith(
+                    coreDelta.RemovedRuntimeIds);
+                DestroyVehicle(coreDelta);
                 return;
             }
 
             processingDamage = true;
-            HashSet<string> removed =
-                CollectMountDependents(runtimeId);
-            removed.Add(runtimeId);
-            foreach (string id in removed)
+            HashSet<string> connected = ConnectedAliveToCore();
+            var detachedIds = new HashSet<string>(
+                nodes.Values
+                    .Where(item =>
+                        !item.Destroyed &&
+                        !connected.Contains(item.Record.RuntimeId))
+                    .Select(item => item.Record.RuntimeId),
+                StringComparer.Ordinal);
+            List<List<Node>> detachedComponents =
+                BuildDetachedComponents(detachedIds);
+            var removed = new HashSet<string>(
+                detachedIds,
+                StringComparer.Ordinal)
             {
-                if (!nodes.TryGetValue(id, out Node removedNode))
-                    continue;
-                removedNode.Destroyed = true;
-                SpawnBreakup(removedNode);
+                runtimeId
+            };
+            VehicleStructureDelta delta = BuildDelta(
+                runtimeId,
+                removed,
+                detachedComponents,
+                damage);
+            combatRemovedRuntimeIds.UnionWith(removed);
+            SpawnBreakup(node);
+            Rigidbody sourceBody = GetComponent<Rigidbody>();
+            if (node.View != null)
+            {
+                VehicleDetachedDebris.Spawn(
+                    new[]
+                    {
+                        new DetachedDebrisPart(
+                            node.Record.RuntimeId,
+                            node.View.gameObject,
+                            node.Record.Definition.MassKg)
+                    },
+                    sourceBody,
+                    damage.impulse,
+                    damage.point);
             }
+            foreach (List<Node> component in detachedComponents)
+            {
+                List<DetachedDebrisPart> debrisParts = component
+                    .Where(item => item.View != null)
+                    .Select(item => new DetachedDebrisPart(
+                        item.Record.RuntimeId,
+                        item.View.gameObject,
+                        item.Record.Definition.MassKg))
+                    .ToList();
+                GameObject debris = VehicleDetachedDebris.Spawn(
+                    debrisParts,
+                    sourceBody,
+                    Vector3.zero,
+                    Vector3.zero);
+                if (debris != null)
+                {
+                    Renderer[] debrisRenderers =
+                        debris.GetComponentsInChildren<Renderer>(true);
+                    Bounds debrisBounds = debrisRenderers.Length > 0
+                        ? debrisRenderers[0].bounds
+                        : new Bounds(debris.transform.position, Vector3.one);
+                    for (int index = 1;
+                         index < debrisRenderers.Length;
+                         index++)
+                        debrisBounds.Encapsulate(
+                            debrisRenderers[index].bounds);
+                    NeoXCombatFeedbackRuntime.TrySpawnDetached(
+                        debrisBounds.center,
+                        damage.impulse,
+                        debrisBounds.size.magnitude);
+                }
+                foreach (Node detached in component)
+                {
+                    detached.Destroyed = true;
+                    DisableGameplay(detached);
+                }
+            }
+            DisableGameplay(node);
             model.RemoveIds(removed);
-            GridAssemblyValidation validation = model.Validate();
-            List<string> disconnected =
-                validation.DisconnectedIds.ToList();
-            foreach (string id in disconnected)
-                if (nodes.TryGetValue(id, out Node detached))
-                    SpawnBreakup(detached);
-            if (disconnected.Count > 0)
-                model.RemoveIds(disconnected);
             processingDamage = false;
-            if (rebuildPending)
-            {
-                rebuildPending = false;
-                RebuildGraph();
-            }
-            else
-                RebuildGraph();
-            StructureChanged?.Invoke();
+            RebuildGraph();
             if (initialCpu > 0 &&
                 ConnectedCpu() < Mathf.CeilToInt(initialCpu * 0.2f))
-                DestroyVehicle();
+                DestroyVehicle(delta);
+            else
+                StructureChanged?.Invoke(delta);
+        }
+
+        HashSet<string> ConnectedAliveToCore()
+        {
+            var result = new HashSet<string>(
+                StringComparer.Ordinal);
+            if (!nodes.TryGetValue(
+                    GridAssemblyModel.CoreRuntimeId,
+                    out Node core) ||
+                core.Destroyed)
+                return result;
+            var queue = new Queue<string>();
+            queue.Enqueue(GridAssemblyModel.CoreRuntimeId);
+            result.Add(GridAssemblyModel.CoreRuntimeId);
+            while (queue.Count > 0)
+            {
+                string current = queue.Dequeue();
+                foreach (string adjacent in nodes[current].Edges)
+                {
+                    if (!nodes.TryGetValue(adjacent, out Node other) ||
+                        other.Destroyed ||
+                        !result.Add(adjacent))
+                        continue;
+                    queue.Enqueue(adjacent);
+                }
+            }
+            return result;
+        }
+
+        List<List<Node>> BuildDetachedComponents(
+            HashSet<string> detachedIds)
+        {
+            var remaining = new HashSet<string>(
+                detachedIds,
+                StringComparer.Ordinal);
+            var result = new List<List<Node>>();
+            while (remaining.Count > 0)
+            {
+                string seed = remaining.First();
+                remaining.Remove(seed);
+                var component = new List<Node>();
+                var queue = new Queue<string>();
+                queue.Enqueue(seed);
+                while (queue.Count > 0)
+                {
+                    string current = queue.Dequeue();
+                    if (!nodes.TryGetValue(current, out Node currentNode))
+                        continue;
+                    component.Add(currentNode);
+                    foreach (string adjacent in currentNode.Edges)
+                        if (remaining.Remove(adjacent))
+                            queue.Enqueue(adjacent);
+                }
+                if (component.Count > 0)
+                    result.Add(component);
+            }
+            return result;
+        }
+
+        VehicleStructureDelta BuildDelta(
+            string directHit,
+            HashSet<string> removed,
+            List<List<Node>> detachedComponents,
+            SpaceDamageInfo damage)
+        {
+            var result = new VehicleStructureDelta
+            {
+                DirectHitRuntimeId = directHit,
+                HitPoint = damage.point,
+                Impulse = damage.impulse
+            };
+            result.RemovedRuntimeIds.AddRange(removed);
+            result.RemainingRuntimeIds.AddRange(
+                nodes.Keys.Where(id => !removed.Contains(id)));
+            Rigidbody sourceBody = GetComponent<Rigidbody>();
+            if (nodes.TryGetValue(directHit, out Node directNode))
+            {
+                result.DirectDestroyedComponent = BuildSnapshot(
+                    new[] { directNode },
+                    sourceBody,
+                    true);
+            }
+            foreach (List<Node> component in detachedComponents)
+                result.DetachedComponents.Add(
+                    BuildSnapshot(component, sourceBody, false));
+            return result;
+        }
+
+        DetachedComponentSnapshot BuildSnapshot(
+            IEnumerable<Node> component,
+            Rigidbody sourceBody,
+            bool directHit)
+        {
+            var snapshot = new DetachedComponentSnapshot
+            {
+                IsDirectHit = directHit
+            };
+            float mass = 0f;
+            Vector3 weighted = Vector3.zero;
+            Bounds bounds = default;
+            bool hasBounds = false;
+            foreach (Node item in component)
+            {
+                float itemMass = Mathf.Max(
+                    0.01f,
+                    item.Record.Definition.MassKg);
+                snapshot.RuntimeIds.Add(item.Record.RuntimeId);
+                mass += itemMass;
+                if (item.View == null)
+                    continue;
+                weighted += item.View.transform.position * itemMass;
+                foreach (Renderer renderer in
+                         item.View.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (!hasBounds)
+                    {
+                        bounds = renderer.bounds;
+                        hasBounds = true;
+                    }
+                    else
+                        bounds.Encapsulate(renderer.bounds);
+                }
+            }
+            snapshot.MassKg = mass;
+            snapshot.WorldCenter = mass > 0.01f
+                ? weighted / mass
+                : transform.position;
+            if (sourceBody != null)
+            {
+                snapshot.WorldLinearVelocity =
+                    sourceBody.GetPointVelocity(snapshot.WorldCenter);
+                snapshot.WorldAngularVelocity = sourceBody.angularVelocity;
+            }
+            Vector3 size = hasBounds ? bounds.size : Vector3.one;
+            snapshot.PrincipalInertia = new Vector3(
+                mass * (size.y * size.y + size.z * size.z) / 12f,
+                mass * (size.x * size.x + size.z * size.z) / 12f,
+                mass * (size.x * size.x + size.y * size.y) / 12f);
+            return snapshot;
+        }
+
+        static void DisableGameplay(Node node)
+        {
+            if (node?.View == null)
+                return;
+            foreach (Collider collider in
+                     node.View.GetComponentsInChildren<Collider>(true))
+                collider.enabled = false;
+            foreach (MonoBehaviour behaviour in
+                     node.View.GetComponentsInChildren<MonoBehaviour>(true))
+                if (behaviour != null &&
+                    !(behaviour is GridModuleView))
+                    behaviour.enabled = false;
+        }
+
+        static Bounds ResolveNodeBounds(Node node)
+        {
+            if (node?.View == null)
+                return new Bounds(Vector3.zero, Vector3.one);
+            Renderer[] renderers =
+                node.View.GetComponentsInChildren<Renderer>(true);
+            bool initialized = false;
+            Bounds result = new Bounds(
+                node.View.transform.position,
+                Vector3.one);
+            foreach (Renderer renderer in renderers)
+            {
+                if (renderer == null ||
+                    renderer is ParticleSystemRenderer ||
+                    renderer is LineRenderer ||
+                    renderer is TrailRenderer ||
+                    !renderer.enabled)
+                    continue;
+                if (!initialized)
+                {
+                    result = renderer.bounds;
+                    initialized = true;
+                }
+                else
+                    result.Encapsulate(renderer.bounds);
+            }
+            return result;
         }
 
         void SpawnBreakup(Node node)
@@ -2144,15 +2466,14 @@ namespace UnityPlanet.ModularAssembly
             return result;
         }
 
-        void DestroyVehicle()
+        void DestroyVehicle(VehicleStructureDelta delta = null)
         {
             if (vehicleDestroyed)
                 return;
             vehicleDestroyed = true;
-            foreach (Node node in nodes.Values)
-                SpawnBreakup(node);
             Destroyed?.Invoke();
-            StructureChanged?.Invoke();
+            StructureChanged?.Invoke(
+                delta ?? VehicleStructureDelta.Initial(nodes.Keys));
             if (automaticReturnToBuild)
                 StartCoroutine(ReturnToBuild());
         }
@@ -2160,11 +2481,14 @@ namespace UnityPlanet.ModularAssembly
         IEnumerator ReturnToBuild()
         {
             yield return new WaitForSeconds(0.9f);
+            flight?.ExitFlight();
+            yield return null;
             if (flightBlueprint != null)
+            {
                 model.RestoreBlueprint(
                     flightBlueprint,
                     out string ignored);
-            flight?.ExitFlight();
+            }
         }
 
         public bool TryGetTarget(out Collider collider)

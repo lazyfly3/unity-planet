@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M1,1 L10,6 L1,11 Z" fill="#26384d"/>
+    </marker>
+    <style>
+      .bg { fill: #f7fafc; }
+      .title { font: 700 56px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #132238; }
+      .subtitle { font: 400 26px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #586b82; }
+      .box { fill: #ffffff; stroke: #cdd7e3; stroke-width: 3; }
+      .blue { fill: #edf6ff; stroke: #76a6dc; stroke-width: 4; }
+      .green { fill: #ecfaf1; stroke: #70b98a; stroke-width: 4; }
+      .orange { fill: #fff6e8; stroke: #df9a42; stroke-width: 4; }
+      .red { fill: #fff1f2; stroke: #e17883; stroke-width: 4; }
+      .dark { fill: #213b54; }
+      .head { font: 700 30px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #162033; }
+      .body { font: 400 23px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #334155; }
+      .formula { font: 500 21px "Consolas", "Microsoft YaHei", monospace; fill: #073763; }
+      .white { font: 500 25px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #ffffff; }
+      .arrow { stroke: #26384d; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .softArrow { stroke: #8498ad; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1920" height="1080"/>
+
+  <text class="title" x="80" y="88">模块化飞船拼接功能算法</text>
+  <text class="subtitle" x="82" y="130">以三维网格蓝图为核心，完成模块选择、合法放置、结构重建与战斗属性更新</text>
+
+  <rect class="blue" x="80" y="240" width="270" height="150" rx="18"/>
+  <text class="head" x="118" y="292">模块库</text>
+  <text class="body" x="118" y="338">核心舱 / 推进器</text>
+  <text class="body" x="118" y="370">武器 / 装甲 / 机翼</text>
+
+  <rect class="blue" x="455" y="240" width="285" height="150" rx="18"/>
+  <text class="head" x="493" y="292">选择与预览</text>
+  <text class="body" x="493" y="338">鼠标命中位置</text>
+  <text class="formula" x="493" y="370">worldPos → gridPos</text>
+
+  <rect class="blue" x="850" y="240" width="300" height="150" rx="18"/>
+  <text class="head" x="888" y="292">网格化放置</text>
+  <text class="body" x="888" y="338">记录坐标与旋转</text>
+  <text class="formula" x="888" y="370">Pose = {grid, rot}</text>
+
+  <rect class="orange" x="1270" y="205" width="300" height="150" rx="18"/>
+  <text class="head" x="1308" y="257">占用检测</text>
+  <text class="body" x="1308" y="303">判断格子是否重叠</text>
+  <text class="formula" x="1308" y="335">A ∩ B = ∅</text>
+
+  <rect class="orange" x="1270" y="430" width="300" height="160" rx="18"/>
+  <text class="head" x="1308" y="482">连接检测</text>
+  <text class="body" x="1308" y="528">必须连接已有模块</text>
+  <text class="formula" x="1308" y="560">Neighbor(module) ≠ ∅</text>
+
+  <rect class="green" x="850" y="690" width="300" height="155" rx="18"/>
+  <text class="head" x="888" y="742">蓝图写入</text>
+  <text class="body" x="888" y="788">保存模块 ID</text>
+  <text class="body" x="888" y="820">位置、旋转、类型</text>
+
+  <rect class="green" x="455" y="690" width="285" height="155" rx="18"/>
+  <text class="head" x="493" y="742">属性重建</text>
+  <text class="formula" x="493" y="788">M = Σmᵢ</text>
+  <text class="formula" x="493" y="820">COM = Σmᵢpᵢ / Σmᵢ</text>
+
+  <rect class="red" x="80" y="690" width="270" height="155" rx="18"/>
+  <text class="head" x="118" y="742">结构连接图</text>
+  <text class="formula" x="118" y="788">G = (V, E)</text>
+  <text class="body" x="118" y="820">用于断裂与脱落检测</text>
+
+  <rect class="box" x="455" y="470" width="285" height="120" rx="18"/>
+  <text class="head" x="493" y="518">镜像放置</text>
+  <text class="formula" x="493" y="560">P' = Mirror(P, axis)</text>
+
+  <rect class="box" x="80" y="470" width="270" height="120" rx="18"/>
+  <text class="head" x="118" y="518">保存 / 载入</text>
+  <text class="body" x="118" y="560">蓝图数据可复现</text>
+
+  <rect class="green" x="1270" y="690" width="300" height="155" rx="18"/>
+  <text class="head" x="1308" y="742">进入飞行战斗</text>
+  <text class="body" x="1308" y="788">推进器、武器识别</text>
+  <text class="body" x="1308" y="820">性能由装配结果决定</text>
+
+  <path class="arrow" d="M350 315 L455 315"/>
+  <path class="arrow" d="M740 315 L850 315"/>
+  <path class="arrow" d="M1150 315 L1270 280"/>
+  <path class="arrow" d="M1420 355 L1420 430"/>
+  <path class="arrow" d="M1270 510 C1195 510 1195 768 1150 768"/>
+  <path class="arrow" d="M850 768 L740 768"/>
+  <path class="arrow" d="M455 768 L350 768"/>
+  <path class="arrow" d="M1150 768 L1270 768"/>
+
+  <path class="softArrow" d="M598 390 L598 470"/>
+  <path class="softArrow" d="M215 590 L215 690"/>
+  <path class="softArrow" d="M215 470 C215 430 455 430 550 390"/>
+
+  <rect class="dark" x="90" y="930" width="1740" height="92" rx="16"/>
+  <text class="white" x="130" y="970">核心结论：拼接算法不是简单摆放模型，而是通过网格占用、连接检测和结构图重建，</text>
+  <text class="white" x="130" y="1005">让玩家的装配结果直接影响飞船质量、重心、推进器布局、武器分布和断裂效果。</text>
+</svg>

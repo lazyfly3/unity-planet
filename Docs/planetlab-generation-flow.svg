@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M1,1 L10,6 L1,11 Z" fill="#26384d"/>
+    </marker>
+    <style>
+      .bg { fill: #f7fafc; }
+      .title { font: 700 56px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #132238; }
+      .subtitle { font: 400 26px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #586b82; }
+      .box { fill: #ffffff; stroke: #cdd7e3; stroke-width: 3; }
+      .blue { fill: #edf6ff; stroke: #76a6dc; stroke-width: 4; }
+      .green { fill: #ecfaf1; stroke: #70b98a; stroke-width: 4; }
+      .orange { fill: #fff6e8; stroke: #df9a42; stroke-width: 4; }
+      .dark { fill: #213b54; }
+      .head { font: 700 30px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #162033; }
+      .body { font: 400 23px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #334155; }
+      .formula { font: 500 22px "Consolas", "Microsoft YaHei", monospace; fill: #073763; }
+      .small { font: 500 22px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #34506d; }
+      .white { font: 500 25px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #ffffff; }
+      .arrow { stroke: #26384d; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .softArrow { stroke: #7f93aa; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .tag { fill: #dcebff; stroke: #83b4ee; stroke-width: 2; }
+      .tagText { font: 500 21px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #1f4f7a; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1920" height="1080"/>
+
+  <text class="title" x="80" y="88">PlanetLab 程序化星球生成算法</text>
+  <text class="subtitle" x="82" y="130">同一套 3D 连续噪声高度函数，驱动球形星球、局部平面与无限平面战斗场景</text>
+
+  <rect class="blue" x="90" y="240" width="320" height="190" rx="18"/>
+  <text class="head" x="130" y="295">星球预设参数</text>
+  <text class="body" x="130" y="340">seed / radius</text>
+  <text class="body" x="130" y="374">大陆尺度、山脊高度</text>
+  <text class="body" x="130" y="408">海平面、材质与光照</text>
+
+  <rect class="blue" x="520" y="240" width="360" height="190" rx="18"/>
+  <text class="head" x="560" y="295">3D 噪声高度场</text>
+  <text class="formula" x="560" y="340">h = ocean + land</text>
+  <text class="formula" x="560" y="374">  + detail + ridge</text>
+  <text class="body" x="560" y="408">连续采样，避免接缝</text>
+
+  <rect class="box" x="1000" y="190" width="370" height="160" rx="18"/>
+  <text class="head" x="1040" y="242">球形星球生成</text>
+  <text class="formula" x="1040" y="288">p = normalize(cube)</text>
+  <text class="formula" x="1040" y="322">P = p × (r + h)</text>
+
+  <rect class="box" x="1000" y="430" width="370" height="180" rx="18"/>
+  <text class="head" x="1040" y="482">局部平面展开</text>
+  <text class="formula" x="1040" y="528">dir = normalize(anchor·r</text>
+  <text class="formula" x="1040" y="560">+ east·x + north·z)</text>
+  <text class="formula" x="1040" y="592">P = (x, h, z)</text>
+
+  <rect class="box" x="1000" y="690" width="370" height="160" rx="18"/>
+  <text class="head" x="1040" y="742">无限平面分块</text>
+  <text class="body" x="1040" y="788">以玩家为中心生成 Chunk</text>
+  <text class="body" x="1040" y="822">远处回收，近处重建</text>
+
+  <rect class="green" x="1510" y="315" width="320" height="185" rx="18"/>
+  <text class="head" x="1550" y="368">战斗场景输出</text>
+  <text class="body" x="1550" y="414">地形起伏 / 海洋边界</text>
+  <text class="body" x="1550" y="448">遮挡、坡度、机动空间</text>
+
+  <rect class="orange" x="1510" y="620" width="320" height="165" rx="18"/>
+  <text class="head" x="1550" y="672">环境物理参数</text>
+  <text class="body" x="1550" y="718">重力、空气密度、高度</text>
+  <text class="body" x="1550" y="752">接入飞船物理飞控</text>
+
+  <rect class="tag" x="1092" y="895" width="185" height="48" rx="12"/>
+  <text class="tagText" x="1115" y="927">同一高度函数</text>
+
+  <path class="arrow" d="M410 335 L520 335"/>
+
+  <path class="arrow" d="M880 335 L945 335 C970 335 970 270 1000 270"/>
+  <path class="arrow" d="M880 335 L945 335 C970 335 970 520 1000 520"/>
+  <path class="arrow" d="M880 335 L945 335 C970 335 970 770 1000 770"/>
+
+  <path class="arrow" d="M1370 270 L1455 270 C1485 270 1485 392 1510 392"/>
+  <path class="arrow" d="M1370 520 L1455 520 C1485 520 1485 420 1510 420"/>
+  <path class="arrow" d="M1370 770 L1455 770 C1485 770 1485 448 1510 448"/>
+
+  <path class="arrow" d="M1670 500 L1670 620"/>
+
+  <path class="softArrow" d="M1184 895 L1184 850"/>
+  <path class="softArrow" d="M1184 895 L1184 610"/>
+  <path class="softArrow" d="M1184 895 L1184 350"/>
+
+  <rect class="dark" x="90" y="955" width="1740" height="78" rx="16"/>
+  <text class="white" x="130" y="1004">核心结论：PlanetLab 复用同一套 3D 噪声高度场，保证球体、局部展开平面和无限战斗地表在地貌上保持一致。</text>
+</svg>

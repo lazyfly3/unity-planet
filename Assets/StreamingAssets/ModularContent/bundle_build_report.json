@@ -1,0 +1,10 @@
+{
+    "generatedUtc": "2026-07-30T10:41:19.7414250Z",
+    "bundleCount": 1,
+    "assetCount": 193,
+    "selectedModuleCount": 30,
+    "copiedSourceAssetCount": 193,
+    "bundles": [
+        "modules/block"
+    ]
+}

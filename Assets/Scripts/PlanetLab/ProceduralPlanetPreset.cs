@@ -102,7 +102,7 @@ public sealed class ProceduralPlanetLabPreviewSettings
     menuName = "Voxel Planet/Procedural Planet Preset")]
 public sealed class ProceduralPlanetPreset : ScriptableObject
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
     [HideInInspector] public int version = CurrentVersion;
     public string displayName = "Temperate Ocean";
@@ -154,6 +154,16 @@ public sealed class ProceduralPlanetPreset : ScriptableObject
         terrainCopy.ClampValues();
         visualCopy.ClampValues();
 
+        float atmosphereDensity = AtmosphereDensityForTemplate(template);
+        PlanetPhysicalProfile physical = PlanetPhysicalProfile.FromLegacy(
+            9.8f,
+            86164f,
+            atmosphereDensity);
+        physical.atmosphereScaleHeightMeters = 8500d;
+        physical.atmosphereTopAltitudeMeters =
+            atmosphereDensity > 0.0001f ? 100000d : 0d;
+        physical.wind = CreateWindProfile(template, seed, atmosphereDensity);
+        physical.ClampValues();
         var celestial = new PlanetCelestialProfile
         {
             surfaceGenerationMode = PlanetSurfaceGenerationMode.LegacyFullSphere,
@@ -162,15 +172,19 @@ public sealed class ProceduralPlanetPreset : ScriptableObject
             gravitationalParameter = 9.8f * radius * radius,
             rotationAxis = Vector3.up,
             rotationPeriod = 180f,
-            atmosphereSurfaceDensity = 0f,
-            atmosphereScaleHeight = 1f,
-            atmosphereTopAltitude = 0f,
+            atmosphereSurfaceDensity = atmosphereDensity,
+            atmosphereScaleHeight = 8500f,
+            atmosphereTopAltitude =
+                atmosphereDensity > 0.0001f ? 100000f : 0f,
             maximumTerrainElevation = maximumTerrainElevation,
             editableDepth = Mathf.Max(16f, maximumTerrainElevation * 2f),
             atmosphereVisual = new AtmosphereVisualProfile
             {
-                kind = PlanetAtmosphereKind.None
-            }
+                kind = atmosphereDensity > 0.0001f
+                    ? PlanetAtmosphereKind.Temperate
+                    : PlanetAtmosphereKind.None
+            },
+            physical = physical
         };
 
         return new GalaxyPlanetDefinition
@@ -384,6 +398,70 @@ public sealed class ProceduralPlanetPreset : ScriptableObject
             stoneDepth = 4f,
             generateCaves = false
         };
+    }
+
+    static float AtmosphereDensityForTemplate(
+        ProceduralPlanetLabTemplate value)
+    {
+        switch (value)
+        {
+            case ProceduralPlanetLabTemplate.CrimsonOcean:
+                return 1.1f;
+            case ProceduralPlanetLabTemplate.Desert:
+                return 0.8f;
+            case ProceduralPlanetLabTemplate.Frozen:
+                return 1.0f;
+            case ProceduralPlanetLabTemplate.Crystal:
+                return 0.65f;
+            default:
+                return 1.225f;
+        }
+    }
+
+    static PlanetWindProfile CreateWindProfile(
+        ProceduralPlanetLabTemplate value,
+        int profileSeed,
+        float atmosphereDensity)
+    {
+        bool temperate =
+            value == ProceduralPlanetLabTemplate.TemperateOcean;
+        uint hash = Hash((uint)profileSeed);
+        bool enabled = atmosphereDensity > 0.0001f &&
+                       (temperate || hash % 10u >= 3u);
+        float angle = (hash & 0xffffu) / 65535f * Mathf.PI * 2f;
+        return new PlanetWindProfile
+        {
+            enabled = enabled,
+            seed = profileSeed,
+            referenceWindSpeed = enabled
+                ? temperate ? 4f : Mathf.Lerp(
+                    1.5f,
+                    14f,
+                    ((hash >> 8) & 0xffu) / 255f)
+                : 0f,
+            referenceDirection =
+                new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)),
+            shearExponent = 0.14f,
+            gustPeakSpeed = enabled
+                ? temperate ? 2f : Mathf.Lerp(
+                    0.5f,
+                    5f,
+                    ((hash >> 16) & 0xffu) / 255f)
+                : 0f,
+            gustFrequencyRange = new Vector2(0.02f, 0.12f),
+            coherenceLength = 120f,
+            verticalGustRatio = 0.35f
+        };
+    }
+
+    static uint Hash(uint value)
+    {
+        value ^= value >> 16;
+        value *= 0x7feb352d;
+        value ^= value >> 15;
+        value *= 0x846ca68b;
+        value ^= value >> 16;
+        return value;
     }
 
 #if UNITY_EDITOR

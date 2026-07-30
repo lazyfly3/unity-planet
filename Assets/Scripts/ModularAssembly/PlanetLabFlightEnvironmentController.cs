@@ -8,9 +8,11 @@ using UnityEngine.Rendering;
 namespace UnityPlanet.ModularAssembly
 {
     [DisallowMultipleComponent]
-    public sealed class PlanetLabFlightEnvironmentController : MonoBehaviour
+    public sealed class PlanetLabFlightEnvironmentController :
+        MonoBehaviour,
+        IGridFlightEnvironment,
+        IGridFlightEnvironmentWarmup
     {
-        const float AirDensity = 1.225f;
         const float MaximumSpawnSlope = 5f;
         const float MaximumSpawnRoughness = 0.75f;
         const float SpawnSearchRadius = 512f;
@@ -27,8 +29,10 @@ namespace UnityPlanet.ModularAssembly
 
         InfinitePlanarSurfaceWorld world;
         GameObject worldRoot;
+        PlanetEnvironmentProvider environmentProvider;
+        bool environmentConfigured;
+        PlanetPhysicalProfile physicalProfile;
         Rigidbody flightBody;
-        SpacecraftIfcsMotor ifcs;
         RobocraftMotionCoordinator motionRc1;
         float spawnClearance = 1f;
         bool hasSpawnAddress;
@@ -48,9 +52,20 @@ namespace UnityPlanet.ModularAssembly
         CameraClearFlags buildClearFlags;
         CameraClearFlags flightClearFlags;
 
-        public bool IsReady =>
+        
+        public int Priority => 0;
+        public Quaternion PreparedRotation => Quaternion.identity;
+public bool IsReady =>
             world != null && world.IsCenterCollisionReady;
         public PlanarSurfaceAddress SpawnAddress { get; private set; }
+
+        public IEnumerator Warmup(Action<bool, string> completed)
+        {
+            EnsureWorld();
+            yield return null;
+            ExitFlight();
+            completed(true, "PlanetLab 中心地形已开始预热");
+        }
 
         public void Initialize()
         {
@@ -67,7 +82,6 @@ namespace UnityPlanet.ModularAssembly
             }
 
             flightBody = target;
-            ifcs = target.GetComponent<SpacecraftIfcsMotor>();
             motionRc1 = target.GetComponent<RobocraftMotionCoordinator>();
             if (target.GetComponent<PlanetFloatingOriginParticipant>() == null)
                 target.gameObject.AddComponent<PlanetFloatingOriginParticipant>();
@@ -86,12 +100,17 @@ namespace UnityPlanet.ModularAssembly
 
             if (motionRc1 == null)
             {
-                LabArcadeVehicleController vehicle =
-                    target.GetComponent<LabArcadeVehicleController>()
-                    ?? target.gameObject.AddComponent<
-                        LabArcadeVehicleController>();
-                vehicle.SetEnvironment(LabEnvironmentKind.Atmosphere);
+                world.SetMovementTarget(null);
+                worldRoot.SetActive(false);
+                completed?.Invoke(
+                    false,
+                    Vector3.zero,
+                    "RC3.2 motion coordinator is missing.");
+                yield break;
             }
+            EnsureEnvironmentProvider();
+            PlanetEnvironmentRuntime.Active = environmentProvider;
+            motionRc1.SetEnvironmentProvider(environmentProvider);
             GridTargetController targetController =
                 FindObjectOfType<GridTargetController>();
             if (targetController != null)
@@ -194,15 +213,15 @@ namespace UnityPlanet.ModularAssembly
 
         public void ExitFlight()
         {
-            if (ifcs != null)
-            {
-                ifcs.ClearPlanetaryFlightContext();
-                ifcs.SetEnvironmentalAcceleration(Vector3.zero);
-            }
             motionRc1?.ClearPlanetEnvironment();
+            if (ReferenceEquals(
+                    PlanetEnvironmentRuntime.Active,
+                    environmentProvider))
+            {
+                PlanetEnvironmentRuntime.Active = null;
+            }
             collisionSafetyHold = false;
             flightBody = null;
-            ifcs = null;
             motionRc1 = null;
             if (world != null)
                 world.SetMovementTarget(null);
@@ -214,7 +233,6 @@ namespace UnityPlanet.ModularAssembly
         void FixedUpdate()
         {
             if (flightBody == null
-                || ifcs == null
                 || worldRoot == null
                 || !worldRoot.activeInHierarchy)
             {
@@ -254,24 +272,11 @@ namespace UnityPlanet.ModularAssembly
                 flightBody.WakeUp();
                 collisionSafetyHold = false;
             }
-            Vector3 gravity = world.GetGravity(flightBody.position);
-            float altitude = Mathf.Max(
-                0f,
-                flightBody.position.y - groundHeight);
-            motionRc1?.SetPlanetEnvironment(
-                gravity,
-                AirDensity,
-                altitude);
-            ifcs.SetPlanetaryFlightContext(new PlanetaryFlightContext
-            {
-                active = true,
-                upWorld = Vector3.up,
-                gravityAccelerationWorld = gravity,
-                aerodynamicAccelerationWorld = Vector3.zero,
-                atmosphereVelocityWorld = Vector3.zero,
-                altitude = altitude,
-                airDensity = AirDensity
-            });
+            EnsureEnvironmentProvider();
+            PlanetEnvironmentSample sample = environmentProvider.Sample(
+                flightBody.worldCenterOfMass,
+                Time.fixedTimeAsDouble);
+            motionRc1?.SetEnvironmentProvider(environmentProvider);
         }
 
         string EnsureWorld()
@@ -282,6 +287,9 @@ namespace UnityPlanet.ModularAssembly
             ProceduralPlanetPreset preset = CreateTemperateOceanPreset();
             GalaxyPlanetDefinition definition = preset.CloneDefinition();
             Destroy(preset);
+            physicalProfile = definition.celestial != null
+                ? definition.celestial.physical?.Clone()
+                : PlanetPhysicalProfile.CreateEarthLike();
 
             try
             {
@@ -293,6 +301,7 @@ namespace UnityPlanet.ModularAssembly
                     null,
                     null,
                     new List<PlanetSurfacePropSpawnSettings>());
+                EnsureEnvironmentProvider();
                 Material customSkybox = Resources.Load<Material>(
                     "Skyboxes/BloubergSunrise/Blouberg Sunrise Equirect");
                 if (customSkybox != null)
@@ -309,6 +318,60 @@ namespace UnityPlanet.ModularAssembly
                 RestoreBuildPresentation();
                 return "PlanetLab无限地形初始化失败：" + exception.Message;
             }
+        }
+
+        void EnsureEnvironmentProvider()
+        {
+            if (worldRoot == null || world == null)
+                return;
+            PlanetEnvironmentProvider resolved =
+                environmentProvider != null
+                ? environmentProvider
+                : worldRoot.GetComponent<PlanetEnvironmentProvider>()
+                  ?? worldRoot.AddComponent<PlanetEnvironmentProvider>();
+            if (ReferenceEquals(environmentProvider, resolved) &&
+                environmentConfigured)
+            {
+                return;
+            }
+            environmentProvider = resolved;
+            environmentProvider.Configure(
+                world,
+                physicalProfile ?? PlanetPhysicalProfile.CreateEarthLike());
+            environmentConfigured = true;
+        }
+
+        void Update()
+        {
+            if (environmentProvider != null &&
+                worldRoot != null &&
+                worldRoot.activeInHierarchy &&
+                Input.GetKeyDown(KeyCode.F8))
+            {
+                environmentProvider.ForceNoWind =
+                    !environmentProvider.ForceNoWind;
+            }
+        }
+
+        void OnGUI()
+        {
+            if (environmentProvider == null ||
+                worldRoot == null ||
+                !worldRoot.activeInHierarchy)
+            {
+                return;
+            }
+            string label = environmentProvider.ForceNoWind
+                ? "Wind: Calm baseline (F8)"
+                : "Wind: Planet profile (F8)";
+            Rect rect = new Rect(
+                Mathf.Max(8f, Screen.width - 228f),
+                Mathf.Max(8f, Screen.height - 52f),
+                212f,
+                36f);
+            if (GUI.Button(rect, label))
+                environmentProvider.ForceNoWind =
+                    !environmentProvider.ForceNoWind;
         }
 
         bool TryResolveNaturalSpawn(

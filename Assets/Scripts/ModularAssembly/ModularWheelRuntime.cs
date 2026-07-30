@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using SpacecraftEditor;
 using UnityEngine;
 
 namespace UnityPlanet.ModularAssembly
@@ -11,13 +10,6 @@ namespace UnityPlanet.ModularAssembly
         SteerDrive,
         DriveOnly,
         FreeRolling
-    }
-
-    public enum HybridVehicleMode
-    {
-        Grounded,
-        Takeoff,
-        Flight
     }
 
     public static class WheelRoleSettings
@@ -338,13 +330,6 @@ namespace UnityPlanet.ModularAssembly
                     normal * normalForce,
                     contact.point);
             }
-            else
-            {
-                body.AddForceAtPosition(
-                    normal * normalForce,
-                    contact.point,
-                    ForceMode.Force);
-            }
 
             WheelRoleOverride role = EffectiveRole;
             bool steers = role == WheelRoleOverride.SteerDrive;
@@ -433,17 +418,6 @@ namespace UnityPlanet.ModularAssembly
                 forceLedger.AddForceAtPosition(
                     lateralGripForce,
                     contact.point);
-            }
-            else
-            {
-                body.AddForceAtPosition(
-                    longitudinalForce,
-                    assistedDrivePoint,
-                    ForceMode.Force);
-                body.AddForceAtPosition(
-                    lateralGripForce,
-                    contact.point,
-                    ForceMode.Force);
             }
         }
 
@@ -535,213 +509,4 @@ namespace UnityPlanet.ModularAssembly
         }
     }
 
-    public sealed class HybridVehicleModeController : MonoBehaviour
-    {
-        private Rigidbody body;
-        private SpacecraftIfcsMotor ifcs;
-        private ModularWheelRuntime[] wheels =
-            Array.Empty<ModularWheelRuntime>();
-        private float groundedTime;
-        private float airborneTime;
-        private bool active;
-        private GUIStyle modeStyle;
-
-        public HybridVehicleMode Mode { get; private set; } =
-            HybridVehicleMode.Flight;
-        public bool SuppressLegacyMovement =>
-            active && Mode == HybridVehicleMode.Grounded;
-
-        public void Configure(
-            Rigidbody targetBody,
-            SpacecraftIfcsMotor motor)
-        {
-            body = targetBody;
-            ifcs = motor;
-            Rebuild();
-        }
-
-        public void Rebuild()
-        {
-            if (body == null)
-                body = GetComponent<Rigidbody>();
-            wheels = GetComponentsInChildren<ModularWheelRuntime>(false)
-                .Where(item => item != null && item.gameObject.activeInHierarchy)
-                .ToArray();
-            float minZ = float.MaxValue;
-            float maxZ = float.MinValue;
-            foreach (ModularWheelRuntime wheel in wheels)
-            {
-                wheel.BindVehicle(body, transform);
-                float z = transform.InverseTransformPoint(
-                    wheel.transform.position).z;
-                minZ = Mathf.Min(minZ, z);
-                maxZ = Mathf.Max(maxZ, z);
-            }
-            float centerZ = wheels.Length > 0
-                ? transform.InverseTransformPoint(body.worldCenterOfMass).z
-                : 0f;
-            bool compact = maxZ - minZ < 0.5f;
-            foreach (ModularWheelRuntime wheel in wheels)
-            {
-                WheelRoleOverride role;
-                if (wheel.Profile.racingFront)
-                    role = WheelRoleOverride.SteerDrive;
-                else if (wheel.Profile.racingRear)
-                    role = WheelRoleOverride.DriveOnly;
-                else
-                {
-                    float z = transform.InverseTransformPoint(
-                        wheel.transform.position).z;
-                    role = compact || z >= centerZ
-                        ? WheelRoleOverride.SteerDrive
-                        : WheelRoleOverride.DriveOnly;
-                }
-                wheel.SetAutomaticRole(role);
-            }
-        }
-
-        public void BeginFlight()
-        {
-            active = true;
-            Rebuild();
-            foreach (ModularWheelRuntime wheel in wheels)
-                wheel.SetFlightMode(true);
-            SetMode(
-                wheels.Length > 0
-                    ? HybridVehicleMode.Grounded
-                    : HybridVehicleMode.Flight);
-        }
-
-        public void EndFlight()
-        {
-            active = false;
-            foreach (ModularWheelRuntime wheel in wheels)
-                wheel.SetFlightMode(false);
-            groundedTime = 0f;
-            airborneTime = 0f;
-        }
-
-        private void FixedUpdate()
-        {
-            if (!active || body == null || body.isKinematic)
-                return;
-            if (Time.frameCount % 30 == 0)
-                Rebuild();
-            if (wheels.Length == 0)
-            {
-                SetMode(HybridVehicleMode.Flight);
-                return;
-            }
-
-            Vector3 up = transform.up;
-            int grounded = 0;
-            foreach (ModularWheelRuntime wheel in wheels)
-            {
-                if (wheel.ProbeContact(up))
-                    grounded++;
-            }
-            if (grounded > 0)
-            {
-                groundedTime += Time.fixedDeltaTime;
-                airborneTime = 0f;
-            }
-            else
-            {
-                airborneTime += Time.fixedDeltaTime;
-                groundedTime = 0f;
-            }
-
-            float verticalSpeed = Vector3.Dot(body.velocity, up);
-            bool takeoff = Input.GetKey(KeyCode.Space);
-            if (Mode == HybridVehicleMode.Grounded)
-            {
-                if (takeoff)
-                    SetMode(HybridVehicleMode.Takeoff);
-                else if (airborneTime >= 0.15f)
-                    SetMode(HybridVehicleMode.Flight);
-            }
-            else if (Mode == HybridVehicleMode.Takeoff)
-            {
-                if (airborneTime >= 0.15f || verticalSpeed > 1.5f)
-                    SetMode(HybridVehicleMode.Flight);
-                else if (!takeoff && groundedTime >= 0.2f)
-                    SetMode(HybridVehicleMode.Grounded);
-            }
-            else if (!takeoff &&
-                     grounded >= Mathf.Min(2, wheels.Length) &&
-                     groundedTime >= 0.2f &&
-                     Mathf.Abs(verticalSpeed) < 2f)
-            {
-                SetMode(HybridVehicleMode.Grounded);
-            }
-
-            if (Mode != HybridVehicleMode.Grounded)
-                return;
-            float throttle = Input.GetAxisRaw("Vertical");
-            float steering = Input.GetAxisRaw("Horizontal");
-            bool braking = Input.GetKey(KeyCode.X);
-            bool boosting = Input.GetKey(KeyCode.LeftShift) ||
-                            Input.GetKey(KeyCode.RightShift);
-            foreach (ModularWheelRuntime wheel in wheels)
-            {
-                wheel.ApplyForces(
-                    up,
-                    transform.forward,
-                    throttle,
-                    steering,
-                    braking,
-                    boosting,
-                    body.mass,
-                    grounded);
-            }
-        }
-
-        private void SetMode(HybridVehicleMode value)
-        {
-            if (Mode != value)
-                Mode = value;
-            ApplyIfcsState();
-        }
-
-        private void ApplyIfcsState()
-        {
-            if (ifcs == null)
-                return;
-            bool controlsEnabled = active &&
-                                   Mode != HybridVehicleMode.Grounded;
-            ifcs.ControlsEnabled = controlsEnabled;
-            if (!controlsEnabled)
-                ifcs.ResetControllerState();
-        }
-
-        private void OnGUI()
-        {
-            if (!active)
-                return;
-            if (modeStyle == null)
-            {
-                modeStyle = new GUIStyle(GUI.skin.label)
-                {
-                    alignment = TextAnchor.MiddleCenter,
-                    fontSize = 18,
-                    fontStyle = FontStyle.Bold
-                };
-                modeStyle.normal.textColor =
-                    new Color(0.15f, 0.95f, 0.82f);
-            }
-            string text = Mode == HybridVehicleMode.Grounded
-                ? "陆行模式  W/S驱动  A/D转向  X制动  Space起飞"
-                : Mode == HybridVehicleMode.Takeoff
-                    ? "起飞中"
-                    : "飞行模式";
-            GUI.Label(
-                new Rect(
-                    Screen.width * 0.5f - 260f,
-                    18f,
-                    520f,
-                    36f),
-                text,
-                modeStyle);
-        }
-    }
 }

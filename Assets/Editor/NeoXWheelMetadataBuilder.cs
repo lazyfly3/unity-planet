@@ -8,8 +8,6 @@ using UnityPlanet.ModularAssembly;
 
 public static class NeoXWheelMetadataBuilder
 {
-    private const string SourceCatalog =
-        "ModularContent/SourceCatalog/modular_content_catalog.json";
     private const string RuntimeCatalog =
         "Assets/StreamingAssets/ModularContent/modular_content_catalog.json";
 
@@ -18,7 +16,8 @@ public static class NeoXWheelMetadataBuilder
     {
         string projectRoot =
             Directory.GetParent(Application.dataPath).FullName;
-        string sourcePath = Path.Combine(projectRoot, SourceCatalog);
+        string sourcePath =
+            UnityPlanet.ModularAssembly.Editor.NeoXExternalPaths.SourceCatalogPath;
         if (!File.Exists(sourcePath))
             throw new FileNotFoundException(
                 "NeoX content catalog is missing.",

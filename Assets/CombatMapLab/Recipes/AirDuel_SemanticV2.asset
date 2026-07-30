@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78558aefc0afb044980dc01c22023f1a, type: 3}
+  m_Name: "\u8BED\u4E49\u4F18\u5148\u7A7A\u6218\u51B3\u6597 V2"
+  m_EditorClassIdentifier: 
+  seed: 7319
+  generatorVersion: 2
+  candidateCount: 6
+  maximumCandidateBatches: 3
+  mapCenterOffset: {x: 0, y: 0, z: 1000}
+  mapSize: 1536
+  chunkSize: 256
+  chunkResolution: 32
+  spawnDistance: 960
+  spawnClearance: 45
+  designCombatSpeed: 55
+  designTurnRadius: 95
+  designWeaponRange: 480
+  vehicleWingspan: 18
+  targetFirstContactSeconds: 10
+  targetOcclusionSeconds: 5
+  targetExposureSeconds: 8
+  mountainHeight: 160
+  mainRouteWidth: 160
+  canyonRouteWidth: 140
+  longRangeRouteWidth: 180
+  occluderTowerCount: 27
+  microNoiseStrength: 4.5
+  microNoiseScale: 72
+  warningRadius: 700
+  forfeitRadius: 760
+  forfeitSeconds: 5
+  minimumGroundClearance: 12
+  maximumGroundClearance: 220
+  minimumCommitScore: 80
+  maximumRouteTimeImbalance: 0.08
+  layoutOptimizationIterations: 48
+  validationGridResolution: 9

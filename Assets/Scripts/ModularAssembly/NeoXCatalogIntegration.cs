@@ -21,7 +21,7 @@ namespace UnityPlanet.ModularAssembly
         private GridAssemblyPresenter presenter;
         private LabPropPlacementController propPlacement;
 
-        public void Initialize(ModularContentService service, LabZoneManager zones)
+        public void Initialize(ModularContentService service)
         {
             contentService = service;
             controller = FindObjectOfType<ModularAssemblyLabController>();
@@ -99,13 +99,16 @@ namespace UnityPlanet.ModularAssembly
             {
                 string moduleId = ToModuleId(record);
                 recordsByModuleId[moduleId] = record;
-                if (definitions.ContainsKey(moduleId))
+                if (!definitions.TryGetValue(
+                        moduleId,
+                        out GridModuleDefinition definition))
                 {
-                    continue;
+                    definition =
+                        ScriptableObject.CreateInstance<GridModuleDefinition>();
+                    definition.name = moduleId;
+                    definition.hideFlags = HideFlags.HideAndDontSave;
+                    definitions[moduleId] = definition;
                 }
-                GridModuleDefinition definition = ScriptableObject.CreateInstance<GridModuleDefinition>();
-                definition.name = moduleId;
-                definition.hideFlags = HideFlags.HideAndDontSave;
                 ModuleStats stats = ModuleStats.For(record);
                 definition.Configure(
                     moduleId,
@@ -119,7 +122,6 @@ namespace UnityPlanet.ModularAssembly
                     stats.integrity,
                     stats.thrust,
                     null);
-                definitions[moduleId] = definition;
             }
         }
 
@@ -181,9 +183,7 @@ namespace UnityPlanet.ModularAssembly
                 }
             }
             view.GetComponent<ModularWheelRuntime>()?.BindVisual(loaded.transform);
-            LabArcadeVehicleController vehicle = view.GetComponentInParent<LabArcadeVehicleController>();
-            vehicle?.Rebuild();
-            view.GetComponentInParent<HybridVehicleModeController>()?.Rebuild();
+            view.GetComponentInParent<RobocraftMotionCoordinator>()?.Rebuild();
             view.GetComponentInParent<NeoXUtilityController>()?.Rebuild();
         }
 
@@ -222,7 +222,10 @@ namespace UnityPlanet.ModularAssembly
                 {
                     value.category = GridModuleCategory.MainThruster;
                     value.mass = 180f;
-                    value.energyCost = 20f;
+                    // RC3 propulsion is governed by installed thrust, mass,
+                    // atmosphere and actuator authority. It is not a consumer
+                    // of the weapon/active-function construction energy pool.
+                    value.energyCost = 0f;
                     value.thrust = 6000f;
                 }
                 else if (behavior == GridModuleBehaviorKind.Battery || behavior == GridModuleBehaviorKind.Energy)
@@ -265,7 +268,7 @@ namespace UnityPlanet.ModularAssembly
                 {
                     value.category = GridModuleCategory.RcsThruster;
                     value.mass = 110f;
-                    value.energyCost = 6f;
+                    value.energyCost = 0f;
                     value.thrust = 1500f;
                 }
                 return value;
@@ -470,7 +473,11 @@ namespace UnityPlanet.ModularAssembly
                     source));
             }
             Rigidbody body = target.attachedRigidbody;
-            body?.AddForceAtPosition(impulse, point, ForceMode.Impulse);
+            if (damageable == null)
+                VehicleExternalForces.ApplyImpulse(
+                    body,
+                    impulse,
+                    point);
         }
     }
 
@@ -493,7 +500,9 @@ namespace UnityPlanet.ModularAssembly
         public void Rebuild()
         {
             modules = GetComponentsInChildren<NeoXBehaviorModule>(true);
-            int shields = modules.Count(module => module.BehaviorKind == GridModuleBehaviorKind.Shield);
+            int shields = modules.Count(module =>
+                module != null &&
+                module.BehaviorKind == GridModuleBehaviorKind.Shield);
             if (shields > 0)
             {
                 shield = GetComponent<NeoXShieldBubble>() ?? gameObject.AddComponent<NeoXShieldBubble>();
@@ -520,7 +529,9 @@ namespace UnityPlanet.ModularAssembly
 
         private void Repair()
         {
-            int repairers = modules.Count(module => module.BehaviorKind == GridModuleBehaviorKind.Repair);
+            int repairers = modules.Count(module =>
+                module != null &&
+                module.BehaviorKind == GridModuleBehaviorKind.Repair);
             if (repairers == 0 || energy == null || !energy.TryConsume(repairers * Time.deltaTime * 2f, 3))
             {
                 return;
@@ -542,6 +553,10 @@ namespace UnityPlanet.ModularAssembly
             }
             foreach (NeoXBehaviorModule module in modules)
             {
+                if (module == null)
+                {
+                    continue;
+                }
                 if (module.BehaviorKind != GridModuleBehaviorKind.Drill &&
                     module.BehaviorKind != GridModuleBehaviorKind.Saw)
                 {
@@ -569,7 +584,9 @@ namespace UnityPlanet.ModularAssembly
 
         private void ActivateUtility()
         {
-            if (modules.Any(module => module.BehaviorKind == GridModuleBehaviorKind.EMP) &&
+            if (modules.Any(module =>
+                    module != null &&
+                    module.BehaviorKind == GridModuleBehaviorKind.EMP) &&
                 energy.TryConsume(18f, 3))
             {
                 foreach (Collider target in Physics.OverlapSphere(transform.position, 30f))
@@ -584,7 +601,9 @@ namespace UnityPlanet.ModularAssembly
                     status.DisableFor(4f);
                 }
             }
-            if (modules.Any(module => module.BehaviorKind == GridModuleBehaviorKind.ForceField) &&
+            if (modules.Any(module =>
+                    module != null &&
+                    module.BehaviorKind == GridModuleBehaviorKind.ForceField) &&
                 energy.TryConsume(12f, 3))
             {
                 foreach (Collider target in Physics.OverlapSphere(transform.position, 25f))
@@ -596,10 +615,15 @@ namespace UnityPlanet.ModularAssembly
                     }
                     Vector3 delta = targetBody.worldCenterOfMass - body.worldCenterOfMass;
                     float factor = 1f - Mathf.Clamp01(delta.magnitude / 25f);
-                    targetBody.AddForce(delta.normalized * 8000f * factor, ForceMode.Impulse);
+                    VehicleExternalForces.ApplyImpulse(
+                        targetBody,
+                        delta.normalized * 8000f * factor,
+                        targetBody.worldCenterOfMass);
                 }
             }
-            int droneModules = modules.Count(module => module.BehaviorKind == GridModuleBehaviorKind.Drone);
+            int droneModules = modules.Count(module =>
+                module != null &&
+                module.BehaviorKind == GridModuleBehaviorKind.Drone);
             if (droneModules > 0 && drones.Count(value => value != null) < Mathf.Min(4, droneModules) &&
                 energy.TryConsume(20f, 3))
             {
@@ -660,20 +684,27 @@ namespace UnityPlanet.ModularAssembly
     public sealed class NeoXEmpStatus : MonoBehaviour
     {
         private float until;
-        private LabArcadeVehicleController vehicle;
+        private RobocraftMotionCoordinator motion;
         private SpacecraftIfcsMotor ifcs;
+        private bool restoreMotion;
+        private bool restoreIfcs;
+        private bool restoreIfcsControls;
 
         public void DisableFor(float seconds)
         {
             until = Mathf.Max(until, Time.time + seconds);
-            vehicle = GetComponent<LabArcadeVehicleController>();
+            motion = GetComponent<RobocraftMotionCoordinator>();
             ifcs = GetComponent<SpacecraftIfcsMotor>();
-            if (vehicle != null)
+            if (motion != null)
             {
-                vehicle.enabled = false;
+                restoreMotion = motion.IsActive;
+                motion.SetDamageDisabled(true);
             }
             if (ifcs != null)
             {
+                restoreIfcs = ifcs.enabled;
+                restoreIfcsControls = ifcs.ControlsEnabled;
+                ifcs.enabled = false;
                 ifcs.ControlsEnabled = false;
             }
         }
@@ -684,13 +715,15 @@ namespace UnityPlanet.ModularAssembly
             {
                 return;
             }
-            if (vehicle != null)
+            if (motion != null && restoreMotion)
             {
-                vehicle.enabled = true;
+                motion.SetDamageDisabled(false);
             }
             if (ifcs != null)
             {
-                ifcs.ControlsEnabled = true;
+                ifcs.enabled = restoreIfcs;
+                ifcs.ControlsEnabled =
+                    restoreIfcs && restoreIfcsControls;
             }
             Destroy(this);
         }

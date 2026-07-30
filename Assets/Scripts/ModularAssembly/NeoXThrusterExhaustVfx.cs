@@ -69,11 +69,8 @@ namespace UnityPlanet.ModularAssembly
                 return;
             RobocraftMotionCoordinator rc1 =
                 GetComponentInParent<RobocraftMotionCoordinator>();
-            VehicleMotionCoordinatorV2 coordinator =
-                GetComponentInParent<VehicleMotionCoordinatorV2>();
             bool rc1Active = rc1 != null && rc1.IsActive;
-            bool v2Active = coordinator != null && coordinator.IsActive;
-            if (!rc1Active && !v2Active)
+            if (!rc1Active)
                 targetThrottle = 0f;
 
             float response = targetThrottle > currentThrottle ? 12f : 8f;

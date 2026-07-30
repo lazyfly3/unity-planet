@@ -37,15 +37,14 @@ sysinfo.txt
 *.aab
 *.unitypackage
 
-# Local reverse-engineering and extracted research artifacts.
-# Keep these files on disk only; never commit or publish them.
+# Safety rules: raw extraction and reverse-engineering material always stays
+# outside this repository under ../_research/NeoX.
 /APKExtracted/
 
-# Local generated content and licensed asset source packages.
-# Publish only the authorized runtime AssetBundles; keep conversion inputs local.
-/ModularContent/*
-!/ModularContent/Windows/
-!/ModularContent/Windows/**
+# Conversion staging and full development bundles also stay outside the repo.
+# Only curated runtime output under Assets/StreamingAssets/ModularContent is shipped.
+/ModularContent/
+/.build-curated-neox-runtime
 /Assets/Pack/
 /Assets/Pack.meta
 /Assets/Hovl Studio/

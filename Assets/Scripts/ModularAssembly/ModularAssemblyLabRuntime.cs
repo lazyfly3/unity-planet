@@ -47,62 +47,164 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
     {
         GridModuleRecord[] records = model.Records.ToArray();
         GridAssemblyValidation validation = model.Validate();
-        if (CanAppend(records))
-        {
-            foreach (GridModuleRecord record in records)
-            {
-                if (views.TryGetValue(record.RuntimeId, out GridModuleView existing) &&
-                    existing != null)
-                {
-                    existing.Initialize(record);
-                    continue;
-                }
-                CreateView(record);
-            }
-            ApplyValidationTint(validation);
-            assembly?.Recalculate();
-            Rebuilt?.Invoke();
-            return;
-        }
-
-        RebuildAll(records, validation);
+        ReconcileViews(records, validation);
     }
 
-    bool CanAppend(IReadOnlyList<GridModuleRecord> records)
+    void ReconcileViews(
+        IReadOnlyList<GridModuleRecord> records,
+        GridAssemblyValidation validation)
     {
-        if (views.Count == 0 || records.Count < views.Count)
-            return false;
-        var current = records.ToDictionary(record => record.RuntimeId);
+        var current = records.ToDictionary(
+            record => record.RuntimeId,
+            StringComparer.Ordinal);
+        ReindexHierarchyViews(current);
+        var removeIds = new List<string>();
         foreach (KeyValuePair<string, GridModuleView> pair in views)
         {
-            GridModuleView view = pair.Value;
-            if (view == null ||
-                view.Record == null ||
-                !current.TryGetValue(pair.Key, out GridModuleRecord record) ||
+            if (pair.Value == null ||
+                !current.TryGetValue(
+                    pair.Key,
+                    out GridModuleRecord record) ||
+                pair.Value.Record == null ||
                 !string.Equals(
-                    view.Record.Definition.ModuleId,
+                    pair.Value.Record.Definition.ModuleId,
                     record.Definition.ModuleId,
-                    StringComparison.Ordinal) ||
-                view.Record.Pose.Origin != record.Pose.Origin ||
-                view.Record.Pose.orientation != record.Pose.orientation ||
-                !string.Equals(
-                    view.Record.Pose.mirrorGroupId,
-                    record.Pose.mirrorGroupId,
                     StringComparison.Ordinal))
             {
-                return false;
+                removeIds.Add(pair.Key);
             }
         }
-        return true;
+        RemoveViews(removeIds);
+
+        foreach (GridModuleRecord record in records)
+        {
+            if (views.TryGetValue(
+                    record.RuntimeId,
+                    out GridModuleView existing) &&
+                existing != null)
+            {
+                existing.gameObject.SetActive(true);
+                ApplyPose(existing.transform, record);
+                existing.Initialize(record);
+                continue;
+            }
+            CreateView(record);
+        }
+        ApplyValidationTint(validation);
+        assembly?.Recalculate();
+        Rebuilt?.Invoke();
+    }
+
+    void ReindexHierarchyViews(
+        IReadOnlyDictionary<string, GridModuleRecord> current)
+    {
+        GridModuleView[] hierarchyViews =
+            GetComponentsInChildren<GridModuleView>(true)
+                .Where(view =>
+                    view != null &&
+                    view.GetComponentInParent<GridModuleView>() == view)
+                .ToArray();
+        var keep = new Dictionary<string, GridModuleView>(
+            StringComparer.Ordinal);
+        var discard = new List<GridModuleView>();
+
+        foreach (IGrouping<string, GridModuleView> group in
+                 hierarchyViews
+                     .Where(view =>
+                         view.Record != null &&
+                         !string.IsNullOrEmpty(view.Record.RuntimeId))
+                     .GroupBy(
+                         view => view.Record.RuntimeId,
+                         StringComparer.Ordinal))
+        {
+            if (!current.TryGetValue(
+                    group.Key,
+                    out GridModuleRecord record))
+            {
+                discard.AddRange(group);
+                continue;
+            }
+
+            GridModuleView canonical = group.FirstOrDefault(view =>
+                view.gameObject.activeInHierarchy &&
+                view.Record != null &&
+                string.Equals(
+                    view.Record.Definition.ModuleId,
+                    record.Definition.ModuleId,
+                    StringComparison.Ordinal));
+            if (canonical == null)
+            {
+                discard.AddRange(group);
+                continue;
+            }
+
+            keep[group.Key] = canonical;
+            discard.AddRange(group.Where(view => view != canonical));
+        }
+
+        discard.AddRange(hierarchyViews.Where(view =>
+            view.Record == null ||
+            string.IsNullOrEmpty(view.Record.RuntimeId)));
+        views.Clear();
+        foreach (KeyValuePair<string, GridModuleView> pair in keep)
+            views[pair.Key] = pair.Value;
+        RemoveViewInstances(discard);
+    }
+
+    void RemoveViews(IEnumerable<string> runtimeIds)
+    {
+        var removedViews = new List<GridModuleView>();
+        foreach (string runtimeId in runtimeIds)
+        {
+            if (!views.TryGetValue(
+                    runtimeId,
+                    out GridModuleView view))
+                continue;
+            views.Remove(runtimeId);
+            if (view == null)
+                continue;
+            removedViews.Add(view);
+        }
+        RemoveViewInstances(removedViews);
+    }
+
+    void RemoveViewInstances(IEnumerable<GridModuleView> removedViews)
+    {
+        var removedParts = new List<SpacecraftPart>();
+        var visited = new HashSet<GridModuleView>();
+        foreach (GridModuleView view in
+                 removedViews ?? Array.Empty<GridModuleView>())
+        {
+            if (view == null || !visited.Add(view))
+                continue;
+            view.gameObject.SetActive(false);
+            SpacecraftPart part =
+                view.GetComponent<SpacecraftPart>();
+            if (assembly != null && part != null)
+                removedParts.Add(part);
+            else
+                Destroy(view.gameObject);
+        }
+        assembly?.RemoveParts(removedParts, false);
+    }
+
+    public void ForceRebuildFromModel()
+    {
+        if (model == null)
+            return;
+        RebuildAll(model.Records.ToArray(), model.Validate());
     }
 
     void RebuildAll(
         IReadOnlyList<GridModuleRecord> records,
         GridAssemblyValidation validation)
     {
-        foreach (GridModuleView view in views.Values)
-            if (view != null)
-                view.gameObject.SetActive(false);
+        RemoveViewInstances(
+            GetComponentsInChildren<GridModuleView>(true)
+                .Where(view =>
+                    view != null &&
+                    view.GetComponentInParent<GridModuleView>() == view)
+                .ToArray());
         views.Clear();
         if (assembly != null)
             assembly.RestoreStates(Array.Empty<PlacedPartState>());
@@ -176,9 +278,12 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
 
     public void ClearVisuals()
     {
-        foreach (GridModuleView view in views.Values)
-            if (view != null)
-                Destroy(view.gameObject);
+        RemoveViewInstances(
+            GetComponentsInChildren<GridModuleView>(true)
+                .Where(view =>
+                    view != null &&
+                    view.GetComponentInParent<GridModuleView>() == view)
+                .ToArray());
         views.Clear();
     }
 
@@ -214,8 +319,17 @@ public enum GridFlightState
 
 public sealed class GridLabCameraController : MonoBehaviour
 {
+    static readonly Vector2 FlightAnchor = new Vector2(0.42f, 0.22f);
+    static readonly Vector2 AimAnchor = new Vector2(0.34f, 0.21f);
+    const float FlightBaseFieldOfView = 65f;
+    const float BoostFieldOfView = 75f;
+    const float BoostEnterSmoothTime = 0.12f;
+    const float BoostExitSmoothTime = 0.28f;
+
     Camera targetCamera;
     Transform target;
+    Rigidbody targetBody;
+    UnityPlanet.ModularAssembly.RobocraftMotionCoordinator motionController;
     bool flightMode;
     float yaw = 38f;
     float pitch = 24f;
@@ -225,11 +339,18 @@ public sealed class GridLabCameraController : MonoBehaviour
     float flightAimPitch;
     float freeLookYaw;
     float freeLookPitch;
-    float flightFocusHeight = 5f;
-    float flightLookAhead = 2f;
     Bounds flightLocalBounds;
+    Bounds flightTargetLocalBounds;
     bool hasFlightLocalBounds;
     float nextFlightBoundsRefresh;
+    float baseFieldOfView = 60f;
+    float requestedFieldOfView = 60f;
+    float boostFieldOfViewOffset;
+    float boostFieldOfViewVelocity;
+    Vector3 previousVelocity;
+    bool hasPreviousVelocity;
+    bool aimPresentation;
+    bool precisionAim;
     readonly RaycastHit[] cameraHits = new RaycastHit[16];
 
     public Vector3 FlightAimForward =>
@@ -240,12 +361,40 @@ public sealed class GridLabCameraController : MonoBehaviour
     {
         targetCamera = camera;
         target = focus;
+        targetBody = target != null
+            ? target.GetComponent<Rigidbody>()
+            : null;
+        motionController = target != null
+            ? target.GetComponent<
+                UnityPlanet.ModularAssembly.RobocraftMotionCoordinator>()
+            : null;
+        if (targetCamera != null)
+        {
+            baseFieldOfView = targetCamera.fieldOfView;
+            requestedFieldOfView = baseFieldOfView;
+            targetCamera.nearClipPlane = Mathf.Min(
+                targetCamera.nearClipPlane,
+                0.08f);
+        }
         ApplyImmediate();
+    }
+
+    public void SetAimPresentation(bool aiming, bool precision)
+    {
+        aimPresentation = aiming;
+        precisionAim = aiming && precision;
+        requestedFieldOfView = ResolveRequestedFieldOfView();
     }
 
     public void SetFlightMode(bool value)
     {
         flightMode = value;
+        boostFieldOfViewOffset = 0f;
+        boostFieldOfViewVelocity = 0f;
+        hasPreviousVelocity = false;
+        if (targetBody != null)
+            previousVelocity = targetBody.velocity;
+        requestedFieldOfView = ResolveRequestedFieldOfView();
         yaw = value ? 0f : 38f;
         pitch = value ? 12f : 24f;
         if (value)
@@ -268,12 +417,15 @@ public sealed class GridLabCameraController : MonoBehaviour
                 55f);
             freeLookYaw = 0f;
             freeLookPitch = 0f;
-            ResolveFlightFraming();
             CaptureFlightBounds();
-            nextFlightBoundsRefresh = Time.unscaledTime + 0.5f;
+            ResolveFlightFraming();
+            nextFlightBoundsRefresh = Time.unscaledTime + 0.25f;
         }
         else
+        {
             distance = 17f;
+            SetAimPresentation(false, false);
+        }
         panOffset = Vector3.zero;
     }
 
@@ -285,7 +437,7 @@ public sealed class GridLabCameraController : MonoBehaviour
             Time.unscaledTime >= nextFlightBoundsRefresh)
         {
             CaptureFlightBounds();
-            nextFlightBoundsRefresh = Time.unscaledTime + 0.5f;
+            nextFlightBoundsRefresh = Time.unscaledTime + 0.25f;
         }
         if (!flightMode)
         {
@@ -330,15 +482,169 @@ public sealed class GridLabCameraController : MonoBehaviour
                 0f,
                 recenter);
         }
+        UpdateSmoothedFlightBounds();
+        UpdateSpeedFieldOfView();
         ApplyImmediate();
+    }
+
+    void UpdateSpeedFieldOfView()
+    {
+        float deltaTime = Mathf.Max(0.0001f, Time.unscaledDeltaTime);
+        if (!flightMode || targetBody == null)
+        {
+            boostFieldOfViewOffset = Mathf.SmoothDamp(
+                boostFieldOfViewOffset,
+                0f,
+                ref boostFieldOfViewVelocity,
+                BoostExitSmoothTime,
+                Mathf.Infinity,
+                deltaTime);
+            hasPreviousVelocity = false;
+            requestedFieldOfView = ResolveRequestedFieldOfView();
+            return;
+        }
+
+        Vector3 velocity = targetBody.velocity;
+        Vector3 acceleration = hasPreviousVelocity
+            ? (velocity - previousVelocity) / deltaTime
+            : Vector3.zero;
+        previousVelocity = velocity;
+        hasPreviousVelocity = true;
+
+        bool boostRequested =
+            Input.GetKey(KeyCode.LeftShift) ||
+            Input.GetKey(KeyCode.RightShift);
+        bool hasMovement = TryGetBoostDirection(
+            out Vector3 movementDirection,
+            out float presentationWeight);
+
+        float targetOffset = 0f;
+        if (boostRequested &&
+            hasMovement &&
+            motionController != null &&
+            motionController.IsActive)
+        {
+            Vector3 actualControlForce =
+                motionController.Telemetry.actualControlForceWorld;
+            float mass = Mathf.Max(1f, targetBody.mass);
+            float directionalForceAcceleration = Mathf.Max(
+                0f,
+                Vector3.Dot(actualControlForce, movementDirection) / mass);
+            float directionalAcceleration = Mathf.Max(
+                0f,
+                Vector3.Dot(acceleration, movementDirection));
+            float directionalSpeed = Mathf.Max(
+                0f,
+                Vector3.Dot(velocity, movementDirection));
+
+            // Speed alone must not trigger boost presentation. At least some
+            // measured propulsion or acceleration is required.
+            bool hasPhysicalOutput =
+                directionalForceAcceleration > 0.1f ||
+                directionalAcceleration > 0.25f;
+            if (hasPhysicalOutput)
+            {
+                float propulsionFactor = Mathf.Clamp01(
+                    directionalForceAcceleration / 12f);
+                float accelerationFactor = Mathf.Clamp01(
+                    directionalAcceleration / 16f);
+                float speedFactor = Mathf.Clamp01(
+                    directionalSpeed / 80f);
+                float physicalIntensity = Mathf.Clamp01(
+                    propulsionFactor * 0.5f +
+                    accelerationFactor * 0.3f +
+                    speedFactor * 0.2f);
+                targetOffset =
+                    (BoostFieldOfView - FlightBaseFieldOfView) *
+                    physicalIntensity *
+                    presentationWeight;
+            }
+        }
+
+        float smoothTime = targetOffset > boostFieldOfViewOffset
+            ? BoostEnterSmoothTime
+            : BoostExitSmoothTime;
+        boostFieldOfViewOffset = Mathf.SmoothDamp(
+            boostFieldOfViewOffset,
+            targetOffset,
+            ref boostFieldOfViewVelocity,
+            smoothTime,
+            Mathf.Infinity,
+            deltaTime);
+        requestedFieldOfView = ResolveRequestedFieldOfView();
+    }
+
+    bool TryGetBoostDirection(
+        out Vector3 worldDirection,
+        out float presentationWeight)
+    {
+        float forwardInput =
+            (Input.GetKey(KeyCode.W) ? 1f : 0f) -
+            (Input.GetKey(KeyCode.S) ? 1f : 0f);
+        float lateralInput =
+            (Input.GetKey(KeyCode.D) ? 1f : 0f) -
+            (Input.GetKey(KeyCode.A) ? 1f : 0f);
+        float verticalInput =
+            (Input.GetKey(KeyCode.Space) ? 1f : 0f) -
+            ((Input.GetKey(KeyCode.LeftControl) ||
+              Input.GetKey(KeyCode.RightControl)) ? 1f : 0f);
+
+        Vector3 horizontalForward = Vector3.ProjectOnPlane(
+            FlightAimForward,
+            Vector3.up);
+        if (horizontalForward.sqrMagnitude < 0.0001f)
+            horizontalForward = Vector3.forward;
+        else
+            horizontalForward.Normalize();
+        Vector3 horizontalRight = Vector3.Cross(
+            Vector3.up,
+            horizontalForward).normalized;
+
+        worldDirection =
+            horizontalForward * forwardInput +
+            horizontalRight * lateralInput +
+            Vector3.up * verticalInput;
+        if (worldDirection.sqrMagnitude < 0.0001f)
+        {
+            presentationWeight = 0f;
+            return false;
+        }
+        worldDirection.Normalize();
+
+        float forwardAmount = Mathf.Max(0f, forwardInput);
+        float reverseAmount = Mathf.Max(0f, -forwardInput);
+        float lateralAmount = Mathf.Abs(lateralInput);
+        float verticalAmount = Mathf.Abs(verticalInput);
+        float total =
+            forwardAmount +
+            reverseAmount +
+            lateralAmount +
+            verticalAmount;
+        presentationWeight = Mathf.Clamp01(
+            (forwardAmount +
+             reverseAmount * 0.6f +
+             lateralAmount * 0.45f +
+             verticalAmount * 0.35f) /
+            Mathf.Max(1f, total));
+        return true;
+    }
+
+    float ResolveRequestedFieldOfView()
+    {
+        if (!flightMode)
+            return baseFieldOfView;
+        if (aimPresentation)
+            return precisionAim ? 22f : 38f;
+        return FlightBaseFieldOfView + boostFieldOfViewOffset;
     }
 
     void CaptureFlightBounds()
     {
-        hasFlightLocalBounds = false;
         if (target == null)
             return;
 
+        bool captured = false;
+        Bounds capturedBounds = default;
         Renderer[] renderers =
             target.GetComponentsInChildren<Renderer>(true);
         foreach (Renderer renderer in renderers)
@@ -371,57 +677,88 @@ public sealed class GridLabCameraController : MonoBehaviour
                     extents.z * z);
                 Vector3 localCorner =
                     target.InverseTransformPoint(worldCorner);
-                if (!hasFlightLocalBounds)
+                if (!captured)
                 {
-                    flightLocalBounds =
+                    capturedBounds =
                         new Bounds(localCorner, Vector3.zero);
-                    hasFlightLocalBounds = true;
+                    captured = true;
                 }
                 else
-                    flightLocalBounds.Encapsulate(localCorner);
+                    capturedBounds.Encapsulate(localCorner);
             }
         }
 
-        if (!hasFlightLocalBounds)
-        {
-            flightLocalBounds =
+        if (!captured)
+            capturedBounds =
                 new Bounds(Vector3.zero, Vector3.one * 2f);
-            hasFlightLocalBounds = true;
-            return;
-        }
 
         Vector3 safeMinimum = Vector3.Max(
-            flightLocalBounds.min,
-            new Vector3(-18f, -18f, -18f));
+            capturedBounds.min,
+            new Vector3(-24f, -24f, -24f));
         Vector3 safeMaximum = Vector3.Min(
-            flightLocalBounds.max,
-            new Vector3(18f, 18f, 18f));
+            capturedBounds.max,
+            new Vector3(24f, 24f, 24f));
         if (safeMinimum.x <= safeMaximum.x &&
             safeMinimum.y <= safeMaximum.y &&
             safeMinimum.z <= safeMaximum.z)
         {
-            flightLocalBounds.SetMinMax(
+            capturedBounds.SetMinMax(
                 safeMinimum,
                 safeMaximum);
         }
         else
-            flightLocalBounds =
+            capturedBounds =
                 new Bounds(Vector3.zero, Vector3.one * 2f);
+
+        flightTargetLocalBounds = capturedBounds;
+        if (!hasFlightLocalBounds)
+        {
+            flightLocalBounds = capturedBounds;
+            hasFlightLocalBounds = true;
+        }
     }
 
-    Vector3 ResolveFlightFocus(
-        Vector3 viewForward,
-        Vector3 viewUp)
+    void UpdateSmoothedFlightBounds()
     {
         if (!hasFlightLocalBounds)
-            return target.position +
-                   viewUp * flightFocusHeight +
-                   viewForward * flightLookAhead;
+            return;
+        float deltaTime = Mathf.Max(0.0001f, Time.unscaledDeltaTime);
+        bool expanding =
+            flightTargetLocalBounds.size.sqrMagnitude >
+            flightLocalBounds.size.sqrMagnitude;
+        float sizeBlend = 1f - Mathf.Exp(
+            -(expanding ? 12f : 2.8f) * deltaTime);
+        float centerBlend = 1f - Mathf.Exp(-5f * deltaTime);
+        flightLocalBounds.center = Vector3.Lerp(
+            flightLocalBounds.center,
+            flightTargetLocalBounds.center,
+            centerBlend);
+        flightLocalBounds.size = Vector3.Max(
+            Vector3.one * 0.5f,
+            Vector3.Lerp(
+                flightLocalBounds.size,
+                flightTargetLocalBounds.size,
+                sizeBlend));
+    }
 
+    void ResolveFlightGeometry(
+        Quaternion viewRotation,
+        out Vector3 worldCenter,
+        out float halfWidth,
+        out float halfHeight,
+        out float halfDepth,
+        out float radius)
+    {
         Vector3 localCenter = flightLocalBounds.center;
         Vector3 localExtents = flightLocalBounds.extents;
-        Vector3 worldCenter = target.TransformPoint(localCenter);
-        float topProjection = 0f;
+        worldCenter = target.TransformPoint(localCenter);
+        Vector3 viewRight = viewRotation * Vector3.right;
+        Vector3 viewUp = viewRotation * Vector3.up;
+        Vector3 viewForward = viewRotation * Vector3.forward;
+        halfWidth = 0f;
+        halfHeight = 0f;
+        halfDepth = 0f;
+        radius = 0f;
         for (int x = -1; x <= 1; x += 2)
         for (int y = -1; y <= 1; y += 2)
         for (int z = -1; z <= 1; z += 2)
@@ -432,31 +769,70 @@ public sealed class GridLabCameraController : MonoBehaviour
                 localExtents.z * z);
             Vector3 worldCorner =
                 target.TransformPoint(localCorner);
-            topProjection = Mathf.Max(
-                topProjection,
-                Vector3.Dot(worldCorner - worldCenter, viewUp));
+            Vector3 relative = worldCorner - worldCenter;
+            halfWidth = Mathf.Max(
+                halfWidth,
+                Mathf.Abs(Vector3.Dot(relative, viewRight)));
+            halfHeight = Mathf.Max(
+                halfHeight,
+                Mathf.Abs(Vector3.Dot(relative, viewUp)));
+            halfDepth = Mathf.Max(
+                halfDepth,
+                Mathf.Abs(Vector3.Dot(relative, viewForward)));
+            radius = Mathf.Max(radius, relative.magnitude);
         }
+    }
 
-        float halfViewHeight =
-            distance *
-            Mathf.Tan(
-                targetCamera.fieldOfView *
-                0.5f *
-                Mathf.Deg2Rad);
-        float sightClearance =
-            Mathf.Max(1.25f, halfViewHeight * 0.32f);
-        topProjection = Mathf.Min(
-            topProjection,
-            Mathf.Max(2f, halfViewHeight * 0.8f));
-        return worldCenter +
-               viewUp * (topProjection + sightClearance) +
-               viewForward * flightLookAhead;
+    float ResolvePresentationDistance(Quaternion viewRotation)
+    {
+        if (!hasFlightLocalBounds || targetCamera == null)
+            return 14f;
+        ResolveFlightGeometry(
+            viewRotation,
+            out _,
+            out float halfWidth,
+            out float halfHeight,
+            out float halfDepth,
+            out float radius);
+        Vector2 anchor = aimPresentation ? AimAnchor : FlightAnchor;
+        float safeTop = aimPresentation ? 0.405f : 0.415f;
+        float allowedHalfHeight = Mathf.Max(
+            0.105f,
+            Mathf.Min(anchor.y - 0.04f, safeTop - anchor.y));
+        float allowedHalfWidth = Mathf.Max(
+            0.2f,
+            Mathf.Min(anchor.x - 0.03f, 0.97f - anchor.x));
+        float verticalTangent = Mathf.Tan(
+            Mathf.Clamp(targetCamera.fieldOfView, 18f, 80f) *
+            0.5f *
+            Mathf.Deg2Rad);
+        float horizontalTangent =
+            verticalTangent * Mathf.Max(0.5f, targetCamera.aspect);
+        float verticalDistance =
+            halfHeight /
+            Mathf.Max(0.01f, 2f * allowedHalfHeight * verticalTangent);
+        float horizontalDistance =
+            halfWidth /
+            Mathf.Max(0.01f, 2f * allowedHalfWidth * horizontalTangent);
+        return Mathf.Clamp(
+            Mathf.Max(verticalDistance, horizontalDistance) +
+            halfDepth +
+            0.75f,
+            Mathf.Max(8f, radius * 1.15f),
+            180f);
     }
 
     void ApplyImmediate()
     {
         if (targetCamera == null || target == null)
             return;
+        float fovBlend = Application.isPlaying
+            ? 1f - Mathf.Exp(-9f * Time.unscaledDeltaTime)
+            : 1f;
+        targetCamera.fieldOfView = Mathf.Lerp(
+            targetCamera.fieldOfView,
+            requestedFieldOfView,
+            fovBlend);
         Quaternion aimRotation = Quaternion.Euler(
             flightAimPitch,
             flightAimYaw,
@@ -467,68 +843,133 @@ public sealed class GridLabCameraController : MonoBehaviour
                 freeLookYaw,
                 0f)
             : Quaternion.Euler(pitch, yaw, 0f);
-        Vector3 viewForward = orbit * Vector3.forward;
-        Vector3 viewUp = orbit * Vector3.up;
-        Vector3 focus = flightMode
-            ? ResolveFlightFocus(viewForward, viewUp)
-            : target.position + panOffset;
-        Vector3 desired = focus + orbit * new Vector3(0f, 0f, -distance);
-        if (flightMode)
-            desired = ResolveCameraCollision(focus, desired);
-        float blend = Application.isPlaying ? 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime) : 1f;
-        targetCamera.transform.position = Vector3.Lerp(targetCamera.transform.position, desired, blend);
+        float blend = Application.isPlaying
+            ? 1f - Mathf.Exp(-9f * Time.unscaledDeltaTime)
+            : 1f;
+        if (!flightMode)
+        {
+            Vector3 focus = target.position + panOffset;
+            Vector3 desired =
+                focus + orbit * new Vector3(0f, 0f, -distance);
+            targetCamera.transform.position = Vector3.Lerp(
+                targetCamera.transform.position,
+                desired,
+                blend);
+            targetCamera.transform.rotation = Quaternion.Slerp(
+                targetCamera.transform.rotation,
+                Quaternion.LookRotation(focus - desired, target.up),
+                blend);
+            return;
+        }
+
+        ResolveFlightGeometry(
+            orbit,
+            out Vector3 worldCenter,
+            out float halfWidth,
+            out float halfHeight,
+            out _,
+            out float radius);
+        float targetDistance = ResolvePresentationDistance(orbit);
+        float distanceBlend =
+            1f - Mathf.Exp(-6f * Time.unscaledDeltaTime);
+        distance = Mathf.Lerp(distance, targetDistance, distanceBlend);
+        Vector2 anchor = aimPresentation ? AimAnchor : FlightAnchor;
+        float verticalTangent = Mathf.Tan(
+            targetCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+        float horizontalTangent =
+            verticalTangent * Mathf.Max(0.5f, targetCamera.aspect);
+        float localX =
+            (anchor.x - 0.5f) * 2f * distance * horizontalTangent;
+        float localY =
+            (anchor.y - 0.5f) * 2f * distance * verticalTangent;
+        Vector3 desiredCamera = worldCenter -
+            orbit * new Vector3(localX, localY, distance);
+        desiredCamera = ResolveCameraCollision(
+            worldCenter,
+            desiredCamera,
+            orbit,
+            Mathf.Max(2.2f, radius + 0.65f),
+            halfWidth,
+            halfHeight);
+        targetCamera.transform.position = Vector3.Lerp(
+            targetCamera.transform.position,
+            desiredCamera,
+            blend);
         targetCamera.transform.rotation = Quaternion.Slerp(
             targetCamera.transform.rotation,
-            Quaternion.LookRotation(
-                focus - desired,
-                flightMode ? viewUp : target.up),
-            blend);
+            orbit,
+            1f - Mathf.Exp(-14f * Time.unscaledDeltaTime));
     }
 
     void ResolveFlightFraming()
     {
-        Collider[] colliders = target == null
-            ? Array.Empty<Collider>()
-            : target.GetComponentsInChildren<Collider>(true);
-        bool initialized = false;
-        Bounds bounds = new Bounds(
-            target == null ? Vector3.zero : target.position,
-            Vector3.one);
-        foreach (Collider collider in colliders)
-        {
-            if (collider == null || !collider.enabled || collider.isTrigger)
-                continue;
-            if (!initialized)
-            {
-                bounds = collider.bounds;
-                initialized = true;
-            }
-            else
-                bounds.Encapsulate(collider.bounds);
-        }
-        distance = Mathf.Clamp(bounds.size.magnitude * 1.15f, 10f, 45f);
-        flightFocusHeight = Mathf.Clamp(
-            distance * 0.32f + bounds.extents.y * 0.25f,
-            5f,
-            16f);
-        flightLookAhead = Mathf.Clamp(bounds.extents.z * 0.35f, 1.5f, 8f);
+        Quaternion rotation = Quaternion.Euler(
+            flightAimPitch,
+            flightAimYaw,
+            0f);
+        distance = ResolvePresentationDistance(rotation);
     }
 
-    Vector3 ResolveCameraCollision(Vector3 focus, Vector3 desired)
+    Vector3 ResolveCameraCollision(
+        Vector3 focus,
+        Vector3 desired,
+        Quaternion viewRotation,
+        float minimumDistance,
+        float halfWidth,
+        float halfHeight)
+    {
+        if (!TryGetCameraObstruction(focus, desired, out float nearest))
+            return desired;
+
+        Vector3 viewUp = viewRotation * Vector3.up;
+        Vector3 viewRight = viewRotation * Vector3.right;
+        float lift = Mathf.Clamp(halfHeight * 0.45f, 1.2f, 7f);
+        float side = Mathf.Clamp(halfWidth * 0.35f, 1f, 6f);
+        Vector3[] alternatives =
+        {
+            desired + viewUp * lift,
+            desired + viewUp * lift + viewRight * side,
+            desired + viewUp * lift - viewRight * side
+        };
+        foreach (Vector3 alternative in alternatives)
+            if (!TryGetCameraObstruction(focus, alternative, out _))
+                return alternative;
+
+        Vector3 offset = desired - focus;
+        float length = offset.magnitude;
+        if (length <= 0.01f || nearest >= length)
+            return desired;
+        float resolvedDistance = Mathf.Max(1.5f, nearest - 0.4f);
+        if (resolvedDistance < minimumDistance)
+        {
+            Vector3 elevated =
+                focus +
+                viewUp * Mathf.Max(lift, minimumDistance * 0.35f) +
+                offset.normalized * minimumDistance;
+            if (!TryGetCameraObstruction(focus, elevated, out _))
+                return elevated;
+        }
+        return focus + offset.normalized * resolvedDistance;
+    }
+
+    bool TryGetCameraObstruction(
+        Vector3 focus,
+        Vector3 desired,
+        out float nearest)
     {
         Vector3 offset = desired - focus;
         float length = offset.magnitude;
+        nearest = length;
         if (length <= 0.01f)
-            return desired;
+            return false;
         int count = Physics.SphereCastNonAlloc(
             focus,
-            0.35f,
+            0.38f,
             offset / length,
             cameraHits,
             length,
             ~0,
             QueryTriggerInteraction.Ignore);
-        float nearest = length;
         for (int index = 0; index < count; index++)
         {
             Collider collider = cameraHits[index].collider;
@@ -540,9 +981,7 @@ public sealed class GridLabCameraController : MonoBehaviour
             }
             nearest = Mathf.Min(nearest, cameraHits[index].distance);
         }
-        return nearest < length
-            ? focus + offset.normalized * Mathf.Max(1.5f, nearest - 0.3f)
-            : desired;
+        return nearest < length;
     }
 }
 
@@ -550,18 +989,14 @@ public sealed class GridFlightBridge : MonoBehaviour
 {
     Rigidbody body;
     ShipAssembly assembly;
-    SpacecraftIfcsMotor ifcs;
-    KeyboardMouseFlightInput input;
     GridLabCameraController cameraController;
     Vector3 buildPosition;
     Quaternion buildRotation;
     Vector3 spawnPosition;
+    Quaternion spawnRotation = Quaternion.identity;
     Coroutine enterRoutine;
     Coroutine resetRoutine;
-    UnityPlanet.ModularAssembly.PlanetLabFlightEnvironmentController environment;
-    UnityPlanet.ModularAssembly.HybridVehicleModeController hybrid;
-    UnityPlanet.ModularAssembly.VehicleMotionCoordinatorV2 motionV2;
-    UnityPlanet.ModularAssembly.VehicleMotionCoordinatorV3 motionV3;
+    UnityPlanet.ModularAssembly.IGridFlightEnvironment environment;
     UnityPlanet.ModularAssembly.RobocraftMotionCoordinator motionRc1;
 
     public GridFlightState State { get; private set; } = GridFlightState.Build;
@@ -572,33 +1007,11 @@ public sealed class GridFlightBridge : MonoBehaviour
     public void Initialize(
         Rigidbody shipBody,
         ShipAssembly shipAssembly,
-        SpacecraftIfcsMotor motor,
-        KeyboardMouseFlightInput commandInput,
         GridLabCameraController cameraRig)
     {
         body = shipBody;
         assembly = shipAssembly;
-        ifcs = motor;
-        input = commandInput;
         cameraController = cameraRig;
-        hybrid = GetComponent<
-            UnityPlanet.ModularAssembly.HybridVehicleModeController>();
-        if (hybrid != null)
-            hybrid.enabled = false;
-        motionV2 = GetComponent<
-                       UnityPlanet.ModularAssembly.VehicleMotionCoordinatorV2>()
-                   ?? gameObject.AddComponent<
-                       UnityPlanet.ModularAssembly.VehicleMotionCoordinatorV2>();
-        if (motionV2.IsActive)
-            motionV2.EndFlight();
-        motionV2.enabled = false;
-        motionV3 = GetComponent<
-            UnityPlanet.ModularAssembly.VehicleMotionCoordinatorV3>();
-        if (motionV3 != null)
-        {
-            motionV3.EndFlight();
-            motionV3.enabled = false;
-        }
         motionRc1 = GetComponent<
                         UnityPlanet.ModularAssembly.RobocraftMotionCoordinator>()
                     ?? gameObject.AddComponent<
@@ -609,19 +1022,9 @@ public sealed class GridFlightBridge : MonoBehaviour
         spawnPosition = buildPosition;
         body.isKinematic = true;
         body.useGravity = false;
-        ifcs.Configure(
-            body,
-            assembly,
-            null,
-            input,
-            true,
-            true);
-        ifcs.SetAssistMode(SpacecraftAssistMode.Coupled);
-        ifcs.ControlsEnabled = false;
-        ifcs.enabled = false;
     }
 
-    public void EnterFlight()
+public void EnterFlight()
     {
         if (State == GridFlightState.LoadingTerrain)
         {
@@ -630,29 +1033,34 @@ public sealed class GridFlightBridge : MonoBehaviour
         }
         if (State == GridFlightState.Flight)
             return;
-        SetState(
-            GridFlightState.LoadingTerrain,
-            "正在生成PlanetLab无限试飞地形……");
+
+        environment = FindFlightEnvironment(gameObject.scene);
+        bool expectsCombatMap =
+            UnityPlanet.ModularAssembly.ModularLabSceneProfile
+                .AllowsCombatMapFlightEnvironment(gameObject.scene);
+        string loadingMessage =
+            environment is UnityPlanet.CombatMap
+                .CombatMapFlightEnvironmentController
+                ? "正在隔离测量飞船盘旋半径并生成战斗试飞地形……"
+                : "正在准备试飞环境……";
+        SetState(GridFlightState.LoadingTerrain, loadingMessage);
         body.isKinematic = true;
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         cameraController.SetFlightMode(true);
-        environment = FindObjectOfType<
-            UnityPlanet.ModularAssembly.PlanetLabFlightEnvironmentController>();
+
         if (environment == null)
         {
-            UnityPlanet.ModularAssembly.LabZoneManager zones =
-                FindObjectOfType<UnityPlanet.ModularAssembly.LabZoneManager>();
-            environment = zones != null
-                ? zones.FlightEnvironment
-                : null;
-        }
-        if (environment == null)
-        {
+            if (expectsCombatMap)
+            {
+                ReturnToBuild(
+                    "战斗地图试飞环境缺失，已阻止从建造台错误起飞。");
+                return;
+            }
             CompleteFlightPreparation(
                 true,
                 SafeSpawnAbove(buildPosition, body),
-                "未找到PlanetLab环境控制器，已使用安全出生点。");
+                "未找到场景飞行环境，已使用兼容安全出生点。");
             return;
         }
         enterRoutine = StartCoroutine(environment.PrepareFlight(
@@ -660,7 +1068,7 @@ public sealed class GridFlightBridge : MonoBehaviour
             CompleteFlightPreparation));
     }
 
-    void CompleteFlightPreparation(
+void CompleteFlightPreparation(
         bool success,
         Vector3 position,
         string message)
@@ -670,21 +1078,22 @@ public sealed class GridFlightBridge : MonoBehaviour
             return;
         if (!success)
         {
-            ExitFlight();
-            StateChanged?.Invoke(GridFlightState.Build, message);
+            ReturnToBuild(message);
             return;
         }
 
         spawnPosition = position;
+        spawnRotation = environment != null
+            ? environment.PreparedRotation
+            : Quaternion.identity;
         body.position = position;
-        body.rotation = Quaternion.identity;
+        body.rotation = spawnRotation;
         Physics.SyncTransforms();
+        cameraController.SetFlightMode(true);
         body.isKinematic = false;
         body.velocity = Vector3.zero;
         body.angularVelocity = Vector3.zero;
         body.WakeUp();
-        ifcs.ControlsEnabled = false;
-        ifcs.enabled = false;
         motionRc1.BeginFlight();
         SetState(GridFlightState.Flight, message);
     }
@@ -714,7 +1123,7 @@ public sealed class GridFlightBridge : MonoBehaviour
         return origin + Vector3.up * clearance;
     }
 
-    public void ExitFlight()
+public void ExitFlight()
     {
         if (State == GridFlightState.Build)
             return;
@@ -728,23 +1137,7 @@ public sealed class GridFlightBridge : MonoBehaviour
             StopCoroutine(resetRoutine);
             resetRoutine = null;
         }
-        ifcs.ControlsEnabled = false;
-        ifcs.ResetControllerState();
-        ifcs.enabled = false;
-        motionRc1?.EndFlight();
-        environment?.ExitFlight();
-        if (!body.isKinematic)
-        {
-            body.velocity = Vector3.zero;
-            body.angularVelocity = Vector3.zero;
-        }
-        body.isKinematic = true;
-        body.position = buildPosition;
-        body.rotation = buildRotation;
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
-        cameraController.SetFlightMode(false);
-        SetState(GridFlightState.Build, "已返回建造台。");
+        ReturnToBuild("已返回建造台。");
     }
 
     public void ResetFlight()
@@ -760,8 +1153,6 @@ public sealed class GridFlightBridge : MonoBehaviour
             body.angularVelocity = Vector3.zero;
         }
         body.isKinematic = true;
-        ifcs.ControlsEnabled = false;
-        ifcs.ResetControllerState();
         if (environment == null)
         {
             CompleteReset(true, spawnPosition);
@@ -771,22 +1162,25 @@ public sealed class GridFlightBridge : MonoBehaviour
             environment.ResetFlight(body, CompleteReset));
     }
 
-    void CompleteReset(bool success, Vector3 position)
+void CompleteReset(bool success, Vector3 position)
     {
         resetRoutine = null;
         if (State != GridFlightState.Flight)
             return;
         if (success)
+        {
             spawnPosition = position;
+            if (environment != null)
+                spawnRotation = environment.PreparedRotation;
+        }
         body.position = spawnPosition;
-        body.rotation = Quaternion.identity;
+        body.rotation = spawnRotation;
         Physics.SyncTransforms();
+        cameraController.SetFlightMode(true);
         body.isKinematic = false;
         body.velocity = Vector3.zero;
         body.angularVelocity = Vector3.zero;
         body.WakeUp();
-        ifcs.ControlsEnabled = false;
-        ifcs.enabled = false;
         motionRc1?.BeginFlight();
     }
 
@@ -797,6 +1191,64 @@ public sealed class GridFlightBridge : MonoBehaviour
     }
 
     public float DistanceFromSpawn => Vector3.Distance(body.position, spawnPosition);
+
+
+void ReturnToBuild(string message)
+    {
+        motionRc1?.EndFlight();
+        environment?.ExitFlight();
+        if (!body.isKinematic)
+        {
+            body.velocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+        }
+        body.isKinematic = true;
+        body.position = buildPosition;
+        body.rotation = buildRotation;
+        Physics.SyncTransforms();
+        environment = null;
+        spawnRotation = Quaternion.identity;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+        cameraController.SetFlightMode(false);
+        SetState(GridFlightState.Build, message);
+    }
+
+    static UnityPlanet.ModularAssembly.IGridFlightEnvironment
+        FindFlightEnvironment(UnityEngine.SceneManagement.Scene scene)
+    {
+        if (!scene.IsValid() || !scene.isLoaded)
+            return null;
+        UnityPlanet.ModularAssembly.IGridFlightEnvironment best = null;
+        foreach (GameObject root in scene.GetRootGameObjects())
+        foreach (MonoBehaviour behaviour in
+                 root.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            if (behaviour == null || !behaviour.isActiveAndEnabled ||
+                !(behaviour is UnityPlanet.ModularAssembly
+                    .IGridFlightEnvironment candidate))
+            {
+                continue;
+            }
+            if (candidate is UnityPlanet.ModularAssembly
+                    .PlanetLabFlightEnvironmentController &&
+                !UnityPlanet.ModularAssembly.ModularLabSceneProfile
+                    .AllowsPlanetLabFlightEnvironment(scene))
+            {
+                continue;
+            }
+            if (candidate is UnityPlanet.CombatMap
+                    .CombatMapFlightEnvironmentController &&
+                !UnityPlanet.ModularAssembly.ModularLabSceneProfile
+                    .AllowsCombatMapFlightEnvironment(scene))
+            {
+                continue;
+            }
+            if (best == null || candidate.Priority > best.Priority)
+                best = candidate;
+        }
+        return best;
+    }
 }
 
 public sealed class GridKineticWeaponSystem : MonoBehaviour
@@ -826,6 +1278,12 @@ public sealed class GridKineticWeaponSystem : MonoBehaviour
 
     void Update()
     {
+        if (GetComponent<
+                UnityPlanet.ModularAssembly.WeaponSystemCoordinator>() != null)
+        {
+            enabled = false;
+            return;
+        }
         if (flight == null || !flight.IsFlying || !Input.GetMouseButton(0) || Time.time < nextShot)
             return;
         List<GridModuleView> weapons = presenter.Views.Values
@@ -852,20 +1310,6 @@ public sealed class GridKineticWeaponSystem : MonoBehaviour
             ? semantics.WorldMuzzlePosition
             : weapon.transform.position + direction * 1.2f;
         projectile.Launch(position, direction * 180f, transform, Release);
-        UnityPlanet.ModularAssembly.RobocraftMotionCoordinator rc1 =
-            flight.Body.GetComponent<
-                UnityPlanet.ModularAssembly.RobocraftMotionCoordinator>();
-        if (rc1 != null && rc1.IsActive)
-        {
-            rc1.QueueVisualRecoil(-direction * 250f, position);
-        }
-        else
-        {
-            flight.Body.AddForceAtPosition(
-                -direction * 250f,
-                position,
-                ForceMode.Impulse);
-        }
     }
 
     GridKineticProjectile CreateProjectile(int index)
@@ -954,7 +1398,10 @@ public sealed class GridKineticProjectile : MonoBehaviour
                 SpaceDamageType.Projectile,
                 gameObject));
             if (damageable == null && hit.rigidbody != null)
-                hit.rigidbody.AddForceAtPosition(impulse, hit.point, ForceMode.Impulse);
+                UnityPlanet.ModularAssembly.VehicleExternalForces.ApplyImpulse(
+                    hit.rigidbody,
+                    impulse,
+                    hit.point);
             transform.position = hit.point;
             Release();
             return;
@@ -1172,6 +1619,7 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
     GridAssemblyHistory history;
     ModularBlueprintStore store;
     ModularBlueprintStore presetStore;
+    ModularPresetLibrary presetLibrary;
     GridFlightBridge flight;
     GridLabCameraController cameraController;
     GridTargetController target;
@@ -1190,6 +1638,7 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
     bool mirrorEnabled = true;
 
     public GridAssemblyModel Model => model;
+    public GridAssemblyPresenter Presenter => presenter;
     public GridAssemblyHistory History => history;
     public bool MirrorEnabled => mirrorEnabled;
     public bool IsFlying =>
@@ -1218,6 +1667,7 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
         history = new GridAssemblyHistory();
         store = new ModularBlueprintStore();
         presetStore = new ModularBlueprintStore("modular_preset.json");
+        presetLibrary = new ModularPresetLibrary();
         previewMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color"));
         model.Changed += HandleModelChanged;
         if (store.TryLoad(out ModularBlueprintData blueprint, out string error)
@@ -1315,14 +1765,52 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
 
     public void Undo()
     {
+        if (history == null || model == null)
+            return;
+
         if (history.Undo(model))
             Status("已撤销。");
     }
 
     public void Redo()
     {
+        if (history == null || model == null)
+            return;
+
         if (history.Redo(model))
             Status("已重做。");
+    }
+
+    public void FinalizePostCombatBuild(
+        ModularBlueprintData beforeCombat)
+    {
+        activeDefinition = null;
+        movingRuntimeId = string.Empty;
+        selectedRuntimeId = string.Empty;
+        previewValid = false;
+        previewError = string.Empty;
+        HidePreview();
+
+        HashSet<string> currentIds = model.Records
+            .Select(item => item.RuntimeId)
+            .ToHashSet(StringComparer.Ordinal);
+        bool hasCombatLoss = beforeCombat?.modules != null &&
+            beforeCombat.modules.Any(item =>
+                item != null &&
+                item.runtimeId != GridAssemblyModel.CoreRuntimeId &&
+                !currentIds.Contains(item.runtimeId));
+        if (hasCombatLoss)
+        {
+            history.Record(beforeCombat);
+            mirrorEnabled = false;
+            Status(
+                "战损已同步：损坏占格已释放，镜像已关闭，可单侧修补。Ctrl+Z 撤销，R 重做。");
+        }
+        else
+        {
+            Status("已返回改装室。");
+        }
+        RefreshUI();
     }
 
     public void Save()
@@ -1359,6 +1847,101 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
         history.Clear();
         selectedRuntimeId = string.Empty;
         Status("蓝图已载入。");
+    }
+
+    public IReadOnlyList<ModularPresetEntry> ListNamedPresets()
+    {
+        return presetLibrary.ListPresets(model);
+    }
+
+    public bool SaveNamedPreset(
+        string name,
+        bool overwrite,
+        out string message)
+    {
+        GridAssemblyValidation validation = model.Validate();
+        if (!validation.IsValid)
+        {
+            message = "无法保存预制：" + validation.Message;
+            Status(message);
+            return false;
+        }
+        if (!presetLibrary.SaveUserPreset(
+                name,
+                model,
+                model.CaptureBlueprint(),
+                overwrite,
+                out _,
+                out message))
+        {
+            Status(message);
+            return false;
+        }
+        message = "预制“" + name.Trim() + "”已保存。";
+        Status(message);
+        return true;
+    }
+
+    public bool LoadNamedPresetForBuild(
+        string presetId,
+        out string message)
+    {
+        if (flight.State != GridFlightState.Build)
+        {
+            message = "请先返回改装模式。";
+            Status(message);
+            return false;
+        }
+        if (!presetLibrary.TryLoadPreset(
+                presetId,
+                model,
+                out ModularBlueprintData blueprint,
+                out message))
+        {
+            Status(message);
+            return false;
+        }
+
+        ModularBlueprintData before = model.CaptureBlueprint();
+        if (!model.RestoreBlueprint(blueprint, out string restoreError))
+        {
+            model.RestoreBlueprint(before, out _);
+            message = "载入预制失败：" + restoreError;
+            Status(message);
+            return false;
+        }
+        GridAssemblyValidation validation = model.Validate();
+        if (!validation.IsValid)
+        {
+            model.RestoreBlueprint(before, out _);
+            message = "载入预制失败：" + validation.Message;
+            Status(message);
+            return false;
+        }
+
+        history.Record(before);
+        selectedRuntimeId = string.Empty;
+        activeDefinition = null;
+        message = "预制已载入到改装界面。";
+        Status(message);
+        return true;
+    }
+
+    public bool DeleteNamedPreset(
+        string presetId,
+        out string message)
+    {
+        if (!presetLibrary.DeleteUserPreset(
+                presetId,
+                model,
+                out message))
+        {
+            Status(message);
+            return false;
+        }
+        message = "预制已删除。";
+        Status(message);
+        return true;
     }
 
     public bool SavePreset(out string message)
@@ -1702,7 +2285,15 @@ public sealed class ModularAssemblyLabUI : MonoBehaviour
 
     public void Refresh()
     {
-        if (controller == null || statsText == null)
+        if (controller == null ||
+            controller.Model == null ||
+            statsText == null ||
+            selectionText == null ||
+            mirrorText == null ||
+            modeText == null ||
+            moveButton == null ||
+            deleteButton == null ||
+            unlinkButton == null)
             return;
         GridAssemblyMetrics metrics = controller.Model.CalculateMetrics();
         GridAssemblyValidation validation = controller.Model.Validate();

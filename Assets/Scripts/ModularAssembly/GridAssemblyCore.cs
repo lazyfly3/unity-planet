@@ -103,24 +103,17 @@ namespace ModularAssembly
         public string moduleId;
         public GridModulePose pose;
         public string behaviorSettings;
-        public int manualGroupId = -1;
     }
 
     [Serializable]
     public sealed class ModularBlueprintData
     {
-        public int formatVersion = 4;
+        public const int CurrentFormatVersion = 5;
+        public int formatVersion = CurrentFormatVersion;
         public ModularBlueprintModule[] modules = Array.Empty<ModularBlueprintModule>();
         public long savedUtcTicks;
-        public string motionModel = "RobocraftRC1";
         public UnityPlanet.ModularAssembly.VehicleCoreAssistMode coreAssistMode =
             UnityPlanet.ModularAssembly.VehicleCoreAssistMode.Standard;
-        public UnityPlanet.ModularAssembly.VehicleAssistLevel assistLevel =
-            UnityPlanet.ModularAssembly.VehicleAssistLevel.WeakCore;
-        public UnityPlanet.ModularAssembly.VehicleControlScheme controlScheme =
-            UnityPlanet.ModularAssembly.VehicleControlScheme.Assisted;
-        public UnityPlanet.ModularAssembly.VehicleControlGroupData[] controlGroups =
-            UnityPlanet.ModularAssembly.VehicleControlGroupData.CreateDefaults();
     }
 
     public sealed class GridModuleRecord
@@ -129,7 +122,6 @@ namespace ModularAssembly
         public GridModuleDefinition Definition;
         public GridModulePose Pose;
         public string BehaviorSettings;
-        public int ManualGroupId = -1;
 
         public GridModuleRecord Clone()
         {
@@ -138,8 +130,7 @@ namespace ModularAssembly
                 RuntimeId = RuntimeId,
                 Definition = Definition,
                 Pose = Pose,
-                BehaviorSettings = BehaviorSettings,
-                ManualGroupId = ManualGroupId
+                BehaviorSettings = BehaviorSettings
             };
         }
     }
@@ -286,24 +277,12 @@ namespace ModularAssembly
 
         readonly Dictionary<string, GridModuleDefinition> definitions;
         readonly List<GridModuleRecord> records = new List<GridModuleRecord>();
-        UnityPlanet.ModularAssembly.VehicleAssistLevel assistLevel =
-            UnityPlanet.ModularAssembly.VehicleAssistLevel.WeakCore;
-        UnityPlanet.ModularAssembly.VehicleControlScheme controlScheme =
-            UnityPlanet.ModularAssembly.VehicleControlScheme.Assisted;
-        UnityPlanet.ModularAssembly.VehicleControlGroupData[] controlGroups =
-            UnityPlanet.ModularAssembly.VehicleControlGroupData.CreateDefaults();
         UnityPlanet.ModularAssembly.VehicleCoreAssistMode coreAssistMode =
             UnityPlanet.ModularAssembly.VehicleCoreAssistMode.Standard;
 
         public event Action Changed;
         public IReadOnlyList<GridModuleRecord> Records => records;
         public IReadOnlyDictionary<string, GridModuleDefinition> Definitions => definitions;
-        public UnityPlanet.ModularAssembly.VehicleAssistLevel AssistLevel =>
-            assistLevel;
-        public UnityPlanet.ModularAssembly.VehicleControlScheme ControlScheme =>
-            controlScheme;
-        public UnityPlanet.ModularAssembly.VehicleControlGroupData[] ControlGroups =>
-            controlGroups;
         public UnityPlanet.ModularAssembly.VehicleCoreAssistMode CoreAssistMode =>
             coreAssistMode;
 
@@ -361,48 +340,16 @@ namespace ModularAssembly
             return true;
         }
 
-        public bool TrySetManualGroup(
-            string runtimeId,
-            int manualGroupId,
-            out string error)
-        {
-            GridModuleRecord selected = Find(runtimeId);
-            if (selected == null)
-            {
-                error = "未找到所选模块。";
-                return false;
-            }
-            int value = Mathf.Clamp(manualGroupId, -1, 7);
-            selected.ManualGroupId = value;
-            if (!string.IsNullOrEmpty(selected.Pose.mirrorGroupId))
-            {
-                foreach (GridModuleRecord paired in records.Where(item =>
-                             item.RuntimeId != selected.RuntimeId &&
-                             item.Pose.mirrorGroupId ==
-                             selected.Pose.mirrorGroupId))
-                    paired.ManualGroupId = value;
-            }
-            error = string.Empty;
-            Changed?.Invoke();
-            return true;
-        }
-
-        public void SetVehicleControlSettings(
-            UnityPlanet.ModularAssembly.VehicleControlScheme scheme,
-            UnityPlanet.ModularAssembly.VehicleAssistLevel level,
-            UnityPlanet.ModularAssembly.VehicleControlGroupData[] groups)
-        {
-            controlScheme = scheme;
-            assistLevel = level;
-            controlGroups =
-                UnityPlanet.ModularAssembly.VehicleControlGroupData.Normalize(
-                    groups);
-            Changed?.Invoke();
-        }
-
         public void SetCoreAssistMode(
             UnityPlanet.ModularAssembly.VehicleCoreAssistMode value)
         {
+            if (!Enum.IsDefined(
+                    typeof(UnityPlanet.ModularAssembly.VehicleCoreAssistMode),
+                    value))
+            {
+                value =
+                    UnityPlanet.ModularAssembly.VehicleCoreAssistMode.Standard;
+            }
             coreAssistMode = value;
             Changed?.Invoke();
         }
@@ -523,6 +470,7 @@ namespace ModularAssembly
             if (set.Count == 0)
                 return;
             records.RemoveAll(item => set.Contains(item.RuntimeId));
+            ClearOrphanedMirrorGroups();
             Changed?.Invoke();
         }
 
@@ -631,22 +579,15 @@ namespace ModularAssembly
         {
             return new ModularBlueprintData
             {
-                formatVersion = 4,
+                formatVersion = ModularBlueprintData.CurrentFormatVersion,
                 savedUtcTicks = DateTime.UtcNow.Ticks,
-                motionModel = "RobocraftRC1",
                 coreAssistMode = coreAssistMode,
-                assistLevel = assistLevel,
-                controlScheme = controlScheme,
-                controlGroups =
-                    UnityPlanet.ModularAssembly.VehicleControlGroupData.Normalize(
-                        controlGroups),
                 modules = records.Select(item => new ModularBlueprintModule
                 {
                     runtimeId = item.RuntimeId,
                     moduleId = item.Definition.ModuleId,
                     pose = item.Pose,
-                    behaviorSettings = item.BehaviorSettings,
-                    manualGroupId = item.ManualGroupId
+                    behaviorSettings = item.BehaviorSettings
                 }).ToArray()
             };
         }
@@ -654,10 +595,8 @@ namespace ModularAssembly
         public bool RestoreBlueprint(ModularBlueprintData blueprint, out string error)
         {
             if (blueprint == null ||
-                (blueprint.formatVersion != 1 &&
-                 blueprint.formatVersion != 2 &&
-                 blueprint.formatVersion != 3 &&
-                 blueprint.formatVersion != 4) ||
+                blueprint.formatVersion !=
+                ModularBlueprintData.CurrentFormatVersion ||
                 blueprint.modules == null)
             {
                 error = "蓝图格式不受支持。";
@@ -682,10 +621,7 @@ namespace ModularAssembly
                     RuntimeId = id,
                     Definition = definition,
                     Pose = pose,
-                    BehaviorSettings = module.behaviorSettings ?? string.Empty,
-                    ManualGroupId = blueprint.formatVersion >= 3
-                        ? Mathf.Clamp(module.manualGroupId, -1, 7)
-                        : -1
+                    BehaviorSettings = module.behaviorSettings ?? string.Empty
                 };
                 List<Vector3Int> cells = GetCells(record);
                 if (cells.Any(occupied.Contains))
@@ -709,23 +645,15 @@ namespace ModularAssembly
             }
             records.Clear();
             records.AddRange(restored.Take(ModuleLimit));
-            assistLevel = blueprint.formatVersion >= 3
-                ? blueprint.assistLevel
-                : UnityPlanet.ModularAssembly.VehicleAssistLevel.WeakCore;
-            coreAssistMode = blueprint.formatVersion >= 4
-                ? blueprint.coreAssistMode
-                : assistLevel ==
-                  UnityPlanet.ModularAssembly.VehicleAssistLevel.WeakCore
-                    ? UnityPlanet.ModularAssembly.VehicleCoreAssistMode.Training
-                    : UnityPlanet.ModularAssembly.VehicleCoreAssistMode.Standard;
-            controlScheme = blueprint.formatVersion >= 3
-                ? blueprint.controlScheme
-                : UnityPlanet.ModularAssembly.VehicleControlScheme.Assisted;
-            controlGroups =
-                UnityPlanet.ModularAssembly.VehicleControlGroupData.Normalize(
-                    blueprint.formatVersion >= 3
-                        ? blueprint.controlGroups
-                        : null);
+            ClearOrphanedMirrorGroups();
+            coreAssistMode = blueprint.coreAssistMode;
+            if (!Enum.IsDefined(
+                    typeof(UnityPlanet.ModularAssembly.VehicleCoreAssistMode),
+                    coreAssistMode))
+            {
+                coreAssistMode =
+                    UnityPlanet.ModularAssembly.VehicleCoreAssistMode.Standard;
+            }
             error = string.Empty;
             Changed?.Invoke();
             return true;
@@ -918,6 +846,33 @@ namespace ModularAssembly
                 .ToList();
         }
 
+        int ClearOrphanedMirrorGroups()
+        {
+            HashSet<string> invalidGroups = records
+                .Where(item =>
+                    item != null &&
+                    !string.IsNullOrEmpty(item.Pose.mirrorGroupId))
+                .GroupBy(item => item.Pose.mirrorGroupId)
+                .Where(group => group.Count() != 2)
+                .Select(group => group.Key)
+                .ToHashSet(StringComparer.Ordinal);
+            if (invalidGroups.Count == 0)
+                return 0;
+
+            int cleared = 0;
+            foreach (GridModuleRecord record in records)
+            {
+                if (record == null ||
+                    !invalidGroups.Contains(record.Pose.mirrorGroupId))
+                    continue;
+                GridModulePose pose = record.Pose;
+                pose.mirrorGroupId = string.Empty;
+                record.Pose = pose;
+                cleared++;
+            }
+            return cleared;
+        }
+
         static Dictionary<Vector3Int, string> BuildOccupancy(IEnumerable<GridModuleRecord> source)
         {
             var result = new Dictionary<Vector3Int, string>();
@@ -1058,8 +1013,8 @@ namespace ModularAssembly
             {
                 blueprint = JsonUtility.FromJson<ModularBlueprintData>(File.ReadAllText(path));
                 if (blueprint == null ||
-                    blueprint.formatVersion < 1 ||
-                    blueprint.formatVersion > 4 ||
+                    blueprint.formatVersion !=
+                    ModularBlueprintData.CurrentFormatVersion ||
                     blueprint.modules == null)
                     throw new InvalidDataException("不支持或不完整的模块蓝图。");
                 return true;
@@ -1087,8 +1042,8 @@ namespace ModularAssembly
         {
             if (blueprint == null)
                 throw new ArgumentNullException(nameof(blueprint));
-            blueprint.formatVersion = 4;
-            blueprint.motionModel = "RobocraftRC1";
+            blueprint.formatVersion =
+                ModularBlueprintData.CurrentFormatVersion;
             blueprint.savedUtcTicks = DateTime.UtcNow.Ticks;
             string path = GetPath();
             string directory = Path.GetDirectoryName(path);

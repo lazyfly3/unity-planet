@@ -326,7 +326,7 @@ namespace UnityPlanet.ModularAssembly
             Catalog = ModularContentCatalog.FromJson(json);
             if (Catalog.Count == 0 && string.IsNullOrEmpty(LastError))
             {
-                LastError = "模块目录为空，请先运行 APKExtracted/build_modular_content.py。";
+                LastError = "模块目录为空，请先在外部研究目录生成NeoX内容目录。";
             }
         }
 
@@ -770,11 +770,10 @@ namespace UnityPlanet.ModularAssembly
 
         private static string ResolveBundleRoot()
         {
-#if UNITY_EDITOR
-            return Path.GetFullPath(Path.Combine(Application.dataPath, "..", "ModularContent", "Windows"));
-#else
-            return Path.Combine(Path.GetDirectoryName(Application.dataPath) ?? string.Empty, "ModularContent", "Windows");
-#endif
+            return Path.Combine(
+                Application.streamingAssetsPath,
+                "ModularContent",
+                "Windows");
         }
 
         private static GameObject CreatePlaceholder(ModularContentRecord record, Transform parent)

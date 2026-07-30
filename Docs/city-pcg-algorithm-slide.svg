@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10213d"/>
+      <stop offset="0.52" stop-color="#386482"/>
+      <stop offset="1" stop-color="#0d1d36"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="72%" cy="14%" r="48%">
+      <stop offset="0" stop-color="#c9e2ee" stop-opacity="0.38"/>
+      <stop offset="0.46" stop-color="#8ebed2" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M1,1 L10,6 L1,11 Z" fill="#ffffff"/>
+    </marker>
+    <style>
+      .title { font: 700 56px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #ffffff; }
+      .section { font: 700 34px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #ffffff; }
+      .box { fill: rgba(255,255,255,0.12); stroke: rgba(255,255,255,0.64); stroke-width: 3; }
+      .blue { fill: rgba(94,166,225,0.20); stroke: #bde3ff; stroke-width: 3; }
+      .green { fill: rgba(117,205,156,0.18); stroke: #b9f0cc; stroke-width: 3; }
+      .orange { fill: rgba(236,169,82,0.18); stroke: #ffd29a; stroke-width: 3; }
+      .red { fill: rgba(231,113,128,0.16); stroke: #ffb7c0; stroke-width: 3; }
+      .dark { fill: rgba(5,20,38,0.72); }
+      .head { font: 700 27px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #ffffff; }
+      .body { font: 400 21px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #f3f8ff; }
+      .small { font: 400 19px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #d7e6f5; }
+      .formula { font: 500 19px "Consolas", "Microsoft YaHei", monospace; fill: #d8efff; }
+      .white { font: 500 24px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #ffffff; }
+      .arrow { stroke: #ffffff; stroke-width: 4; fill: none; marker-end: url(#arrow); opacity: 0.90; }
+      .thin { stroke: #c9ddf0; stroke-width: 3; fill: none; marker-end: url(#arrow); opacity: 0.74; }
+      .gridLine { stroke: rgba(255,255,255,0.35); stroke-width: 4; }
+      .building { fill: rgba(255,255,255,0.62); }
+      .park { fill: rgba(86,185,114,0.76); }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect width="1920" height="1080" fill="url(#glow1)"/>
+
+  <text class="title" x="90" y="88">城市 PCG 生成算法</text>
+  <text class="section" x="116" y="168">➤ 当前内容呈现与预期效果展望：城市 pcg 生成</text>
+
+  <rect class="box" x="80" y="230" width="360" height="150" rx="16"/>
+  <text class="head" x="115" y="278">1. 输入约束</text>
+  <text class="body" x="115" y="320">城市边界、seed、道路参数</text>
+  <text class="formula" x="115" y="354">B = {p₁,p₂,...,pₙ}</text>
+
+  <rect class="blue" x="555" y="230" width="360" height="150" rx="16"/>
+  <text class="head" x="590" y="278">2. 边界解析</text>
+  <text class="body" x="590" y="320">检测面积、自相交与修复</text>
+  <text class="formula" x="590" y="354">Area(B) &gt; A_min</text>
+
+  <rect class="blue" x="1030" y="230" width="360" height="150" rx="16"/>
+  <text class="head" x="1065" y="278">3. 道路图生成</text>
+  <text class="body" x="1065" y="320">主路与支路在边界内生长</text>
+  <text class="formula" x="1065" y="354">Gᵣ = (Vᵣ, Eᵣ)</text>
+
+  <rect class="blue" x="1505" y="230" width="335" height="150" rx="16"/>
+  <text class="head" x="1540" y="278">4. 街区切分</text>
+  <text class="body" x="1540" y="320">道路网络切割城市区域</text>
+  <text class="formula" x="1540" y="354">Blocks = B - Road</text>
+
+  <path class="arrow" d="M440 305 L555 305"/>
+  <path class="arrow" d="M915 305 L1030 305"/>
+  <path class="arrow" d="M1390 305 L1505 305"/>
+
+  <rect class="green" x="1505" y="495" width="335" height="155" rx="16"/>
+  <text class="head" x="1540" y="545">5. 建筑生成</text>
+  <text class="body" x="1540" y="588">按地块概率放置建筑</text>
+  <text class="formula" x="1540" y="622">H = lerp(Hmin,Hmax,n)</text>
+
+  <rect class="orange" x="1030" y="495" width="360" height="155" rx="16"/>
+  <text class="head" x="1065" y="545">6. 地形验证</text>
+  <text class="body" x="1065" y="588">采样高度，限制坡度和水域</text>
+  <text class="formula" x="1065" y="622">grade = Δh / length</text>
+
+  <rect class="orange" x="555" y="495" width="360" height="155" rx="16"/>
+  <text class="head" x="590" y="545">7. 路网验证</text>
+  <text class="body" x="590" y="588">检查接口匹配与连通性</text>
+  <text class="formula" x="590" y="622">C = components(Gᵣ)</text>
+
+  <rect class="red" x="80" y="495" width="360" height="155" rx="16"/>
+  <text class="head" x="115" y="545">8. 战斗导向评价</text>
+  <text class="body" x="115" y="588">评估城市是否服务飞船战斗</text>
+  <text class="formula" x="115" y="622">Score = αM + βS + γC</text>
+
+  <path class="arrow" d="M1672 380 L1672 495"/>
+  <path class="arrow" d="M1505 572 L1390 572"/>
+  <path class="arrow" d="M1030 572 L915 572"/>
+  <path class="arrow" d="M555 572 L440 572"/>
+
+  <rect class="box" x="80" y="735" width="520" height="155" rx="18"/>
+  <text class="head" x="115" y="782">当前生成效果</text>
+  <g transform="translate(115 812)">
+    <rect x="0" y="0" width="250" height="56" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+    <line class="gridLine" x1="0" y1="18" x2="250" y2="18"/>
+    <line class="gridLine" x1="0" y1="38" x2="250" y2="38"/>
+    <line class="gridLine" x1="42" y1="0" x2="42" y2="56"/>
+    <line class="gridLine" x1="84" y1="0" x2="84" y2="56"/>
+    <line class="gridLine" x1="126" y1="0" x2="126" y2="56"/>
+    <line class="gridLine" x1="168" y1="0" x2="168" y2="56"/>
+    <line class="gridLine" x1="210" y1="0" x2="210" y2="56"/>
+    <rect class="building" x="9" y="6" width="23" height="9"/>
+    <rect class="building" x="93" y="25" width="23" height="9"/>
+    <rect class="building" x="177" y="43" width="23" height="9"/>
+    <rect class="park" x="219" y="43" width="23" height="9"/>
+  </g>
+  <text class="body" x="400" y="835">规则网格清晰</text>
+  <text class="small" x="400" y="868">但开放机动空间不足</text>
+
+  <rect class="green" x="720" y="735" width="505" height="155" rx="18"/>
+  <text class="head" x="755" y="782">战斗服务目标</text>
+  <text class="body" x="755" y="827">主干道、广场、河道形成飞行路线</text>
+  <text class="body" x="755" y="862">高低建筑形成射界与掩体变化</text>
+
+  <rect class="green" x="1345" y="735" width="480" height="155" rx="18"/>
+  <text class="head" x="1380" y="782">算法输出</text>
+  <text class="body" x="1380" y="827">Roads / Blocks / Buildings</text>
+  <text class="body" x="1380" y="862">Diagnostics / BattleScore</text>
+
+  <path class="thin" d="M260 650 L260 735"/>
+  <path class="thin" d="M260 650 C440 710 610 735 720 812"/>
+  <path class="thin" d="M440 572 C700 705 1070 705 1345 812"/>
+
+  <rect class="dark" x="90" y="955" width="1740" height="72" rx="16"/>
+  <text class="white" x="130" y="1000">核心结论：城市 PCG 需要从“能生成城市”提升为“能生成战斗空间”，让机动路线、射界和掩体共同影响飞船战斗。</text>
+</svg>

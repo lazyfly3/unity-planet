@@ -29,13 +29,13 @@ TagManager:
   - 
   - 
   - 
+  - CombatTerrain
+  - CombatObstacle
+  - CombatBoundary
+  - ModularVehicle
+  - BuildOnly
   - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
+  - CombatDebug
   - 
   m_SortingLayers:
   - name: Default

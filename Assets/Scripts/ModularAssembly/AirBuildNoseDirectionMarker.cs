@@ -7,7 +7,6 @@ using UnityEngine.SceneManagement;
 [DisallowMultipleComponent]
 public sealed class AirBuildNoseDirectionMarker : MonoBehaviour
 {
-    const string LabSceneName = "ModularAssemblyLab";
     const string ShipPresenterName = "GridShip";
 
     ModularAssemblyLabController controller;
@@ -18,10 +17,8 @@ public sealed class AirBuildNoseDirectionMarker : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Install()
     {
-        if (!string.Equals(
-                SceneManager.GetActiveScene().name,
-                LabSceneName,
-                StringComparison.OrdinalIgnoreCase)
+        if (!UnityPlanet.ModularAssembly.ModularLabSceneProfile
+                .AllowsBuildExperience(SceneManager.GetActiveScene())
             || FindObjectOfType<AirBuildNoseDirectionMarker>() != null)
         {
             return;

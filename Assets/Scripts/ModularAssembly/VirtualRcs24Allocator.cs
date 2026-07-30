@@ -94,8 +94,8 @@ namespace UnityPlanet.ModularAssembly
             public float usedFraction;
             public Vector3 allocatedForce;
             public Vector3 allocatedTorque;
-            public readonly int[] channelIndices = new int[4];
-            public readonly float[] channelWeights = new float[4];
+            public readonly int[] channelIndices = new int[12];
+            public readonly float[] channelWeights = new float[12];
             public int channelCount;
         }
 
@@ -242,10 +242,9 @@ namespace UnityPlanet.ModularAssembly
                     actualForces[i],
                     targetForces[i],
                     response);
-                actualTorques[i] = Vector3.Lerp(
-                    actualTorques[i],
-                    targetTorques[i],
-                    response);
+                actualTorques[i] = Vector3.Cross(
+                    thrusters[i].localPosition - centerOfMass,
+                    actualForces[i]);
                 actualThrottles[i] = Mathf.Lerp(
                     actualThrottles[i],
                     targetThrottles[i],
@@ -289,10 +288,14 @@ namespace UnityPlanet.ModularAssembly
             bool torque)
         {
             Vector3 desired = request.desired;
-            if (desired.sqrMagnitude < Epsilon * Epsilon)
+            Vector3 current = CurrentAllocatedVector(torque);
+            Vector3 residualDemand = desired - current;
+            if (residualDemand.sqrMagnitude < Epsilon * Epsilon)
             {
                 return new Rcs24SolveResult
                 {
+                    localForce = torque ? Vector3.zero : current,
+                    localTorque = torque ? current : Vector3.zero,
                     commonScale = 1f,
                     bottleneckAxis = "none"
                 };
@@ -303,7 +306,7 @@ namespace UnityPlanet.ModularAssembly
             string bottleneck = "none";
             for (int axis = 0; axis < 3; axis++)
             {
-                float demand = desired[axis];
+                float demand = residualDemand[axis];
                 if (Mathf.Abs(demand) < Epsilon)
                     continue;
                 float capacity = AvailableCapacity(
@@ -341,17 +344,21 @@ namespace UnityPlanet.ModularAssembly
             }
             commonScale = Mathf.Clamp01(commonScale);
 
-            Vector3 output = desired * commonScale;
-            for (int axis = 0; axis < 3; axis++)
+            Vector3 target = current + residualDemand * commonScale;
+            if (!AllocateVector(
+                    target,
+                    torque,
+                    request.strictDirection,
+                    out Vector3 output))
             {
-                float demand = output[axis];
-                if (Mathf.Abs(demand) < Epsilon)
-                    continue;
-                AllocateAxis(
-                    axis,
-                    Mathf.Sign(demand),
-                    Mathf.Abs(demand),
-                    torque);
+                commonScale = 0f;
+                output = Vector3.zero;
+                for (int axis = 0; axis < 3; axis++)
+                {
+                    if (Mathf.Abs(residualDemand[axis]) >= Epsilon)
+                        missingMask |= 1 << axis;
+                }
+                bottleneck = "direction";
             }
 
             RecordSolveState(
@@ -371,42 +378,132 @@ namespace UnityPlanet.ModularAssembly
             };
         }
 
-        void AllocateAxis(
-            int axis,
-            float sign,
-            float demand,
-            bool torque)
+        bool AllocateVector(
+            Vector3 target,
+            bool torque,
+            bool strictDirection,
+            out Vector3 achieved)
         {
-            float capacity = AvailableCapacity(axis, sign, torque);
-            if (capacity < Epsilon)
-                return;
-            float fraction = Mathf.Clamp01(demand / capacity);
-
-            foreach (Contribution contribution in contributions)
+            achieved = CurrentAllocatedVector(torque);
+            if ((target - achieved).sqrMagnitude <
+                Epsilon * Epsilon)
             {
-                float component = torque
-                    ? contribution.torqueVector[axis]
-                    : contribution.forceVector[axis];
-                if (component * sign <= Epsilon)
+                return true;
+            }
+
+            int count = contributions.Count;
+            float[] baseUse = new float[count];
+            float[] additions = new float[count];
+            Vector3[] bases = new Vector3[count];
+            for (int i = 0; i < count; i++)
+            {
+                Contribution contribution = contributions[i];
+                baseUse[i] = contribution.usedFraction;
+                bases[i] = (torque
+                    ? contribution.torqueVector
+                    : contribution.forceVector) *
+                    contribution.stepScale;
+            }
+
+            // Bounded coordinate descent. Each physical thruster owns one
+            // scalar here, so its split X/Y/Z authority cannot be spent more
+            // than once across rotation, hover, braking and translation.
+            for (int iteration = 0; iteration < 64; iteration++)
+            {
+                Vector3 error = target - achieved;
+                if (error.sqrMagnitude <=
+                    Mathf.Max(0.01f, target.sqrMagnitude * 0.000025f))
+                {
+                    break;
+                }
+
+                bool changed = false;
+                for (int i = 0; i < count; i++)
+                {
+                    Vector3 basis = bases[i];
+                    float denominator = basis.sqrMagnitude;
+                    float available = 1f - baseUse[i];
+                    if (denominator < Epsilon * Epsilon ||
+                        available <= Epsilon)
+                    {
+                        continue;
+                    }
+
+                    float delta =
+                        Vector3.Dot(target - achieved, basis) /
+                        denominator;
+                    float next = Mathf.Clamp(
+                        additions[i] + delta,
+                        0f,
+                        available);
+                    float applied = next - additions[i];
+                    if (Mathf.Abs(applied) <= 0.000001f)
+                        continue;
+                    additions[i] = next;
+                    achieved += basis * applied;
+                    changed = true;
+                }
+
+                if (!changed)
+                    break;
+            }
+
+            Vector3 targetDirection = target.normalized;
+            float along = Vector3.Dot(achieved, targetDirection);
+            Vector3 lateral =
+                achieved - targetDirection * Mathf.Max(0f, along);
+            bool directionValid =
+                along >= target.magnitude * 0.98f &&
+                lateral.magnitude <= target.magnitude * 0.02f;
+            if (strictDirection && !directionValid)
+            {
+                achieved = Vector3.zero;
+                return false;
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                float use = additions[i];
+                if (use <= Epsilon)
                     continue;
-                float remaining = 1f - contribution.usedFraction;
-                if (remaining <= Epsilon)
-                    continue;
-                float addedUse = remaining * fraction;
-                contribution.usedFraction += addedUse;
-                float output = Mathf.Abs(component) *
-                               contribution.stepScale *
-                               addedUse;
+                Contribution contribution = contributions[i];
+                contribution.usedFraction = baseUse[i] + use;
+                Vector3 allocation = bases[i] * use;
+                Vector3 physicalForce = contribution.forceVector *
+                    contribution.stepScale * use;
                 if (torque)
                 {
-                    contribution.allocatedTorque[axis] += sign * output;
+                    // A physical thruster cannot create a free-standing torque.
+                    // Every requested moment must retain its paired force so the
+                    // final wrench remains F and (r - COM) x F.
+                    contribution.allocatedTorque += allocation;
+                    contribution.allocatedForce += physicalForce;
                 }
                 else
                 {
-                    contribution.allocatedForce[axis] += sign * output;
-                    AddChannelOutput(contribution, output);
+                    contribution.allocatedForce += physicalForce;
+                    contribution.allocatedTorque += Vector3.Cross(
+                        contribution.localPosition - centerOfMass,
+                        physicalForce);
                 }
+                AddChannelOutput(
+                    contribution,
+                    contribution.maximumForce *
+                    contribution.stepScale * use);
             }
+            return achieved.sqrMagnitude > Epsilon * Epsilon;
+        }
+
+        Vector3 CurrentAllocatedVector(bool torque)
+        {
+            Vector3 result = Vector3.zero;
+            foreach (Contribution contribution in contributions)
+            {
+                result += torque
+                    ? contribution.allocatedTorque
+                    : contribution.allocatedForce;
+            }
+            return result;
         }
 
         float AvailableCapacity(int axis, float sign, bool torque)
@@ -497,26 +594,30 @@ namespace UnityPlanet.ModularAssembly
             Vector3 direction = source.localDirection.sqrMagnitude > Epsilon
                 ? source.localDirection.normalized
                 : Vector3.forward;
+            float maximumForce = Mathf.Max(0f, source.maximumForce);
+            Vector3 force = direction * maximumForce;
+            Contribution contribution = new Contribution
+            {
+                thrusterIndex = source.sourceIndex,
+                localPosition = source.localPosition,
+                forceVector = force,
+                torqueVector = Vector3.Cross(
+                    source.localPosition - centerOfMass,
+                    force),
+                maximumForce = maximumForce
+            };
             for (int axis = 0; axis < 3; axis++)
             {
-                float signedForce =
-                    direction[axis] * Mathf.Max(0f, source.maximumForce);
+                float signedForce = force[axis];
                 if (Mathf.Abs(signedForce) < Epsilon)
                     continue;
-                Vector3 force = Axis(axis) * signedForce;
-                Contribution contribution = new Contribution
-                {
-                    thrusterIndex = source.sourceIndex,
-                    localPosition = source.localPosition,
-                    forceVector = force,
-                    torqueVector = Vector3.Cross(
-                        source.localPosition - centerOfMass,
-                        force),
-                    maximumForce = Mathf.Abs(signedForce)
-                };
-                AssignChannelWeights(contribution, axis, Mathf.Sign(signedForce));
-                contributions.Add(contribution);
+                AppendChannelWeights(
+                    contribution,
+                    axis,
+                    Mathf.Sign(signedForce),
+                    Mathf.Abs(direction[axis]));
             }
+            contributions.Add(contribution);
         }
 
         void AddTrainingCore(float up, float down, float planar)
@@ -552,10 +653,11 @@ namespace UnityPlanet.ModularAssembly
             }
         }
 
-        void AssignChannelWeights(
+        void AppendChannelWeights(
             Contribution contribution,
             int axis,
-            float directionSign)
+            float directionSign,
+            float axisWeight)
         {
             int first = (axis + 1) % 3;
             int second = (axis + 2) % 3;
@@ -569,10 +671,12 @@ namespace UnityPlanet.ModularAssembly
                 Mathf.Max(Epsilon, halfExtents[second]),
                 -1f,
                 1f);
-            int cursor = 0;
+            int cursor = contribution.channelCount;
             for (int firstSign = -1; firstSign <= 1; firstSign += 2)
             for (int secondSign = -1; secondSign <= 1; secondSign += 2)
             {
+                if (cursor >= contribution.channelIndices.Length)
+                    break;
                 int[] corner = { 0, 0, 0 };
                 corner[axis] = directionSign > 0f ? -1 : 1;
                 corner[first] = firstSign;
@@ -580,7 +684,7 @@ namespace UnityPlanet.ModularAssembly
                 contribution.channelIndices[cursor] =
                     FindChannel(corner[0], corner[1], corner[2], axis);
                 contribution.channelWeights[cursor] =
-                    0.25f *
+                    axisWeight * 0.25f *
                     (1f + firstSign * normalizedFirst) *
                     (1f + secondSign * normalizedSecond);
                 cursor++;

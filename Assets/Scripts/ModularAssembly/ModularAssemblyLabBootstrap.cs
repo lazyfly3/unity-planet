@@ -36,7 +36,7 @@ public sealed class ModularAssemblyLabBootstrap : MonoBehaviour
         var body = ship.AddComponent<Rigidbody>();
         body.useGravity = false;
         body.drag = 0f;
-        body.angularDrag = 0.08f;
+        body.angularDrag = 0f;
         body.interpolation = RigidbodyInterpolation.Interpolate;
         body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
         Transform parts = new GameObject("Parts").transform;
@@ -45,9 +45,6 @@ public sealed class ModularAssemblyLabBootstrap : MonoBehaviour
         core.SetParent(ship.transform, false);
         ShipAssembly assembly = ship.AddComponent<ShipAssembly>();
         assembly.Configure(body, parts, null, 1000f);
-        var input = ship.AddComponent<KeyboardMouseFlightInput>();
-        var ifcs = ship.AddComponent<SpacecraftIfcsMotor>();
-
         var model = new GridAssemblyModel(definitions);
         GridAssemblyPresenter presenter = ship.AddComponent<GridAssemblyPresenter>();
         presenter.Initialize(model, assembly, core);
@@ -55,7 +52,7 @@ public sealed class ModularAssemblyLabBootstrap : MonoBehaviour
         GridLabCameraController cameraController = gameObject.AddComponent<GridLabCameraController>();
         cameraController.Initialize(sceneCamera, ship.transform);
         GridFlightBridge flight = ship.AddComponent<GridFlightBridge>();
-        flight.Initialize(body, assembly, ifcs, input, cameraController);
+        flight.Initialize(body, assembly, cameraController);
 
         GameObject targetObject = new GameObject("ModuleTarget");
         targetObject.transform.position = new Vector3(0f, 0f, 80f);

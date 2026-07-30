@@ -14,7 +14,7 @@ namespace UnityPlanet.ModularAssembly
 
         private static void InstallForScene(Scene scene, LoadSceneMode mode)
         {
-            if (scene.name != "ModularAssemblyLab")
+            if (!ModularLabSceneProfile.AllowsBuildExperience(scene))
             {
                 return;
             }

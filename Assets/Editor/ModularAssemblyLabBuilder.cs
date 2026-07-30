@@ -63,6 +63,12 @@ public static class ModularAssemblyLabBuilder
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         GameObject root = new GameObject("ModularAssemblyLab");
         var bootstrap = root.AddComponent<ModularAssemblyLabBootstrap>();
+        var sceneProfile =
+            root.AddComponent<UnityPlanet.ModularAssembly.ModularLabSceneProfile>();
+        sceneProfile.Configure(
+            buildExperience: true,
+            combatTest: true,
+            planetLabFlightEnvironment: true);
 
         GameObject cameraObject = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener));
         cameraObject.tag = "MainCamera";

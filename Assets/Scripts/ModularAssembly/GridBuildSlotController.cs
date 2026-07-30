@@ -30,7 +30,8 @@ namespace UnityPlanet.ModularAssembly
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
         {
-            if (SceneManager.GetActiveScene().name != "ModularAssemblyLab" ||
+            if (!ModularLabSceneProfile.AllowsBuildExperience(
+                    SceneManager.GetActiveScene()) ||
                 FindObjectOfType<GridBuildSlotController>() != null)
             {
                 return;

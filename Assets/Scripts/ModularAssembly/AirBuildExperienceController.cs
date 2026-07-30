@@ -56,7 +56,6 @@ namespace UnityPlanet.ModularAssembly
         private GameObject selectionPanel;
         private Text selectionName;
         private Button selectionDeleteButton;
-        private Button selectedManualGroupButton;
         private GameObject wheelRoleRoot;
         private readonly List<Button> wheelRoleButtons = new List<Button>();
         private RawImage compactImage;
@@ -92,7 +91,8 @@ namespace UnityPlanet.ModularAssembly
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
         {
-            if (SceneManager.GetActiveScene().name != "ModularAssemblyLab" ||
+            if (!ModularLabSceneProfile.AllowsBuildExperience(
+                    SceneManager.GetActiveScene()) ||
                 FindObjectOfType<AirBuildExperienceController>() != null)
             {
                 return;
@@ -202,6 +202,12 @@ namespace UnityPlanet.ModularAssembly
 
             if (!placing)
             {
+                if (Input.GetKeyDown(KeyCode.R))
+                {
+                    controller.Redo();
+                    RefreshSelectionPanel();
+                    return;
+                }
                 RefreshSelectionPanel();
                 return;
             }
@@ -328,37 +334,18 @@ namespace UnityPlanet.ModularAssembly
             selectionDeleteButton.interactable = editable;
             bool isWheel = WheelModuleProfile.IsWheelModuleId(
                 selected.Definition.ModuleId);
-            bool isThruster =
-                selected.Definition.Category == GridModuleCategory.MainThruster ||
-                selected.Definition.Category == GridModuleCategory.RcsThruster ||
-                (selected.Definition.ModuleId ?? string.Empty).IndexOf(
-                    "rocket",
-                    StringComparison.OrdinalIgnoreCase) >= 0 ||
-                (selected.Definition.ModuleId ?? string.Empty).IndexOf(
-                    "propeller",
-                    StringComparison.OrdinalIgnoreCase) >= 0;
             wheelRoleRoot.SetActive(isWheel);
-            if (selectedManualGroupButton != null)
-                selectedManualGroupButton.gameObject.SetActive(isThruster);
             RectTransform selectionRect =
                 selectionPanel.GetComponent<RectTransform>();
             selectionRect.sizeDelta = new Vector2(
                 310f,
-                isWheel ? 226f : isThruster ? 196f : 142f);
+                isWheel ? 226f : 142f);
             SetRect(
                 selectionDeleteButton.GetComponent<RectTransform>(),
                 new Vector2(
                     16f,
-                    isWheel ? -168f : isThruster ? -138f : -84f),
+                    isWheel ? -168f : -84f),
                 new Vector2(278f, 42f));
-            if (isThruster && selectedManualGroupButton != null)
-            {
-                selectedManualGroupButton.GetComponentInChildren<Text>().text =
-                    selected.ManualGroupId < 0
-                        ? "手动推进组：未编组"
-                        : "手动推进组：" +
-                          (selected.ManualGroupId + 1);
-            }
             if (isWheel)
             {
                 WheelRoleOverride role =
@@ -388,24 +375,6 @@ namespace UnityPlanet.ModularAssembly
                 return;
             }
             controller.DeleteSelected();
-            RefreshSelectionPanel();
-        }
-
-        private void CycleSelectedManualGroup()
-        {
-            if (controller == null)
-                return;
-            GridModuleRecord selected =
-                controller.Model.Find(controller.SelectedRuntimeId);
-            if (selected == null)
-                return;
-            int next = selected.ManualGroupId >= 7
-                ? -1
-                : selected.ManualGroupId + 1;
-            controller.Model.TrySetManualGroup(
-                selected.RuntimeId,
-                next,
-                out _);
             RefreshSelectionPanel();
         }
 
@@ -463,6 +432,31 @@ namespace UnityPlanet.ModularAssembly
                 message = "战斗测试系统尚未初始化。";
             else
                 combat.TryBeginCombat(out message);
+            if (placementText != null)
+                placementText.text = message;
+        }
+
+        private void ExportAiDiagnosticFromBuildUi()
+        {
+            if (controller == null)
+                return;
+            if (placing)
+                CancelPlacement();
+
+            bool success = VehicleAiDiagnosticExporter.TryExport(
+                controller.Model,
+                presenter,
+                ResolveMotionCoordinatorRc1(),
+                out string path,
+                out string message);
+            if (success)
+            {
+                GUIUtility.systemCopyBuffer = path;
+                message =
+                    "\u5df2\u751f\u6210 AI \u98de\u884c\u8bca\u65ad\u6587\u4ef6\uff0c" +
+                    "\u8def\u5f84\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f\u3002";
+                Debug.Log($"AI vehicle diagnostic exported: {path}", this);
+            }
             if (placementText != null)
                 placementText.text = message;
         }
@@ -631,7 +625,10 @@ namespace UnityPlanet.ModularAssembly
             }
             for (int index = surfaceRoot.childCount - 1; index >= 0; index--)
             {
-                Destroy(surfaceRoot.GetChild(index).gameObject);
+                GameObject staleProxy =
+                    surfaceRoot.GetChild(index).gameObject;
+                staleProxy.SetActive(false);
+                Destroy(staleProxy);
             }
 
             HashSet<Vector3Int> occupied = new HashSet<Vector3Int>();
@@ -1018,7 +1015,23 @@ namespace UnityPlanet.ModularAssembly
                 15,
                 FontStyle.Normal,
                 new Color(0.65f, 0.82f, 0.88f, 1f));
-            SetRect(placementText.rectTransform, new Vector2(18f, -884f), new Vector2(354f, 54f));
+            SetRect(
+                placementText.rectTransform,
+                new Vector2(18f, -878f),
+                new Vector2(354f, 42f));
+
+            Button exportDiagnostic = CreateButton(
+                fullPanel.transform,
+                "\u5bfc\u51fa AI \u98de\u884c\u8bca\u65ad");
+            SetRect(
+                exportDiagnostic.GetComponent<RectTransform>(),
+                new Vector2(18f, -930f),
+                new Vector2(354f, 38f));
+            exportDiagnostic.GetComponent<Image>().color =
+                new Color(0.04f, 0.48f, 0.64f, 0.98f);
+            exportDiagnostic.GetComponentInChildren<Text>().fontSize = 15;
+            exportDiagnostic.onClick.AddListener(
+                ExportAiDiagnosticFromBuildUi);
 
             compactPanel = new GameObject("CompactPlacement", typeof(RectTransform));
             compactPanel.transform.SetParent(sidebar, false);
@@ -1103,16 +1116,6 @@ namespace UnityPlanet.ModularAssembly
                 new Vector2(16f, -84f),
                 new Vector2(278f, 42f));
             selectionDeleteButton.onClick.AddListener(DeleteSelectedModule);
-            selectedManualGroupButton = CreateButton(
-                selectionPanel.transform,
-                "手动推进组：未编组");
-            SetRect(
-                selectedManualGroupButton.GetComponent<RectTransform>(),
-                new Vector2(16f, -84f),
-                new Vector2(278f, 42f));
-            selectedManualGroupButton.onClick.AddListener(
-                CycleSelectedManualGroup);
-            selectedManualGroupButton.gameObject.SetActive(false);
             selectionPanel.SetActive(false);
 
             flightButton = CreateButton(canvas.transform, "开始试飞  F5");
@@ -1165,12 +1168,15 @@ namespace UnityPlanet.ModularAssembly
             battleTestButton.GetComponent<Image>().color =
                 new Color(0.82f, 0.22f, 0.12f, 0.98f);
             battleTestButton.GetComponentInChildren<Text>().fontSize = 15;
-            battleTestButton.onClick.AddListener(
+            
+            battleTestButton.gameObject.SetActive(
+                ModularLabSceneProfile.AllowsCombatTest(gameObject.scene));
+battleTestButton.onClick.AddListener(
                 StartCombatTestFromBuildUi);
 
             coreThrusterToggleButton = CreateButton(
                 canvas.transform,
-                "核心辅助：弱保底");
+                "\u6838\u5fc3\u8f85\u52a9\uff1a\u6807\u51c6");
             RectTransform coreThrusterRect =
                 coreThrusterToggleButton.GetComponent<RectTransform>();
             coreThrusterRect.anchorMin = new Vector2(1f, 1f);
@@ -1233,10 +1239,11 @@ namespace UnityPlanet.ModularAssembly
             if (coordinator == null)
                 return;
             VehicleCoreAssistMode next =
-                coordinator.CoreAssistMode ==
-                VehicleCoreAssistMode.Standard
+                coordinator.CoreAssistMode == VehicleCoreAssistMode.Standard
                     ? VehicleCoreAssistMode.Training
-                    : VehicleCoreAssistMode.Standard;
+                    : coordinator.CoreAssistMode == VehicleCoreAssistMode.Training
+                        ? VehicleCoreAssistMode.Disabled
+                        : VehicleCoreAssistMode.Standard;
             coordinator.SetCoreAssistMode(next);
             RefreshCoreThrusterToggle();
         }
@@ -1254,17 +1261,39 @@ namespace UnityPlanet.ModularAssembly
                 : VehicleCoreAssistMode.Standard;
             if (coreThrusterToggleLabel != null)
             {
-                coreThrusterToggleLabel.text =
-                    level == VehicleCoreAssistMode.Training
-                        ? "核心辅助：新手"
-                        : "核心辅助：标准";
+                switch (level)
+                {
+                    case VehicleCoreAssistMode.Training:
+                        coreThrusterToggleLabel.text =
+                            "\u6838\u5fc3\u8f85\u52a9\uff1a\u65b0\u624b";
+                        break;
+                    case VehicleCoreAssistMode.Disabled:
+                        coreThrusterToggleLabel.text =
+                            "\u6838\u5fc3\u8f85\u52a9\uff1a\u65e0\u8f85\u52a9";
+                        break;
+                    default:
+                        coreThrusterToggleLabel.text =
+                            "\u6838\u5fc3\u8f85\u52a9\uff1a\u6807\u51c6";
+                        break;
+                }
             }
             if (coreThrusterToggleButton != null)
             {
+                Color modeColor;
+                switch (level)
+                {
+                    case VehicleCoreAssistMode.Training:
+                        modeColor = new Color(0.04f, 0.72f, 0.65f, 0.98f);
+                        break;
+                    case VehicleCoreAssistMode.Disabled:
+                        modeColor = new Color(0.28f, 0.22f, 0.22f, 0.98f);
+                        break;
+                    default:
+                        modeColor = new Color(0.08f, 0.35f, 0.48f, 0.98f);
+                        break;
+                }
                 coreThrusterToggleButton.GetComponent<Image>().color =
-                    level == VehicleCoreAssistMode.Training
-                        ? new Color(0.04f, 0.72f, 0.65f, 0.98f)
-                        : new Color(0.08f, 0.35f, 0.48f, 0.98f);
+                    modeColor;
             }
             if (controlSchemeLabel != null)
                 controlSchemeLabel.text = "控制：RC相机转向";

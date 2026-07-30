@@ -299,6 +299,10 @@ if (!HasPlanet(coordinate))
                 ? Mathf.Lerp(100_000f, 600_000f, atmosphere)
                 : 0d
         };
+        physical.wind = CreateWindProfile(
+            ref random,
+            hasAtmosphere,
+            atmosphere);
         physical.ClampValues();
         var profile = new PlanetCelestialProfile
         {
@@ -327,6 +331,33 @@ if (!HasPlanet(coordinate))
         };
         profile.ClampValues();
         return profile;
+    }
+
+    static PlanetWindProfile CreateWindProfile(
+        ref StableRandom random,
+        bool hasAtmosphere,
+        float atmosphere)
+    {
+        bool enabled = hasAtmosphere && random.Value() >= 0.3f;
+        float angle = random.Value() * Mathf.PI * 2f;
+        float climateStrength = Mathf.Lerp(0.45f, 1.25f, atmosphere);
+        return new PlanetWindProfile
+        {
+            enabled = enabled,
+            seed = Mathf.FloorToInt(random.Value() * int.MaxValue),
+            referenceWindSpeed = enabled
+                ? Mathf.Lerp(1f, 18f, random.Value()) * climateStrength
+                : 0f,
+            referenceDirection =
+                new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)),
+            shearExponent = Mathf.Lerp(0.08f, 0.24f, random.Value()),
+            gustPeakSpeed = enabled
+                ? Mathf.Lerp(0.25f, 6f, random.Value()) * climateStrength
+                : 0f,
+            gustFrequencyRange = new Vector2(0.02f, 0.12f),
+            coherenceLength = Mathf.Lerp(80f, 260f, random.Value()),
+            verticalGustRatio = Mathf.Lerp(0.15f, 0.45f, random.Value())
+        };
     }
 
     static AtmosphereVisualProfile CreateAtmosphereVisual(

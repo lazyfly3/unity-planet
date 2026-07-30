@@ -42,6 +42,46 @@ namespace UnityPlanet.ModularAssembly
             cachedRoot = rootObject.transform;
             return cachedRoot;
         }
+
+        public static void ClearVisuals()
+        {
+            Transform root = cachedRoot;
+            if (root == null)
+            {
+                GameObject rootObject = GameObject.Find(RootName);
+                root = rootObject == null
+                    ? null
+                    : rootObject.transform;
+            }
+            if (root == null)
+                return;
+
+            foreach (WeaponProjectile projectile in
+                     root.GetComponentsInChildren<WeaponProjectile>(true))
+            {
+                if (projectile == null)
+                    continue;
+                projectile.ResetForPool();
+                projectile.gameObject.SetActive(false);
+            }
+            foreach (ParticleSystem particle in
+                     root.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                particle.Stop(
+                    true,
+                    ParticleSystemStopBehavior.StopEmittingAndClear);
+                particle.Clear(true);
+            }
+            foreach (TrailRenderer trail in
+                     root.GetComponentsInChildren<TrailRenderer>(true))
+                trail.Clear();
+            foreach (Transform child in root)
+            {
+                if (child.name == "WeaponTracer" ||
+                    child.name == "HeavyLaser_HovlRay")
+                    child.gameObject.SetActive(false);
+            }
+        }
     }
 
     [DefaultExecutionOrder(10000)]

@@ -9,7 +9,6 @@ namespace UnityPlanet.ModularAssembly
     /// </summary>
     internal sealed class BuildPlatformSlabRemover : MonoBehaviour
     {
-        private const string LabSceneName = "ModularAssemblyLab";
         private const string PlatformObjectName = "IndustrialTestPlatform";
         private const float SlabMinimumHorizontalSize = 2f;
 
@@ -18,7 +17,8 @@ namespace UnityPlanet.ModularAssembly
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
         {
-            if (SceneManager.GetActiveScene().name != LabSceneName ||
+            if (!ModularLabSceneProfile.AllowsBuildExperience(
+                    SceneManager.GetActiveScene()) ||
                 FindObjectOfType<BuildPlatformSlabRemover>() != null)
             {
                 return;
