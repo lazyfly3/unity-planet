@@ -1544,9 +1544,11 @@ public sealed class GridTargetController : MonoBehaviour
             return;
         if (record.Definition.Category == GridModuleCategory.Core)
         {
+            PlayDestructionEffect(runtimeId, record, damage, true);
             DestroyTarget(damage);
             return;
         }
+        PlayDestructionEffect(runtimeId, record, damage, false);
         model.TryRemove(runtimeId, out _);
         health.Remove(runtimeId);
         List<List<GridModuleRecord>> disconnected = model.GetDisconnectedComponents();
@@ -1557,6 +1559,53 @@ public sealed class GridTargetController : MonoBehaviour
             foreach (GridModuleRecord item in component)
                 health.Remove(item.RuntimeId);
         }
+    }
+
+    void PlayDestructionEffect(
+        string runtimeId,
+        GridModuleRecord record,
+        SpaceDamageInfo damage,
+        bool isCore)
+    {
+        Bounds bounds = new Bounds(damage.point, Vector3.one);
+        if (presenter != null &&
+            presenter.Views.TryGetValue(
+                runtimeId,
+                out GridModuleView view) &&
+            view != null)
+        {
+            Renderer[] renderers =
+                view.GetComponentsInChildren<Renderer>(true);
+            if (renderers.Length > 0)
+            {
+                bounds = renderers[0].bounds;
+                for (int index = 1; index < renderers.Length; index++)
+                    bounds.Encapsulate(renderers[index].bounds);
+            }
+            else
+            {
+                bounds = new Bounds(
+                    view.transform.position,
+                    Vector3.one);
+            }
+        }
+        Vector3 point = bounds.SqrDistance(damage.point) <= 1f
+            ? damage.point
+            : bounds.center;
+        Vector3 normal = damage.impulse.sqrMagnitude > 0.0001f
+            ? -damage.impulse.normalized
+            : Vector3.up;
+        UnityPlanet.ModularAssembly.CombatFeedbackController
+            .GetOrCreate()
+            .PlayDestruction(
+            new UnityPlanet.ModularAssembly.ModuleDestructionFeedbackContext(
+                runtimeId,
+                point,
+                normal,
+                record.Definition.Category,
+                isCore,
+                bounds,
+                0));
     }
 
     public float GetIntegrity(string runtimeId) =>

@@ -145,7 +145,10 @@ namespace UnityPlanet.ModularAssembly
 
             playerGraph = weapons.StructureGraph;
             if (playerGraph != null)
+            {
                 playerGraph.Destroyed += HandlePlayerDestroyed;
+                playerGraph.ModuleDamaged += HandlePlayerModuleDamaged;
+            }
             flight.StateChanged += HandleFlightState;
             DisableLegacyTargetAi();
             BuildUi();
@@ -502,11 +505,14 @@ namespace UnityPlanet.ModularAssembly
                 enemy = root.AddComponent<EnemyAirCombatVehicle>();
                 WeaponVisualPool pool =
                     weapons.GetComponent<WeaponVisualPool>();
+                WeaponProjectilePool projectilePool =
+                    weapons.GetComponent<WeaponProjectilePool>();
                 enemy.Initialize(
                     this,
                     playerGraph,
                     playerBody,
-                    pool);
+                    pool,
+                    projectilePool);
             }
             else
             {
@@ -532,7 +538,8 @@ namespace UnityPlanet.ModularAssembly
                 this,
                 playerGraph,
                 playerBody,
-                weapons.GetComponent<WeaponVisualPool>());
+                weapons.GetComponent<WeaponVisualPool>(),
+                weapons.GetComponent<WeaponProjectilePool>());
             enemy.StopCombat();
             root.SetActive(false);
         }
@@ -545,6 +552,13 @@ namespace UnityPlanet.ModularAssembly
         public void RecordEnemyDamage(float amount)
         {
             enemyTtk.RecordDamage(amount);
+        }
+
+        void HandlePlayerModuleDamaged(
+            VehicleModuleDamageFeedback feedback)
+        {
+            if (combatActive)
+                RecordPlayerDamage(feedback.DamageAmount);
         }
 
         void CheckBattleOutcome()
@@ -890,8 +904,19 @@ namespace UnityPlanet.ModularAssembly
             if (flight != null)
                 flight.StateChanged -= HandleFlightState;
             if (playerGraph != null)
+            {
                 playerGraph.Destroyed -= HandlePlayerDestroyed;
+                playerGraph.ModuleDamaged -= HandlePlayerModuleDamaged;
+            }
         }
+    }
+
+    public enum EnemyDelayedAttackState
+    {
+        Tracking,
+        Telegraph,
+        Fired,
+        Recovering
     }
 
     public sealed class EnemyAirCombatVehicle :
@@ -942,6 +967,7 @@ namespace UnityPlanet.ModularAssembly
         VehicleStructureGraph playerGraph;
         Rigidbody playerBody;
         WeaponVisualPool visuals;
+        WeaponProjectilePool projectiles;
         Rigidbody body;
         Material coreMaterial;
         Material structureMaterial;
@@ -954,8 +980,7 @@ namespace UnityPlanet.ModularAssembly
         float movementScale;
         float nextDecision;
         float nextShot;
-        float burstUntil;
-        float burstCooldownUntil;
+        float attackStateUntil;
         float aimErrorYaw;
         float aimErrorPitch;
         float orbitDirection;
@@ -963,7 +988,13 @@ namespace UnityPlanet.ModularAssembly
         string coreId;
         Vector3 desiredWorldVelocity;
         Vector3 desiredAimDirection;
+        Vector3 telegraphAimPoint;
+        Vector3 lockedAttackPoint;
         WeaponCommandFrame weaponCommand;
+        EnemyDelayedAttackState delayedAttackState;
+        LineRenderer telegraphLine;
+        AudioSource telegraphAudio;
+        static AudioClip telegraphClip;
         float thrusterThrottle;
         float initialThrusterCapacity;
         float initialLeftWingCapacity;
@@ -985,6 +1016,10 @@ namespace UnityPlanet.ModularAssembly
         const float DamageBlendSeconds = 0.55f;
         const float MaximumDamageBankDegrees = 22f;
         const float MaximumDamageYawDegrees = 6f;
+        const float AttackProjectileSpeed = 220f;
+        const float TelegraphSeconds = 0.75f;
+        const float FiredSeconds = 1.2f;
+        const float RecoverSeconds = 0.8f;
 
         public Vector3 DesiredWorldVelocity => desiredWorldVelocity;
         public Vector3 DesiredAimDirection => desiredAimDirection;
@@ -1041,12 +1076,15 @@ namespace UnityPlanet.ModularAssembly
             CombatTestController session,
             VehicleStructureGraph targetGraph,
             Rigidbody targetBody,
-            WeaponVisualPool effectPool)
+            WeaponVisualPool effectPool,
+            WeaponProjectilePool projectilePool)
         {
             owner = session;
             playerGraph = targetGraph;
             playerBody = targetBody;
             visuals = effectPool;
+            projectiles = projectilePool;
+            projectiles?.Prewarm(32);
             body = gameObject.AddComponent<Rigidbody>();
             body.useGravity = false;
             body.drag = 0f;
@@ -1063,6 +1101,8 @@ namespace UnityPlanet.ModularAssembly
             CaptureInitialArcadeCapabilities();
             RebuildGraphsAndMass();
             initialCpu = currentCpu;
+            EnsureTelegraphFeedback();
+            ResetDelayedAttack(0.35f);
             Vector3 horizontalForward =
                 Vector3.ProjectOnPlane(transform.forward, Vector3.up);
             if (horizontalForward.sqrMagnitude < 0.001f)
@@ -1085,11 +1125,11 @@ namespace UnityPlanet.ModularAssembly
             capabilityLostAt = -1f;
             nextDecision = 0f;
             nextShot = 0f;
-            burstUntil = 0f;
-            burstCooldownUntil = 0f;
             desiredWorldVelocity = Vector3.zero;
             desiredAimDirection = rotation * Vector3.forward;
             weaponCommand = default;
+            EnsureTelegraphFeedback();
+            ResetDelayedAttack(0.35f);
             foreach (Node node in nodes.Values)
             {
                 node.Destroyed = false;
@@ -1104,9 +1144,10 @@ namespace UnityPlanet.ModularAssembly
                 body.isKinematic = true;
                 body.position = position;
                 body.rotation = rotation;
+                body.isKinematic = false;
                 body.velocity = Vector3.zero;
                 body.angularVelocity = Vector3.zero;
-                body.isKinematic = false;
+                body.WakeUp();
             }
         }
 
@@ -1538,12 +1579,21 @@ namespace UnityPlanet.ModularAssembly
                     : new Bounds(node.Object.transform.position, Vector3.one);
                 for (int index = 1; index < renderers.Length; index++)
                     bounds.Encapsulate(renderers[index].bounds);
-                NeoXCombatFeedbackRuntime.TrySpawnModuleBreak(
+                Vector3 effectPoint =
                     hitPoint.sqrMagnitude > 0.0001f
                         ? hitPoint
-                        : bounds.center,
-                    impulse,
-                    bounds.size.magnitude);
+                        : bounds.center;
+                CombatFeedbackController.GetOrCreate().PlayDestruction(
+                    new ModuleDestructionFeedbackContext(
+                        node.Id,
+                        effectPoint,
+                        impulse.sqrMagnitude > 0.0001f
+                            ? -impulse.normalized
+                            : Vector3.up,
+                        CategoryForRole(node.Role),
+                        node.Role == ModuleRole.Core,
+                        bounds,
+                        0));
             }
             node.Destroyed = true;
             node.Health = 0f;
@@ -1561,12 +1611,13 @@ namespace UnityPlanet.ModularAssembly
                 aimErrorYaw = UnityEngine.Random.Range(-2.5f, 2.5f);
                 aimErrorPitch = UnityEngine.Random.Range(-2.5f, 2.5f);
             }
+            float targetDistance =
+                Vector3.Distance(body.position, playerBody.position);
             Vector3 target =
                 playerBody.worldCenterOfMass +
                 playerBody.velocity *
-                Mathf.Clamp(
-                    Vector3.Distance(body.position, playerBody.position) /
-                    650f,
+                    Mathf.Clamp(
+                    targetDistance / AttackProjectileSpeed,
                     0f,
                     1.2f);
             Vector3 aimDirection = target - body.worldCenterOfMass;
@@ -1592,19 +1643,246 @@ namespace UnityPlanet.ModularAssembly
                 desiredWorldVelocity = orbit * 42f +
                                        direction.normalized * 8f;
 
-            if (Time.time >= burstCooldownUntil)
+            UpdateDelayedAttack(target);
+        }
+
+        void UpdateDelayedAttack(Vector3 predictedTarget)
+        {
+            EnsureTelegraphFeedback();
+            switch (delayedAttackState)
             {
-                burstUntil = Time.time + 1.2f;
-                burstCooldownUntil = burstUntil + 0.8f;
+                case EnemyDelayedAttackState.Tracking:
+                    weaponCommand = AimCommand(predictedTarget, false);
+                    if (Time.time >= attackStateUntil &&
+                        ActiveWeaponCount > 0)
+                        BeginTelegraph(predictedTarget);
+                    break;
+                case EnemyDelayedAttackState.Telegraph:
+                    telegraphAimPoint = predictedTarget;
+                    weaponCommand = AimCommand(telegraphAimPoint, false);
+                    UpdateTelegraphLine();
+                    if (Time.time >= attackStateUntil)
+                        BeginFiring(telegraphAimPoint);
+                    break;
+                case EnemyDelayedAttackState.Fired:
+                    weaponCommand = AimCommand(lockedAttackPoint, true);
+                    TryFire(lockedAttackPoint);
+                    if (Time.time >= attackStateUntil)
+                    {
+                        delayedAttackState =
+                            EnemyDelayedAttackState.Recovering;
+                        attackStateUntil = Time.time + RecoverSeconds;
+                        weaponCommand =
+                            AimCommand(predictedTarget, false);
+                    }
+                    break;
+                default:
+                    weaponCommand = AimCommand(predictedTarget, false);
+                    if (Time.time >= attackStateUntil)
+                    {
+                        delayedAttackState =
+                            EnemyDelayedAttackState.Tracking;
+                        attackStateUntil = Time.time;
+                    }
+                    break;
             }
-            weaponCommand = new WeaponCommandFrame
+        }
+
+        WeaponCommandFrame AimCommand(Vector3 point, bool fire)
+        {
+            return new WeaponCommandFrame
             {
                 WeaponGroup = 1,
-                FireHeld = Time.time <= burstUntil,
+                FireHeld = fire,
                 AimHeld = true,
-                AimPoint = target
+                AimPoint = point
             };
-            TryFire(target);
+        }
+
+        void BeginTelegraph(Vector3 predictedTarget)
+        {
+            delayedAttackState = EnemyDelayedAttackState.Telegraph;
+            attackStateUntil = Time.time + TelegraphSeconds;
+            telegraphAimPoint = predictedTarget;
+            if (telegraphLine != null)
+                telegraphLine.enabled = true;
+            if (telegraphAudio != null && telegraphClip != null)
+            {
+                telegraphAudio.clip = telegraphClip;
+                telegraphAudio.Play();
+            }
+            UpdateTelegraphLine();
+        }
+
+        void BeginFiring(Vector3 predictedTarget)
+        {
+            Vector3 origin = ResolveWeaponCentroid();
+            Vector3 direction = predictedTarget - origin;
+            if (direction.sqrMagnitude < 0.0001f)
+                direction = transform.forward;
+            direction = Quaternion.Euler(
+                            aimErrorPitch,
+                            aimErrorYaw,
+                            0f) *
+                        direction.normalized;
+            lockedAttackPoint =
+                origin + direction * Mathf.Max(
+                    1f,
+                    Vector3.Distance(origin, predictedTarget));
+            delayedAttackState = EnemyDelayedAttackState.Fired;
+            attackStateUntil = Time.time + FiredSeconds;
+            nextShot = 0f;
+            if (telegraphLine != null)
+                telegraphLine.enabled = false;
+        }
+
+        void ResetDelayedAttack(float trackingDelay)
+        {
+            delayedAttackState = EnemyDelayedAttackState.Tracking;
+            attackStateUntil = Time.time + Mathf.Max(0f, trackingDelay);
+            telegraphAimPoint = Vector3.zero;
+            lockedAttackPoint = Vector3.zero;
+            if (telegraphLine != null)
+                telegraphLine.enabled = false;
+            if (telegraphAudio != null)
+                telegraphAudio.Stop();
+        }
+
+        void EnsureTelegraphFeedback()
+        {
+            if (telegraphLine == null)
+            {
+                GameObject lineRoot =
+                    new GameObject("EnemyAttackTelegraph");
+                lineRoot.transform.SetParent(
+                    CombatTransientRoot.GetOrCreate(),
+                    false);
+                telegraphLine =
+                    lineRoot.AddComponent<LineRenderer>();
+                telegraphLine.useWorldSpace = true;
+                telegraphLine.positionCount = 2;
+                telegraphLine.textureMode = LineTextureMode.Stretch;
+                telegraphLine.numCapVertices = 2;
+                telegraphLine.startWidth = 0.065f;
+                telegraphLine.endWidth = 0.018f;
+                Shader shader =
+                    Shader.Find("Sprites/Default") ??
+                    Shader.Find(
+                        "Universal Render Pipeline/Unlit") ??
+                    Shader.Find("Unlit/Color");
+                telegraphLine.sharedMaterial = new Material(shader);
+                telegraphLine.enabled = false;
+            }
+            if (telegraphAudio == null)
+            {
+                AudioSource existingAudio =
+                    gameObject.GetComponent<AudioSource>();
+                telegraphAudio = existingAudio != null
+                    ? existingAudio
+                    : gameObject.AddComponent<AudioSource>();
+                if (telegraphAudio == null)
+                    return;
+                telegraphAudio.playOnAwake = false;
+                telegraphAudio.spatialBlend = 0.65f;
+                telegraphAudio.volume = 0.38f;
+                telegraphAudio.maxDistance = 280f;
+                telegraphAudio.rolloffMode =
+                    AudioRolloffMode.Linear;
+            }
+            if (telegraphClip == null)
+                telegraphClip = CreateTelegraphClip();
+        }
+
+        void UpdateTelegraphLine()
+        {
+            if (telegraphLine == null ||
+                delayedAttackState !=
+                EnemyDelayedAttackState.Telegraph)
+                return;
+            float progress = 1f - Mathf.Clamp01(
+                (attackStateUntil - Time.time) /
+                TelegraphSeconds);
+            float pulse = 0.6f +
+                          Mathf.Sin(progress * Mathf.PI * 8f) * 0.4f;
+            Color color = Color.Lerp(
+                new Color(1f, 0.62f, 0.08f, 0.35f),
+                new Color(1f, 0.08f, 0.02f, 0.92f),
+                progress);
+            color.a *= pulse;
+            telegraphLine.startColor = color;
+            telegraphLine.endColor =
+                new Color(color.r, color.g, color.b, color.a * 0.08f);
+            telegraphLine.SetPosition(0, ResolveWeaponCentroid());
+            telegraphLine.SetPosition(1, telegraphAimPoint);
+        }
+
+        Vector3 ResolveWeaponCentroid()
+        {
+            Vector3 sum = Vector3.zero;
+            int count = 0;
+            foreach (Node node in nodes.Values)
+            {
+                if (node.Role != ModuleRole.Weapon ||
+                    !IsFunctional(node) ||
+                    node.Object == null)
+                    continue;
+                sum += node.Object.transform.position +
+                       transform.forward * 0.7f;
+                count++;
+            }
+            return count > 0
+                ? sum / count
+                : body != null
+                    ? body.worldCenterOfMass
+                    : transform.position;
+        }
+
+        static AudioClip CreateTelegraphClip()
+        {
+            const int sampleRate = 22050;
+            const float duration = 0.18f;
+            int sampleCount =
+                Mathf.CeilToInt(sampleRate * duration);
+            float[] samples = new float[sampleCount];
+            float phase = 0f;
+            for (int index = 0; index < sampleCount; index++)
+            {
+                float normalized =
+                    index / (float)sampleCount;
+                float frequency = Mathf.Lerp(620f, 980f, normalized);
+                phase += Mathf.PI * 2f * frequency / sampleRate;
+                float envelope =
+                    Mathf.Sin(normalized * Mathf.PI);
+                samples[index] =
+                    Mathf.Sin(phase) * envelope * 0.32f;
+            }
+            AudioClip clip = AudioClip.Create(
+                "EnemyAttackTelegraph",
+                sampleCount,
+                1,
+                sampleRate,
+                false);
+            clip.SetData(samples, 0);
+            return clip;
+        }
+
+        static GridModuleCategory CategoryForRole(ModuleRole role)
+        {
+            switch (role)
+            {
+                case ModuleRole.Core:
+                    return GridModuleCategory.Core;
+                case ModuleRole.Thruster:
+                    return GridModuleCategory.MainThruster;
+                case ModuleRole.Wing:
+                    return GridModuleCategory.Mobility;
+                case ModuleRole.Weapon:
+                    return GridModuleCategory.KineticWeapon;
+                case ModuleRole.Energy:
+                    return GridModuleCategory.Battery;
+                default:
+                    return GridModuleCategory.Structure;
+            }
         }
 
         void FixedUpdate()
@@ -2169,7 +2447,8 @@ namespace UnityPlanet.ModularAssembly
         {
             if (!weaponCommand.FireHeld ||
                 Time.time < nextShot ||
-                ActiveWeaponCount <= 0)
+                ActiveWeaponCount <= 0 ||
+                projectiles == null)
                 return;
             WeaponProfile baseProfile =
                 WeaponProfileLibrary.Resolve(null);
@@ -2209,27 +2488,28 @@ namespace UnityPlanet.ModularAssembly
                     baseProfile.damage *
                     damageScale *
                     weapon.FunctionScale;
+                profile.delivery =
+                    WeaponDeliveryKind.PhysicalProjectile;
+                profile.projectileSpeed = AttackProjectileSpeed;
                 profile.range = 650f;
-                WeaponDamageUtility.Trace(
+                profile.explosionRadius = 0f;
+                profile.effectColor =
+                    new Color(1f, 0.2f, 0.04f, 1f);
+                profile.projectileEffect =
+                    "sfx/mc/machinegun_bullet_shoot.sfx";
+                visuals?.SpawnMuzzle(
                     origin,
                     direction,
-                    profile.range,
-                    transform,
-                    gameObject,
-                    profile,
-                    visuals,
-                    out RaycastHit hit);
-                if (hit.collider != null)
-                    owner?.RecordPlayerDamage(profile.damage);
-                Vector3 end = hit.collider != null
-                    ? hit.point
-                    : origin + direction * profile.range;
-                visuals?.SpawnTracer(
+                    profile.effectColor,
+                    profile.muzzleEffect,
+                    weapon.Object.transform);
+                projectiles.Launch(
                     origin,
-                    end,
-                    new Color(1f, 0.22f, 0.08f),
-                    0.07f,
-                    "sfx/mc/machinegun_bullet_shoot.sfx");
+                    direction,
+                    Vector3.zero,
+                    profile,
+                    transform,
+                    null);
             }
         }
 
@@ -2240,10 +2520,14 @@ namespace UnityPlanet.ModularAssembly
             stopped = true;
             desiredWorldVelocity = Vector3.zero;
             weaponCommand = default;
+            ResetDelayedAttack(0f);
             if (body != null)
             {
-                body.velocity = Vector3.zero;
-                body.angularVelocity = Vector3.zero;
+                if (!body.isKinematic)
+                {
+                    body.velocity = Vector3.zero;
+                    body.angularVelocity = Vector3.zero;
+                }
                 body.isKinematic = true;
             }
         }

@@ -147,7 +147,8 @@ namespace UnityPlanet.ModularAssembly
     [DisallowMultipleComponent]
     public sealed class RobocraftMotionCoordinator :
         MonoBehaviour,
-        IVehicleExternalForceSink
+        IVehicleExternalForceSink,
+        IVehicleCurrentPhysicsStepImpulseSink
     {
         const float CoreDampingTorque = 1200f;
         const float TrainingUpForce = 13000f;
@@ -192,6 +193,8 @@ namespace UnityPlanet.ModularAssembly
         readonly VirtualRcs24Allocator rcs24 =
             new VirtualRcs24Allocator();
         readonly List<AirMover> airMovers = new List<AirMover>();
+        readonly VehicleGroundMobility groundMobility =
+            new VehicleGroundMobility();
         readonly VehiclePhysicsRc3State rc3Physics =
             new VehiclePhysicsRc3State();
         readonly VehicleAirflowField airflowField =
@@ -227,6 +230,10 @@ namespace UnityPlanet.ModularAssembly
         Vector3 actualControlTorqueWorld;
         Vector3 queuedExternalImpulseWorld;
         Vector3 queuedExternalAngularImpulseWorld;
+        bool physicsStepRunning;
+        bool physicsStepCompleted;
+        double activePhysicsStepTime;
+        double completedPhysicsStepTime;
         RobocraftTelemetry telemetry;
         bool physicsOwnershipExclusive;
         VehicleEvasionState evasionState =
@@ -258,6 +265,11 @@ namespace UnityPlanet.ModularAssembly
             evasionSnapshot;
         public DirectionalAuthority24 Authority24 => rcs24.Authority;
         public VehiclePhysicsSnapshot PhysicsSnapshot => rc3Physics.Snapshot;
+        public IReadOnlyList<ModularWheelRuntime> Wheels =>
+            groundMobility.Wheels;
+        public float GroundSupportRatio => groundMobility.SupportRatio;
+        public float GroundControlWeight =>
+            groundMobility.GroundControlWeight;
         public IReadOnlyList<ModuleAeroSurface> AeroSurfaces =>
             rc3Physics.AeroSurfaces;
 
@@ -376,6 +388,7 @@ public void ConfigureExplicit(
                 body.velocity = Vector3.zero;
                 body.angularVelocity = Vector3.zero;
             }
+            groundMobility.SetFlightMode(true);
             heldAimForward = CameraForward();
             BindStructureGraph(GetComponent<VehicleStructureGraph>());
             active = true;
@@ -405,6 +418,7 @@ public void ConfigureExplicit(
             body.collisionDetectionMode =
                 CollisionDetectionMode.ContinuousSpeculative;
             body.interpolation = RigidbodyInterpolation.None;
+            groundMobility.SetFlightMode(true);
             heldAimForward = transform.forward;
             BindStructureGraph(GetComponent<VehicleStructureGraph>());
             active = true;
@@ -428,6 +442,7 @@ public void ConfigureExplicit(
             trimTorqueLocal = Vector3.zero;
             plannedAeroTorqueLocal = Vector3.zero;
             ZeroAirThrottle();
+            groundMobility.SetFlightMode(false);
         }
 
         public void SetCoreAssistMode(VehicleCoreAssistMode value)
@@ -496,10 +511,108 @@ public void ConfigureExplicit(
                 worldImpulse);
         }
 
+        public bool TryApplyExternalImpulseInCurrentPhysicsStep(
+            Vector3 worldImpulse,
+            Vector3 worldPosition)
+        {
+            if (body == null ||
+                !OwnsPhysics ||
+                body.isKinematic ||
+                !VehicleWholeBodyAudit.Finite(worldImpulse) ||
+                !VehicleWholeBodyAudit.Finite(worldPosition))
+            {
+                return false;
+            }
+
+            RouteExternalImpulse(
+                worldImpulse,
+                worldPosition,
+                Time.inFixedTimeStep,
+                Time.fixedTimeAsDouble);
+            return true;
+        }
+
+        void RouteExternalImpulse(
+            Vector3 worldImpulse,
+            Vector3 worldPosition,
+            bool inFixedTimeStep,
+            double fixedStepTime)
+        {
+            float step = Mathf.Max(
+                0.0001f,
+                Time.fixedDeltaTime);
+            if (physicsStepRunning)
+            {
+                if (ledger.AddImpulseAtPosition(
+                        worldImpulse,
+                        worldPosition,
+                        step))
+                {
+                    return;
+                }
+
+                ApplyLateExternalImpulse(
+                    worldImpulse,
+                    worldPosition,
+                    step);
+                return;
+            }
+
+            if (inFixedTimeStep &&
+                physicsStepCompleted &&
+                SamePhysicsStep(
+                    completedPhysicsStepTime,
+                    fixedStepTime))
+            {
+                ApplyLateExternalImpulse(
+                    worldImpulse,
+                    worldPosition,
+                    step);
+                return;
+            }
+
+            QueueExternalImpulse(
+                worldImpulse,
+                worldPosition);
+        }
+
+        void ApplyLateExternalImpulse(
+            Vector3 worldImpulse,
+            Vector3 worldPosition,
+            float step)
+        {
+            body.AddForceAtPosition(
+                worldImpulse,
+                worldPosition,
+                ForceMode.Impulse);
+            if (ledger.RecordAppliedImpulseAtPosition(
+                    worldImpulse,
+                    worldPosition,
+                    step))
+            {
+                UpdateWholeBodyAudit();
+            }
+        }
+
+        static bool SamePhysicsStep(
+            double first,
+            double second)
+        {
+            return !double.IsNaN(first) &&
+                   !double.IsInfinity(first) &&
+                   !double.IsNaN(second) &&
+                   !double.IsInfinity(second) &&
+                   first == second;
+        }
+
         void ClearQueuedExternalImpulses()
         {
             queuedExternalImpulseWorld = Vector3.zero;
             queuedExternalAngularImpulseWorld = Vector3.zero;
+            physicsStepRunning = false;
+            physicsStepCompleted = false;
+            activePhysicsStepTime = 0d;
+            completedPhysicsStepTime = 0d;
         }
 
         public void SetDamageDisabled(bool value)
@@ -595,6 +708,9 @@ public void ConfigureExplicit(
             if (!OwnsPhysics || body.isKinematic)
                 return;
 
+            activePhysicsStepTime = Time.fixedTimeAsDouble;
+            try
+            {
             IPlanetEnvironmentProvider provider =
                 environmentProvider ?? PlanetEnvironmentRuntime.Active;
             environmentSample = provider != null
@@ -614,30 +730,66 @@ public void ConfigureExplicit(
                 airflowField);
 
             ledger.Begin(body);
+            physicsStepRunning = true;
             ledger.AddAcceleration(gravity);
             ApplyQueuedExternalImpulses();
+            Vector3 up = gravity.sqrMagnitude > 0.001f
+                ? -gravity.normalized
+                : Vector3.up;
+            groundMobility.BeginPhysicsStep(
+                up,
+                gravity.magnitude,
+                Time.fixedDeltaTime,
+                ledger);
             if (damageDisabled)
             {
                 plannedAeroTorqueLocal = Vector3.zero;
                 trimTorqueLocal = Vector3.zero;
                 ResetControlAudit();
                 SetAirThrottleZero();
+                groundMobility.ApplyPassive(
+                    up,
+                    ledger,
+                    Time.fixedDeltaTime);
                 ApplyAerodynamics();
+                groundMobility.FinalizePhysicsStep(
+                    up,
+                    gravity.magnitude,
+                    ledger,
+                    Time.fixedDeltaTime);
                 UpdateWholeBodyAudit();
                 ledger.Apply();
                 return;
             }
 
-            Vector3 up = gravity.sqrMagnitude > 0.001f
-                ? -gravity.normalized
-                : Vector3.up;
+            groundMobility.ApplyControl(
+                up,
+                gravity.magnitude,
+                control.move,
+                control.braking,
+                control.boost,
+                ledger,
+                Time.fixedDeltaTime);
             Vector3? aimOverride = injectedControl &&
                                    control.hasAimOverride &&
                                    control.aimForwardWorld.sqrMagnitude > 0.0001f
                 ? control.aimForwardWorld
                 : (Vector3?)null;
-            bool suppressOrdinaryControl =
-                UpdateEvasion(control, up, aimOverride);
+            bool suppressOrdinaryControl;
+            if (groundMobility.HasStableGroundSupport)
+            {
+                if (evasionState == VehicleEvasionState.Active ||
+                    evasionState == VehicleEvasionState.Recovery)
+                {
+                    CancelEvasionForGroundContact();
+                }
+                suppressOrdinaryControl = false;
+            }
+            else
+            {
+                suppressOrdinaryControl =
+                    UpdateEvasion(control, up, aimOverride);
+            }
             if (suppressOrdinaryControl)
                 SuppressControlsForEvasion();
             else
@@ -650,11 +802,36 @@ public void ConfigureExplicit(
                     control.braking,
                     control.boost,
                     control.freeLook,
-                    aimOverride);
+                    aimOverride,
+                    groundMobility.GroundControlWeight);
             }
             ApplyAerodynamics();
+            groundMobility.FinalizePhysicsStep(
+                up,
+                gravity.magnitude,
+                ledger,
+                Time.fixedDeltaTime);
+            if (groundMobility.HasStableGroundSupport &&
+                (evasionState == VehicleEvasionState.Active ||
+                 evasionState == VehicleEvasionState.Recovery))
+            {
+                CancelEvasionForGroundContact();
+                groundMobility.FinalizePhysicsStep(
+                    up,
+                    gravity.magnitude,
+                    ledger,
+                    Time.fixedDeltaTime);
+            }
             UpdateWholeBodyAudit();
             ledger.Apply();
+            }
+            finally
+            {
+                physicsStepRunning = false;
+                physicsStepCompleted = true;
+                completedPhysicsStepTime =
+                    activePhysicsStepTime;
+            }
         }
 
         bool UpdateEvasion(
@@ -954,6 +1131,40 @@ public void ConfigureExplicit(
             };
         }
 
+        void CancelEvasionForGroundContact()
+        {
+            if (body != null &&
+                evasionRollAxisWorld.sqrMagnitude > 0.0001f)
+            {
+                Vector3 axis = evasionRollAxisWorld.normalized;
+                float currentRollSpeed =
+                    Vector3.Dot(body.angularVelocity, axis);
+                float baselineRollSpeed =
+                    Vector3.Dot(
+                        evasionBaselineAngularVelocity,
+                        axis);
+                float deltaRollSpeed = Mathf.Clamp(
+                    baselineRollSpeed - currentRollSpeed,
+                    -EvasionRollSpeed * 1.25f,
+                    EvasionRollSpeed * 1.25f);
+                Quaternion inertiaWorldRotation =
+                    body.rotation * body.inertiaTensorRotation;
+                Vector3 localDelta =
+                    Quaternion.Inverse(inertiaWorldRotation) *
+                    (axis * deltaRollSpeed);
+                Vector3 inertia = body.inertiaTensor;
+                Vector3 angularImpulseWorld =
+                    inertiaWorldRotation *
+                    Vector3.Scale(localDelta, inertia);
+                ledger.AddTorque(
+                    angularImpulseWorld /
+                    Mathf.Max(
+                        0.0001f,
+                        Time.fixedDeltaTime));
+            }
+            ResetEvasion();
+        }
+
         void ResetEvasion()
         {
             pendingEvasionRequest = false;
@@ -1084,8 +1295,19 @@ void ApplyAirMovement(
             bool braking,
             bool boost,
             bool freeLook,
-            Vector3? aimForwardOverride)
+            Vector3? aimForwardOverride,
+            float groundControlWeight)
         {
+            float airControlScale =
+                1f - Mathf.Clamp01(groundControlWeight);
+            float hoverControlScale = Mathf.Min(
+                airControlScale,
+                Mathf.Clamp01(
+                    1f - groundMobility.SupportRatio));
+            float planarBrakeScale =
+                groundMobility.GroundedWheelCount == 0
+                    ? airControlScale
+                    : 0f;
             Vector3 cameraForward = aimForwardOverride.HasValue
                 ? Vector3.ProjectOnPlane(
                     aimForwardOverride.Value,
@@ -1112,6 +1334,7 @@ void ApplyAirMovement(
                 AngularAuthority() + rc3Physics.ControlTorqueAuthority;
             UpdateTrimTorque(totalAuthority);
             requestedLocalTorque += trimTorqueLocal;
+            requestedLocalTorque *= airControlScale;
             plannedAeroTorqueLocal =
                 rc3Physics.AllocateControlSurfaceTorque(
                     requestedLocalTorque,
@@ -1126,7 +1349,10 @@ void ApplyAirMovement(
             });
             Vector3 desiredLocalForce = Vector3.zero;
 
-            if (braking)
+            if (braking &&
+                Mathf.Max(
+                    hoverControlScale,
+                    planarBrakeScale) > 0.001f)
             {
                 if (!hoverHeld)
                 {
@@ -1139,8 +1365,9 @@ void ApplyAirMovement(
                 float hoverForce = Mathf.Max(
                     0f,
                     body.mass *
-                    (gravity.magnitude + heightError * 2f -
-                     verticalSpeed * 3.2f));
+                     (gravity.magnitude + heightError * 2f -
+                      verticalSpeed * 3.2f)) *
+                    hoverControlScale;
                 Vector3 hoverLocal =
                     transform.InverseTransformDirection(up * hoverForce);
                 Rcs24SolveResult hoverResult = rcs24.SolveHover(
@@ -1165,6 +1392,7 @@ void ApplyAirMovement(
                 Vector3 horizontalBrake =
                     planarError * body.mass * 0.8f -
                     planarVelocity * body.mass * 3.2f;
+                horizontalBrake *= planarBrakeScale;
                 if (horizontalBrake.sqrMagnitude > 0.01f)
                 {
                     Vector3 combinedTarget = desiredLocalForce +
@@ -1188,9 +1416,25 @@ void ApplyAirMovement(
             else
             {
                 hoverHeld = false;
-                Vector3 direction = Vector3.ClampMagnitude(
+                Vector3 cameraPlanarDirection =
                     cameraForward * move.y +
-                    cameraRight * move.x +
+                    cameraRight * move.x;
+                Vector3 vehicleForward = Vector3.ProjectOnPlane(
+                    transform.forward,
+                    up);
+                if (vehicleForward.sqrMagnitude < 0.0001f)
+                    vehicleForward = cameraForward;
+                else
+                    vehicleForward.Normalize();
+                Vector3 groundPlanarDirection =
+                    vehicleForward * move.y;
+                Vector3 planarDirection = Vector3.Lerp(
+                    cameraPlanarDirection,
+                    groundPlanarDirection,
+                    Mathf.Clamp01(
+                        groundControlWeight * 2.5f));
+                Vector3 direction = Vector3.ClampMagnitude(
+                    planarDirection * airControlScale +
                     up * vertical,
                     1f);
                 if (direction.sqrMagnitude > 0.0001f)
@@ -1649,10 +1893,23 @@ Vector3 ResolveOrientationTorque(
         {
             ZeroAirThrottle();
             airMovers.Clear();
+            var currentWheels = new List<ModularWheelRuntime>();
             foreach (GridModuleView view in views)
             {
                 if (view == null || !view.gameObject.activeInHierarchy)
                     continue;
+                foreach (ModularWheelRuntime wheel in
+                         view.GetComponentsInChildren<
+                             ModularWheelRuntime>(true))
+                {
+                    if (wheel != null &&
+                        wheel.enabled &&
+                        wheel.gameObject.activeInHierarchy &&
+                        !currentWheels.Contains(wheel))
+                    {
+                        currentWheels.Add(wheel);
+                    }
+                }
                 NeoXBehaviorModule module =
                     view.GetComponentInChildren<NeoXBehaviorModule>(true);
                 if (module == null)
@@ -1660,6 +1917,10 @@ Vector3 ResolveOrientationTorque(
                 if (module.BehaviorKind == GridModuleBehaviorKind.Thruster)
                     AddAirMover(module, view.Record.RuntimeId);
             }
+            groundMobility.Rebuild(
+                body,
+                transform,
+                currentWheels);
             RebuildRcs24Allocator();
         }
 
@@ -1845,7 +2106,7 @@ void RefreshTelemetry()
                 ? 0f
                 : Mathf.Sqrt(2f * body.mass * gravity.magnitude /
                     Mathf.Max(0.001f, airDensity * totalWingArea * 1.6f));
-            telemetry.groundTopSpeed = 0f;
+            telemetry.groundTopSpeed = groundMobility.TopSpeed;
             telemetry.airTopSpeed = terminalSpeed;
             Vector3 environmentUp = gravity.sqrMagnitude > 0.0001f
                 ? -gravity.normalized
@@ -1875,14 +2136,23 @@ void RefreshTelemetry()
                 ? 1f
                 : Mathf.Clamp01(CoreDampingTorque /
                     Mathf.Max(1f, weakestAngularAuthority));
-            telemetry.activeWheels = 0;
+            telemetry.activeWheels = groundMobility.WheelCount;
             telemetry.activeAirMovers = airMovers.Count;
 
             bool fixedWingCapable = totalWingArea > 0.01f &&
                 stallSpeed > 0f && terminalSpeed > stallSpeed;
             bool slowTurning = angularAcceleration.x < 0.35f ||
                 angularAcceleration.y < 0.35f || angularAcceleration.z < 0.35f;
-            if (telemetry.hoverRatio >= 1f)
+            if (groundMobility.WheelCount > 0)
+            {
+                telemetry.status =
+                    telemetry.hoverRatio >= 1f ||
+                    fixedWingCapable ||
+                    airMovers.Count > 0
+                        ? "可陆空混合"
+                        : "可地面驾驶";
+            }
+            else if (telemetry.hoverRatio >= 1f)
                 telemetry.status = slowTurning ? "可飞但转向迟缓" : "VTOL完整";
             else if (fixedWingCapable)
                 telemetry.status = "固定翼可起飞";
@@ -1952,6 +2222,7 @@ void RefreshTelemetry()
         void OnDestroy()
         {
             ResetEvasion();
+            groundMobility.SetFlightMode(false);
             evasionPresentation?.SetFlightActive(false);
             if (model != null)
                 model.Changed -= HandleModelChanged;

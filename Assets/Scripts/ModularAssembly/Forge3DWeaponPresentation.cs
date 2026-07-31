@@ -66,12 +66,15 @@ namespace UnityPlanet.ModularAssembly
             if (resource == null)
                 return false;
 
-            ResolvePool(host).SpawnOneShot(
+            bool spawned = ResolvePool(host).SpawnOneShot(
                 ResourceRoot + resource,
                 position,
                 direction,
                 lifetime,
                 scale);
+            if (!spawned)
+                return false;
+
             Forge3DWeaponAnimator.Trigger(
                 weaponRoot,
                 direction,
@@ -143,7 +146,7 @@ namespace UnityPlanet.ModularAssembly
             if (resource == null)
                 return false;
 
-            ResolvePool(host).SpawnOneShot(
+            return ResolvePool(host).SpawnOneShot(
                 ResourceRoot + resource,
                 position,
                 normal.sqrMagnitude > 0.01f
@@ -151,7 +154,6 @@ namespace UnityPlanet.ModularAssembly
                     : Vector3.up,
                 lifetime,
                 scale);
-            return true;
         }
 
         public static bool TrySpawnTracer(
@@ -166,83 +168,74 @@ namespace UnityPlanet.ModularAssembly
             if (delta.sqrMagnitude < 0.0001f)
                 return false;
 
+            if (key.Contains("gatlin") || key.Contains("machinegun"))
+                // VulcanProjectile is a static mesh. Returning true here used
+                // to suppress the real start-to-end LineRenderer tracer.
+                return false;
+
+            if (key.Contains("energy_cannon"))
+                // The physical energy projectile always owns a visible body
+                // fallback, so no Forge pool allocation is required here.
+                return true;
+
             Forge3DEffectPool pool = ResolvePool(host);
             Vector3 direction = delta.normalized;
-            if (key.Contains("gatlin") || key.Contains("machinegun"))
-            {
-                pool.SpawnOneShot(
-                    ResourceRoot + "VulcanProjectile",
-                    start,
-                    direction,
-                    Mathf.Max(0.12f, lifetime),
-                    key.Contains("gatlin") ? 0.24f : 0.18f);
-                return true;
-            }
-            if (key.Contains("energy_cannon"))
-                return true;
             if (key.Contains("forge3dfightermissiletrail"))
             {
-                pool.SpawnOneShot(
+                bool spawned = pool.SpawnOneShot(
                     ResourceRoot + "MissileFlame",
                     end,
                     direction,
                     0.2f,
                     0.22f);
-                pool.SpawnOneShot(
+                spawned |= pool.SpawnOneShot(
                     ResourceRoot + "MissileSmokeTrail",
                     end,
                     direction,
                     0.42f,
                     0.09f);
-                return true;
+                return spawned;
             }
             if (key.Contains("forge3dguidedmissiletrail"))
             {
-                pool.SpawnOneShot(
+                bool spawned = pool.SpawnOneShot(
                     ResourceRoot + "SeekerFlare",
                     end,
                     direction,
                     0.22f,
                     0.18f);
-                pool.SpawnOneShot(
+                spawned |= pool.SpawnOneShot(
                     ResourceRoot + "MissileSmokeTrail",
                     end,
                     direction,
                     0.48f,
                     0.08f);
-                return true;
+                return spawned;
             }
             if (key.Contains("forge3dmissiletrail"))
             {
-                pool.SpawnOneShot(
+                bool spawned = pool.SpawnOneShot(
                     ResourceRoot + "MissileFlame",
                     end,
                     direction,
                     0.18f,
                     0.16f);
-                pool.SpawnOneShot(
+                spawned |= pool.SpawnOneShot(
                     ResourceRoot + "MissileSmokeTrail",
                     end,
                     direction,
                     0.5f,
                     0.1f);
-                return true;
+                return spawned;
             }
             if (!key.Contains("sniper"))
                 return false;
 
-            pool.SpawnBeam(
+            return pool.SpawnBeam(
                 ResourceRoot + "SniperBeam",
                 start,
                 end,
                 Mathf.Max(0.12f, lifetime));
-            pool.SpawnOneShot(
-                ResourceRoot + "SniperImpact",
-                end,
-                (start - end).normalized,
-                0.65f,
-                0.16f);
-            return true;
         }
 
         public static bool TryGetProjectileVisual(
@@ -286,6 +279,7 @@ namespace UnityPlanet.ModularAssembly
             public GameObject Root;
             public Vector3 BaseScale;
             public ParticleSystem[] Particles;
+            public Renderer[] Renderers;
             public LineRenderer Line;
             public float EndsAt;
         }
@@ -295,7 +289,7 @@ namespace UnityPlanet.ModularAssembly
             new Dictionary<string, GameObject>(
                 StringComparer.OrdinalIgnoreCase);
 
-        public void SpawnOneShot(
+        public bool SpawnOneShot(
             string resource,
             Vector3 position,
             Vector3 forward,
@@ -304,7 +298,7 @@ namespace UnityPlanet.ModularAssembly
         {
             EffectSlot slot = Acquire(resource);
             if (slot == null)
-                return;
+                return false;
 
             WeaponEffectOrientation.ResetForReuse(slot.Root);
             slot.Root.transform.SetPositionAndRotation(
@@ -319,23 +313,30 @@ namespace UnityPlanet.ModularAssembly
             if (slot.Line != null)
                 slot.Line.enabled = true;
             RestartParticles(slot);
+            if (!HasRenderableRenderer(slot))
+            {
+                Reject(slot);
+                return false;
+            }
             slot.EndsAt = Time.time + Mathf.Max(0.05f, lifetime);
+            return true;
         }
 
-        public void SpawnBeam(
+        public bool SpawnBeam(
             string resource,
             Vector3 start,
             Vector3 end,
             float lifetime)
         {
-            EffectSlot slot = Acquire(resource);
-            if (slot == null || slot.Line == null)
-                return;
-
-            WeaponEffectOrientation.ResetForReuse(slot.Root);
             Vector3 delta = end - start;
             if (delta.sqrMagnitude < 0.0001f)
-                return;
+                return false;
+
+            EffectSlot slot = Acquire(resource);
+            if (slot == null || slot.Line == null)
+                return false;
+
+            WeaponEffectOrientation.ResetForReuse(slot.Root);
             slot.Root.transform.SetPositionAndRotation(
                 start,
                 Quaternion.LookRotation(delta.normalized));
@@ -347,7 +348,13 @@ namespace UnityPlanet.ModularAssembly
             slot.Line.SetPosition(0, start);
             slot.Line.SetPosition(1, end);
             RestartParticles(slot);
+            if (!RendererIsUsable(slot.Line))
+            {
+                Reject(slot);
+                return false;
+            }
             slot.EndsAt = Time.time + Mathf.Max(0.05f, lifetime);
+            return true;
         }
 
         void Update()
@@ -403,6 +410,8 @@ namespace UnityPlanet.ModularAssembly
                 BaseScale = root.transform.localScale,
                 Particles =
                     root.GetComponentsInChildren<ParticleSystem>(true),
+                Renderers =
+                    root.GetComponentsInChildren<Renderer>(true),
                 Line = root.GetComponentInChildren<LineRenderer>(true)
             };
             root.SetActive(false);
@@ -421,6 +430,80 @@ namespace UnityPlanet.ModularAssembly
                     ParticleSystemStopBehavior.StopEmittingAndClear);
                 particle.Play(true);
             }
+        }
+
+        static bool HasRenderableRenderer(EffectSlot slot)
+        {
+            if (slot?.Renderers == null)
+                return false;
+            foreach (Renderer renderer in slot.Renderers)
+                if (renderer != null &&
+                    renderer.enabled &&
+                    renderer.gameObject.activeInHierarchy &&
+                    RendererIsUsable(renderer))
+                    return true;
+            return false;
+        }
+
+        static bool RendererIsUsable(Renderer renderer)
+        {
+            if (renderer == null)
+                return false;
+            if (renderer is ParticleSystemRenderer particleRenderer)
+            {
+                if (!MaterialIsUsable(particleRenderer.sharedMaterial))
+                    return false;
+                ParticleSystem particle =
+                    particleRenderer.GetComponent<ParticleSystem>();
+                return particle == null ||
+                       !particle.trails.enabled ||
+                       MaterialIsUsable(particleRenderer.trailMaterial);
+            }
+
+            Material[] values = renderer.sharedMaterials;
+            if (values == null || values.Length == 0)
+                return false;
+            bool found = false;
+            foreach (Material material in values)
+            {
+                if (material == null)
+                    continue;
+                found = true;
+                if (!MaterialIsUsable(material))
+                    return false;
+            }
+            return found;
+        }
+
+        static bool MaterialIsUsable(Material material)
+        {
+            return material != null &&
+                   material.shader != null &&
+                   material.shader.isSupported &&
+                   material.shader.name.IndexOf(
+                       "InternalErrorShader",
+                       StringComparison.OrdinalIgnoreCase) < 0;
+        }
+
+        static void Reject(EffectSlot slot)
+        {
+            if (slot == null)
+                return;
+            foreach (ParticleSystem particle in slot.Particles)
+            {
+                if (particle != null)
+                {
+                    particle.Stop(
+                        true,
+                        ParticleSystemStopBehavior.StopEmittingAndClear);
+                    particle.Clear(true);
+                }
+            }
+            if (slot.Line != null)
+                slot.Line.enabled = false;
+            if (slot.Root != null)
+                slot.Root.SetActive(false);
+            slot.EndsAt = 0f;
         }
     }
 

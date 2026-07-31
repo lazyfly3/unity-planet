@@ -27,6 +27,13 @@ namespace UnityPlanet.ModularAssembly.Editor
             {
                 return;
             }
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                EditorApplication.playModeStateChanged -= ResumeBuildInEditMode;
+                EditorApplication.playModeStateChanged += ResumeBuildInEditMode;
+                EditorApplication.isPlaying = false;
+                return;
+            }
 
             try
             {
@@ -39,9 +46,26 @@ namespace UnityPlanet.ModularAssembly.Editor
             }
         }
 
+        private static void ResumeBuildInEditMode(
+            PlayModeStateChange state)
+        {
+            if (state != PlayModeStateChange.EnteredEditMode)
+            {
+                return;
+            }
+            EditorApplication.playModeStateChanged -= ResumeBuildInEditMode;
+            EditorApplication.delayCall += TryBuildRequested;
+        }
+
         [MenuItem("Tools/Modular Assembly/Build Curated NeoX Runtime Bundles")]
         public static void BuildWindowsBundles()
         {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException(
+                    "NeoX runtime bundles cannot be built in Play Mode. " +
+                    "Exit Play Mode first; the existing runtime bundle was left unchanged.");
+            }
             string stagingRoot = NeoXExternalPaths.StagingRoot;
             string outputRoot = NeoXExternalPaths.RuntimeBundleOutputRoot;
             string catalogPath = NeoXExternalPaths.RuntimeCatalogPath;
@@ -69,6 +93,10 @@ namespace UnityPlanet.ModularAssembly.Editor
                 stagingRoot,
                 temporaryAbsolute,
                 catalogPath);
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            NeoXWheelVisualBundleBuilder.BuildSemanticWheelPrefabs(
+                stagingRoot,
+                temporaryAbsolute);
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
 
             try
@@ -127,7 +155,8 @@ namespace UnityPlanet.ModularAssembly.Editor
             ModularContentRecord[] selected = records
                 .Where(record =>
                     record != null &&
-                    record.selectableForAirBuild &&
+                    (record.selectableForAirBuild ||
+                     AirBuildCatalog.IsPolished(record)) &&
                     string.Equals(record.contentKind, "module", StringComparison.OrdinalIgnoreCase))
                 .ToArray();
 
@@ -274,6 +303,15 @@ namespace UnityPlanet.ModularAssembly.Editor
                 string relative = path.Substring(TemporaryRoot.Length + 1).Replace('\\', '/');
                 if (!relative.StartsWith("block/", StringComparison.OrdinalIgnoreCase))
                 {
+                    continue;
+                }
+                if (isModel &&
+                    NeoXWheelVisualBundleBuilder.TryGetSemanticPrefabAssetPath(
+                        relative,
+                        out string semanticPrefabPath))
+                {
+                    assets.Add(semanticPrefabPath);
+                    addresses.Add(relative);
                     continue;
                 }
                 assets.Add(path);

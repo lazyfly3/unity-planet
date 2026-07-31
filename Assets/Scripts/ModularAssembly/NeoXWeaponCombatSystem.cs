@@ -484,7 +484,7 @@ namespace UnityPlanet.ModularAssembly
             projectiles.Initialize(visuals);
             structureGraph = GetComponent<VehicleStructureGraph>() ??
                              gameObject.AddComponent<VehicleStructureGraph>();
-            structureGraph.Initialize(model, presenter, flight, visuals);
+            structureGraph.Initialize(model, presenter, flight);
             VehicleDamageFeedbackPresenter damageFeedback =
                 GetComponent<VehicleDamageFeedbackPresenter>() ??
                 gameObject.AddComponent<VehicleDamageFeedbackPresenter>();
@@ -1099,6 +1099,8 @@ namespace UnityPlanet.ModularAssembly
         Material lineMaterial;
         Material particleMaterial;
         GameObject hovlLaserPrefab;
+        CombatWeaponEffectPool combatWeaponEffects;
+        bool laserValidationErrorLogged;
 
         void Awake()
         {
@@ -1109,6 +1111,18 @@ namespace UnityPlanet.ModularAssembly
             particleMaterial = new Material(unlit);
             hovlLaserPrefab = Resources.Load<GameObject>(
                 "WeaponEffects/HovlLaserRay");
+            if (hovlLaserPrefab != null &&
+                !HasRenderableLaserMaterials(hovlLaserPrefab))
+            {
+                LogLaserValidationError();
+                hovlLaserPrefab = null;
+            }
+            Transform transientRoot = CombatTransientRoot.GetOrCreate();
+            combatWeaponEffects =
+                transientRoot.GetComponent<CombatWeaponEffectPool>() ??
+                transientRoot.gameObject
+                    .AddComponent<CombatWeaponEffectPool>();
+            combatWeaponEffects.Prewarm();
         }
 
         public void Prewarm()
@@ -1195,6 +1209,13 @@ namespace UnityPlanet.ModularAssembly
                     new Color(0.22f, 0.9f, 1f),
                     lifetime,
                     "HovlLaserRayFallback");
+                if (hasHit && combatWeaponEffects != null)
+                    combatWeaponEffects.SpawnImpact(
+                        end,
+                        hitNormal,
+                        new Color(0.22f, 0.9f, 1f),
+                        "HovlLaserRayHit",
+                        0f);
                 return;
             }
 
@@ -1264,6 +1285,14 @@ namespace UnityPlanet.ModularAssembly
             string sourceEffect,
             Transform weaponRoot)
         {
+            if (combatWeaponEffects != null &&
+                combatWeaponEffects.SpawnMuzzle(
+                    position,
+                    direction,
+                    color,
+                    sourceEffect,
+                    weaponRoot))
+                return;
             if (Forge3DWeaponPresentation.TrySpawnMuzzle(
                     transform,
                     position,
@@ -1293,9 +1322,11 @@ namespace UnityPlanet.ModularAssembly
                     "HovlLaserRayHit",
                     StringComparison.Ordinal))
                 return;
-            if (NeoXCombatFeedbackRuntime.TrySpawnImpact(
+            if (combatWeaponEffects != null &&
+                combatWeaponEffects.SpawnImpact(
                     position,
                     normal,
+                    color,
                     sourceEffect,
                     radius))
                 return;
@@ -1382,9 +1413,12 @@ namespace UnityPlanet.ModularAssembly
                     behaviour.enabled = false;
             }
             LineRenderer line = root.GetComponent<LineRenderer>();
-            if (line == null)
+            if (line == null ||
+                !HasRenderableLaserMaterials(root))
             {
+                LogLaserValidationError();
                 Destroy(root);
+                hovlLaserPrefab = null;
                 return null;
             }
             Transform hitRoot = root
@@ -1401,6 +1435,56 @@ namespace UnityPlanet.ModularAssembly
             root.SetActive(false);
             lasers.Add(slot);
             return slot;
+        }
+
+        static bool HasRenderableLaserMaterials(GameObject root)
+        {
+            if (root == null)
+                return false;
+            LineRenderer line = root.GetComponent<LineRenderer>();
+            if (line == null || !IsRenderableMaterial(line.sharedMaterial))
+                return false;
+
+            ParticleSystemRenderer[] renderers =
+                root.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            if (renderers.Length == 0)
+                return false;
+            foreach (ParticleSystemRenderer renderer in renderers)
+            {
+                bool hasMain =
+                    IsRenderableMaterial(renderer.sharedMaterial);
+                ParticleSystem particle =
+                    renderer.GetComponent<ParticleSystem>();
+                bool hasTrail =
+                    particle != null &&
+                    particle.trails.enabled &&
+                    IsRenderableMaterial(renderer.trailMaterial);
+                if (!hasMain && !hasTrail)
+                    return false;
+            }
+            return true;
+        }
+
+        static bool IsRenderableMaterial(Material material)
+        {
+            if (material == null ||
+                material.shader == null ||
+                !material.shader.isSupported)
+                return false;
+            return material.shader.name.IndexOf(
+                       "InternalErrorShader",
+                       StringComparison.OrdinalIgnoreCase) < 0;
+        }
+
+        void LogLaserValidationError()
+        {
+            if (laserValidationErrorLogged)
+                return;
+            laserValidationErrorLogged = true;
+            Debug.LogError(
+                "[Combat VFX] HovlLaserRay has no complete renderable " +
+                "Built-in material set. Falling back to the native beam " +
+                "and energy-impact visuals.");
         }
 
         LineSlot AcquireLine()
@@ -1882,7 +1966,6 @@ namespace UnityPlanet.ModularAssembly
         GridAssemblyModel model;
         GridAssemblyPresenter presenter;
         GridFlightBridge flight;
-        WeaponVisualPool visuals;
         ModularBlueprintData flightBlueprint;
         int initialCpu;
         bool active;
@@ -1894,6 +1977,11 @@ namespace UnityPlanet.ModularAssembly
         public bool Active =>
             active && damageEnabled && !vehicleDestroyed;
         public bool IsVehicleDestroyed => vehicleDestroyed;
+        public VehicleStructureDelta LastDestructionDelta
+        {
+            get;
+            private set;
+        }
         public float ConnectedCpuRatio =>
             initialCpu <= 0
                 ? 1f
@@ -1941,15 +2029,14 @@ namespace UnityPlanet.ModularAssembly
         public void Initialize(
             GridAssemblyModel assemblyModel,
             GridAssemblyPresenter assemblyPresenter,
-            GridFlightBridge flightBridge,
-            WeaponVisualPool effectPool)
+            GridFlightBridge flightBridge)
         {
             model = assemblyModel;
             presenter = assemblyPresenter;
             flight = flightBridge;
-            visuals = effectPool;
             presenter.Rebuilt -= HandlePresenterRebuilt;
             presenter.Rebuilt += HandlePresenterRebuilt;
+            CombatFeedbackController.GetOrCreate().Observe(this);
             RebuildGraph();
         }
 
@@ -1957,6 +2044,7 @@ namespace UnityPlanet.ModularAssembly
         {
             active = true;
             vehicleDestroyed = false;
+            LastDestructionDelta = null;
             combatDamagedRuntimeIds.Clear();
             combatRemovedRuntimeIds.Clear();
             flightBlueprint = model.CaptureBlueprint();
@@ -1972,6 +2060,7 @@ namespace UnityPlanet.ModularAssembly
             active = true;
             vehicleDestroyed = false;
             processingDamage = false;
+            LastDestructionDelta = null;
             combatDamagedRuntimeIds.Clear();
             combatRemovedRuntimeIds.Clear();
             flightBlueprint = model.CaptureBlueprint();
@@ -1994,6 +2083,7 @@ namespace UnityPlanet.ModularAssembly
             active = false;
             processingDamage = false;
             vehicleDestroyed = false;
+            LastDestructionDelta = null;
             ResetNodeDamage();
         }
 
@@ -2131,7 +2221,10 @@ namespace UnityPlanet.ModularAssembly
                     ResolveNodeBounds(node),
                     node.Health /
                     Mathf.Max(1f, node.MaximumHealth),
-                    node.Health <= 0f));
+                    node.Health <= 0f,
+                    appliedDamage,
+                    node.Record.Definition.Category,
+                    runtimeId == GridAssemblyModel.CoreRuntimeId));
             if (node.Health > 0f)
                 return;
             node.Destroyed = true;
@@ -2175,7 +2268,6 @@ namespace UnityPlanet.ModularAssembly
                 detachedComponents,
                 damage);
             combatRemovedRuntimeIds.UnionWith(removed);
-            SpawnBreakup(node);
             Rigidbody sourceBody = GetComponent<Rigidbody>();
             if (node.View != null)
             {
@@ -2421,23 +2513,26 @@ namespace UnityPlanet.ModularAssembly
             return result;
         }
 
-        void SpawnBreakup(Node node)
+        public Bounds ResolveVisualBounds()
         {
-            if (node == null || node.View == null)
-                return;
-            Renderer[] renderers =
-                node.View.GetComponentsInChildren<Renderer>(true);
-            if (renderers.Length == 0)
+            bool initialized = false;
+            Bounds result = new Bounds(transform.position, Vector3.one);
+            foreach (Node node in nodes.Values)
             {
-                visuals.SpawnBreakup(new Bounds(
-                    node.View.transform.position,
-                    Vector3.one));
-                return;
+                if (node == null ||
+                    node.Destroyed ||
+                    node.View == null)
+                    continue;
+                Bounds nodeBounds = ResolveNodeBounds(node);
+                if (!initialized)
+                {
+                    result = nodeBounds;
+                    initialized = true;
+                }
+                else
+                    result.Encapsulate(nodeBounds);
             }
-            Bounds bounds = renderers[0].bounds;
-            for (int index = 1; index < renderers.Length; index++)
-                bounds.Encapsulate(renderers[index].bounds);
-            visuals.SpawnBreakup(bounds);
+            return result;
         }
 
         int ConnectedCpu()
@@ -2471,9 +2566,10 @@ namespace UnityPlanet.ModularAssembly
             if (vehicleDestroyed)
                 return;
             vehicleDestroyed = true;
+            LastDestructionDelta =
+                delta ?? VehicleStructureDelta.Initial(nodes.Keys);
             Destroyed?.Invoke();
-            StructureChanged?.Invoke(
-                delta ?? VehicleStructureDelta.Initial(nodes.Keys));
+            StructureChanged?.Invoke(LastDestructionDelta);
             if (automaticReturnToBuild)
                 StartCoroutine(ReturnToBuild());
         }

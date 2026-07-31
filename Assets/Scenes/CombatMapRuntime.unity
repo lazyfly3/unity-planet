@@ -8174,12 +8174,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   environmentRoot: {fileID: 1761288727}
-  bakeVersion: 2
-  playerSpawnPosition: {x: 0, y: 0, z: 1000}
+  bakeVersion: 3
+  playerSpawnPosition: {x: 0, y: 46.071697, z: 520}
   playerSpawnEuler: {x: -0, y: 0, z: 0}
-  enemySpawnPosition: {x: 0, y: 0, z: 1000}
-  enemySpawnEuler: {x: -0, y: 0, z: 0}
-  battleCenter: {x: 0, y: 0, z: 1000}
+  enemySpawnPosition: {x: 0, y: 46.071697, z: 1480}
+  enemySpawnEuler: {x: -0, y: 180, z: 0}
+  battleCenter: {x: 0, y: 46.071697, z: 1000}
   warningRadius: 1200
   forfeitRadius: 1500
 --- !u!4 &1882084663

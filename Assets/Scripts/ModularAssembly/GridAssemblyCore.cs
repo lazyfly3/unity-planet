@@ -418,6 +418,8 @@ namespace ModularAssembly
                 paired,
                 source.RuntimeId,
                 source.Pose.mirrorGroupId);
+            foreach (GridModuleRecord candidate in candidates)
+                candidate.BehaviorSettings = source.BehaviorSettings;
             if (!CanApply(candidates, movingIds, out error))
                 return false;
             records.RemoveAll(item => movingIds.Contains(item.RuntimeId));

@@ -19,7 +19,7 @@ namespace UnityPlanet.CombatMap
         ICombatArenaProvider
     {
         [SerializeField] private GameObject environmentRoot;
-        [SerializeField] private int bakeVersion = 2;
+        [SerializeField] private int bakeVersion = 3;
         [SerializeField] private Vector3 playerSpawnPosition;
         [SerializeField] private Vector3 playerSpawnEuler;
         [SerializeField] private Vector3 enemySpawnPosition;
@@ -76,7 +76,7 @@ namespace UnityPlanet.CombatMap
             float forfeit)
         {
             environmentRoot = root;
-            bakeVersion = 2;
+            bakeVersion = 3;
             playerSpawnPosition = playerPosition;
             playerSpawnEuler = playerRotation.eulerAngles;
             enemySpawnPosition = enemyPosition;
@@ -94,7 +94,10 @@ namespace UnityPlanet.CombatMap
             CacheEnvironment();
             yield return null;
             SetEnvironmentActive(false);
-            bool valid = environmentRoot != null && colliders.Length > 0;
+            bool valid =
+                environmentRoot != null &&
+                colliders.Length > 0 &&
+                HasValidArenaData();
             completed(
                 valid,
                 valid
@@ -107,6 +110,15 @@ namespace UnityPlanet.CombatMap
             Action<bool, Vector3, string> completed)
         {
             CacheEnvironment();
+            if (!HasValidArenaData())
+            {
+                completed(
+                    false,
+                    Vector3.zero,
+                    "CombatMapLab 玩家与敌机出生点无效或重叠，请重新烘焙地图");
+                yield break;
+            }
+
             SetEnvironmentActive(true);
             Physics.SyncTransforms();
             yield return new WaitForFixedUpdate();
@@ -145,14 +157,35 @@ namespace UnityPlanet.CombatMap
         {
             position = playerSpawnPosition;
             rotation = Quaternion.Euler(playerSpawnEuler);
-            return true;
+            return HasValidArenaData();
         }
 
         public bool TryGetEnemySpawn(out Vector3 position, out Quaternion rotation)
         {
             position = enemySpawnPosition;
             rotation = Quaternion.Euler(enemySpawnEuler);
-            return true;
+            return HasValidArenaData();
+        }
+
+        private bool HasValidArenaData()
+        {
+            return IsFinite(playerSpawnPosition) &&
+                   IsFinite(enemySpawnPosition) &&
+                   IsFinite(playerSpawnEuler) &&
+                   IsFinite(enemySpawnEuler) &&
+                   (playerSpawnPosition - enemySpawnPosition).sqrMagnitude >= 100f;
+        }
+
+        private static bool IsFinite(Vector3 value)
+        {
+            return IsFinite(value.x) &&
+                   IsFinite(value.y) &&
+                   IsFinite(value.z);
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
         }
 
         private void CacheEnvironment()

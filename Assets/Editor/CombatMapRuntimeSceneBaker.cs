@@ -61,8 +61,13 @@ namespace UnityPlanet.EditorTools
             Quaternion playerRotation;
             Vector3 enemyPosition;
             Quaternion enemyRotation;
-            ResolveSpawn(generatedRoot.transform, "Player", out playerPosition, out playerRotation);
-            ResolveSpawn(generatedRoot.transform, "Enemy", out enemyPosition, out enemyRotation);
+            ResolveCombatSpawns(
+                runtime,
+                generatedRoot.transform,
+                out playerPosition,
+                out playerRotation,
+                out enemyPosition,
+                out enemyRotation);
 
             EnsureDirectory(GeneratedAssetDirectory);
             Scene runtimeScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -160,14 +165,11 @@ namespace UnityPlanet.EditorTools
             Quaternion playerRotation;
             Vector3 enemyPosition;
             Quaternion enemyRotation;
-            ResolveSpawn(
+            ResolveCombatSpawns(
+                runtime,
                 generatedRoot.transform,
-                "Player",
                 out playerPosition,
-                out playerRotation);
-            ResolveSpawn(
-                generatedRoot.transform,
-                "Enemy",
+                out playerRotation,
                 out enemyPosition,
                 out enemyRotation);
 
@@ -243,8 +245,8 @@ namespace UnityPlanet.EditorTools
                            StringComparison.Ordinal) < 0 ||
                    File.ReadAllText(absolutePath)
                        .IndexOf(
-                           "bakeVersion: 2",
-                           StringComparison.Ordinal) < 0;
+                            "bakeVersion: 3",
+                            StringComparison.Ordinal) < 0;
         }
 
         private static void ClearHideFlags(GameObject root)
@@ -322,28 +324,141 @@ namespace UnityPlanet.EditorTools
             return null;
         }
 
-        private static void ResolveSpawn(
+        private static void ResolveCombatSpawns(
+            MonoBehaviour runtime,
             Transform root,
-            string token,
+            out Vector3 playerPosition,
+            out Quaternion playerRotation,
+            out Vector3 enemyPosition,
+            out Quaternion enemyRotation)
+        {
+            playerPosition = Vector3.zero;
+            playerRotation = Quaternion.identity;
+            enemyPosition = Vector3.zero;
+            enemyRotation = Quaternion.identity;
+
+            CombatMapRuntimeController controller =
+                runtime as CombatMapRuntimeController;
+            bool resolvedFromPlan = false;
+            if (controller != null)
+            {
+                Vector3 resolvedPlayerPosition;
+                Quaternion resolvedPlayerRotation;
+                Vector3 resolvedEnemyPosition;
+                Quaternion resolvedEnemyRotation;
+                bool playerResolved = controller.TryGetSpawnPose(
+                    true,
+                    out resolvedPlayerPosition,
+                    out resolvedPlayerRotation);
+                bool enemyResolved = controller.TryGetSpawnPose(
+                    false,
+                    out resolvedEnemyPosition,
+                    out resolvedEnemyRotation);
+                if (playerResolved && enemyResolved)
+                {
+                    playerPosition = resolvedPlayerPosition;
+                    playerRotation = resolvedPlayerRotation;
+                    enemyPosition = resolvedEnemyPosition;
+                    enemyRotation = resolvedEnemyRotation;
+                    resolvedFromPlan = true;
+                }
+            }
+
+            if (!resolvedFromPlan)
+            {
+                bool playerFound = TryResolveSpawnMarker(
+                    root,
+                    "spawn.player",
+                    out playerPosition,
+                    out playerRotation);
+                bool enemyFound = TryResolveSpawnMarker(
+                    root,
+                    "spawn.enemy",
+                    out enemyPosition,
+                    out enemyRotation);
+                if (!playerFound || !enemyFound)
+                {
+                    throw new InvalidOperationException(
+                        "CombatMapLab 缺少精确的 spawn.player 或 spawn.enemy 语义锚点");
+                }
+
+                Vector3 playerToEnemy = enemyPosition - playerPosition;
+                if (playerToEnemy.sqrMagnitude > 0.0001f)
+                {
+                    playerRotation = Quaternion.LookRotation(
+                        playerToEnemy.normalized,
+                        Vector3.up);
+                    enemyRotation = Quaternion.LookRotation(
+                        -playerToEnemy.normalized,
+                        Vector3.up);
+                }
+            }
+
+            if (!IsFinite(playerPosition) ||
+                !IsFinite(enemyPosition) ||
+                !IsFinite(playerRotation) ||
+                !IsFinite(enemyRotation))
+            {
+                throw new InvalidOperationException(
+                    "CombatMapLab 出生点包含非有限坐标或旋转");
+            }
+
+            if ((playerPosition - enemyPosition).sqrMagnitude < 100f)
+            {
+                throw new InvalidOperationException(
+                    "CombatMapLab 玩家与敌机出生点重叠或距离不足10米");
+            }
+        }
+
+        private static bool TryResolveSpawnMarker(
+            Transform root,
+            string stableId,
             out Vector3 position,
             out Quaternion rotation)
         {
             Transform[] transforms = root.GetComponentsInChildren<Transform>(true);
             for (int i = 0; i < transforms.Length; i++)
             {
-                string name = transforms[i].name;
-                if (name.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0 &&
-                    name.IndexOf("Spawn", StringComparison.OrdinalIgnoreCase) >= 0)
+                if (string.Equals(
+                        transforms[i].name,
+                        stableId,
+                        StringComparison.OrdinalIgnoreCase))
                 {
                     position = transforms[i].position;
                     rotation = transforms[i].rotation;
-                    return;
+                    return true;
                 }
             }
 
-            float side = token == "Enemy" ? 1f : -1f;
-            position = new Vector3(side * 60f, 180f, 0f);
-            rotation = Quaternion.LookRotation(-position.normalized, Vector3.up);
+            position = Vector3.zero;
+            rotation = Quaternion.identity;
+            return false;
+        }
+
+        private static bool IsFinite(Vector3 value)
+        {
+            return IsFinite(value.x) &&
+                   IsFinite(value.y) &&
+                   IsFinite(value.z);
+        }
+
+        private static bool IsFinite(Quaternion value)
+        {
+            float magnitudeSquared =
+                value.x * value.x +
+                value.y * value.y +
+                value.z * value.z +
+                value.w * value.w;
+            return IsFinite(value.x) &&
+                   IsFinite(value.y) &&
+                   IsFinite(value.z) &&
+                   IsFinite(value.w) &&
+                   magnitudeSquared > 0.0001f;
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
         }
 
         private static void RemoveEditorOnlyObjects(GameObject root)

@@ -59,6 +59,7 @@ namespace UnityPlanet.ModularAssembly.Editor
             public float duration;
             public float scale;
             public string convertedTexture;
+            public string[] convertedTextures;
             public string convertedAudio;
             public string[] dependencies;
             public string[] missingDependencies;
@@ -88,6 +89,51 @@ namespace UnityPlanet.ModularAssembly.Editor
             public readonly List<NeoXCombatEffectCatalogEntry> CatalogEntries = new();
             public readonly List<NeoXEffectConversionRecord> Records = new();
             public readonly List<string> Errors = new();
+        }
+
+        private sealed class EffectLayer
+        {
+            public string Key;
+            public Texture2D Texture;
+            public Material Material;
+        }
+
+        [InitializeOnLoadMethod]
+        private static void RegisterRequestedBuild()
+        {
+            EditorApplication.update -= TryRunRequestedBuild;
+            EditorApplication.update += TryRunRequestedBuild;
+        }
+
+        private static bool requestedBuildRunning;
+
+        private static void TryRunRequestedBuild()
+        {
+            if (requestedBuildRunning || EditorApplication.isCompiling ||
+                EditorApplication.isUpdating)
+            {
+                return;
+            }
+
+            string requestPath = Path.Combine(
+                Path.GetFullPath(Path.Combine(Application.dataPath, "..")),
+                "Temp",
+                "NeoXCombatEffectRebuild.request");
+            if (!File.Exists(requestPath))
+            {
+                return;
+            }
+
+            requestedBuildRunning = true;
+            File.Delete(requestPath);
+            try
+            {
+                Build();
+            }
+            finally
+            {
+                requestedBuildRunning = false;
+            }
         }
 
         [MenuItem("Tools/Modular Assembly/Build NeoX Combat Feedback")]
@@ -246,15 +292,13 @@ namespace UnityPlanet.ModularAssembly.Editor
             try
             {
                 Color color = ParseColor(recipe.colorHex, Color.white);
-                Texture2D texture = ImportConvertedTexture(recipe, context.SoftTexture);
-                Material primary = CreateParticleMaterial(recipe.id, color, texture, false);
-                Material smoke = CreateParticleMaterial(
-                    recipe.id + "_smoke",
-                    new Color(0.25f, 0.29f, 0.34f, 0.72f),
-                    context.SoftTexture,
-                    true);
-                record.outputMaterial = AssetDatabase.GetAssetPath(primary);
-                record.outputTexture = AssetDatabase.GetAssetPath(texture);
+                List<EffectLayer> layers =
+                    ImportConvertedTextures(recipe, context.SoftTexture);
+                bool sourceBacked = layers.Any(
+                    layer => layer.Texture != context.SoftTexture);
+                record.degraded = recipe.degraded || !sourceBacked;
+                record.outputMaterial = AssetDatabase.GetAssetPath(layers[0].Material);
+                record.outputTexture = AssetDatabase.GetAssetPath(layers[0].Texture);
 
                 GameObject root = new GameObject("NeoX_" + Sanitize(recipe.id));
                 NeoXCombatEffectMarker marker = root.AddComponent<NeoXCombatEffectMarker>();
@@ -262,7 +306,12 @@ namespace UnityPlanet.ModularAssembly.Editor
                 marker.localEmissionAxis = Vector3.forward;
                 marker.usesWorldSimulation = true;
 
-                BuildEffectGraph(root.transform, recipe, color, primary, smoke, context.ShardMesh);
+                BuildEffectGraph(
+                    root.transform,
+                    recipe,
+                    color,
+                    layers,
+                    context.ShardMesh);
                 string prefabPath = StagingRoot + "/Prefabs/" + root.name + ".prefab";
                 GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
                 UnityEngine.Object.DestroyImmediate(root);
@@ -275,7 +324,9 @@ namespace UnityPlanet.ModularAssembly.Editor
                 record.outputAudio = audio != null ? AssetDatabase.GetAssetPath(audio) : string.Empty;
                 record.outputPrefab = prefabPath;
                 record.succeeded = true;
-                record.failureReason = recipe.fallbackReason;
+                record.failureReason = sourceBacked
+                    ? recipe.fallbackReason
+                    : "No converted source texture was available; soft-particle fallback used.";
 
                 context.CatalogEntries.Add(
                     new NeoXCombatEffectCatalogEntry
@@ -286,8 +337,8 @@ namespace UnityPlanet.ModularAssembly.Editor
                         stage = ParseStage(recipe.stage),
                         prefab = prefab,
                         audioClip = audio,
-                        degraded = recipe.degraded,
-                        fallbackReason = recipe.fallbackReason
+                        degraded = record.degraded,
+                        fallbackReason = record.failureReason
                     });
             }
             catch (Exception exception)
@@ -298,31 +349,87 @@ namespace UnityPlanet.ModularAssembly.Editor
             }
         }
 
-        private static Texture2D ImportConvertedTexture(Recipe recipe, Texture2D fallback)
+        private static List<EffectLayer> ImportConvertedTextures(
+            Recipe recipe,
+            Texture2D fallback)
         {
-            if (string.IsNullOrWhiteSpace(recipe.convertedTexture) ||
-                !File.Exists(recipe.convertedTexture))
+            IEnumerable<string> sources =
+                recipe.convertedTextures != null && recipe.convertedTextures.Length > 0
+                    ? recipe.convertedTextures
+                    : new[] { recipe.convertedTexture };
+            List<EffectLayer> layers = new List<EffectLayer>();
+            int index = 0;
+            foreach (string source in sources
+                         .Where(value => !string.IsNullOrWhiteSpace(value))
+                         .Distinct(StringComparer.OrdinalIgnoreCase))
             {
-                return fallback;
+                if (!File.Exists(source))
+                {
+                    continue;
+                }
+
+                string extension = Path.GetExtension(source);
+                string sourceName = Path.GetFileNameWithoutExtension(source);
+                string key = sourceName.ToLowerInvariant();
+                string assetPath =
+                    StagingRoot + "/Textures/" + Sanitize(recipe.id) + "_" +
+                    index.ToString("00", CultureInfo.InvariantCulture) + "_" +
+                    Sanitize(sourceName) + extension;
+                File.Copy(source, ToAbsolute(assetPath), true);
+                AssetDatabase.ImportAsset(
+                    assetPath,
+                    ImportAssetOptions.ForceSynchronousImport);
+                TextureImporter importer =
+                    AssetImporter.GetAtPath(assetPath) as TextureImporter;
+                if (importer != null)
+                {
+                    importer.alphaSource = TextureImporterAlphaSource.FromInput;
+                    importer.alphaIsTransparency = true;
+                    importer.wrapMode = TextureWrapMode.Clamp;
+                    importer.filterMode = FilterMode.Bilinear;
+                    importer.mipmapEnabled = false;
+                    importer.sRGBTexture = true;
+                    importer.SaveAndReimport();
+                }
+
+                Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
+                if (texture == null)
+                {
+                    continue;
+                }
+
+                layers.Add(
+                    new EffectLayer
+                    {
+                        Key = key,
+                        Texture = texture,
+                        Material = CreateParticleMaterial(
+                            recipe.id + "_" + index.ToString(
+                                "00",
+                                CultureInfo.InvariantCulture),
+                            Color.white,
+                            texture,
+                            IsSmokeLayer(key))
+                    });
+                index++;
             }
 
-            string extension = Path.GetExtension(recipe.convertedTexture);
-            string assetPath =
-                StagingRoot + "/Textures/" + Sanitize(recipe.id) + "_source" + extension;
-            File.Copy(recipe.convertedTexture, ToAbsolute(assetPath), true);
-            AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
-            TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
-            if (importer != null)
+            if (layers.Count == 0)
             {
-                importer.alphaSource = TextureImporterAlphaSource.FromInput;
-                importer.alphaIsTransparency = true;
-                importer.wrapMode = TextureWrapMode.Clamp;
-                importer.filterMode = FilterMode.Bilinear;
-                importer.mipmapEnabled = false;
-                importer.SaveAndReimport();
+                layers.Add(
+                    new EffectLayer
+                    {
+                        Key = "fallback",
+                        Texture = fallback,
+                        Material = CreateParticleMaterial(
+                            recipe.id + "_fallback",
+                            Color.white,
+                            fallback,
+                            false)
+                    });
             }
 
-            return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath) ?? fallback;
+            return layers;
         }
 
         private static AudioClip ImportAudio(Recipe recipe)
@@ -384,7 +491,29 @@ namespace UnityPlanet.ModularAssembly.Editor
             }
             if (material.HasProperty("_Mode"))
             {
-                material.SetFloat("_Mode", alphaBlend ? 2f : 1f);
+                material.SetFloat("_Mode", alphaBlend ? 2f : 4f);
+            }
+            if (material.HasProperty("_Surface"))
+            {
+                material.SetFloat("_Surface", 1f);
+            }
+            if (material.HasProperty("_ZWrite"))
+            {
+                material.SetFloat("_ZWrite", 0f);
+            }
+            if (material.HasProperty("_SrcBlend"))
+            {
+                material.SetFloat(
+                    "_SrcBlend",
+                    (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            }
+            if (material.HasProperty("_DstBlend"))
+            {
+                material.SetFloat(
+                    "_DstBlend",
+                    (float)(alphaBlend
+                        ? UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha
+                        : UnityEngine.Rendering.BlendMode.One));
             }
 
             string path = StagingRoot + "/Materials/" + material.name + ".mat";
@@ -396,24 +525,41 @@ namespace UnityPlanet.ModularAssembly.Editor
             Transform root,
             Recipe recipe,
             Color color,
-            Material primary,
-            Material smoke,
+            IReadOnlyList<EffectLayer> layers,
             Mesh shardMesh)
         {
             float scale = Mathf.Max(0.1f, recipe.scale);
             float duration = Mathf.Max(0.1f, recipe.duration);
+            EffectLayer primaryLayer = FindLayer(
+                layers,
+                "star", "glow", "dian", "object", "pattern");
+            EffectLayer smokeLayer = FindLayer(layers, "smoke");
+            EffectLayer trailLayer = FindLayer(
+                layers,
+                "trail", "ray", "guangxian", "guangmang");
+            EffectLayer ringLayer = FindLayer(
+                layers,
+                "quan", "ring", "pattern", "guanghuan", "yuanhuan");
+            Material primary = (primaryLayer ?? layers[0]).Material;
+            Material smoke = (smokeLayer ?? primaryLayer ?? layers[0]).Material;
+            Material trail = (trailLayer ?? primaryLayer ?? layers[0]).Material;
+            Material ring = (ringLayer ?? primaryLayer ?? layers[0]).Material;
+
             switch ((recipe.kind ?? string.Empty).ToLowerInvariant())
             {
                 case "break":
                     CreateBurst(
                         root, "IrregularShards", color, primary, duration,
-                        10, 18, 2.5f * scale, 7f * scale, 0.18f * scale, 0.55f * scale,
+                        8, 14, 2.5f * scale, 7f * scale, 0.16f * scale, 0.48f * scale,
                         ParticleSystemShapeType.Hemisphere, true, shardMesh, false);
                     CreateBurst(
-                        root, "BreakSparks", new Color(1f, 0.55f, 0.18f, 1f), primary,
-                        duration * 0.55f, 14, 24, 4f * scale, 10f * scale,
+                        root, "BreakSparks", new Color(1f, 0.55f, 0.18f, 1f), trail,
+                        duration * 0.55f, 10, 18, 4f * scale, 10f * scale,
                         0.04f * scale, 0.12f * scale,
                         ParticleSystemShapeType.Cone, false, null, true);
+                    CreateExpandingLayer(
+                        root, "BreakFlash", color, ring,
+                        duration * 0.32f, 0.2f * scale, 1.15f * scale);
                     break;
                 case "smoke":
                     CreateBurst(
@@ -423,14 +569,18 @@ namespace UnityPlanet.ModularAssembly.Editor
                         ParticleSystemShapeType.Sphere, false, null, false);
                     break;
                 case "explosion":
+                    CreateExpandingLayer(
+                        root, "ExplosionShockRing",
+                        new Color(1f, 0.66f, 0.26f, 0.9f), ring,
+                        duration * 0.42f, 0.3f * scale, 2.4f * scale);
                     CreateBurst(
                         root, "ExplosionCore", color, primary, duration * 0.45f,
-                        12, 20, 2f * scale, 8f * scale,
+                        9, 15, 2f * scale, 8f * scale,
                         0.45f * scale, 1.8f * scale,
                         ParticleSystemShapeType.Sphere, false, null, false);
                     CreateBurst(
                         root, "ExplosionSparks", new Color(1f, 0.86f, 0.28f, 1f),
-                        primary, duration * 0.7f, 22, 38, 8f * scale, 18f * scale,
+                        trail, duration * 0.7f, 16, 28, 8f * scale, 18f * scale,
                         0.035f * scale, 0.11f * scale,
                         ParticleSystemShapeType.Sphere, false, null, true);
                     CreateBurst(
@@ -440,9 +590,12 @@ namespace UnityPlanet.ModularAssembly.Editor
                         ParticleSystemShapeType.Sphere, false, null, false);
                     break;
                 case "shield":
+                    CreateExpandingLayer(
+                        root, "ShieldWave", color, ring,
+                        duration * 0.7f, 0.35f * scale, 2.2f * scale);
                     CreateBurst(
-                        root, "ShieldFragments", color, primary, duration,
-                        26, 42, 4f * scale, 11f * scale,
+                        root, "ShieldFragments", color, trail, duration,
+                        18, 30, 4f * scale, 11f * scale,
                         0.045f * scale, 0.16f * scale,
                         ParticleSystemShapeType.Sphere, false, null, true);
                     CreateBurst(
@@ -452,6 +605,9 @@ namespace UnityPlanet.ModularAssembly.Editor
                         ParticleSystemShapeType.Sphere, false, null, false);
                     break;
                 case "energy":
+                    CreateExpandingLayer(
+                        root, "EnergyRing", color, ring,
+                        duration * 0.65f, 0.18f * scale, 1.75f * scale);
                     CreateBurst(
                         root, "EnergyCore", color, primary, duration * 0.7f,
                         10, 16, 1.5f * scale, 5f * scale,
@@ -459,21 +615,24 @@ namespace UnityPlanet.ModularAssembly.Editor
                         ParticleSystemShapeType.Sphere, false, null, false);
                     CreateBurst(
                         root, "EnergyArcs", Color.Lerp(color, Color.white, 0.35f),
-                        primary, duration, 16, 28, 4f * scale, 12f * scale,
+                        trail, duration, 12, 22, 4f * scale, 12f * scale,
                         0.025f * scale, 0.09f * scale,
                         ParticleSystemShapeType.Sphere, false, null, true);
                     break;
                 case "laser":
+                    CreateExpandingLayer(
+                        root, "LaserContactRing", color, ring,
+                        duration * 0.55f, 0.08f * scale, 0.7f * scale);
                     CreateBurst(
-                        root, "LaserImpact", color, primary, duration,
-                        14, 24, 5f * scale, 13f * scale,
+                        root, "LaserImpact", color, trail, duration,
+                        10, 18, 5f * scale, 13f * scale,
                         0.025f * scale, 0.08f * scale,
                         ParticleSystemShapeType.Cone, false, null, true);
                     break;
                 default:
                     CreateBurst(
-                        root, "ImpactSparks", color, primary, duration,
-                        12, 22, 4f * scale, 11f * scale,
+                        root, "ImpactSparks", color, trail, duration,
+                        9, 16, 4f * scale, 11f * scale,
                         0.025f * scale, 0.09f * scale,
                         ParticleSystemShapeType.Cone, false, null, true);
                     CreateBurst(
@@ -481,8 +640,107 @@ namespace UnityPlanet.ModularAssembly.Editor
                         primary, duration * 0.45f, 4, 8, 0.5f * scale, 2f * scale,
                         0.12f * scale, 0.35f * scale,
                         ParticleSystemShapeType.Hemisphere, false, null, false);
+                    if (smokeLayer != null)
+                    {
+                        CreateBurst(
+                            root, "ImpactSmoke",
+                            new Color(0.25f, 0.27f, 0.3f, 0.55f),
+                            smoke, duration, 2, 4, 0.2f * scale, 0.8f * scale,
+                            0.16f * scale, 0.42f * scale,
+                            ParticleSystemShapeType.Hemisphere,
+                            false, null, false);
+                    }
                     break;
             }
+        }
+
+        private static bool IsSmokeLayer(string key)
+        {
+            return !string.IsNullOrEmpty(key) &&
+                   (key.Contains("smoke") || key.Contains("cloud"));
+        }
+
+        private static EffectLayer FindLayer(
+            IReadOnlyList<EffectLayer> layers,
+            params string[] tokens)
+        {
+            for (int layerIndex = 0; layerIndex < layers.Count; layerIndex++)
+            {
+                EffectLayer layer = layers[layerIndex];
+                for (int tokenIndex = 0; tokenIndex < tokens.Length; tokenIndex++)
+                {
+                    if (layer.Key.Contains(tokens[tokenIndex]))
+                    {
+                        return layer;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static ParticleSystem CreateExpandingLayer(
+            Transform parent,
+            string name,
+            Color color,
+            Material material,
+            float lifetime,
+            float startSize,
+            float endSize)
+        {
+            GameObject child = new GameObject(name);
+            child.transform.SetParent(parent, false);
+            ParticleSystem system = child.AddComponent<ParticleSystem>();
+            ParticleSystem.MainModule main = system.main;
+            main.duration = Mathf.Max(0.1f, lifetime);
+            main.loop = false;
+            main.playOnAwake = true;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = Mathf.Max(0.08f, lifetime);
+            main.startSpeed = 0f;
+            main.startSize = Mathf.Max(0.01f, startSize);
+            main.startColor = color;
+            main.maxParticles = 2;
+            main.gravityModifier = 0f;
+
+            ParticleSystem.EmissionModule emission = system.emission;
+            emission.rateOverTime = 0f;
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 1) });
+
+            ParticleSystem.ShapeModule shape = system.shape;
+            shape.enabled = false;
+
+            ParticleSystem.ColorOverLifetimeModule colors =
+                system.colorOverLifetime;
+            colors.enabled = true;
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new[]
+                {
+                    new GradientColorKey(color, 0f),
+                    new GradientColorKey(color, 1f)
+                },
+                new[]
+                {
+                    new GradientAlphaKey(0f, 0f),
+                    new GradientAlphaKey(color.a, 0.08f),
+                    new GradientAlphaKey(0f, 1f)
+                });
+            colors.color = gradient;
+
+            ParticleSystem.SizeOverLifetimeModule sizes =
+                system.sizeOverLifetime;
+            sizes.enabled = true;
+            float multiplier = Mathf.Max(1f, endSize / Mathf.Max(0.01f, startSize));
+            sizes.size = new ParticleSystem.MinMaxCurve(
+                1f,
+                AnimationCurve.EaseInOut(0f, 1f, 1f, multiplier));
+
+            ParticleSystemRenderer renderer =
+                child.GetComponent<ParticleSystemRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.alignment = ParticleSystemRenderSpace.World;
+            return system;
         }
 
         private static ParticleSystem CreateBurst(

@@ -137,20 +137,21 @@ namespace UnityPlanet.ModularAssembly
                 string moduleId = view?.Record?.Definition?.ModuleId;
                 if (view == null || string.IsNullOrEmpty(moduleId) ||
                     !moduleId.StartsWith(ModulePrefix, StringComparison.OrdinalIgnoreCase) ||
-                    !recordsByModuleId.TryGetValue(moduleId, out ModularContentRecord record) ||
-                    view.GetComponent<NeoXBehaviorModule>() != null)
+                    !recordsByModuleId.TryGetValue(
+                        moduleId,
+                        out ModularContentRecord record))
                 {
                     continue;
                 }
-                NeoXBehaviorModule behavior = view.GetComponent<NeoXBehaviorModule>() ??
-                                               view.gameObject.AddComponent<NeoXBehaviorModule>();
+                NeoXBehaviorModule behavior =
+                    view.GetComponent<NeoXBehaviorModule>();
+                bool requiresVisualUpgrade = behavior == null;
+                behavior = behavior ??
+                           view.gameObject.AddComponent<NeoXBehaviorModule>();
                 behavior.Configure(record);
                 if (record.BehaviorKind == GridModuleBehaviorKind.Wheel)
                 {
-                    ModularWheelRuntime wheel =
-                        view.GetComponent<ModularWheelRuntime>() ??
-                        view.gameObject.AddComponent<ModularWheelRuntime>();
-                    wheel.Configure(record, view.Record.BehaviorSettings);
+                    ConfigureWheelElements(view, record);
                 }
                 Rigidbody vehicleBody = view.GetComponentInParent<Rigidbody>();
                 if (vehicleBody != null)
@@ -159,8 +160,123 @@ namespace UnityPlanet.ModularAssembly
                                                       vehicleBody.gameObject.AddComponent<NeoXUtilityController>();
                     utilities.Rebuild();
                 }
-                StartCoroutine(UpgradeView(pair.Key, view, record));
+                if (requiresVisualUpgrade)
+                {
+                    StartCoroutine(
+                        UpgradeView(pair.Key, view, record));
+                }
+                else
+                {
+                    view.GetComponentInParent<
+                        RobocraftMotionCoordinator>()?.Rebuild();
+                }
             }
+        }
+
+        private static ModularWheelRuntime ConfigureWheelElements(
+            GridModuleView view,
+            ModularContentRecord record)
+        {
+            WheelTyreGeometry[] tyres;
+            bool hasAuthoredGeometry =
+                WheelModuleGeometryCatalog.TryResolve(
+                    record?.neoXId,
+                    out tyres) &&
+                tyres.Length > 0;
+            int tyreCount = hasAuthoredGeometry
+                ? tyres.Length
+                : 1;
+            string behaviorSettings =
+                view.Record?.BehaviorSettings;
+            ModularWheelRuntime primary =
+                view.GetComponent<ModularWheelRuntime>() ??
+                view.gameObject.AddComponent<ModularWheelRuntime>();
+            primary.enabled = true;
+            primary.ConfigureTyreElement(
+                record,
+                behaviorSettings,
+                0,
+                view.transform);
+            ConfigureWheelDust(primary, hasAuthoredGeometry);
+
+            var activeElements = new HashSet<Transform>();
+            for (int index = 1; index < tyreCount; index++)
+            {
+                string elementName =
+                    "WheelTyreElement_" + index;
+                Transform elementRoot =
+                    view.transform.Find(elementName);
+                if (elementRoot == null)
+                {
+                    elementRoot =
+                        new GameObject(elementName).transform;
+                    elementRoot.SetParent(view.transform, false);
+                }
+                elementRoot.gameObject.SetActive(true);
+                elementRoot.localPosition = Vector3.zero;
+                elementRoot.localRotation = Quaternion.identity;
+                elementRoot.localScale = Vector3.one;
+                activeElements.Add(elementRoot);
+
+                ModularWheelRuntime element =
+                    elementRoot.GetComponent<ModularWheelRuntime>() ??
+                    elementRoot.gameObject.AddComponent<
+                        ModularWheelRuntime>();
+                element.enabled = true;
+                element.ConfigureTyreElement(
+                    record,
+                    behaviorSettings,
+                    index,
+                    view.transform);
+                ConfigureWheelDust(element, true);
+            }
+
+            for (int index = view.transform.childCount - 1;
+                 index >= 0;
+                 index--)
+            {
+                Transform child = view.transform.GetChild(index);
+                if (child == null ||
+                    !child.name.StartsWith(
+                        "WheelTyreElement_",
+                        StringComparison.Ordinal) ||
+                    activeElements.Contains(child))
+                {
+                    continue;
+                }
+                foreach (ModularWheelRuntime stale in
+                         child.GetComponents<ModularWheelRuntime>())
+                {
+                    stale.enabled = false;
+                }
+                child.gameObject.SetActive(false);
+            }
+            return primary;
+        }
+
+        private static void ConfigureWheelDust(
+            ModularWheelRuntime wheel,
+            bool supportedSemanticWheel)
+        {
+            WheelDustVisualRuntime dust =
+                wheel.GetComponent<WheelDustVisualRuntime>();
+            if (!supportedSemanticWheel)
+            {
+                if (dust != null)
+                {
+                    dust.Bind(null);
+                    dust.enabled = false;
+                }
+                return;
+            }
+
+            dust = dust ??
+                   wheel.gameObject.AddComponent<
+                       WheelDustVisualRuntime>();
+            dust.enabled = true;
+            // ConfigureTyreElement has already supplied the exact authored
+            // centre, radius, width and dual-tyre count at this point.
+            dust.Bind(wheel);
         }
 
         private IEnumerator UpgradeView(string runtimeId, GridModuleView view, ModularContentRecord record)
@@ -177,14 +293,46 @@ namespace UnityPlanet.ModularAssembly
             }
             foreach (Renderer renderer in view.GetComponentsInChildren<Renderer>(true))
             {
-                if (!renderer.transform.IsChildOf(loaded.transform))
+                if (!renderer.transform.IsChildOf(loaded.transform) &&
+                    !IsWheelDustRenderer(renderer))
                 {
                     renderer.enabled = false;
                 }
             }
-            view.GetComponent<ModularWheelRuntime>()?.BindVisual(loaded.transform);
+            ModularWheelRuntime primaryWheel =
+                view.GetComponent<ModularWheelRuntime>();
+            primaryWheel?.BindVisual(loaded.transform);
+            if (WheelModuleGeometryCatalog.TryResolve(
+                    record.neoXId,
+                    out WheelTyreGeometry[] tyres) &&
+                tyres.Length > 0)
+            {
+                WheelCarrierCollisionRuntime carrier =
+                    view.GetComponent<WheelCarrierCollisionRuntime>() ??
+                    view.gameObject.AddComponent<
+                        WheelCarrierCollisionRuntime>();
+                carrier.BindMotionRoot(
+                    primaryWheel != null
+                        ? primaryWheel.VisualMotionRoot
+                        : view.transform);
+                carrier.Configure(record.neoXId);
+            }
             view.GetComponentInParent<RobocraftMotionCoordinator>()?.Rebuild();
             view.GetComponentInParent<NeoXUtilityController>()?.Rebuild();
+        }
+
+        private static bool IsWheelDustRenderer(Renderer renderer)
+        {
+            if (renderer == null)
+                return false;
+
+            WheelDustVisualRuntime owner =
+                renderer.GetComponentInParent<
+                    WheelDustVisualRuntime>();
+            Transform effectRoot = owner?.EffectRoot;
+            return effectRoot != null &&
+                   (renderer.transform == effectRoot ||
+                    renderer.transform.IsChildOf(effectRoot));
         }
 
         private static string ToModuleId(ModularContentRecord record)

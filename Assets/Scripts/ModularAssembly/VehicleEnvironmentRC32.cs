@@ -353,7 +353,6 @@ namespace UnityPlanet.ModularAssembly
                 "SpacecraftIfcsMotor",
                 "ShipFlightController",
                 "PlanetSurfaceFlightEnvironment",
-                "ModularWheelRuntime",
                 "LabEnvironmentBody",
                 "LabArcadeVehicleController"
             };

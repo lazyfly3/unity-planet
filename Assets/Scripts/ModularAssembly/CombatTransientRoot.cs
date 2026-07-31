@@ -56,6 +56,17 @@ namespace UnityPlanet.ModularAssembly
             if (root == null)
                 return;
 
+            CombatWeaponEffectPool weaponEffects =
+                root.GetComponent<CombatWeaponEffectPool>();
+            if (weaponEffects != null)
+                weaponEffects.Clear();
+            foreach (ModuleDestructionEffectPool destructionEffects in
+                     root.GetComponentsInChildren<
+                         ModuleDestructionEffectPool>(true))
+            {
+                if (destructionEffects != null)
+                    destructionEffects.Clear();
+            }
             foreach (WeaponProjectile projectile in
                      root.GetComponentsInChildren<WeaponProjectile>(true))
             {
@@ -75,6 +86,12 @@ namespace UnityPlanet.ModularAssembly
             foreach (TrailRenderer trail in
                      root.GetComponentsInChildren<TrailRenderer>(true))
                 trail.Clear();
+            foreach (LineRenderer line in
+                     root.GetComponentsInChildren<LineRenderer>(true))
+                line.enabled = false;
+            foreach (Light light in
+                     root.GetComponentsInChildren<Light>(true))
+                light.enabled = false;
             foreach (Transform child in root)
             {
                 if (child.name == "WeaponTracer" ||

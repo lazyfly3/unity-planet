@@ -1,3 +1,4 @@
+using ModularAssembly;
 using UnityEngine;
 
 namespace UnityPlanet.ModularAssembly
@@ -11,6 +12,9 @@ namespace UnityPlanet.ModularAssembly
         public readonly Bounds WorldBounds;
         public readonly float HealthRatio;
         public readonly bool Destroyed;
+        public readonly float DamageAmount;
+        public readonly GridModuleCategory Category;
+        public readonly bool IsCore;
 
         public VehicleModuleDamageFeedback(
             string runtimeId,
@@ -19,7 +23,10 @@ namespace UnityPlanet.ModularAssembly
             Vector3 impulse,
             Bounds worldBounds,
             float healthRatio,
-            bool destroyed)
+            bool destroyed,
+            float damageAmount,
+            GridModuleCategory category,
+            bool isCore)
         {
             RuntimeId = runtimeId ?? string.Empty;
             DisplayName = displayName ?? string.Empty;
@@ -28,6 +35,9 @@ namespace UnityPlanet.ModularAssembly
             WorldBounds = worldBounds;
             HealthRatio = Mathf.Clamp01(healthRatio);
             Destroyed = destroyed;
+            DamageAmount = Mathf.Max(0f, damageAmount);
+            Category = category;
+            IsCore = isCore;
         }
     }
 

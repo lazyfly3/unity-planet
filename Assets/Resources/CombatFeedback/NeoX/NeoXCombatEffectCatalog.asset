@@ -14,83 +14,83 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   entries:
   - sourceId: metal_hit
-    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/behit/metal_medium.sfx
+    sourcePath: APKExtracted/g98_release_out_netease_94_nxpk/sfx/behit/metal_medium.sfx
     family: Hull
     stage: 0
-    prefab: {fileID: 219710131986270236, guid: ba276c7a8e22d9e4a83677ff1fb87481, type: 3}
+    prefab: {fileID: 7901037137976636511, guid: 9a463725caae3fb47ab44634d88a34e7, type: 3}
     audioClip: {fileID: 0}
     degraded: 1
-    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
-      Unity/Forge3D approximation.
+    fallbackReason: Unsupported NeoX camera, decal, post-process or custom shader
+      nodes use a source-textured Unity approximation.
   - sourceId: gatlin_hit
-    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/behit/metal_gatlin_end.sfx
+    sourcePath: APKExtracted/g98_release_out_netease_94_nxpk/sfx/behit/metal_gatlin_end.sfx
     family: Gatlin
     stage: 0
-    prefab: {fileID: 6088369790446456384, guid: 712c21b0702d5c54f803d4ff308de654, type: 3}
+    prefab: {fileID: 5654715411478855216, guid: 734dd4c54ef9afc47acd4b7cac0a469a, type: 3}
     audioClip: {fileID: 0}
     degraded: 1
-    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
-      Unity/Forge3D approximation.
+    fallbackReason: Unsupported NeoX camera, decal, post-process or custom shader
+      nodes use a source-textured Unity approximation.
   - sourceId: sniper_hit
-    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/behit/metal_snipercannon_bullet_end.sfx
+    sourcePath: APKExtracted/g98_release_out_netease_94_nxpk/sfx/behit/metal_snipercannon_bullet_end.sfx
     family: Sniper
     stage: 0
-    prefab: {fileID: 2957716326780973606, guid: 0fa968c75ecb2194db955dcff21fcb1a, type: 3}
+    prefab: {fileID: 537156444685966903, guid: f31f747f4f9ffd64aa2976725c21216b, type: 3}
     audioClip: {fileID: 0}
     degraded: 1
-    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
-      Unity/Forge3D approximation.
+    fallbackReason: Unsupported NeoX camera, decal, post-process or custom shader
+      nodes use a source-textured Unity approximation.
   - sourceId: module_break
-    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/mc/break_01.sfx
+    sourcePath: APKExtracted/g98_release_out_netease_94_nxpk/sfx/mc/break_01.sfx
     family: Structure
     stage: 1
-    prefab: {fileID: 3154563593632691227, guid: c641e3c6258d7cd4c9a46f5a543d6bab, type: 3}
+    prefab: {fileID: 6933004666251899659, guid: ebb2244a984980c4b97045a55afeb5a5, type: 3}
     audioClip: {fileID: 0}
     degraded: 1
-    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
-      Unity/Forge3D approximation.
+    fallbackReason: Unsupported NeoX camera, decal, post-process or custom shader
+      nodes use a source-textured Unity approximation.
   - sourceId: detached_smoke
-    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/mc/smoke_fire.sfx
+    sourcePath: APKExtracted/g98_release_out_netease_94_nxpk/sfx/mc/smoke_fire.sfx
     family: Structure
     stage: 2
-    prefab: {fileID: 4198933037546638975, guid: 9e78c7c692d5c594e8708f9a613dd189, type: 3}
+    prefab: {fileID: 4687858976028424784, guid: e3150ecc330aa6d48820868b7599e805, type: 3}
     audioClip: {fileID: 0}
     degraded: 1
-    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
-      Unity/Forge3D approximation.
+    fallbackReason: Unsupported NeoX camera, decal, post-process or custom shader
+      nodes use a source-textured Unity approximation.
   - sourceId: missile_explosion
-    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/mc/guide_missle_end_01.sfx
+    sourcePath: APKExtracted/g98_release_out_netease_94_nxpk/sfx/mc/guide_missle_end_01.sfx
     family: Missile
     stage: 3
-    prefab: {fileID: 7587109434391191324, guid: 0135bf524d665364b91666716d4d1408, type: 3}
+    prefab: {fileID: 2556120209596449971, guid: 5fead10c94e809f43a7684cf4d14561f, type: 3}
     audioClip: {fileID: 0}
     degraded: 1
-    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
-      Unity/Forge3D approximation.
+    fallbackReason: Unsupported NeoX camera, decal, post-process or custom shader
+      nodes use a source-textured Unity approximation.
   - sourceId: shield_break
-    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/mc/shield_break.sfx
+    sourcePath: APKExtracted/g98_release_out_netease_94_nxpk/sfx/mc/shield_break.sfx
     family: Shield
     stage: 1
-    prefab: {fileID: 8705640822383758055, guid: 52520a7afbbaf1e49a46698393f2ad5c, type: 3}
+    prefab: {fileID: 4518553932142383460, guid: c509146df6a12fc4db22a891451097bb, type: 3}
     audioClip: {fileID: 0}
     degraded: 1
-    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
-      Unity/Forge3D approximation.
+    fallbackReason: Unsupported NeoX camera, decal, post-process or custom shader
+      nodes use a source-textured Unity approximation.
   - sourceId: energy_impact
-    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/mc/energy_cannon_end.sfx
+    sourcePath: APKExtracted/g98_release_out_netease_94_nxpk/sfx/mc/energy_cannon_end.sfx
     family: EnergyCannon
     stage: 0
-    prefab: {fileID: 2914702905809520846, guid: 4ccaa76bcde025641a3adcfd763bb088, type: 3}
+    prefab: {fileID: 7589291374127484293, guid: c4946b9d212f5894b9a9faee46c40b5a, type: 3}
     audioClip: {fileID: 0}
     degraded: 1
-    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
-      Unity/Forge3D approximation.
+    fallbackReason: Unsupported NeoX camera, decal, post-process or custom shader
+      nodes use a source-textured Unity approximation.
   - sourceId: laser_impact
-    sourcePath: NeoXSource/g98_release_out_netease_94_nxpk/sfx/mc/laser_bullet_end.sfx
+    sourcePath: APKExtracted/g98_release_out_netease_94_nxpk/sfx/mc/laser_bullet_end.sfx
     family: HeavyLaser
     stage: 0
-    prefab: {fileID: 4599651589783558857, guid: cba5a2e8f7211334f8638999d097d936, type: 3}
+    prefab: {fileID: 968202321129072518, guid: 5da3bd5806e31b24e8d30113a6667b33, type: 3}
     audioClip: {fileID: 0}
     degraded: 1
-    fallbackReason: Unsupported or texture-less NeoX nodes use the deterministic
-      Unity/Forge3D approximation.
+    fallbackReason: Unsupported NeoX camera, decal, post-process or custom shader
+      nodes use a source-textured Unity approximation.
