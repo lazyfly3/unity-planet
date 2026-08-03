@@ -25,42 +25,42 @@ namespace UnityPlanet.ModularAssembly
                 resource = "VulcanMuzzle";
                 bool gatling = key.Contains("gatlin");
                 lifetime = gatling ? 0.18f : 0.12f;
-                scale = gatling ? 0.34f : 0.18f;
+                scale = gatling ? 0.5f : 0.3f;
             }
             else if (key.Contains("antiair"))
             {
                 resource = "SoloMuzzle";
-                scale = 0.22f;
+                scale = 0.34f;
             }
             else if (key.Contains("forge3dfightermissilemuzzle"))
             {
                 resource = "MissileFlame";
                 lifetime = 0.22f;
-                scale = 0.2f;
+                scale = 0.3f;
             }
             else if (key.Contains("forge3dguidedmissilemuzzle"))
             {
                 resource = "SeekerMuzzle";
                 lifetime = 0.3f;
-                scale = 0.18f;
+                scale = 0.28f;
             }
             else if (key.Contains("forge3dmissilemuzzle"))
             {
                 resource = "MissileFlame";
                 lifetime = 0.2f;
-                scale = 0.16f;
+                scale = 0.26f;
             }
             else if (key.Contains("sniper"))
             {
                 resource = "SniperImpact";
                 lifetime = 0.18f;
-                scale = 0.18f;
+                scale = 0.3f;
             }
             else if (key.Contains("energy_cannon"))
             {
                 resource = "PlasmaMuzzle";
                 lifetime = 0.2f;
-                scale = 0.22f;
+                scale = 0.36f;
             }
 
             if (resource == null)
@@ -98,7 +98,7 @@ namespace UnityPlanet.ModularAssembly
             {
                 resource = "VulcanImpact";
                 lifetime = 0.55f;
-                scale = 0.12f;
+                scale = 0.24f;
             }
             else if (key.Contains("antiair"))
             {
@@ -106,14 +106,14 @@ namespace UnityPlanet.ModularAssembly
                 lifetime = 1.2f;
                 scale = Mathf.Clamp(
                     radius > 0.1f ? radius * 0.055f : 0.07f,
-                    0.05f,
-                    0.12f);
+                    0.1f,
+                    0.22f);
             }
             else if (key.Contains("sniper"))
             {
                 resource = "SniperImpact";
                 lifetime = 0.7f;
-                scale = 0.16f;
+                scale = 0.3f;
             }
             else if (key.Contains("energy_cannon"))
             {
@@ -121,26 +121,26 @@ namespace UnityPlanet.ModularAssembly
                 lifetime = 0.9f;
                 scale = Mathf.Clamp(
                     radius > 0.1f ? radius * 0.08f : 0.1f,
-                    0.08f,
-                    0.2f);
+                    0.16f,
+                    0.34f);
             }
             else if (key.Contains("forge3dfightermissileimpact"))
             {
                 resource = "FighterMissileExplosion";
                 lifetime = 1.4f;
-                scale = Mathf.Clamp(radius * 0.032f, 0.1f, 0.16f);
+                scale = Mathf.Clamp(radius * 0.044f, 0.16f, 0.26f);
             }
             else if (key.Contains("forge3dguidedmissileimpact"))
             {
                 resource = "MissileExplosion";
                 lifetime = 1.4f;
-                scale = Mathf.Clamp(radius * 0.028f, 0.1f, 0.15f);
+                scale = Mathf.Clamp(radius * 0.04f, 0.16f, 0.25f);
             }
             else if (key.Contains("forge3dmissileimpact"))
             {
                 resource = "MissileExplosion";
                 lifetime = 1.35f;
-                scale = Mathf.Clamp(radius * 0.03f, 0.1f, 0.15f);
+                scale = Mathf.Clamp(radius * 0.042f, 0.16f, 0.25f);
             }
 
             if (resource == null)
@@ -187,13 +187,13 @@ namespace UnityPlanet.ModularAssembly
                     end,
                     direction,
                     0.2f,
-                    0.22f);
+                    0.34f);
                 spawned |= pool.SpawnOneShot(
                     ResourceRoot + "MissileSmokeTrail",
                     end,
                     direction,
                     0.42f,
-                    0.09f);
+                    0.14f);
                 return spawned;
             }
             if (key.Contains("forge3dguidedmissiletrail"))
@@ -203,13 +203,13 @@ namespace UnityPlanet.ModularAssembly
                     end,
                     direction,
                     0.22f,
-                    0.18f);
+                    0.28f);
                 spawned |= pool.SpawnOneShot(
                     ResourceRoot + "MissileSmokeTrail",
                     end,
                     direction,
                     0.48f,
-                    0.08f);
+                    0.13f);
                 return spawned;
             }
             if (key.Contains("forge3dmissiletrail"))
@@ -219,13 +219,13 @@ namespace UnityPlanet.ModularAssembly
                     end,
                     direction,
                     0.18f,
-                    0.16f);
+                    0.26f);
                 spawned |= pool.SpawnOneShot(
                     ResourceRoot + "MissileSmokeTrail",
                     end,
                     direction,
                     0.5f,
-                    0.1f);
+                    0.15f);
                 return spawned;
             }
             if (!key.Contains("sniper"))
@@ -247,7 +247,7 @@ namespace UnityPlanet.ModularAssembly
             if (key.Contains("energy_cannon"))
             {
                 resource = ResourceRoot + "PlasmaProjectile";
-                scale = 0.18f;
+                scale = 0.34f;
                 return true;
             }
 

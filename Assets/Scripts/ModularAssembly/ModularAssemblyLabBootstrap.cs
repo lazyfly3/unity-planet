@@ -27,8 +27,10 @@ public sealed class ModularAssemblyLabBootstrap : MonoBehaviour
         BuildEnvironment();
         if (EventSystem.current == null)
         {
-            GameObject eventSystem = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
-            DontDestroyOnLoad(eventSystem);
+            new GameObject(
+                "EventSystem",
+                typeof(EventSystem),
+                typeof(StandaloneInputModule));
         }
 
         GameObject ship = new GameObject("GridShip");

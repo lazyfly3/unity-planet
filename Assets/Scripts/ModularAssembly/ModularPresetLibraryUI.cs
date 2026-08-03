@@ -94,6 +94,15 @@ namespace UnityPlanet.ModularAssembly
         {
             foreach (Button button in FindObjectsOfType<Button>(true))
             {
+                // The scene still contains the hidden bootstrap UI. Hook only
+                // the button owned by the active Modular air-build experience;
+                // otherwise the visible button can keep its legacy direct-load
+                // callback and bypass this library dialog.
+                if (button.GetComponentInParent<
+                        AirBuildExperienceController>() == null)
+                {
+                    continue;
+                }
                 Text text = button.GetComponentInChildren<Text>(true);
                 if (text != null &&
                     string.Equals(
@@ -495,7 +504,7 @@ namespace UnityPlanet.ModularAssembly
                                    "未执行飞行校验";
             detailText.text =
                 $"{entry.displayName}\n" +
-                $"来源：{(entry.builtIn ? "内置只读" : "当前银河")}\n" +
+                $"来源：{(entry.builtIn ? "内置只读" : "玩家预制库")}\n" +
                 $"模块：{entry.moduleCount}    质量：{entry.totalMass:F0} kg\n" +
                 $"核心辅助：{assist}    物理：{entry.physicsRevision}\n" +
                 $"状态：{qualification}";

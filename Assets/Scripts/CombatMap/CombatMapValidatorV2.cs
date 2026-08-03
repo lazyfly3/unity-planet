@@ -55,7 +55,24 @@ namespace UnityPlanet.CombatMap
                 report.violations = violations.ToArray();
                 return report;
             }
+            bool horde = settings.mode == AirCombatMapMode.Horde;
 
+            float maximumSafeForfeit =
+                settings.MaximumSafeForfeitRadius;
+            if (plan.forfeitRadius > maximumSafeForfeit + 0.01f)
+            {
+                violations.Add(Hard(
+                    "boundary.edge-buffer",
+                    "AI 战术活动外圈侵入了主地形安全缓冲区。",
+                    plan.mapCenter));
+            }
+            if (plan.warningRadius >= plan.forfeitRadius)
+            {
+                violations.Add(Hard(
+                    "boundary.warning-order",
+                    "主要交战区提示半径必须小于 AI 战术活动外圈。",
+                    plan.mapCenter));
+            }
             ValidateStableIds(plan, violations);
             CombatSemanticAnchor player = plan.FindAnchor(
                 CombatAnchorType.PlayerSpawn);
@@ -89,10 +106,10 @@ namespace UnityPlanet.CombatMap
                     plan,
                     settings,
                     violations);
-            bool openingBlocked = false;
+            bool openingBlocked = horde;
             if (player != null && enemy != null)
             {
-                openingBlocked =
+                openingBlocked = horde ||
                     !CombatMapGenerator.HasTerrainLineOfSight(
                         settings,
                         plan,
@@ -109,7 +126,7 @@ namespace UnityPlanet.CombatMap
                                 / Mathf.Max(
                                     8f,
                                     settings.chunkResolution * 4f))));
-                if (!openingBlocked)
+                if (!openingBlocked && !horde)
                 {
                     violations.Add(Hard(
                         "spawn.opening-line-of-sight",
@@ -122,8 +139,8 @@ namespace UnityPlanet.CombatMap
             }
 
             float recommendedDiameter = Mathf.Max(
-                settings.designWeaponRange * 2.5f,
-                settings.designTurnRadius * 8f);
+                settings.designWeaponRange * (horde ? 2.15f : 2.5f),
+                settings.designTurnRadius * (horde ? 7f : 8f));
             float scaleRatio = settings.mapSize
                 / Mathf.Max(1f, recommendedDiameter);
             report.firstContactSeconds = settings.spawnDistance
@@ -135,7 +152,7 @@ namespace UnityPlanet.CombatMap
                     "地图尺度不足以同时容纳设计射程和持续转弯包线。",
                     plan.mapCenter));
             }
-            if (report.firstContactSeconds
+            if (!horde && report.firstContactSeconds
                 < Mathf.Max(
                     6f,
                     settings.targetFirstContactSeconds * 0.55f))
@@ -145,7 +162,7 @@ namespace UnityPlanet.CombatMap
                     "按设计速度计算，双方会过早进入首次接触。",
                     plan.mapCenter));
             }
-            else if (report.firstContactSeconds > 25f)
+            else if (!horde && report.firstContactSeconds > 25f)
             {
                 violations.Add(Hard(
                     "spawn.contact-too-late",
@@ -343,7 +360,7 @@ namespace UnityPlanet.CombatMap
                     plan.mapCenter));
             }
             if (maximumExposure
-                > settings.targetExposureSeconds * 2.25f)
+                > settings.targetExposureSeconds * (horde ? 3f : 2.25f))
             {
                 violations.Add(Hard(
                     "los.continuous-exposure",
@@ -358,7 +375,10 @@ namespace UnityPlanet.CombatMap
                 plan);
             int grid = settings.validationGridResolution;
             if (report.globalEyePointCount
-                > Mathf.Max(2, Mathf.RoundToInt(grid * grid * 0.14f)))
+                > Mathf.Max(
+                    2,
+                    Mathf.RoundToInt(
+                        grid * grid * (horde ? 0.36f : 0.14f))))
             {
                 violations.Add(Hard(
                     "los.global-eye",
@@ -378,13 +398,20 @@ namespace UnityPlanet.CombatMap
                     "区块数量较高，MeshCollider 构建成本可能过大。",
                     plan.mapCenter));
             }
-            if (settings.occluderTowerCount > 12)
+            int towerBudget = horde ? 24 : 14;
+            if (settings.occluderTowerCount > towerBudget)
             {
                 violations.Add(Warning(
                     "readability.tower-budget",
-                    "塔数量超过语义遮挡预算；V2 只使用前 12 座组成两个塔簇。",
+                    "结构数量超过当前模式的语义遮挡预算。",
                     plan.mapCenter));
             }
+            ValidateUrbanBuildingSpacing(
+                settings,
+                plan,
+                violations);
+            ValidateUrbanLayout(settings, plan, violations);
+            ValidateFlightCeiling(settings, plan, violations);
 
             float scaleQuality = ScoreNearOne(scaleRatio, 0.9f, 1.7f);
             float contactQuality = ScoreTarget(
@@ -428,11 +455,13 @@ namespace UnityPlanet.CombatMap
                 + 0.2f * layerDiversity
                 + 0.15f * Mathf.Clamp01(rhythmRoutes / 3f));
 
-            float fairness = 1f - Mathf.Clamp01(
-                worstHalfImbalance
-                / Mathf.Max(
-                    0.01f,
-                    settings.maximumRouteTimeImbalance * 1.5f));
+            float fairness = horde
+                ? 1f
+                : 1f - Mathf.Clamp01(
+                    worstHalfImbalance
+                    / Mathf.Max(
+                        0.01f,
+                        settings.maximumRouteTimeImbalance * 1.5f));
             report.teamBalanceScore = fairness * 10f;
             report.routeDiversityScore =
                 report.topologyScore * 0.2f;
@@ -442,8 +471,8 @@ namespace UnityPlanet.CombatMap
                 Mathf.Clamp01(maneuverBowlCount / 3f) * 10f;
             report.mobilityCompatibilityScore =
                 report.kinematicScore * 0.2f;
-            report.spawnSafetyScore =
-                spawnClear && openingBlocked ? 10f : 0f;
+            report.spawnSafetyScore = spawnClear
+                && (horde || openingBlocked) ? 10f : 0f;
             report.readabilityScore =
                 plan.terrainStamps != null
                 && plan.terrainStamps.Length >= 12
@@ -480,7 +509,7 @@ namespace UnityPlanet.CombatMap
                     "拓扑韧性分项低于应用下限。",
                     plan.mapCenter));
             }
-            if (report.coverRhythmScore < 48f)
+            if (report.coverRhythmScore < (horde ? 42f : 48f))
             {
                 violations.Add(Hard(
                     "quality.cover-rhythm-floor",
@@ -518,6 +547,198 @@ namespace UnityPlanet.CombatMap
                 ids,
                 plan,
                 violations);
+            AddIds(
+                plan.urbanRoads,
+                value => value?.stableId,
+                ids,
+                plan,
+                violations);
+            AddIds(
+                plan.urbanPlots,
+                value => value?.stableId,
+                ids,
+                plan,
+                violations);
+        }
+
+        static void ValidateUrbanBuildingSpacing(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan,
+            List<CombatMapViolation> violations)
+        {
+            if (settings.theme != CombatMapTheme.Urban
+                || plan.occluders == null)
+            {
+                return;
+            }
+            float requiredGap = Mathf.Max(
+                72f,
+                Mathf.Max(
+                    settings.designTurnRadius * 0.9f,
+                    settings.vehicleWingspan * 2.5f));
+            for (int first = 0; first < plan.occluders.Length; first++)
+            {
+                CombatOccluderData a = plan.occluders[first];
+                if (!IsUrbanBuilding(a))
+                    continue;
+                float aRadius = Mathf.Sqrt(
+                    a.size.x * a.size.x
+                    + a.size.z * a.size.z) * 0.5f;
+                for (int second = first + 1;
+                     second < plan.occluders.Length;
+                     second++)
+                {
+                    CombatOccluderData b = plan.occluders[second];
+                    if (!IsUrbanBuilding(b))
+                        continue;
+                    float bRadius = Mathf.Sqrt(
+                        b.size.x * b.size.x
+                        + b.size.z * b.size.z) * 0.5f;
+                    float surfaceGap = Vector2.Distance(
+                        new Vector2(a.position.x, a.position.z),
+                        new Vector2(b.position.x, b.position.z))
+                        - aRadius
+                        - bRadius;
+                    if (surfaceGap + 0.01f >= requiredGap)
+                        continue;
+                    violations.Add(Hard(
+                        "city.building-spacing",
+                        "城市楼房间距不足以容纳飞行器通过与改出。",
+                        Vector3.Lerp(a.position, b.position, 0.5f)));
+                    return;
+                }
+            }
+        }
+
+        static bool IsUrbanBuilding(CombatOccluderData value)
+        {
+            return value != null
+                && value.type == CombatOccluderType.Tower
+                && (value.decorationKind == CombatDecorationKind.Building
+                    || value.decorationKind == CombatDecorationKind.Beacon);
+        }
+
+        static void ValidateUrbanLayout(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan,
+            List<CombatMapViolation> violations)
+        {
+            if (settings.theme != CombatMapTheme.Urban)
+                return;
+            if (plan.urbanRoads == null || plan.urbanRoads.Length < 4)
+            {
+                violations.Add(Hard(
+                    "city.road-hierarchy",
+                    "Urban generation did not produce a complete primary road network.",
+                    plan.mapCenter));
+                return;
+            }
+            var roadIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < plan.urbanRoads.Length; i++)
+            {
+                CombatUrbanRoadData road = plan.urbanRoads[i];
+                if (road == null)
+                    continue;
+                roadIds.Add(road.stableId);
+                float length = Vector2.Distance(
+                    new Vector2(road.start.x, road.start.z),
+                    new Vector2(road.end.x, road.end.z));
+                if (length < road.width * 2f)
+                {
+                    violations.Add(Hard(
+                        "city.road-length",
+                        "A generated road is too short to form a readable street segment.",
+                        Vector3.Lerp(road.start, road.end, 0.5f)));
+                    return;
+                }
+                float grade = Mathf.Abs(road.end.y - road.start.y)
+                    / Mathf.Max(1f, length);
+                if (grade > 0.065f)
+                {
+                    violations.Add(Hard(
+                        "city.road-grade",
+                        "A generated urban road exceeds the supported six-percent grade.",
+                        Vector3.Lerp(road.start, road.end, 0.5f)));
+                    return;
+                }
+            }
+            if (plan.urbanPlots == null || plan.urbanPlots.Length == 0)
+            {
+                violations.Add(Hard(
+                    "city.plots-missing",
+                    "Urban buildings were generated without graded plots.",
+                    plan.mapCenter));
+                return;
+            }
+            for (int i = 0; i < plan.urbanPlots.Length; i++)
+            {
+                CombatUrbanPlotData plot = plan.urbanPlots[i];
+                if (plot == null)
+                    continue;
+                if (!roadIds.Contains(plot.roadStableId))
+                {
+                    violations.Add(Hard(
+                        "city.plot-road-access",
+                        "A building plot has no access to the generated road network.",
+                        plot.position));
+                    return;
+                }
+                float halfX = plot.size.x * 0.5f;
+                float halfZ = plot.size.y * 0.5f;
+                float minimum = float.PositiveInfinity;
+                float maximum = float.NegativeInfinity;
+                for (int z = -1; z <= 1; z += 2)
+                for (int x = -1; x <= 1; x += 2)
+                {
+                    float height = CombatMapGenerator.SampleHeight(
+                        settings,
+                        plan,
+                        plot.position.x + x * halfX,
+                        plot.position.z + z * halfZ);
+                    minimum = Mathf.Min(minimum, height);
+                    maximum = Mathf.Max(maximum, height);
+                }
+                if (maximum - minimum > 1.25f)
+                {
+                    violations.Add(Hard(
+                        "city.plot-ground-fit",
+                        "A building plot is not fitted to its supporting terrain.",
+                        plot.position));
+                    return;
+                }
+            }
+        }
+
+        static void ValidateFlightCeiling(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan,
+            List<CombatMapViolation> violations)
+        {
+            float highest = plan.mapCenter.y;
+            if (plan.occluders != null)
+            {
+                for (int i = 0; i < plan.occluders.Length; i++)
+                {
+                    CombatOccluderData value = plan.occluders[i];
+                    if (value != null)
+                        highest = Mathf.Max(
+                            highest,
+                            value.position.y + value.size.y * 0.5f);
+                }
+            }
+            float requiredMargin = Mathf.Max(
+                12f,
+                settings.vehicleWingspan * 0.75f);
+            if (plan.flightCeiling < highest + requiredMargin)
+            {
+                violations.Add(Hard(
+                    "flight.ceiling-clearance",
+                    "The air-wall ceiling does not clear the tallest terrain or building envelope.",
+                    new Vector3(
+                        plan.mapCenter.x,
+                        plan.flightCeiling,
+                        plan.mapCenter.z)));
+            }
         }
 
         static void AddIds<T>(
@@ -1029,7 +1250,7 @@ namespace UnityPlanet.CombatMap
                 float distance = Vector3.Distance(a, b);
                 bool attackable = distance
                     <= settings.designWeaponRange
-                    && CombatMapGenerator.HasTerrainLineOfSight(
+                    && HasCombatLineOfSight(
                         settings,
                         plan,
                         a,
@@ -1180,7 +1401,7 @@ namespace UnityPlanet.CombatMap
                         b.position,
                         height);
                     total++;
-                    if (CombatMapGenerator.HasTerrainLineOfSight(
+                    if (HasCombatLineOfSight(
                         settings,
                         plan,
                         from,
@@ -1247,7 +1468,7 @@ namespace UnityPlanet.CombatMap
                         Mathf.Min(
                             volume.preferredClearance,
                             band));
-                    if (CombatMapGenerator.HasTerrainLineOfSight(
+                    if (HasCombatLineOfSight(
                         settings,
                         plan,
                         sample,
@@ -1260,13 +1481,64 @@ namespace UnityPlanet.CombatMap
                         visible++;
                     }
                 }
+                float globalVisibilityThreshold =
+                    settings.mode == AirCombatMapMode.Horde
+                        ? 0.86f
+                        : 0.7f;
                 if (total > 0
-                    && visible / (float)total > 0.7f)
+                    && visible / (float)total
+                    > globalVisibilityThreshold)
                 {
                     result++;
                 }
             }
             return result;
+        }
+
+        static bool HasCombatLineOfSight(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan,
+            Vector3 from,
+            Vector3 to,
+            float terrainClearance,
+            int terrainSamples)
+        {
+            if (!CombatMapGenerator.HasTerrainLineOfSight(
+                    settings,
+                    plan,
+                    from,
+                    to,
+                    terrainClearance,
+                    terrainSamples))
+            {
+                return false;
+            }
+            if (plan.occluders == null)
+                return true;
+
+            Vector3 direction = to - from;
+            float distance = direction.magnitude;
+            if (distance <= 0.001f)
+                return true;
+            var ray = new Ray(from, direction / distance);
+            for (int index = 0; index < plan.occluders.Length; index++)
+            {
+                CombatOccluderData occluder = plan.occluders[index];
+                if (occluder == null
+                    || occluder.type != CombatOccluderType.Tower)
+                {
+                    continue;
+                }
+                var bounds = new Bounds(occluder.position, occluder.size);
+                bounds.Expand(terrainClearance * 2f);
+                if (bounds.IntersectRay(ray, out float hitDistance)
+                    && hitDistance > 0.01f
+                    && hitDistance < distance - 0.01f)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         static Vector3 AtAgl(

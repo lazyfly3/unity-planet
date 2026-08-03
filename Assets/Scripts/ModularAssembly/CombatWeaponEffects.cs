@@ -54,14 +54,14 @@ namespace UnityPlanet.ModularAssembly
             {
                 return new CombatWeaponEffectProfile(
                     CombatWeaponEffectKind.Missile,
-                    0.34f,
-                    0.58f,
+                    0.48f,
+                    0.82f,
                     Mathf.Clamp(
-                        Mathf.Max(0.1f, gameplayRadius) * 0.28f,
-                        0.8f,
-                        1.45f),
-                    4,
-                    22,
+                        Mathf.Max(0.1f, gameplayRadius) * 0.34f,
+                        1.05f,
+                        1.8f),
+                    5,
+                    26,
                     true,
                     true);
             }
@@ -72,14 +72,14 @@ namespace UnityPlanet.ModularAssembly
             {
                 return new CombatWeaponEffectProfile(
                     CombatWeaponEffectKind.Energy,
-                    0.42f,
-                    0.62f,
+                    0.56f,
+                    0.92f,
                     Mathf.Clamp(
-                        Mathf.Max(0.1f, gameplayRadius) * 0.3f,
-                        0.42f,
-                        0.9f),
-                    5,
-                    14,
+                        Mathf.Max(0.1f, gameplayRadius) * 0.36f,
+                        0.68f,
+                        1.25f),
+                    6,
+                    18,
                     false,
                     true);
             }
@@ -87,11 +87,11 @@ namespace UnityPlanet.ModularAssembly
             {
                 return new CombatWeaponEffectProfile(
                     CombatWeaponEffectKind.Sniper,
-                    0.38f,
-                    0.86f,
-                    0.48f,
-                    4,
-                    16,
+                    0.52f,
+                    1.25f,
+                    0.78f,
+                    5,
+                    20,
                     true,
                     true);
             }
@@ -99,24 +99,24 @@ namespace UnityPlanet.ModularAssembly
             {
                 return new CombatWeaponEffectProfile(
                     CombatWeaponEffectKind.AntiAir,
-                    0.36f,
-                    0.76f,
+                    0.46f,
+                    1.05f,
                     Mathf.Clamp(
-                        Mathf.Max(0.1f, gameplayRadius) * 0.28f,
-                        0.34f,
-                        0.62f),
-                    5,
-                    15,
+                        Mathf.Max(0.1f, gameplayRadius) * 0.34f,
+                        0.52f,
+                        0.9f),
+                    6,
+                    18,
                     true,
                     true);
             }
             return new CombatWeaponEffectProfile(
                 CombatWeaponEffectKind.Kinetic,
-                key.Contains("gatlin") ? 0.22f : 0.25f,
-                key.Contains("gatlin") ? 0.4f : 0.48f,
-                key.Contains("gatlin") ? 0.18f : 0.22f,
-                3,
-                key.Contains("gatlin") ? 7 : 9,
+                key.Contains("gatlin") ? 0.32f : 0.36f,
+                key.Contains("gatlin") ? 0.72f : 0.82f,
+                key.Contains("gatlin") ? 0.36f : 0.42f,
+                4,
+                key.Contains("gatlin") ? 12 : 14,
                 true,
                 false);
         }
@@ -301,8 +301,8 @@ namespace UnityPlanet.ModularAssembly
                 coreColor,
                 Mathf.Clamp(
                     profile.MuzzleFlashSize * 0.42f,
-                    0.07f,
-                    0.18f),
+                    0.11f,
+                    0.28f),
                 0.08f);
 
             if (profile.Kind == CombatWeaponEffectKind.Missile)
@@ -359,10 +359,10 @@ namespace UnityPlanet.ModularAssembly
 
             float sparkSpeed =
                 profile.Kind == CombatWeaponEffectKind.Missile
-                    ? 7f
+                    ? 8f
                     : profile.Kind == CombatWeaponEffectKind.Sniper
-                        ? 8.5f
-                        : 5.2f;
+                        ? 10f
+                        : 6.4f;
             visible |= EmitSparks(
                 position + surfaceNormal * 0.02f,
                 surfaceNormal,
@@ -371,16 +371,16 @@ namespace UnityPlanet.ModularAssembly
                 sparkSpeed,
                 profile.Kind == CombatWeaponEffectKind.Missile
                     ? 0.24f
-                    : 0.16f,
+                    : 0.18f,
                 profile.Kind == CombatWeaponEffectKind.Missile
                     ? 0.48f
-                    : 0.34f,
+                    : 0.42f,
                 profile.Kind == CombatWeaponEffectKind.Missile
                     ? 0.035f
-                    : 0.022f,
+                    : 0.035f,
                 profile.Kind == CombatWeaponEffectKind.Missile
                     ? 0.085f
-                    : 0.055f,
+                    : 0.095f,
                 TrailMaterial(profile.Kind),
                 "ImpactSparks",
                 profile.Kind == CombatWeaponEffectKind.Sniper

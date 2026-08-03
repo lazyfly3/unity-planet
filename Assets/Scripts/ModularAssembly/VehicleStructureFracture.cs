@@ -61,7 +61,16 @@ namespace UnityPlanet.ModularAssembly
     public static class VehicleDetachedDebris
     {
         const int MaxClusters = 24;
-        const float LifetimeSeconds = 1.2f;
+        const float DetachedLifetimeSeconds = 2.6f;
+        const float DirectBreakLifetimeSeconds = 2.2f;
+        const float MaximumAngularSpeed = 7f;
+
+        enum DebrisMotionKind
+        {
+            Detached,
+            DirectBreak
+        }
+
         static readonly Queue<GameObject> Active =
             new Queue<GameObject>();
 
@@ -93,6 +102,35 @@ namespace UnityPlanet.ModularAssembly
             Rigidbody sourceBody,
             Vector3 impulse,
             Vector3 hitPoint)
+        {
+            return SpawnInternal(
+                sourceParts,
+                sourceBody,
+                impulse,
+                hitPoint,
+                DebrisMotionKind.Detached);
+        }
+
+        public static GameObject SpawnDirectBreak(
+            IEnumerable<DetachedDebrisPart> sourceParts,
+            Rigidbody sourceBody,
+            Vector3 impulse,
+            Vector3 hitPoint)
+        {
+            return SpawnInternal(
+                sourceParts,
+                sourceBody,
+                impulse,
+                hitPoint,
+                DebrisMotionKind.DirectBreak);
+        }
+
+        static GameObject SpawnInternal(
+            IEnumerable<DetachedDebrisPart> sourceParts,
+            Rigidbody sourceBody,
+            Vector3 impulse,
+            Vector3 hitPoint,
+            DebrisMotionKind motionKind)
         {
             List<DetachedDebrisPart> parts = sourceParts?
                 .Where(item => item.Source != null)
@@ -154,40 +192,35 @@ namespace UnityPlanet.ModularAssembly
                 }
             }
 
-            if (hasBounds)
-            {
-                var collider = root.AddComponent<BoxCollider>();
-                collider.center =
-                    root.transform.InverseTransformPoint(worldBounds.center);
-                collider.size = worldBounds.size;
-            }
-
             Rigidbody body = root.AddComponent<Rigidbody>();
             body.useGravity = false;
             body.drag = 0f;
             body.angularDrag = 0f;
             body.mass = Mathf.Max(1f, totalMass);
+            body.detectCollisions = false;
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode =
                 CollisionDetectionMode.ContinuousSpeculative;
-            body.maxAngularVelocity = 1000f;
+            body.maxAngularVelocity = MaximumAngularSpeed;
             if (sourceBody != null)
             {
                 body.velocity = sourceBody.GetPointVelocity(center);
                 body.angularVelocity = sourceBody.angularVelocity;
             }
-            if (impulse.sqrMagnitude > 0.0001f)
-            {
-                Vector3 forcePoint = hitPoint.sqrMagnitude > 0.0001f
-                    ? hitPoint
-                    : center;
-                body.AddForceAtPosition(
-                    impulse,
-                    forcePoint,
-                    ForceMode.Impulse);
-            }
+            ApplyVisualBreakMotion(
+                body,
+                sourceBody,
+                parts,
+                center,
+                totalMass,
+                impulse,
+                hitPoint,
+                motionKind);
+            float lifetime = motionKind == DebrisMotionKind.DirectBreak
+                ? DirectBreakLifetimeSeconds
+                : DetachedLifetimeSeconds;
             root.AddComponent<VehicleDetachedDebrisLifetime>()
-                .Initialize(LifetimeSeconds);
+                .Initialize(lifetime, hasBounds ? worldBounds : default);
 
             Active.Enqueue(root);
             while (Active.Count > MaxClusters)
@@ -197,6 +230,102 @@ namespace UnityPlanet.ModularAssembly
                     UnityEngine.Object.Destroy(oldest);
             }
             return root;
+        }
+
+        static void ApplyVisualBreakMotion(
+            Rigidbody debrisBody,
+            Rigidbody sourceBody,
+            IReadOnlyList<DetachedDebrisPart> parts,
+            Vector3 center,
+            float totalMass,
+            Vector3 impulse,
+            Vector3 hitPoint,
+            DebrisMotionKind motionKind)
+        {
+            Vector3 outward = sourceBody == null
+                ? center - hitPoint
+                : center - sourceBody.worldCenterOfMass;
+            if (outward.sqrMagnitude < 0.0001f)
+                outward = Vector3.up;
+            outward.Normalize();
+
+            Vector3 impactDirection = impulse.sqrMagnitude > 0.0001f
+                ? impulse.normalized
+                : outward;
+            Vector3 kickDirection = motionKind ==
+                                    DebrisMotionKind.DirectBreak
+                ? impactDirection * 0.8f + outward * 0.55f
+                : impactDirection * 0.3f + outward;
+            if (kickDirection.sqrMagnitude < 0.0001f)
+                kickDirection = outward;
+            kickDirection.Normalize();
+
+            Vector3 scatter = ResolveStableScatter(parts, kickDirection);
+            float scatterWeight = motionKind ==
+                                  DebrisMotionKind.DirectBreak
+                ? 0.16f
+                : 0.1f;
+            kickDirection = (kickDirection + scatter * scatterWeight)
+                .normalized;
+
+            float equivalentImpactSpeed = impulse.magnitude /
+                                          Mathf.Max(1f, totalMass);
+            float massResponse = Mathf.Clamp(
+                Mathf.Sqrt(80f / Mathf.Max(20f, totalMass)),
+                0.72f,
+                1.18f);
+            float kickSpeed = motionKind == DebrisMotionKind.DirectBreak
+                ? Mathf.Clamp(
+                    4.5f + Mathf.Sqrt(equivalentImpactSpeed) * 2.4f,
+                    4.5f,
+                    11f)
+                : Mathf.Clamp(
+                    1.8f + Mathf.Sqrt(equivalentImpactSpeed) * 1.25f,
+                    1.8f,
+                    5.5f);
+            kickSpeed *= massResponse;
+            debrisBody.velocity += kickDirection * kickSpeed;
+
+            Vector3 lever = hitPoint - center;
+            Vector3 tumbleAxis = Vector3.Cross(lever, kickDirection);
+            if (tumbleAxis.sqrMagnitude < 0.0001f)
+                tumbleAxis = Vector3.Cross(kickDirection, scatter);
+            if (tumbleAxis.sqrMagnitude < 0.0001f)
+                tumbleAxis = scatter;
+            tumbleAxis.Normalize();
+            float tumbleSpeed = motionKind == DebrisMotionKind.DirectBreak
+                ? 3.2f
+                : 1.6f;
+            debrisBody.angularVelocity = Vector3.ClampMagnitude(
+                debrisBody.angularVelocity + tumbleAxis *
+                (tumbleSpeed * massResponse),
+                MaximumAngularSpeed);
+        }
+
+        static Vector3 ResolveStableScatter(
+            IReadOnlyList<DetachedDebrisPart> parts,
+            Vector3 direction)
+        {
+            uint hash = 2166136261u;
+            for (int index = 0; index < parts.Count; index++)
+            {
+                string id = parts[index].RuntimeId ?? string.Empty;
+                for (int character = 0; character < id.Length; character++)
+                {
+                    hash ^= id[character];
+                    hash *= 16777619u;
+                }
+            }
+            float angle = (hash & 0xffffu) / 65535f * Mathf.PI * 2f;
+            Vector3 reference = Mathf.Abs(Vector3.Dot(
+                direction,
+                Vector3.up)) < 0.9f
+                ? Vector3.up
+                : Vector3.right;
+            Vector3 tangent = Vector3.Cross(direction, reference).normalized;
+            Vector3 bitangent = Vector3.Cross(direction, tangent).normalized;
+            return tangent * Mathf.Cos(angle) +
+                   bitangent * Mathf.Sin(angle);
         }
 
         static void SetLayerRecursively(GameObject root, int layer)
@@ -215,13 +344,12 @@ namespace UnityPlanet.ModularAssembly
         float destroyAt;
         float referenceArea = 1f;
 
-        public void Initialize(float lifetime)
+        public void Initialize(float lifetime, Bounds worldBounds)
         {
             body = GetComponent<Rigidbody>();
-            Collider collider = GetComponent<Collider>();
-            if (collider != null)
+            Vector3 size = worldBounds.size;
+            if (size.sqrMagnitude > 0.0001f)
             {
-                Vector3 size = collider.bounds.size;
                 referenceArea = Mathf.Max(
                     0.1f,
                     Mathf.Max(size.x * size.y,

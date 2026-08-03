@@ -351,6 +351,11 @@ public sealed class GridLabCameraController : MonoBehaviour
     bool hasPreviousVelocity;
     bool aimPresentation;
     bool precisionAim;
+    float damageImpulseStartedAt;
+    float damageImpulseDuration;
+    float damageImpulseStrength;
+    Vector2 damageImpulseDirection = Vector2.up;
+    int damageImpulseSequence;
     readonly RaycastHit[] cameraHits = new RaycastHit[16];
 
     public Vector3 FlightAimForward =>
@@ -384,6 +389,34 @@ public sealed class GridLabCameraController : MonoBehaviour
         aimPresentation = aiming;
         precisionAim = aiming && precision;
         requestedFieldOfView = ResolveRequestedFieldOfView();
+    }
+
+    public void AddDamageImpulse(
+        Vector3 worldIncomingDirection,
+        float severity)
+    {
+        if (targetCamera == null)
+            return;
+        Vector3 local = worldIncomingDirection.sqrMagnitude > 0.0001f
+            ? targetCamera.transform.InverseTransformDirection(
+                worldIncomingDirection.normalized)
+            : Vector3.forward;
+        Vector2 direction = new Vector2(local.x, -local.y);
+        if (local.z < 0f)
+            direction = -direction;
+        damageImpulseDirection = direction.sqrMagnitude > 0.0001f
+            ? direction.normalized
+            : Vector2.up;
+        float clampedSeverity = Mathf.Clamp01(severity);
+        damageImpulseStrength = Mathf.Max(
+            damageImpulseStrength * 0.55f,
+            clampedSeverity);
+        damageImpulseStartedAt = Time.unscaledTime;
+        damageImpulseDuration = Mathf.Lerp(
+            0.17f,
+            0.32f,
+            clampedSeverity);
+        damageImpulseSequence++;
     }
 
     public void SetFlightMode(bool value)
@@ -857,7 +890,8 @@ public sealed class GridLabCameraController : MonoBehaviour
                 blend);
             targetCamera.transform.rotation = Quaternion.Slerp(
                 targetCamera.transform.rotation,
-                Quaternion.LookRotation(focus - desired, target.up),
+                Quaternion.LookRotation(focus - desired, target.up) *
+                ResolveDamageKickRotation(),
                 blend);
             return;
         }
@@ -897,8 +931,37 @@ public sealed class GridLabCameraController : MonoBehaviour
             blend);
         targetCamera.transform.rotation = Quaternion.Slerp(
             targetCamera.transform.rotation,
-            orbit,
+            orbit * ResolveDamageKickRotation(),
             1f - Mathf.Exp(-14f * Time.unscaledDeltaTime));
+    }
+
+    Quaternion ResolveDamageKickRotation()
+    {
+        if (damageImpulseDuration <= 0.001f)
+            return Quaternion.identity;
+        float progress = Mathf.Clamp01(
+            (Time.unscaledTime - damageImpulseStartedAt) /
+            damageImpulseDuration);
+        if (progress >= 1f)
+        {
+            damageImpulseStrength = 0f;
+            damageImpulseDuration = 0f;
+            return Quaternion.identity;
+        }
+        float envelope = (1f - progress) * (1f - progress);
+        float oscillation = Mathf.Sin(
+            progress * Mathf.PI * 2.6f +
+            damageImpulseSequence * 1.37f);
+        float strength = damageImpulseStrength * envelope;
+        float pitchKick =
+            (-damageImpulseDirection.y * 1.35f +
+             oscillation * 0.28f) * strength;
+        float yawKick =
+            (-damageImpulseDirection.x * 1.9f +
+             oscillation * 0.22f) * strength;
+        float rollKick =
+            (-damageImpulseDirection.x * 1.25f) * strength;
+        return Quaternion.Euler(pitchKick, yawKick, rollKick);
     }
 
     void ResolveFlightFraming()
@@ -985,7 +1048,8 @@ public sealed class GridLabCameraController : MonoBehaviour
     }
 }
 
-public sealed class GridFlightBridge : MonoBehaviour
+public sealed class GridFlightBridge : MonoBehaviour,
+    UnityPlanet.ModularAssembly.IGridFlightSession
 {
     Rigidbody body;
     ShipAssembly assembly;
@@ -1719,15 +1783,7 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
         presetLibrary = new ModularPresetLibrary();
         previewMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color"));
         model.Changed += HandleModelChanged;
-        if (store.TryLoad(out ModularBlueprintData blueprint, out string error)
-            && model.RestoreBlueprint(blueprint, out string restoreError))
-        {
-            Status("已自动载入模块蓝图。");
-        }
-        else if (!string.IsNullOrEmpty(error))
-        {
-            Status(error);
-        }
+        Status("正在载入模块目录与蓝图……");
         history.Clear();
     }
 
@@ -1864,38 +1920,59 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
 
     public void Save()
     {
+        TrySaveCanonical(out _);
+    }
+
+    public bool TrySaveCanonical(out string message)
+    {
         GridAssemblyValidation validation = model.Validate();
         if (!validation.IsValid)
         {
-            Status("无法保存：" + validation.Message);
-            return;
+            message = "无法保存：" + validation.Message;
+            Status(message);
+            return false;
         }
         try
         {
             store.Save(model.CaptureBlueprint());
-            Status("已保存 " + DateTime.Now.ToString("HH:mm:ss"));
+            message = "已保存 " + DateTime.Now.ToString("HH:mm:ss");
+            Status(message);
+            return true;
         }
         catch (Exception exception)
         {
-            Status("保存失败：" + exception.Message);
+            message = "保存失败：" + exception.Message;
+            Status(message);
+            return false;
         }
     }
 
     public void Load()
     {
+        LoadCanonicalForBuild(out _);
+    }
+
+    public bool LoadCanonicalForBuild(out string message)
+    {
         if (!store.TryLoad(out ModularBlueprintData blueprint, out string error))
         {
-            Status(string.IsNullOrEmpty(error) ? "没有已保存的模块蓝图。" : error);
-            return;
+            message = string.IsNullOrEmpty(error)
+                ? "没有已保存的模块蓝图，已创建空白设计。"
+                : error;
+            Status(message);
+            return string.IsNullOrEmpty(error);
         }
         if (!model.RestoreBlueprint(blueprint, out error))
         {
-            Status("载入失败：" + error);
-            return;
+            message = "载入失败：" + error;
+            Status(message);
+            return false;
         }
         history.Clear();
         selectedRuntimeId = string.Empty;
-        Status("蓝图已载入。");
+        message = "已自动载入模块蓝图。";
+        Status(message);
+        return true;
     }
 
     public IReadOnlyList<ModularPresetEntry> ListNamedPresets()

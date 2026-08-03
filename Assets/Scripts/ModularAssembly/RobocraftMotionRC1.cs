@@ -144,6 +144,11 @@ namespace UnityPlanet.ModularAssembly
         public Vector2 evadeDirection;
     }
 
+    public interface IRobocraftPilotAimSource
+    {
+        bool TryGetPilotAim(out Vector3 worldForward);
+    }
+
     [DisallowMultipleComponent]
     public sealed class RobocraftMotionCoordinator :
         MonoBehaviour,
@@ -203,6 +208,7 @@ namespace UnityPlanet.ModularAssembly
             new List<PropellerWashSource>();
         VehicleStructureGraph structureGraph;
         IPlanetEnvironmentProvider environmentProvider;
+        IRobocraftPilotAimSource pilotAimSource;
         PlanetEnvironmentSample environmentSample =
             PlanetEnvironmentSample.EarthLike(
                 Vector3.down * 9.81f,
@@ -213,6 +219,9 @@ namespace UnityPlanet.ModularAssembly
         float airDensity = 1.225f;
         float altitude;
         bool active;
+        bool controlsEnabled = true;
+        bool injectedControlActive;
+        RobocraftControlFrame injectedControlFrame;
         bool damageDisabled;
         bool rebuildPending;
         Vector3 heldAimForward = Vector3.forward;
@@ -259,6 +268,19 @@ namespace UnityPlanet.ModularAssembly
 
         public bool IsActive => active && !damageDisabled;
         public bool OwnsPhysics => active;
+        public bool ControlsEnabled
+        {
+            get => controlsEnabled;
+            set
+            {
+                controlsEnabled = value;
+                if (!value)
+                {
+                    pendingEvasionRequest = false;
+                    ZeroAirThrottle();
+                }
+            }
+        }
         public VehicleCoreAssistMode CoreAssistMode => coreAssistMode;
         public RobocraftTelemetry Telemetry => telemetry;
         public VehicleEvasionSnapshot EvasionSnapshot =>
@@ -315,6 +337,7 @@ namespace UnityPlanet.ModularAssembly
         {
             body = target;
             assembly = shipAssembly;
+            ResolvePilotAimSource();
             ModularAssemblyLabController lab =
                 FindObjectOfType<ModularAssemblyLabController>();
             BindModel(lab != null ? lab.Model : null);
@@ -340,6 +363,7 @@ public void ConfigureExplicit(
                 presenter.Rebuilt -= HandlePresenterRebuilt;
             body = target;
             assembly = shipAssembly;
+            ResolvePilotAimSource();
             BindModel(assemblyModel);
             presenter = assemblyPresenter;
             if (presenter != null)
@@ -356,8 +380,22 @@ public void ConfigureExplicit(
 
         public void BeginFlight()
         {
+            TryBeginFlight(false, out _);
+        }
+
+        public bool TryBeginFlight(
+            bool preserveExistingMotion,
+            out string message)
+        {
             if (body == null)
-                return;
+            {
+                message = "RC3 Rigidbody 未配置。";
+                return false;
+            }
+            // Runtime integrations can finish wiring their pilot source after
+            // this coordinator is configured. Resolve once more at the actual
+            // flight boundary so manual aim cannot be lost during assembly.
+            ResolvePilotAimSource();
             diagnosticFlight = false;
             ResetEvasion();
             ClearQueuedExternalImpulses();
@@ -372,8 +410,9 @@ public void ConfigureExplicit(
             if (audit.fatal)
             {
                 active = false;
+                message = audit.message;
                 Debug.LogError(audit.message, this);
-                return;
+                return false;
             }
             damageDisabled = false;
             body.solverIterations = 8;
@@ -383,7 +422,7 @@ public void ConfigureExplicit(
             body.collisionDetectionMode =
                 CollisionDetectionMode.ContinuousSpeculative;
             body.interpolation = RigidbodyInterpolation.Interpolate;
-            if (!body.isKinematic)
+            if (!body.isKinematic && !preserveExistingMotion)
             {
                 body.velocity = Vector3.zero;
                 body.angularVelocity = Vector3.zero;
@@ -394,6 +433,8 @@ public void ConfigureExplicit(
             active = true;
             EnsureEvasionPresentation();
             evasionPresentation?.SetFlightActive(true);
+            message = audit.message;
+            return true;
         }
 
         public void BeginDiagnosticFlight()
@@ -433,6 +474,8 @@ public void ConfigureExplicit(
         public void EndFlight()
         {
             active = false;
+            injectedControlActive = false;
+            injectedControlFrame = default;
             damageDisabled = false;
             diagnosticFlight = false;
             ResetEvasion();
@@ -481,6 +524,18 @@ public void ConfigureExplicit(
             IPlanetEnvironmentProvider provider)
         {
             environmentProvider = provider;
+        }
+
+        public void SetInjectedControl(RobocraftControlFrame control)
+        {
+            injectedControlFrame = control;
+            injectedControlActive = true;
+        }
+
+        public void ClearInjectedControl()
+        {
+            injectedControlFrame = default;
+            injectedControlActive = false;
         }
 
         public void ClearPlanetEnvironment()
@@ -634,6 +689,8 @@ public void ConfigureExplicit(
         {
             if (!IsActive ||
                 diagnosticFlight ||
+                !controlsEnabled ||
+                injectedControlActive ||
                 body == null ||
                 body.isKinematic ||
                 evasionState != VehicleEvasionState.Ready ||
@@ -666,7 +723,38 @@ public void ConfigureExplicit(
             Vector2 evadeDirection = pendingEvasionDirection;
             pendingEvasionRequest = false;
             pendingEvasionDirection = Vector2.zero;
-            var control = new RobocraftControlFrame
+            bool injected = !controlsEnabled || injectedControlActive;
+            RobocraftControlFrame control = !controlsEnabled
+                ? default
+                : injectedControlActive
+                    ? injectedControlFrame
+                    : ReadPilotControl(evadeRequested, evadeDirection);
+            bool allowAimOverride = injected;
+            if (controlsEnabled &&
+                !injectedControlActive &&
+                pilotAimSource != null &&
+                pilotAimSource.TryGetPilotAim(out Vector3 pilotAim) &&
+                pilotAim.sqrMagnitude > 0.0001f)
+            {
+                control.hasAimOverride = true;
+                control.aimForwardWorld = pilotAim.normalized;
+                allowAimOverride = true;
+            }
+            StepPhysics(control, allowAimOverride);
+        }
+
+        void ResolvePilotAimSource()
+        {
+            pilotAimSource = GetComponent(
+                typeof(IRobocraftPilotAimSource))
+                as IRobocraftPilotAimSource;
+        }
+
+        static RobocraftControlFrame ReadPilotControl(
+            bool evadeRequested,
+            Vector2 evadeDirection)
+        {
+            return new RobocraftControlFrame
             {
                 move = new Vector2(
                     Key(KeyCode.D, KeyCode.A),
@@ -685,7 +773,6 @@ public void ConfigureExplicit(
                 evadeRequested = evadeRequested,
                 evadeDirection = evadeDirection
             };
-            StepPhysics(control, false);
         }
 
         public void SimulateDiagnosticStep(

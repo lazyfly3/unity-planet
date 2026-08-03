@@ -20,6 +20,13 @@ namespace UnityPlanet.ModularAssembly
         private ModularAssemblyLabController controller;
         private GridAssemblyPresenter presenter;
         private LabPropPlacementController propPlacement;
+        private int pendingViewUpgrades;
+
+        public bool DefinitionsReady { get; private set; }
+        public bool IsReady => DefinitionsReady &&
+                               pendingViewUpgrades == 0 &&
+                               (contentService == null ||
+                                !contentService.IsLoadingAssets);
 
         public void Initialize(ModularContentService service)
         {
@@ -31,7 +38,32 @@ namespace UnityPlanet.ModularAssembly
                             .FirstOrDefault(candidate => candidate != null && candidate.name != "TargetAssembly");
             propPlacement = gameObject.AddComponent<LabPropPlacementController>();
             propPlacement.Initialize(service, Camera.main);
-            RegisterDefinitions();
+            PopulateDefinitions(controller?.Model, service?.Catalog);
+            DefinitionsReady = controller != null &&
+                               service?.Catalog != null;
+            if (DefinitionsReady)
+                controller.LoadCanonicalForBuild(out _);
+            if (presenter != null)
+            {
+                presenter.Rebuilt += UpgradeViews;
+                UpgradeViews();
+            }
+        }
+
+        public void InitializeRuntime(
+            ModularContentService service,
+            GridAssemblyPresenter assemblyPresenter,
+            IReadOnlyDictionary<string, ModularContentRecord> records)
+        {
+            contentService = service;
+            presenter = assemblyPresenter;
+            recordsByModuleId.Clear();
+            if (records != null)
+            {
+                foreach (KeyValuePair<string, ModularContentRecord> pair in records)
+                    recordsByModuleId[pair.Key] = pair.Value;
+            }
+            DefinitionsReady = service?.Catalog != null;
             if (presenter != null)
             {
                 presenter.Rebuilt += UpgradeViews;
@@ -73,22 +105,25 @@ namespace UnityPlanet.ModularAssembly
             }
         }
 
-        private void RegisterDefinitions()
+        public static IReadOnlyDictionary<string, ModularContentRecord>
+            RegisterDefinitions(
+                GridAssemblyModel model,
+                ModularContentCatalog catalog)
         {
-            if (controller == null || contentService?.Catalog == null)
-            {
-                return;
-            }
+            var records = new Dictionary<string, ModularContentRecord>(
+                StringComparer.OrdinalIgnoreCase);
+            if (model == null || catalog == null)
+                return records;
             IDictionary<string, GridModuleDefinition> definitions =
-                controller.Model.Definitions as IDictionary<string, GridModuleDefinition>;
+                model.Definitions as IDictionary<string, GridModuleDefinition>;
             if (definitions == null)
             {
                 Debug.LogError("NeoX: GridAssemblyModel definitions are not dynamically writable.");
-                return;
+                return records;
             }
             GameObject fallback = definitions.Values
                 .FirstOrDefault(definition => definition.Category == GridModuleCategory.Structure)?.Prefab;
-            foreach (ModularContentRecord record in contentService.Catalog.Items.Where(item =>
+            foreach (ModularContentRecord record in catalog.Items.Where(item =>
                          item.IsModule &&
                          item.IsBase &&
                          item.IsGridPlaceable &&
@@ -98,7 +133,7 @@ namespace UnityPlanet.ModularAssembly
                           AirBuildCatalog.IsPolished(item))))
             {
                 string moduleId = ToModuleId(record);
-                recordsByModuleId[moduleId] = record;
+                records[moduleId] = record;
                 if (!definitions.TryGetValue(
                         moduleId,
                         out GridModuleDefinition definition))
@@ -122,6 +157,19 @@ namespace UnityPlanet.ModularAssembly
                     stats.integrity,
                     stats.thrust,
                     null);
+            }
+            return records;
+        }
+
+        private void PopulateDefinitions(
+            GridAssemblyModel model,
+            ModularContentCatalog catalog)
+        {
+            recordsByModuleId.Clear();
+            foreach (KeyValuePair<string, ModularContentRecord> pair in
+                     RegisterDefinitions(model, catalog))
+            {
+                recordsByModuleId[pair.Key] = pair.Value;
             }
         }
 
@@ -162,6 +210,7 @@ namespace UnityPlanet.ModularAssembly
                 }
                 if (requiresVisualUpgrade)
                 {
+                    pendingViewUpgrades++;
                     StartCoroutine(
                         UpgradeView(pair.Key, view, record));
                 }
@@ -285,6 +334,9 @@ namespace UnityPlanet.ModularAssembly
             yield return contentService.InstantiateAsync(record, view.transform, value => loaded = value);
             if (view == null || loaded == null)
             {
+                pendingViewUpgrades = Mathf.Max(
+                    0,
+                    pendingViewUpgrades - 1);
                 yield break;
             }
             foreach (Collider collider in loaded.GetComponentsInChildren<Collider>(true))
@@ -319,6 +371,9 @@ namespace UnityPlanet.ModularAssembly
             }
             view.GetComponentInParent<RobocraftMotionCoordinator>()?.Rebuild();
             view.GetComponentInParent<NeoXUtilityController>()?.Rebuild();
+            pendingViewUpgrades = Mathf.Max(
+                0,
+                pendingViewUpgrades - 1);
         }
 
         private static bool IsWheelDustRenderer(Renderer renderer)

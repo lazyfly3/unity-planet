@@ -27,10 +27,25 @@ namespace UnityPlanet.CombatMap
         [SerializeField] private Vector3 battleCenter;
         [SerializeField] private float warningRadius = 1200f;
         [SerializeField] private float forfeitRadius = 1500f;
+        [SerializeField] private float flightCeiling = 240f;
+        [SerializeField] private GameObject hordeEnvironmentRoot;
+        [SerializeField] private Vector3 hordePlayerSpawnPosition;
+        [SerializeField] private Vector3 hordePlayerSpawnEuler;
+        [SerializeField] private Vector3 hordeEnemySpawnPosition;
+        [SerializeField] private Vector3 hordeEnemySpawnEuler;
+        [SerializeField] private Vector3 hordeBattleCenter;
+        [SerializeField] private float hordeWarningRadius = 600f;
+        [SerializeField] private float hordeForfeitRadius = 650f;
+        [SerializeField] private float hordeFlightCeiling = 260f;
+        [SerializeField] private CombatTestMode selectedMode =
+            CombatTestMode.Duel;
 
-        private Renderer[] renderers = Array.Empty<Renderer>();
-        private Collider[] colliders = Array.Empty<Collider>();
+        private Renderer[] duelRenderers = Array.Empty<Renderer>();
+        private Collider[] duelColliders = Array.Empty<Collider>();
+        private Renderer[] hordeRenderers = Array.Empty<Renderer>();
+        private Collider[] hordeColliders = Array.Empty<Collider>();
         private bool cached;
+        private bool environmentActive;
 
         public int Priority
         {
@@ -39,30 +54,63 @@ namespace UnityPlanet.CombatMap
 
         public int BakeVersion => bakeVersion;
 
+        public CombatTestMode Mode => selectedMode;
+
+        private bool UseHorde =>
+            selectedMode == CombatTestMode.Horde
+            && hordeEnvironmentRoot != null;
+
         public Quaternion PreparedRotation
         {
-            get { return Quaternion.Euler(playerSpawnEuler); }
+            get
+            {
+                return Quaternion.Euler(
+                    UseHorde
+                        ? hordePlayerSpawnEuler
+                        : playerSpawnEuler);
+            }
         }
 
         public Vector3 BattleCenter
         {
-            get { return battleCenter; }
+            get { return UseHorde ? hordeBattleCenter : battleCenter; }
         }
 
         public float WarningRadius
         {
-            get { return warningRadius; }
+            get { return UseHorde ? hordeWarningRadius : warningRadius; }
         }
 
         public float ForfeitRadius
         {
-            get { return forfeitRadius; }
+            get { return UseHorde ? hordeForfeitRadius : forfeitRadius; }
+        }
+
+        public float FlightCeiling
+        {
+            get
+            {
+                return UseHorde
+                    ? hordeFlightCeiling
+                    : flightCeiling;
+            }
         }
 
         private void Awake()
         {
             CacheEnvironment();
             SetEnvironmentActive(false);
+        }
+
+        public void SetMode(CombatTestMode mode)
+        {
+            if (selectedMode == mode)
+                return;
+            bool wasActive = environmentActive;
+            SetEnvironmentActive(false);
+            selectedMode = mode;
+            if (wasActive)
+                SetEnvironmentActive(true);
         }
 
         public void ConfigureBaked(
@@ -73,7 +121,8 @@ namespace UnityPlanet.CombatMap
             Quaternion enemyRotation,
             Vector3 center,
             float warning,
-            float forfeit)
+            float forfeit,
+            float ceiling = 0f)
         {
             environmentRoot = root;
             bakeVersion = 3;
@@ -84,6 +133,58 @@ namespace UnityPlanet.CombatMap
             battleCenter = center;
             warningRadius = Mathf.Max(100f, warning);
             forfeitRadius = Mathf.Max(warningRadius + 50f, forfeit);
+            flightCeiling = Mathf.Max(center.y + 20f, ceiling);
+            hordeEnvironmentRoot = null;
+            cached = false;
+            CacheEnvironment();
+            SetEnvironmentActive(false);
+        }
+
+        public void ConfigureBakedModes(
+            GameObject duelRoot,
+            Vector3 duelPlayerPosition,
+            Quaternion duelPlayerRotation,
+            Vector3 duelEnemyPosition,
+            Quaternion duelEnemyRotation,
+            Vector3 duelCenter,
+            float duelWarning,
+            float duelForfeit,
+            GameObject hordeRoot,
+            Vector3 hordePlayerPosition,
+            Quaternion hordePlayerRotation,
+            Vector3 hordeEnemyPosition,
+            Quaternion hordeEnemyRotation,
+            Vector3 hordeCenter,
+            float hordeWarning,
+            float hordeForfeit,
+            float duelCeiling,
+            float hordeCeiling)
+        {
+            environmentRoot = duelRoot;
+            playerSpawnPosition = duelPlayerPosition;
+            playerSpawnEuler = duelPlayerRotation.eulerAngles;
+            enemySpawnPosition = duelEnemyPosition;
+            enemySpawnEuler = duelEnemyRotation.eulerAngles;
+            battleCenter = duelCenter;
+            warningRadius = Mathf.Max(100f, duelWarning);
+            forfeitRadius = Mathf.Max(warningRadius + 20f, duelForfeit);
+            flightCeiling = Mathf.Max(duelCenter.y + 20f, duelCeiling);
+
+            hordeEnvironmentRoot = hordeRoot;
+            hordePlayerSpawnPosition = hordePlayerPosition;
+            hordePlayerSpawnEuler = hordePlayerRotation.eulerAngles;
+            hordeEnemySpawnPosition = hordeEnemyPosition;
+            hordeEnemySpawnEuler = hordeEnemyRotation.eulerAngles;
+            hordeBattleCenter = hordeCenter;
+            hordeWarningRadius = Mathf.Max(100f, hordeWarning);
+            hordeForfeitRadius = Mathf.Max(
+                hordeWarningRadius + 20f,
+                hordeForfeit);
+            hordeFlightCeiling = Mathf.Max(
+                hordeCenter.y + 20f,
+                hordeCeiling);
+            bakeVersion = 4;
+            selectedMode = CombatTestMode.Duel;
             cached = false;
             CacheEnvironment();
             SetEnvironmentActive(false);
@@ -95,8 +196,8 @@ namespace UnityPlanet.CombatMap
             yield return null;
             SetEnvironmentActive(false);
             bool valid =
-                environmentRoot != null &&
-                colliders.Length > 0 &&
+                ActiveRoot != null &&
+                ActiveColliders.Length > 0 &&
                 HasValidArenaData();
             completed(
                 valid,
@@ -122,7 +223,9 @@ namespace UnityPlanet.CombatMap
             SetEnvironmentActive(true);
             Physics.SyncTransforms();
             yield return new WaitForFixedUpdate();
-            Vector3 spawn = playerSpawnPosition;
+            Vector3 spawn = UseHorde
+                ? hordePlayerSpawnPosition
+                : playerSpawnPosition;
             if (target != null)
             {
                 target.position = spawn;
@@ -137,15 +240,18 @@ namespace UnityPlanet.CombatMap
             Action<bool, Vector3> completed)
         {
             SetEnvironmentActive(true);
+            Vector3 spawn = UseHorde
+                ? hordePlayerSpawnPosition
+                : playerSpawnPosition;
             if (target != null)
             {
-                target.position = playerSpawnPosition;
+                target.position = spawn;
                 target.rotation = PreparedRotation;
             }
 
             Physics.SyncTransforms();
             yield return new WaitForFixedUpdate();
-            completed(true, playerSpawnPosition);
+            completed(true, spawn);
         }
 
         public void ExitFlight()
@@ -155,25 +261,47 @@ namespace UnityPlanet.CombatMap
 
         public bool TryGetPlayerSpawn(out Vector3 position, out Quaternion rotation)
         {
-            position = playerSpawnPosition;
-            rotation = Quaternion.Euler(playerSpawnEuler);
+            position = UseHorde
+                ? hordePlayerSpawnPosition
+                : playerSpawnPosition;
+            rotation = Quaternion.Euler(
+                UseHorde
+                    ? hordePlayerSpawnEuler
+                    : playerSpawnEuler);
             return HasValidArenaData();
         }
 
         public bool TryGetEnemySpawn(out Vector3 position, out Quaternion rotation)
         {
-            position = enemySpawnPosition;
-            rotation = Quaternion.Euler(enemySpawnEuler);
+            position = UseHorde
+                ? hordeEnemySpawnPosition
+                : enemySpawnPosition;
+            rotation = Quaternion.Euler(
+                UseHorde
+                    ? hordeEnemySpawnEuler
+                    : enemySpawnEuler);
             return HasValidArenaData();
         }
 
         private bool HasValidArenaData()
         {
-            return IsFinite(playerSpawnPosition) &&
-                   IsFinite(enemySpawnPosition) &&
-                   IsFinite(playerSpawnEuler) &&
-                   IsFinite(enemySpawnEuler) &&
-                   (playerSpawnPosition - enemySpawnPosition).sqrMagnitude >= 100f;
+            Vector3 player = UseHorde
+                ? hordePlayerSpawnPosition
+                : playerSpawnPosition;
+            Vector3 enemy = UseHorde
+                ? hordeEnemySpawnPosition
+                : enemySpawnPosition;
+            Vector3 playerEuler = UseHorde
+                ? hordePlayerSpawnEuler
+                : playerSpawnEuler;
+            Vector3 enemyEuler = UseHorde
+                ? hordeEnemySpawnEuler
+                : enemySpawnEuler;
+            return IsFinite(player) &&
+                   IsFinite(enemy) &&
+                   IsFinite(playerEuler) &&
+                   IsFinite(enemyEuler) &&
+                   (player - enemy).sqrMagnitude >= 100f;
         }
 
         private static bool IsFinite(Vector3 value)
@@ -201,11 +329,17 @@ namespace UnityPlanet.CombatMap
                 environmentRoot = child != null ? child.gameObject : null;
             }
 
-            renderers = environmentRoot != null
+            duelRenderers = environmentRoot != null
                 ? environmentRoot.GetComponentsInChildren<Renderer>(true)
                 : Array.Empty<Renderer>();
-            colliders = environmentRoot != null
+            duelColliders = environmentRoot != null
                 ? environmentRoot.GetComponentsInChildren<Collider>(true)
+                : Array.Empty<Collider>();
+            hordeRenderers = hordeEnvironmentRoot != null
+                ? hordeEnvironmentRoot.GetComponentsInChildren<Renderer>(true)
+                : Array.Empty<Renderer>();
+            hordeColliders = hordeEnvironmentRoot != null
+                ? hordeEnvironmentRoot.GetComponentsInChildren<Collider>(true)
                 : Array.Empty<Collider>();
             cached = true;
         }
@@ -213,20 +347,37 @@ namespace UnityPlanet.CombatMap
         private void SetEnvironmentActive(bool active)
         {
             CacheEnvironment();
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                if (renderers[i] != null)
-                {
-                    renderers[i].enabled = active;
-                }
-            }
+            environmentActive = active;
+            SetComponentsActive(duelRenderers, duelColliders, false);
+            SetComponentsActive(hordeRenderers, hordeColliders, false);
+            if (!active)
+                return;
+            SetComponentsActive(
+                UseHorde ? hordeRenderers : duelRenderers,
+                UseHorde ? hordeColliders : duelColliders,
+                true);
+        }
 
-            for (int i = 0; i < colliders.Length; i++)
+        private GameObject ActiveRoot =>
+            UseHorde ? hordeEnvironmentRoot : environmentRoot;
+
+        private Collider[] ActiveColliders =>
+            UseHorde ? hordeColliders : duelColliders;
+
+        private static void SetComponentsActive(
+            Renderer[] selectedRenderers,
+            Collider[] selectedColliders,
+            bool active)
+        {
+            for (int i = 0; i < selectedRenderers.Length; i++)
             {
-                if (colliders[i] != null)
-                {
-                    colliders[i].enabled = active;
-                }
+                if (selectedRenderers[i] != null)
+                    selectedRenderers[i].enabled = active;
+            }
+            for (int i = 0; i < selectedColliders.Length; i++)
+            {
+                if (selectedColliders[i] != null)
+                    selectedColliders[i].enabled = active;
             }
         }
     }

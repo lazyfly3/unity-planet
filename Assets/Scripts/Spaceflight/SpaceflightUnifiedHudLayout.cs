@@ -24,6 +24,9 @@ public sealed class SpaceflightUnifiedHudLayout : MonoBehaviour
     public RectTransform LeftWing { get; private set; }
     public RectTransform RightWing { get; private set; }
     SpaceflightHudPresentationMode presentationMode;
+    bool flightPanelsVisible = true;
+
+    public bool FlightPanelsVisible => flightPanelsVisible;
 
     public void Build(
         Canvas canvas,
@@ -216,11 +219,8 @@ public sealed class SpaceflightUnifiedHudLayout : MonoBehaviour
     public void SetPresentationMode(SpaceflightHudPresentationMode mode)
     {
         presentationMode = mode;
+        RefreshFlightPanelVisibility();
         bool cockpit = mode == SpaceflightHudPresentationMode.Cockpit;
-        if (LeftWing != null)
-            LeftWing.gameObject.SetActive(!cockpit);
-        if (RightWing != null)
-            RightWing.gameObject.SetActive(!cockpit);
         if (WarningStack != null)
         {
             SetRect(
@@ -230,6 +230,25 @@ public sealed class SpaceflightUnifiedHudLayout : MonoBehaviour
                 new Vector2(405f, 68f),
                 cockpit ? new Vector2(0f, -142f) : new Vector2(220f, 282f));
         }
+    }
+
+    public void SetFlightPanelsVisible(bool visible)
+    {
+        if (flightPanelsVisible == visible)
+            return;
+        flightPanelsVisible = visible;
+        RefreshFlightPanelVisibility();
+    }
+
+    void RefreshFlightPanelVisibility()
+    {
+        bool cockpit = presentationMode == SpaceflightHudPresentationMode.Cockpit;
+        if (LeftWing != null)
+            LeftWing.gameObject.SetActive(flightPanelsVisible && !cockpit);
+        if (RightWing != null)
+            RightWing.gameObject.SetActive(flightPanelsVisible && !cockpit);
+        if (WarningStack != null)
+            WarningStack.gameObject.SetActive(flightPanelsVisible);
     }
 
     RectTransform CreatePanel(string name, Transform parent, Vector2 position, Vector2 size)

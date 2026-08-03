@@ -40,7 +40,7 @@ namespace UnityPlanet.CombatMap
         bool showRoutes = true;
         [SerializeField, InspectorName("显示语义锚点")]
         bool showAnchors = true;
-        [SerializeField, InspectorName("显示边界")]
+        [SerializeField, InspectorName("显示交战焦点")]
         bool showBoundary = true;
         [SerializeField, InspectorName("显示失败采样点")]
         bool showFailureSamples = true;
@@ -117,6 +117,9 @@ namespace UnityPlanet.CombatMap
                         settings.minimumGroundClearance,
                     maximumGroundClearance =
                         settings.maximumGroundClearance,
+                    maximumFlightAltitude = plan?.flightCeiling
+                        ?? transform.position.y
+                            + settings.maximumGroundClearance,
                     playerSpawnPosition = player?.position
                         ?? Vector3.zero,
                     playerSpawnRotation = RotationFor(player),
@@ -257,7 +260,14 @@ public void Configure(AirCombatMapRecipe valueRecipe)
             Vector2 horizontal = new Vector2(
                 worldPosition.x - context.center.x,
                 worldPosition.z - context.center.z);
-            if (horizontal.magnitude > context.forfeitRadius)
+            AirCombatMapSettings settings = CurrentSettings;
+            float outerHalf = Mathf.Max(
+                settings.mapSize * 0.5f
+                    + settings.designCombatSpeed * 120f,
+                settings.mapSize * 2f);
+            if (Mathf.Max(
+                    Mathf.Abs(horizontal.x),
+                    Mathf.Abs(horizontal.y)) > outerHalf)
                 return false;
             float aboveGround = worldPosition.y
                 - SampleGroundHeight(
@@ -480,16 +490,18 @@ public void ClearGeneratedMap()
 
                 Material terrain = terrainMaterial != null
                     ? terrainMaterial
-                    : CreateMaterial(
-                        "CombatMap Terrain",
-                        new Color(0.26f, 0.32f, 0.2f));
+                    : CreateTerrainSurfaceMaterial();
                 Material towers = occluderMaterial != null
                     ? occluderMaterial
                     : CreateMaterial(
                         "CombatMap Occluders",
                         new Color(0.28f, 0.32f, 0.36f));
                 BuildTerrainChunks(settings, result.plan, terrain);
+                BuildWorldSkirt(settings, result.plan, terrain);
+                BuildUrbanRoadNetwork(settings, result.plan);
+                BuildUrbanPlotSurfaces(settings, result.plan);
                 BuildOccluders(result.plan, towers);
+                BuildFlightContainment(settings, result.plan);
                 BuildSemanticOverlay(settings, result);
                 SetTerrainCollisionEnabled(terrainCollisionEnabled);
                 Physics.SyncTransforms();
@@ -579,6 +591,7 @@ void BuildTerrainChunks(
             int side = resolution + 1;
             var vertices = new Vector3[side * side];
             var normals = new Vector3[vertices.Length];
+            var colors = new Color[vertices.Length];
             var uv = new Vector2[vertices.Length];
             var triangles = new int[resolution * resolution * 6];
             float half = chunkSize * 0.5f;
@@ -630,6 +643,13 @@ void BuildTerrainChunks(
                     left - right,
                     2f * step,
                     down - up).normalized;
+                colors[index] = TerrainSurfaceColor(
+                    settings,
+                    plan,
+                    worldX,
+                    worldZ,
+                    height,
+                    normals[index]);
                 uv[index] = new Vector2(
                     (chunkX * resolution + x)
                     / (float)(resolution
@@ -672,6 +692,7 @@ void BuildTerrainChunks(
                 hideFlags = HideFlags.HideAndDontSave,
                 vertices = vertices,
                 normals = normals,
+                colors = colors,
                 uv = uv,
                 triangles = triangles
             };
@@ -702,31 +723,537 @@ void BuildOccluders(
                 {
                     continue;
                 }
-                GameObject tower = GameObject.CreatePrimitive(
-                    PrimitiveType.Cube);
-                tower.name = value.stableId;
-                tower.hideFlags = generatedRoot.hideFlags;
-                tower.layer = obstacleLayer;
+                var tower = new GameObject(value.stableId)
+                {
+                    hideFlags = generatedRoot.hideFlags,
+                    isStatic = true,
+                    layer = obstacleLayer
+                };
                 tower.transform.SetParent(root.transform, false);
                 tower.transform.localPosition =
                     value.position - plan.mapCenter;
-                tower.transform.localScale = value.size;
-                MeshRenderer renderer = tower.GetComponent<MeshRenderer>();
+                tower.transform.localRotation =
+                    Quaternion.Euler(0f, value.yaw, 0f);
+
+                GameObject visual = GameObject.CreatePrimitive(
+                    PrimitiveFor(value.decorationKind));
+                visual.name = "PlaceholderVisual_"
+                    + value.decorationKind;
+                visual.hideFlags = generatedRoot.hideFlags;
+                visual.layer = obstacleLayer;
+                visual.transform.SetParent(tower.transform, false);
+                visual.transform.localPosition = Vector3.zero;
+                visual.transform.localRotation = Quaternion.identity;
+                visual.transform.localScale = PrimitiveScale(
+                    value.decorationKind,
+                    value.size);
+                Collider primitiveCollider = visual.GetComponent<Collider>();
+                if (primitiveCollider != null)
+                    DestroyTransient(primitiveCollider);
+
+                MeshRenderer renderer = visual.GetComponent<MeshRenderer>();
                 if (renderer != null)
                 {
                     renderer.sharedMaterial = material;
                     renderer.shadowCastingMode = ShadowCastingMode.On;
                     renderer.receiveShadows = true;
                 }
-                Collider collider = tower.GetComponent<Collider>();
-                if (collider != null)
+                var collider = tower.AddComponent<BoxCollider>();
+                collider.size = value.size;
+                collider.sharedMaterial =
+                    generatedPhysicsMaterials.Count > 0
+                        ? generatedPhysicsMaterials[0]
+                        : CreateFlightPhysicsMaterial();
+                collider.enabled = terrainCollisionEnabled;
+            }
+        }
+
+        void BuildUrbanRoadNetwork(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan)
+        {
+            if (plan.theme != CombatMapTheme.Urban
+                || plan.urbanRoads == null
+                || plan.urbanRoads.Length == 0)
+            {
+                return;
+            }
+
+            int terrainLayer = ResolveLayer(
+                "CombatTerrain",
+                gameObject.layer);
+            var root = new GameObject("CityRoadNetwork")
+            {
+                hideFlags = generatedRoot.hideFlags,
+                isStatic = true,
+                layer = terrainLayer
+            };
+            root.transform.SetParent(generatedRoot.transform, false);
+            Material roadMaterial = CreateRoadSurfaceMaterial();
+            int roadIndex = 0;
+            for (int index = 0; index < plan.urbanRoads.Length; index++)
+            {
+                CombatUrbanRoadData road = plan.urbanRoads[index];
+                if (road == null)
+                    continue;
+                BuildRoadStrip(
+                    settings,
+                    plan,
+                    root.transform,
+                    roadMaterial,
+                    new Vector2(road.start.x, road.start.z),
+                    new Vector2(road.end.x, road.end.z),
+                    road.width,
+                    roadIndex++);
+            }
+            if (roadIndex == 0)
+                DestroyTransient(root);
+        }
+
+        void BuildUrbanPlotSurfaces(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan)
+        {
+            if (plan.theme != CombatMapTheme.Urban
+                || plan.urbanPlots == null
+                || plan.urbanPlots.Length == 0)
+            {
+                return;
+            }
+            int terrainLayer = ResolveLayer(
+                "CombatTerrain",
+                gameObject.layer);
+            var root = new GameObject("UrbanGroundLots")
+            {
+                hideFlags = generatedRoot.hideFlags,
+                isStatic = true,
+                layer = terrainLayer
+            };
+            root.transform.SetParent(generatedRoot.transform, false);
+            Material material = CreateUrbanPlotMaterial();
+            for (int index = 0; index < plan.urbanPlots.Length; index++)
+            {
+                CombatUrbanPlotData plot = plan.urbanPlots[index];
+                if (plot == null)
+                    continue;
+                CombatUrbanRoadData road = FindUrbanRoad(
+                    plan,
+                    plot.roadStableId);
+                if (road == null)
+                    continue;
+                Vector2 center = new Vector2(
+                    plot.position.x,
+                    plot.position.z);
+                Vector2 roadPoint = ClosestPointOnSegment(
+                    center,
+                    new Vector2(road.start.x, road.start.z),
+                    new Vector2(road.end.x, road.end.z));
+                Vector2 direction = roadPoint - center;
+                float distance = direction.magnitude;
+                if (distance <= 1f)
+                    continue;
+                direction /= distance;
+                float plotExtent = Mathf.Min(plot.size.x, plot.size.y)
+                    * 0.32f;
+                Vector2 drivewayStart = center
+                    + direction * Mathf.Min(plotExtent, distance * 0.55f);
+                if (Vector2.Distance(drivewayStart, roadPoint) <= 3f)
+                    continue;
+                BuildRoadStrip(
+                    settings,
+                    plan,
+                    root.transform,
+                    material,
+                    drivewayStart,
+                    roadPoint,
+                    Mathf.Clamp(
+                        settings.vehicleWingspan * 0.62f,
+                        9f,
+                        14f),
+                    100 + index);
+            }
+        }
+
+        static CombatUrbanRoadData FindUrbanRoad(
+            CombatSemanticPlan plan,
+            string stableId)
+        {
+            if (plan.urbanRoads == null)
+                return null;
+            for (int i = 0; i < plan.urbanRoads.Length; i++)
+            {
+                CombatUrbanRoadData value = plan.urbanRoads[i];
+                if (value != null && value.stableId == stableId)
+                    return value;
+            }
+            return null;
+        }
+
+        static Vector2 ClosestPointOnSegment(
+            Vector2 point,
+            Vector2 start,
+            Vector2 end)
+        {
+            Vector2 segment = end - start;
+            float denominator = segment.sqrMagnitude;
+            if (denominator <= 0.0001f)
+                return start;
+            float along = Mathf.Clamp01(
+                Vector2.Dot(point - start, segment) / denominator);
+            return start + segment * along;
+        }
+
+        void BuildRoadStrip(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan,
+            Transform parent,
+            Material material,
+            Vector2 start,
+            Vector2 end,
+            float width,
+            int index)
+        {
+            int segments = Mathf.Clamp(
+                Mathf.CeilToInt(Vector2.Distance(start, end) / 28f),
+                4,
+                32);
+            var vertices = new Vector3[(segments + 1) * 2];
+            var uv = new Vector2[vertices.Length];
+            var triangles = new int[segments * 6];
+            Vector2 direction = (end - start).normalized;
+            Vector2 side = new Vector2(-direction.y, direction.x) * width * 0.5f;
+            for (int step = 0; step <= segments; step++)
+            {
+                float t = step / (float)segments;
+                Vector2 center = Vector2.Lerp(start, end, t);
+                for (int edge = 0; edge < 2; edge++)
                 {
-                    collider.sharedMaterial =
-                        generatedPhysicsMaterials.Count > 0
-                            ? generatedPhysicsMaterials[0]
-                            : CreateFlightPhysicsMaterial();
-                    collider.enabled = terrainCollisionEnabled;
+                    Vector2 point = center + (edge == 0 ? -side : side);
+                    float height = CombatMapGenerator.SampleHeight(
+                        settings,
+                        plan,
+                        point.x,
+                        point.y) - plan.mapCenter.y + 0.18f;
+                    int vertex = step * 2 + edge;
+                    vertices[vertex] = new Vector3(
+                        point.x - plan.mapCenter.x,
+                        height,
+                        point.y - plan.mapCenter.z);
+                    uv[vertex] = new Vector2(
+                        edge * width / 8f,
+                        t * Vector2.Distance(start, end) / 8f);
                 }
+                if (step == segments)
+                    continue;
+                int triangle = step * 6;
+                int current = step * 2;
+                triangles[triangle] = current;
+                triangles[triangle + 1] = current + 2;
+                triangles[triangle + 2] = current + 1;
+                triangles[triangle + 3] = current + 2;
+                triangles[triangle + 4] = current + 3;
+                triangles[triangle + 5] = current + 1;
+            }
+
+            var mesh = new Mesh
+            {
+                name = "CombatMapRoad_" + index.ToString("D2"),
+                hideFlags = HideFlags.HideAndDontSave,
+                vertices = vertices,
+                triangles = triangles,
+                uv = uv
+            };
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            generatedMeshes.Add(mesh);
+
+            var road = new GameObject(mesh.name)
+            {
+                hideFlags = generatedRoot.hideFlags,
+                isStatic = true,
+                layer = parent.gameObject.layer
+            };
+            road.transform.SetParent(parent, false);
+            MeshFilter filter = road.AddComponent<MeshFilter>();
+            filter.sharedMesh = mesh;
+            MeshRenderer renderer = road.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = true;
+        }
+
+        void BuildFlightContainment(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan)
+        {
+            int obstacleLayer = ResolveLayer(
+                "CombatObstacle",
+                gameObject.layer);
+            var root = new GameObject("FlightContainmentAirWalls")
+            {
+                hideFlags = generatedRoot.hideFlags,
+                layer = obstacleLayer
+            };
+            root.transform.SetParent(generatedRoot.transform, false);
+
+            float half = settings.mapSize * 0.5f;
+            float thickness = Mathf.Max(
+                12f,
+                settings.vehicleWingspan * 0.8f);
+            float ceiling = plan.flightCeiling;
+            float bottom = plan.mapCenter.y
+                - Mathf.Max(80f, settings.mountainHeight * 0.35f);
+            float wallHeight = ceiling - bottom + thickness;
+            float localY = (bottom + ceiling) * 0.5f
+                - plan.mapCenter.y;
+            PhysicMaterial physicsMaterial =
+                generatedPhysicsMaterials.Count > 0
+                    ? generatedPhysicsMaterials[0]
+                    : CreateFlightPhysicsMaterial();
+
+            AddAirWall(
+                root.transform,
+                "WestAirWall",
+                new Vector3(-half - thickness * 0.5f, localY, 0f),
+                new Vector3(thickness, wallHeight, settings.mapSize),
+                obstacleLayer,
+                physicsMaterial);
+            AddAirWall(
+                root.transform,
+                "EastAirWall",
+                new Vector3(half + thickness * 0.5f, localY, 0f),
+                new Vector3(thickness, wallHeight, settings.mapSize),
+                obstacleLayer,
+                physicsMaterial);
+            AddAirWall(
+                root.transform,
+                "SouthAirWall",
+                new Vector3(0f, localY, -half - thickness * 0.5f),
+                new Vector3(
+                    settings.mapSize + thickness * 2f,
+                    wallHeight,
+                    thickness),
+                obstacleLayer,
+                physicsMaterial);
+            AddAirWall(
+                root.transform,
+                "NorthAirWall",
+                new Vector3(0f, localY, half + thickness * 0.5f),
+                new Vector3(
+                    settings.mapSize + thickness * 2f,
+                    wallHeight,
+                    thickness),
+                obstacleLayer,
+                physicsMaterial);
+            AddAirWall(
+                root.transform,
+                "CeilingAirWall",
+                new Vector3(
+                    0f,
+                    ceiling - plan.mapCenter.y + thickness * 0.5f,
+                    0f),
+                new Vector3(
+                    settings.mapSize + thickness * 2f,
+                    thickness,
+                    settings.mapSize + thickness * 2f),
+                obstacleLayer,
+                physicsMaterial);
+        }
+
+        void AddAirWall(
+            Transform parent,
+            string wallName,
+            Vector3 localPosition,
+            Vector3 size,
+            int layer,
+            PhysicMaterial physicsMaterial)
+        {
+            var wall = new GameObject(wallName)
+            {
+                hideFlags = generatedRoot.hideFlags,
+                isStatic = true,
+                layer = layer
+            };
+            wall.transform.SetParent(parent, false);
+            wall.transform.localPosition = localPosition;
+            BoxCollider collider = wall.AddComponent<BoxCollider>();
+            collider.size = size;
+            collider.sharedMaterial = physicsMaterial;
+            collider.enabled = terrainCollisionEnabled;
+        }
+
+        static PrimitiveType PrimitiveFor(CombatDecorationKind kind)
+        {
+            switch (kind)
+            {
+                case CombatDecorationKind.RockSpire:
+                case CombatDecorationKind.Beacon:
+                    return PrimitiveType.Cylinder;
+                case CombatDecorationKind.Crystal:
+                    return PrimitiveType.Capsule;
+                default:
+                    return PrimitiveType.Cube;
+            }
+        }
+
+        static Vector3 PrimitiveScale(
+            CombatDecorationKind kind,
+            Vector3 size)
+        {
+            switch (kind)
+            {
+                case CombatDecorationKind.RockSpire:
+                case CombatDecorationKind.Beacon:
+                case CombatDecorationKind.Crystal:
+                    return new Vector3(
+                        size.x,
+                        size.y * 0.5f,
+                        size.z);
+                default:
+                    return size;
+            }
+        }
+
+        void BuildWorldSkirt(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan,
+            Material material)
+        {
+            int terrainLayer = ResolveLayer(
+                "CombatTerrain",
+                gameObject.layer);
+            var skirt = new GameObject("OutskirtsTerrainSkirt")
+            {
+                hideFlags = generatedRoot.hideFlags,
+                isStatic = true,
+                layer = terrainLayer
+            };
+            skirt.transform.SetParent(generatedRoot.transform, false);
+
+            const int segmentsPerSide = 40;
+            const int ringCount = 6;
+            int perimeterCount = segmentsPerSide * 4;
+            float innerHalf = settings.mapSize * 0.5f;
+            float outerHalf = Mathf.Max(
+                innerHalf + settings.designCombatSpeed * 120f,
+                settings.mapSize * 1.7f);
+            var vertices = new Vector3[perimeterCount * ringCount];
+            var uv = new Vector2[vertices.Length];
+            var triangles = new int[
+                perimeterCount * (ringCount - 1) * 6];
+            for (int ring = 0; ring < ringCount; ring++)
+            for (int index = 0; index < perimeterCount; index++)
+            {
+                Vector2 inner = SquarePerimeterPoint(
+                    innerHalf,
+                    index,
+                    segmentsPerSide);
+                Vector2 outer = inner.sqrMagnitude > 0.001f
+                    ? inner.normalized * outerHalf
+                    : inner;
+                float t = ring / (float)(ringCount - 1);
+                float blend = Mathf.SmoothStep(0f, 1f, t);
+                Vector2 point = Vector2.Lerp(inner, outer, blend);
+                float worldX = plan.mapCenter.x + point.x;
+                float worldZ = plan.mapCenter.z + point.y;
+                float height = CombatMapGenerator.SampleHeight(
+                    settings,
+                    plan,
+                    worldX,
+                    worldZ)
+                    - plan.mapCenter.y
+                    - t * t * settings.mountainHeight * 0.16f;
+                int vertex = ring * perimeterCount + index;
+                vertices[vertex] = new Vector3(point.x, height, point.y);
+                uv[vertex] = new Vector2(
+                    point.x / 15f,
+                    point.y / 15f);
+                if (ring == ringCount - 1)
+                    continue;
+                int next = (index + 1) % perimeterCount;
+                int triangle = (ring * perimeterCount + index) * 6;
+                int innerA = ring * perimeterCount + index;
+                int innerB = ring * perimeterCount + next;
+                int outerA = (ring + 1) * perimeterCount + index;
+                int outerB = (ring + 1) * perimeterCount + next;
+                triangles[triangle] = innerA;
+                triangles[triangle + 1] = innerB;
+                triangles[triangle + 2] = outerA;
+                triangles[triangle + 3] = innerB;
+                triangles[triangle + 4] = outerB;
+                triangles[triangle + 5] = outerA;
+            }
+
+            var mesh = new Mesh
+            {
+                name = "CombatMapOutskirtsSkirt",
+                hideFlags = HideFlags.HideAndDontSave,
+                vertices = vertices,
+                triangles = triangles,
+                uv = uv
+            };
+            mesh.RecalculateNormals();
+            Vector3[] normals = mesh.normals;
+            var colors = new Color[vertices.Length];
+            for (int index = 0; index < vertices.Length; index++)
+            {
+                Vector3 point = vertices[index];
+                colors[index] = TerrainSurfaceColor(
+                    settings,
+                    plan,
+                    plan.mapCenter.x + point.x,
+                    plan.mapCenter.z + point.z,
+                    plan.mapCenter.y + point.y,
+                    normals[index]);
+            }
+            mesh.colors = colors;
+            mesh.RecalculateBounds();
+            generatedMeshes.Add(mesh);
+
+            MeshFilter filter = skirt.AddComponent<MeshFilter>();
+            filter.sharedMesh = mesh;
+            MeshRenderer renderer = skirt.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = true;
+            MeshCollider collider = skirt.AddComponent<MeshCollider>();
+            collider.sharedMesh = mesh;
+            collider.convex = false;
+            collider.isTrigger = false;
+            collider.sharedMaterial =
+                generatedPhysicsMaterials.Count > 0
+                    ? generatedPhysicsMaterials[0]
+                    : CreateFlightPhysicsMaterial();
+        }
+
+        static Vector2 SquarePerimeterPoint(
+            float half,
+            int index,
+            int segmentsPerSide)
+        {
+            int perimeter = segmentsPerSide * 4;
+            int wrapped = (index % perimeter + perimeter) % perimeter;
+            int side = wrapped / segmentsPerSide;
+            float t = (wrapped % segmentsPerSide)
+                / (float)segmentsPerSide;
+            switch (side)
+            {
+                case 0:
+                    return new Vector2(
+                        Mathf.Lerp(-half, half, t),
+                        -half);
+                case 1:
+                    return new Vector2(
+                        half,
+                        Mathf.Lerp(-half, half, t));
+                case 2:
+                    return new Vector2(
+                        Mathf.Lerp(half, -half, t),
+                        half);
+                default:
+                    return new Vector2(
+                        -half,
+                        Mathf.Lerp(half, -half, t));
             }
         }
 
@@ -913,15 +1440,15 @@ void BuildSemanticOverlay(
             CombatSemanticPlan plan)
         {
             const int segmentCount = 96;
-            var boundary = new GameObject("ForfeitBoundary")
+            var boundary = new GameObject("CombatFocusBoundary")
             {
                 hideFlags = generatedRoot.hideFlags
             };
             boundary.transform.SetParent(overlayRoot.transform, false);
             LineRenderer line = boundary.AddComponent<LineRenderer>();
-            Color color = new Color(1f, 0.3f, 0.18f, 0.9f);
+            Color color = new Color(0.18f, 0.7f, 1f, 0.75f);
             line.sharedMaterial = CreateLineMaterial(
-                "CombatMap Forfeit Boundary",
+                "CombatMap Focus Guide",
                 color);
             line.useWorldSpace = false;
             line.loop = true;
@@ -986,6 +1513,162 @@ void BuildSemanticOverlay(
                     DestroyTransient(collider);
                 }
             }
+        }
+
+        static Color TerrainSurfaceColor(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan,
+            float worldX,
+            float worldZ,
+            float height,
+            Vector3 normal)
+        {
+            float slope = Mathf.Clamp01(1f - normal.y);
+            float rock = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.InverseLerp(0.12f, 0.52f, slope));
+            float dirt = Mathf.Clamp01(slope * 1.8f) * (1f - rock);
+            float mud = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.InverseLerp(
+                    plan.mapCenter.y + 10f,
+                    plan.mapCenter.y + 1f,
+                    height)) * (1f - rock) * 0.62f;
+            Vector2 point = new Vector2(worldX, worldZ);
+
+            if (plan.urbanRoads != null)
+            {
+                for (int i = 0; i < plan.urbanRoads.Length; i++)
+                {
+                    CombatUrbanRoadData road = plan.urbanRoads[i];
+                    if (road == null)
+                        continue;
+                    float distance = DistanceToSegment2D(
+                        point,
+                        new Vector2(road.start.x, road.start.z),
+                        new Vector2(road.end.x, road.end.z));
+                    float shoulder = 1f - Mathf.SmoothStep(
+                        0f,
+                        1f,
+                        Mathf.InverseLerp(
+                            road.width * 0.5f,
+                            road.width * 0.5f + road.shoulder * 1.65f,
+                            distance));
+                    dirt = Mathf.Max(dirt, shoulder * 0.92f);
+                    mud *= 1f - shoulder;
+                }
+            }
+            if (plan.urbanPlots != null)
+            {
+                for (int i = 0; i < plan.urbanPlots.Length; i++)
+                {
+                    CombatUrbanPlotData plot = plan.urbanPlots[i];
+                    if (plot == null)
+                        continue;
+                    float radius = plot.size.magnitude * 0.5f;
+                    float distance = Vector2.Distance(
+                        point,
+                        new Vector2(plot.position.x, plot.position.z));
+                    float transition = 1f - Mathf.SmoothStep(
+                        0f,
+                        1f,
+                        Mathf.InverseLerp(
+                            radius,
+                            radius + settings.vehicleWingspan * 1.4f,
+                            distance));
+                    dirt = Mathf.Max(dirt, transition * 0.78f);
+                }
+            }
+            return new Color(rock, dirt, mud, 1f);
+        }
+
+        static float DistanceToSegment2D(
+            Vector2 point,
+            Vector2 start,
+            Vector2 end)
+        {
+            Vector2 segment = end - start;
+            float denominator = segment.sqrMagnitude;
+            if (denominator <= 0.0001f)
+                return Vector2.Distance(point, start);
+            float along = Mathf.Clamp01(
+                Vector2.Dot(point - start, segment) / denominator);
+            return Vector2.Distance(point, start + segment * along);
+        }
+
+        Material CreateTerrainSurfaceMaterial()
+        {
+            Shader shader = Shader.Find(
+                "UnityPlanet/CombatMap/TerrainBlend");
+            if (shader == null)
+            {
+                return CreateMaterial(
+                    "CombatMap Terrain Fallback",
+                    new Color(0.26f, 0.32f, 0.2f));
+            }
+            var material = new Material(shader)
+            {
+                name = "CombatMap Layered Terrain",
+                hideFlags = HideFlags.HideAndDontSave,
+                enableInstancing = true
+            };
+            material.SetTexture(
+                "_GrassTex",
+                Resources.Load<Texture2D>(
+                    "CombatMap/Surface/T_Ground_03_Grass_BC_SM"));
+            material.SetTexture(
+                "_MudTex",
+                Resources.Load<Texture2D>(
+                    "CombatMap/Surface/T_Ground_10_Mud_BC_SM"));
+            material.SetTexture(
+                "_DirtTex",
+                Resources.Load<Texture2D>(
+                    "CombatMap/Surface/T_Ground_34_Dirt_A_Sm"));
+            material.SetTexture(
+                "_RockTex",
+                Resources.Load<Texture2D>(
+                    "CombatMap/Surface/T_Ground_24_Rock_A_Sm"));
+            material.SetFloat("_TextureScale", 15f);
+            generatedMaterials.Add(material);
+            return material;
+        }
+
+        Material CreateRoadSurfaceMaterial()
+        {
+            Material material = CreateMaterial(
+                "CombatMap Asphalt Roads",
+                new Color(0.34f, 0.34f, 0.34f));
+            Texture2D road = Resources.Load<Texture2D>(
+                "CombatMap/Surface/T_Ground_22_Road_BC_SM");
+            if (material != null && road != null)
+            {
+                if (material.HasProperty("_MainTex"))
+                    material.SetTexture("_MainTex", road);
+                if (material.HasProperty("_BaseMap"))
+                    material.SetTexture("_BaseMap", road);
+                material.mainTextureScale = Vector2.one;
+            }
+            return material;
+        }
+
+        Material CreateUrbanPlotMaterial()
+        {
+            Material material = CreateMaterial(
+                "CombatMap Urban Lots",
+                new Color(0.46f, 0.43f, 0.38f));
+            Texture2D dirt = Resources.Load<Texture2D>(
+                "CombatMap/Surface/T_Ground_34_Dirt_A_Sm");
+            if (material != null && dirt != null)
+            {
+                if (material.HasProperty("_MainTex"))
+                    material.SetTexture("_MainTex", dirt);
+                if (material.HasProperty("_BaseMap"))
+                    material.SetTexture("_BaseMap", dirt);
+                material.mainTextureScale = Vector2.one;
+            }
+            return material;
         }
 
         Material CreateMaterial(

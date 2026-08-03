@@ -19,6 +19,7 @@ public sealed class InterstellarCruiseController : MonoBehaviour
     [SerializeField] KeyboardMouseFlightInput flightInput;
     [SerializeField] SpacecraftDamageReceiver damageReceiver;
     [SerializeField] SpacecraftWeaponSystem weaponSystem;
+    [SerializeField] InterstellarShipController shipController;
     [SerializeField, Range(1f, 20f)] float reticleLockAngle = 10f;
     [SerializeField, Range(0.5f, 10f)] float alignmentAngle = 3f;
     [SerializeField, Range(1f, 30f)] float abortAngle = 10f;
@@ -116,8 +117,7 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         if (!controlsEnabled
             || surfaceEntryActive
             || IsActive
-            || flightInput == null
-            || !flightInput.ConsumeCruisePressed())
+            || !ConsumeCruisePressed())
             return;
 
         HandlePlanetAction();
@@ -392,7 +392,7 @@ public sealed class InterstellarCruiseController : MonoBehaviour
 
     void ApplyAutomaticApproach()
     {
-        if (navigation == null || !navigation.HasLockedTarget || ifcsMotor == null)
+        if (navigation == null || !navigation.HasLockedTarget || shipController == null)
         {
             SetAutomaticLandingRequested(false);
             return;
@@ -419,11 +419,10 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         if (up.sqrMagnitude < 0.0001f)
             up = Vector3.right;
 
-        ifcsMotor.LinearControlEnabled = true;
-        ifcsMotor.SetExternalWorldVelocityTarget(direction * targetSpeed);
-        ifcsMotor.SetExternalWorldAttitudeTarget(Quaternion.LookRotation(direction, up.normalized));
-        if (weaponSystem != null)
-            weaponSystem.ControlsEnabled = false;
+        shipController.LinearControlEnabled = true;
+        shipController.SetExternalWorldVelocityTarget(direction * targetSpeed);
+        shipController.SetExternalWorldAttitudeTarget(Quaternion.LookRotation(direction, up.normalized));
+        shipController.SetWeaponControlsEnabled(false);
     }
 
     void SetAutomaticLandingRequested(bool requested)
@@ -432,13 +431,13 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         navigation?.RequestAutomaticLanding(requested);
         if (requested)
             return;
-        if (ifcsMotor != null && !IsActive)
+        if (shipController != null && !IsActive)
         {
-            ifcsMotor.ClearExternalTargets();
-            ifcsMotor.ResetControllerState();
+            shipController.ClearExternalTargets();
+            shipController.ResetFlightController();
         }
-        if (weaponSystem != null && !IsActive)
-            weaponSystem.ControlsEnabled = controlsEnabled;
+        if (shipController != null && !IsActive)
+            shipController.SetWeaponControlsEnabled(controlsEnabled);
     }
 
     void SynchronizeLockState()
@@ -578,7 +577,7 @@ public sealed class InterstellarCruiseController : MonoBehaviour
             snapshotRotation,
             snapshotAngularVelocity);
         navigation?.MarkNearPlanet(frozenPlanet);
-        ifcsMotor?.SetVelocityReference(
+        shipController?.SetVelocityReference(
             flightRuntime.CurrentIfcsVelocityReferenceWorld);
         MatchPresentationToPhysicalShip(frozenExitRotation);
         warpGate?.NotifyRelocated();
@@ -661,20 +660,20 @@ public sealed class InterstellarCruiseController : MonoBehaviour
             ? shipBody.velocity
             : flightRuntime.ToBarycentricVelocity(shipBody.velocity);
         snapshotRelativeVelocity = flightRuntime == null
-            ? shipBody.velocity - (ifcsMotor == null
+            ? shipBody.velocity - (shipController == null
                 ? Vector3.zero
-                : ifcsMotor.VelocityReferenceWorld)
+                : shipController.VelocityReferenceWorld)
             : flightRuntime.ShipRelativeVelocityMetersPerSecond;
         snapshotAngularVelocity = shipBody.angularVelocity;
         restoredAbsoluteVelocity = snapshotAbsoluteVelocity;
 
-        if (ifcsMotor != null)
+        if (shipController != null)
         {
-            snapshotIfcsControlsEnabled = ifcsMotor.ControlsEnabled;
-            snapshotLinearControlEnabled = ifcsMotor.LinearControlEnabled;
-            snapshotAngularControlEnabled = ifcsMotor.AngularControlEnabled;
-            ifcsMotor.ClearExternalTargets();
-            ifcsMotor.ControlsEnabled = false;
+            snapshotIfcsControlsEnabled = shipController.FlightControlForcesEnabled;
+            snapshotLinearControlEnabled = shipController.LinearControlEnabled;
+            snapshotAngularControlEnabled = shipController.AngularControlEnabled;
+            shipController.ClearExternalTargets();
+            shipController.SetFlightControlForcesEnabled(false);
         }
 
         shipBody.interpolation = RigidbodyInterpolation.None;
@@ -705,12 +704,12 @@ public sealed class InterstellarCruiseController : MonoBehaviour
             shipBody.interpolation = snapshotOriginalInterpolation;
         }
 
-        if (ifcsMotor != null)
+        if (shipController != null)
         {
-            ifcsMotor.ResetControllerState();
-            ifcsMotor.LinearControlEnabled = snapshotLinearControlEnabled;
-            ifcsMotor.AngularControlEnabled = snapshotAngularControlEnabled;
-            ifcsMotor.ControlsEnabled = snapshotIfcsControlsEnabled;
+            shipController.ResetFlightController();
+            shipController.LinearControlEnabled = snapshotLinearControlEnabled;
+            shipController.AngularControlEnabled = snapshotAngularControlEnabled;
+            shipController.SetFlightControlForcesEnabled(snapshotIfcsControlsEnabled);
         }
 
         physicsSnapshotActive = false;
@@ -745,8 +744,7 @@ public sealed class InterstellarCruiseController : MonoBehaviour
             flightRuntime?.SetWarpCinematic(true);
             cameraRig?.SetCinematicThirdPersonOverride(true);
         }
-        if (weaponSystem != null)
-            weaponSystem.ControlsEnabled = controlsEnabled && !suppressCombat;
+        shipController?.SetWeaponControlsEnabled(controlsEnabled && !suppressCombat);
         if (next == InterstellarWarpState.Cooldown)
         {
             MatchPresentationToPhysicalShip();
@@ -759,11 +757,11 @@ public sealed class InterstellarCruiseController : MonoBehaviour
             RestorePhysicsAfterCinematic();
             flightRuntime?.SetWarpCinematic(false);
             cameraRig?.SetCinematicThirdPersonOverride(false);
-            if (ifcsMotor != null)
+            if (shipController != null)
             {
-                ifcsMotor.ClearExternalTargets();
+                shipController.ClearExternalTargets();
                 if (!restoredCinematicPhysics)
-                    ifcsMotor.ResetControllerState();
+                    shipController.ResetFlightController();
             }
             SuppressCinematicInput(false);
             cameraRig?.SetCinematicFovOverride(null);
@@ -818,6 +816,8 @@ public sealed class InterstellarCruiseController : MonoBehaviour
             damageReceiver = GetComponent<SpacecraftDamageReceiver>();
         if (weaponSystem == null)
             weaponSystem = GetComponent<SpacecraftWeaponSystem>();
+        if (shipController == null)
+            shipController = GetComponent<InterstellarShipController>();
         if (warpGate == null)
             warpGate = FindObjectOfType<InterstellarWarpGateController>();
         if (cameraRig == null)
@@ -843,6 +843,11 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         }
         if (weaponSystem != null)
             weaponSystem.ControlsEnabled = controlsEnabled && !suppress;
+        if (shipController != null)
+        {
+            shipController.SetInputCaptureEnabled(controlsEnabled && !suppress);
+            shipController.SetWeaponControlsEnabled(controlsEnabled && !suppress);
+        }
     }
 
     void OnDisable()
@@ -861,14 +866,20 @@ public sealed class InterstellarCruiseController : MonoBehaviour
         warpState = navigation != null && navigation.HasLockedTarget
             ? InterstellarWarpState.Locked
             : InterstellarWarpState.Unlocked;
-        if (ifcsMotor != null)
+        if (shipController != null)
         {
-            ifcsMotor.ClearExternalTargets();
-            ifcsMotor.ResetControllerState();
+            shipController.ClearExternalTargets();
+            shipController.ResetFlightController();
         }
-        if (weaponSystem != null)
-            weaponSystem.ControlsEnabled = controlsEnabled;
+        shipController?.SetWeaponControlsEnabled(controlsEnabled);
         SetAutomaticLandingRequested(false);
+    }
+
+    bool ConsumeCruisePressed()
+    {
+        if (shipController != null && shipController.IsModular)
+            return Input.GetKeyDown(KeyCode.B);
+        return flightInput != null && flightInput.ConsumeCruisePressed();
     }
 
     public static Vector3 CalculateTravelDirection(DoubleVector3 origin, DoubleVector3 target)

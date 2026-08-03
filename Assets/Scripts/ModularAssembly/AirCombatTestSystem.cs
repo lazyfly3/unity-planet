@@ -79,8 +79,6 @@ namespace UnityPlanet.ModularAssembly
         const float BattleAltitude = 180f;
         const float EnemySpawnDistance = 120f;
         const float WarningRadius = 1200f;
-        const float ForfeitRadius = 1500f;
-        const float ForfeitSeconds = 5f;
 
         ModularAssemblyLabController lab;
         GridFlightBridge flight;
@@ -104,7 +102,6 @@ namespace UnityPlanet.ModularAssembly
         bool waitingForPreparation;
         bool combatActive;
         bool resolving;
-        float outsideSeconds;
         float ineffectiveSeconds;
         Vector3 battleCenter;
         Vector3 combatPlayerSpawn;
@@ -432,6 +429,10 @@ namespace UnityPlanet.ModularAssembly
 
             playerSnapshot = lab.Model.CaptureBlueprint();
             CurrentMode = mode;
+            FlightEnvironmentManager environmentManager =
+                FindObjectOfType<FlightEnvironmentManager>(true);
+            if (environmentManager != null)
+                environmentManager.SetCombatMode(mode);
             pendingCombat = true;
             SessionKind = GridFlightSessionKind.CombatTest;
             message = mode == CombatTestMode.Horde
@@ -572,7 +573,6 @@ namespace UnityPlanet.ModularAssembly
             {
                 SpawnEnemy();
             }
-            outsideSeconds = 0f;
             ineffectiveSeconds = 0f;
             playerTtk.Reset("player");
             enemyTtk.Reset(
@@ -742,26 +742,16 @@ namespace UnityPlanet.ModularAssembly
 
             float warningRadius =
                 arena != null ? arena.WarningRadius : WarningRadius;
-            float forfeitRadius =
-                arena != null ? arena.ForfeitRadius : ForfeitRadius;
             float distance = Vector3.Distance(
                 playerBody.position,
                 battleCenter);
             if (distance > warningRadius)
             {
-                outsideSeconds += Time.deltaTime;
                 warningText.text =
-                    $"正在脱离战斗空域  {outsideSeconds:0.0}/{ForfeitSeconds:0.0}秒";
-                if (distance > forfeitRadius &&
-                    outsideSeconds >= ForfeitSeconds)
-                {
-                    CompleteBattle(false, "脱离战斗空域");
-                    return;
-                }
+                    "已偏离主要交战区；战斗继续，请沿目标指示返回城市航路";
             }
             else
             {
-                outsideSeconds = 0f;
                 warningText.text = string.Empty;
             }
 
@@ -947,7 +937,6 @@ namespace UnityPlanet.ModularAssembly
             {
                 SpawnEnemy();
             }
-            outsideSeconds = 0f;
             ineffectiveSeconds = 0f;
             combatActive = true;
             resolving = false;
@@ -1940,6 +1929,17 @@ namespace UnityPlanet.ModularAssembly
                         node.Role == ModuleRole.Core,
                         bounds,
                         0));
+                VehicleDetachedDebris.SpawnDirectBreak(
+                    new[]
+                    {
+                        new DetachedDebrisPart(
+                            node.Id,
+                            node.Object,
+                            node.Mass)
+                    },
+                    body,
+                    impulse,
+                    hitPoint);
             }
             node.Destroyed = true;
             node.Health = 0f;

@@ -108,9 +108,7 @@ int? seed = null;
         {
             GalaxySaveSlotMetadata metadata = GalaxySaveSlotService.CreateSlot(createNameInput.text, seed);
             GalaxyLaunchContext.SelectSlot(metadata.slotId);
-            SceneManager.LoadScene(
-                launchModularAssembly ? modularAssemblySceneName : workshopSceneName,
-                LoadSceneMode.Single);
+            LoadConstructionScene(metadata.slotId, true);
         }
         catch (Exception exception)
         {
@@ -179,9 +177,9 @@ if (selectedRow == null)
 if (!HasUsableSelection())
             return;
         GalaxyLaunchContext.SelectSlot(selectedRow.Slot.SlotId);
-        SceneManager.LoadScene(
-            launchModularAssembly ? modularAssemblySceneName : workshopSceneName,
-            LoadSceneMode.Single);
+        LoadConstructionScene(
+            selectedRow.Slot.SlotId,
+            launchModularAssembly);
     
 }
 
@@ -230,6 +228,33 @@ selectedRow = row;
         enterButton.interactable = usable;
         renameButton.interactable = usable;
         deleteButton.interactable = selected;
+        Text enterLabel = enterButton == null
+            ? null
+            : enterButton.GetComponentInChildren<Text>();
+        if (enterLabel != null)
+        {
+            SpacecraftBlueprintRoute route = usable
+                ? SpacecraftBlueprintRouteResolver.Resolve(
+                    selectedRow.Slot.SlotId,
+                    launchModularAssembly)
+                : SpacecraftBlueprintRoute.ModularAssembly;
+            enterLabel.text = route == SpacecraftBlueprintRoute.LegacyWorkshop
+                ? "进入飞船工坊"
+                : "进入模块拼装";
+        }
+    }
+
+    void LoadConstructionScene(string slotId, bool forceModular)
+    {
+        SpacecraftBlueprintRoute route =
+            SpacecraftBlueprintRouteResolver.Resolve(
+                slotId,
+                forceModular);
+        SceneManager.LoadScene(
+            route == SpacecraftBlueprintRoute.LegacyWorkshop
+                ? workshopSceneName
+                : modularAssemblySceneName,
+            LoadSceneMode.Single);
     }
 
     bool HasUsableSelection()

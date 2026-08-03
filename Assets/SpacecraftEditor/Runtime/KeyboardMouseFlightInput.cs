@@ -11,7 +11,6 @@ namespace SpacecraftEditor
         [SerializeField, Range(0.005f, 0.2f)] float vjoySensitivity = 0.045f;
         [SerializeField, Range(0f, 0.3f)] float vjoyDeadZone = 0.07f;
         [SerializeField, Range(1f, 3f)] float vjoyExponent = 1.8f;
-        [SerializeField, Min(1f)] float speedLimitStep = 1f;
 
         Vector2 vjoyCursor;
         SpacecraftFlightCommand command;

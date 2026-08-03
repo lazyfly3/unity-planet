@@ -95,7 +95,7 @@ public sealed class SpaceflightCockpitController : MonoBehaviour
             ? hull.CurrentHull.Dimensions
             : hull != null
                 ? hull.LocalBounds.size
-                : new Vector3(3f, 2.2f, 6f);
+                : ship.VisualBounds.size;
         float widthScale = Mathf.Clamp(dimensions.x / 3.4f, 0.86f, 1.22f);
         float heightScale = Mathf.Clamp(dimensions.y / 2.2f, 0.9f, 1.16f);
         cockpitRoot.transform.localPosition = cameraRig.CockpitAnchorLocal;
@@ -420,9 +420,9 @@ public sealed class SpaceflightCockpitController : MonoBehaviour
 
     void AnimateControls()
     {
-        if (ship == null || ship.FlightInput == null)
+        if (ship == null)
             return;
-        SpacecraftFlightCommand command = ship.FlightInput.Command;
+        SpacecraftFlightCommand command = ship.FlightCommand;
         float blend = 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime);
         if (stickPivot != null)
         {

@@ -3,6 +3,28 @@ using UnityEngine;
 
 namespace UnityPlanet.CombatMap
 {
+    public enum AirCombatMapMode
+    {
+        Duel = 0,
+        Horde = 1
+    }
+
+    public enum CombatMapTheme
+    {
+        Ruins = 0,
+        Natural = 1,
+        Urban = 2,
+        Industrial = 3
+    }
+
+    public enum CombatDecorationKind
+    {
+        RockSpire = 0,
+        Building = 1,
+        Crystal = 2,
+        Beacon = 3
+    }
+
     public enum CombatTeam
     {
         Player = 0,
@@ -58,7 +80,9 @@ namespace UnityPlanet.CombatMap
         RidgeCapsule = 0,
         MesaCapsule = 1,
         Basin = 2,
-        Corridor = 3
+        Corridor = 3,
+        RoadBed = 4,
+        BuildingPad = 5
     }
 
     public enum CombatMapViolationSeverity
@@ -138,6 +162,36 @@ namespace UnityPlanet.CombatMap
         public Vector3 position;
         public Vector3 size = Vector3.one;
         public Color color = Color.gray;
+        public CombatDecorationKind decorationKind =
+            CombatDecorationKind.RockSpire;
+        public float yaw;
+    }
+
+    /// <summary>
+    /// Authored-by-PCG road data. Roads exist before buildings so the city
+    /// grows from a coherent circulation network instead of connecting a
+    /// random set of towers after placement.
+    /// </summary>
+    [Serializable]
+    public sealed class CombatUrbanRoadData
+    {
+        public string stableId = string.Empty;
+        public Vector3 start;
+        public Vector3 end;
+        public float width = 28f;
+        public float shoulder = 18f;
+        public bool arterial = true;
+    }
+
+    [Serializable]
+    public sealed class CombatUrbanPlotData
+    {
+        public string stableId = string.Empty;
+        public string roadStableId = string.Empty;
+        public Vector3 position;
+        public Vector2 size = new Vector2(40f, 40f);
+        public float yaw;
+        public float groundHeight;
     }
 
     [Serializable]
@@ -147,6 +201,8 @@ namespace UnityPlanet.CombatMap
         public int generatorVersion = 1;
         public int seed;
         public int topologyVariant;
+        public AirCombatMapMode mode = AirCombatMapMode.Duel;
+        public CombatMapTheme theme = CombatMapTheme.Ruins;
         public Vector3 mapCenter;
         public float mapSize;
         public float warningRadius;
@@ -159,8 +215,13 @@ namespace UnityPlanet.CombatMap
             Array.Empty<CombatSemanticRoute>();
         public CombatTerrainStamp[] terrainStamps =
             Array.Empty<CombatTerrainStamp>();
+        public CombatUrbanRoadData[] urbanRoads =
+            Array.Empty<CombatUrbanRoadData>();
+        public CombatUrbanPlotData[] urbanPlots =
+            Array.Empty<CombatUrbanPlotData>();
         public CombatOccluderData[] occluders =
             Array.Empty<CombatOccluderData>();
+        public float flightCeiling;
         public string checksum = string.Empty;
 
         public CombatSemanticAnchor FindAnchor(CombatAnchorType type)
@@ -323,6 +384,7 @@ namespace UnityPlanet.CombatMap
         public float forfeitSeconds;
         public float minimumGroundClearance;
         public float maximumGroundClearance;
+        public float maximumFlightAltitude;
         public Vector3 playerSpawnPosition;
         public Quaternion playerSpawnRotation;
         public Vector3 enemySpawnPosition;

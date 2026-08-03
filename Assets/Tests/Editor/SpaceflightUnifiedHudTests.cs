@@ -88,6 +88,48 @@ public sealed class SpaceflightUnifiedHudTests
     }
 
     [Test]
+    public void ModularPresentation_HidesOnlyFlightAndWeaponPanels()
+    {
+        GameObject canvasObject = new GameObject(
+            "SpaceflightCanvas",
+            typeof(RectTransform),
+            typeof(Canvas));
+        GameObject host = new GameObject("HudHost");
+
+        try
+        {
+            host.transform.SetParent(canvasObject.transform, false);
+            SpaceflightUnifiedHudLayout layout =
+                host.AddComponent<SpaceflightUnifiedHudLayout>();
+            BuildMinimal(layout, canvasObject.GetComponent<Canvas>());
+
+            layout.SetFlightPanelsVisible(false);
+
+            Assert.That(layout.FlightPanelsVisible, Is.False);
+            Assert.That(layout.LeftWing.gameObject.activeSelf, Is.False);
+            Assert.That(layout.RightWing.gameObject.activeSelf, Is.False);
+            Assert.That(layout.WarningStack.gameObject.activeSelf, Is.False);
+            Assert.That(layout.AimReticle.gameObject.activeSelf, Is.True);
+            Assert.That(layout.TargetStrip.gameObject.activeSelf, Is.True);
+
+            layout.SetPresentationMode(SpaceflightHudPresentationMode.Cockpit);
+            layout.SetFlightPanelsVisible(true);
+            Assert.That(layout.LeftWing.gameObject.activeSelf, Is.False);
+            Assert.That(layout.RightWing.gameObject.activeSelf, Is.False);
+            Assert.That(layout.WarningStack.gameObject.activeSelf, Is.True);
+
+            layout.SetPresentationMode(SpaceflightHudPresentationMode.ThirdPerson);
+            Assert.That(layout.LeftWing.gameObject.activeSelf, Is.True);
+            Assert.That(layout.RightWing.gameObject.activeSelf, Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(host);
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
     public void SegmentedBar_ClampsTelemetryRatio()
     {
         GameObject barObject = new GameObject(

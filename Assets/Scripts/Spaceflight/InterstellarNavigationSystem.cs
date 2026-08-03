@@ -39,6 +39,7 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
 
     [SerializeField] InterstellarFlightRuntime runtime;
     [SerializeField] SpacecraftIfcsMotor ifcsMotor;
+    [SerializeField] InterstellarShipController shipController;
     [SerializeField] Transform proxyRoot;
     [SerializeField, Range(4, 12)] int scanRadiusSectors = 8;
     [SerializeField, Range(1, 16)] int maximumVisiblePlanets = 16;
@@ -133,6 +134,10 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
             camera.farClipPlane = Mathf.Max(camera.farClipPlane, 120000f);
         if (ifcsMotor == null)
             ifcsMotor = FindObjectOfType<SpacecraftIfcsMotor>();
+        if (shipController == null)
+            shipController = runtime == null
+                ? FindObjectOfType<InterstellarShipController>()
+                : runtime.ShipController;
         if (proxyRoot == null)
             proxyRoot = runtime != null && runtime.AstronomicalRoot != null
                 ? GameObject.Find("PlanetRuntimeRoot")?.transform
@@ -215,7 +220,7 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         bool hadNearPlanet = !string.IsNullOrEmpty(nearObservationPlanetId);
         nearObservationPlanetId = string.Empty;
         runtime?.ExitPlanetCenteredFrame();
-        ifcsMotor?.ClearVelocityReference();
+        shipController?.ClearVelocityReference();
         if (hadNearPlanet && Application.isPlaying)
         {
             GalaxyTravelManager.Instance?.SetNearObservationPlanet(
@@ -475,11 +480,11 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
         if (nearTarget == null)
         {
             runtime?.ExitPlanetCenteredFrame();
-            ifcsMotor?.ClearVelocityReference();
+            shipController?.ClearVelocityReference();
             return;
         }
         ActivatePlanetCenteredFrame(nearTarget.definition);
-        ifcsMotor?.SetVelocityReference(Vector3.zero);
+        shipController?.SetVelocityReference(Vector3.zero);
     }
 
     void ActivatePlanetCenteredFrame(GalaxyPlanetDefinition definition)
@@ -773,7 +778,7 @@ public sealed class InterstellarNavigationSystem : MonoBehaviour
             runtime.OriginShifted -= HandleOriginShift;
             runtime.UniverseAddressRelocated -= HandleUniverseRelocated;
         }
-        ifcsMotor?.ClearVelocityReference();
+        shipController?.ClearVelocityReference();
     }
 
     void OnDestroy()

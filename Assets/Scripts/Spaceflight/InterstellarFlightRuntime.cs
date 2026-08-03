@@ -46,12 +46,15 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
     CameraClearFlags originalLocalClearFlags;
     int originalLocalCullingMask;
     bool presentationConfigured;
+    InterstellarModularVehicleLoader modularLoader;
 
     public event Action<Vector3> OriginShifted;
     public event Action<DoubleVector3, DoubleVector3> UniverseRelocated;
     public event Action<UniversePosition, UniversePosition> UniverseAddressRelocated;
     public event Action<SpaceflightInteractionMode> InteractionModeChanged;
     public Rigidbody ShipBody => shipBody;
+    public InterstellarShipController ShipController => shipController;
+    public bool IsReady => initialized;
     public Transform AstronomicalRoot => astronomicalRoot;
     public Camera AstronomicalCamera => astronomicalCamera;
     public SpaceflightInteractionMode InteractionMode { get; private set; }
@@ -69,7 +72,9 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
     public string PlanetFrameId => planetFrameId ?? string.Empty;
     public UniversePosition PlanetFrameUniversePosition => planetFrameAddress;
     public Vector3 PlanetFrameVelocityMetersPerSecond => planetFrameVelocity;
-    public Vector3 CurrentIfcsVelocityReferenceWorld => Vector3.zero;
+    public Vector3 CurrentIfcsVelocityReferenceWorld => shipController == null
+        ? Vector3.zero
+        : shipController.VelocityReferenceWorld;
     public float ActiveRebaseThresholdMeters => planetCenteredFrameActive
         ? floatingOriginThresholdMeters
         : InteractionMode == SpaceflightInteractionMode.TacticalPhysics
@@ -141,6 +146,23 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         if (shipController == null && shipBody != null)
             shipController = shipBody.GetComponent<InterstellarShipController>();
 
+        bool useModularVehicle =
+            !string.IsNullOrWhiteSpace(GalaxyLaunchContext.SelectedSlotId) &&
+            SpacecraftBlueprintRouteResolver.HasModularBlueprint(
+                GalaxyLaunchContext.SelectedSlotId);
+        if (useModularVehicle)
+        {
+            GameObject legacyRoot = shipBody == null
+                ? null
+                : shipBody.gameObject;
+            modularLoader = gameObject.AddComponent<InterstellarModularVehicleLoader>();
+            modularLoader.Prepare(legacyRoot);
+            shipBody = modularLoader.Body;
+            shipController = modularLoader.ShipController;
+            damageReceiver = shipBody.GetComponent<SpacecraftDamageReceiver>();
+            ifcsMotor = null;
+        }
+
         GalaxyTravelManager manager = GalaxyTravelManager.Instance;
         universeOrigin = manager != null && manager.IsInterstellarGalaxy
             ? manager.SavedUniversePosition
@@ -170,7 +192,20 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
             highSpeedEnterMetersPerSecond);
         ConfigureDualScalePresentation();
         interactionEvaluationStartsAt = Time.unscaledTime + 1f;
-        initialized = true;
+        initialized = !useModularVehicle;
+        if (useModularVehicle)
+        {
+            StartCoroutine(modularLoader.Build((success, message) =>
+            {
+                if (!success)
+                {
+                    modularLoader.AbortAndReturnToLab(message);
+                    return;
+                }
+                initialized = true;
+                interactionEvaluationStartsAt = Time.unscaledTime + 1f;
+            }));
+        }
     }
 
     void FixedUpdate()
@@ -256,7 +291,7 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         {
             shipBody.velocity -= currentPlanetVelocity;
         }
-        ifcsMotor?.SetVelocityReference(Vector3.zero);
+        shipController?.SetVelocityReference(Vector3.zero);
     }
 
     public void ExitPlanetCenteredFrame()
@@ -271,7 +306,7 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
         planetFrameCoordinate = default;
         planetFrameAddress = default;
         planetFrameVelocity = Vector3.zero;
-        ifcsMotor?.ClearVelocityReference();
+        shipController?.ClearVelocityReference();
     }
 
     public Vector3 ToActiveReferenceFrameVelocity(Vector3 barycentricVelocity)
@@ -628,7 +663,9 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
 
         UniversePosition position = ShipPhysicalUniversePosition;
         InterstellarCoordinate sector = manager.GetInterstellarScanCoordinate(position);
-        float integrity = damageReceiver == null ? manager.SpacecraftHullIntegrity : damageReceiver.Integrity;
+        float integrity = shipController != null && shipController.PersistIntegrity && damageReceiver != null
+            ? damageReceiver.Integrity
+            : manager.SpacecraftHullIntegrity;
         manager.UpdateInterstellarFlightState(sector, position, integrity);
         if (flushToDisk)
             manager.FlushInterstellarFlightState();

@@ -15,7 +15,6 @@ namespace SpacecraftEditor
         [SerializeField] private bool snappingEnabled = true;
         [SerializeField, Range(0f, 45f)] private float snapEnterAngle = 22f;
         [SerializeField, Range(0f, 45f)] private float snapReleaseAngle = 28f;
-        [SerializeField, Range(0f, 1f)] private float centerSnapNormalizedRadius = 0.20f;
         [SerializeField, Min(0f)] private float centerSnapWorldDistance = 0.10f;
         [SerializeField, Min(0.05f)] private float surfaceGridSize = 0.25f;
         [SerializeField, Min(0f)] private float neighborAlignmentDistance = 0.10f;

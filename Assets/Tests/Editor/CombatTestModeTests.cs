@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -235,6 +236,94 @@ public sealed class CombatTestModeTests
         Assert.That(
             enemy.GetComponentsInChildren<VehicleDetachedDebrisLifetime>(true),
             Is.Empty);
+    }
+
+    [Test]
+    public void DirectBreakDebrisIsVisualOnlyAndGetsBoundedRecoil()
+    {
+        GameObject vehicle = CreateRoot("DebrisSourceVehicle", Vector3.zero);
+        Rigidbody sourceBody = vehicle.AddComponent<Rigidbody>();
+        sourceBody.useGravity = false;
+        sourceBody.velocity = new Vector3(12f, 0f, 0f);
+        sourceBody.angularVelocity = new Vector3(0f, 0.4f, 0f);
+        GameObject module = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        module.name = "DebrisSourceModule";
+        module.transform.SetParent(vehicle.transform, false);
+        module.transform.localPosition = new Vector3(0f, 0f, 3f);
+        Physics.SyncTransforms();
+        Vector3 center = module.GetComponent<Renderer>().bounds.center;
+        Vector3 inheritedVelocity = sourceBody.GetPointVelocity(center);
+
+        GameObject debris = VehicleDetachedDebris.SpawnDirectBreak(
+            new[]
+            {
+                new DetachedDebrisPart("test-module", module, 50f)
+            },
+            sourceBody,
+            Vector3.forward * 120f,
+            center - Vector3.forward * 0.5f);
+
+        Assert.That(debris, Is.Not.Null);
+        roots.Add(debris);
+        Rigidbody debrisBody = debris.GetComponent<Rigidbody>();
+        Assert.That(debrisBody, Is.Not.Null);
+        Assert.That(debrisBody.detectCollisions, Is.False);
+        Assert.That(
+            debris.GetComponentsInChildren<Collider>(true),
+            Has.All.Matches<Collider>(item => !item.enabled));
+        float recoilSpeed =
+            (debrisBody.velocity - inheritedVelocity).magnitude;
+        Assert.That(recoilSpeed, Is.InRange(4f, 13f));
+        Assert.That(debrisBody.angularVelocity.magnitude,
+            Is.InRange(0.5f, 7.01f));
+        Assert.That(
+            debris.GetComponent<VehicleDetachedDebrisLifetime>(),
+            Is.Not.Null);
+    }
+
+    [Test]
+    public void DuelEnemyDirectModuleBreakSpawnsVisiblePhysicalDebris()
+    {
+        GameObject player = CreateRoot("DuelDebrisPlayer", Vector3.zero);
+        Rigidbody playerBody = player.AddComponent<Rigidbody>();
+        playerBody.isKinematic = true;
+        GameObject enemyRoot = CreateRoot(
+            "DuelDebrisEnemy",
+            new Vector3(0f, 80f, 120f));
+        EnemyAirCombatVehicle enemy =
+            enemyRoot.AddComponent<EnemyAirCombatVehicle>();
+        enemy.Initialize(null, null, playerBody, null, null);
+        VehicleModuleDamageReceiver target = enemyRoot
+            .GetComponentsInChildren<VehicleModuleDamageReceiver>(true)
+            .OrderByDescending(item =>
+                Mathf.Abs(item.transform.localPosition.x))
+            .First();
+        string runtimeId = target.gameObject.name;
+        float health = enemy.MaximumIntegrity(runtimeId);
+        Vector3 hitPoint = target.transform.position -
+                           enemyRoot.transform.forward * 0.5f;
+
+        enemy.ApplyDamage(
+            runtimeId,
+            new SpaceDamageInfo(
+                health + 1f,
+                hitPoint,
+                enemyRoot.transform.forward * 120f,
+                SpaceDamageType.Projectile,
+                player));
+
+        Assert.That(enemy.IsDestroyed(runtimeId), Is.True);
+        Assert.That(target.gameObject.activeSelf, Is.False);
+        VehicleDetachedDebrisLifetime[] debris =
+            CombatTransientRoot.GetOrCreate()
+                .GetComponentsInChildren<
+                    VehicleDetachedDebrisLifetime>(true);
+        Assert.That(debris, Has.Length.EqualTo(1));
+        Assert.That(debris[0].gameObject.activeSelf, Is.True);
+        Assert.That(
+            debris[0].GetComponent<Rigidbody>().detectCollisions,
+            Is.False);
+        roots.Add(debris[0].gameObject);
     }
 
     GameObject CreateRoot(string name, Vector3 position)

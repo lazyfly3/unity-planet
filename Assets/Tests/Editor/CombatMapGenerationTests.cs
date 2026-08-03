@@ -742,4 +742,424 @@ public sealed class CombatMapGenerationTests
             Is.GreaterThanOrEqualTo(
                 plan.settings.designTurnRadius * 4f));
     }
+
+    [Test]
+    public void BoundaryClampReservesARealTerrainEdgeBuffer()
+    {
+        AirCombatMapSettings settings =
+            AirCombatMapSettings.CreateDefault();
+        settings.warningRadius = 1200f;
+        settings.forfeitRadius = 1500f;
+        settings.Clamp();
+
+        Assert.That(
+            settings.warningRadius,
+            Is.LessThan(settings.forfeitRadius));
+        Assert.That(
+            settings.forfeitRadius + settings.EdgeSafetyMargin,
+            Is.LessThanOrEqualTo(settings.mapSize * 0.5f + 0.001f));
+        Assert.That(
+            settings.EdgeSafetyMargin,
+            Is.GreaterThanOrEqualTo(
+                settings.designCombatSpeed * 1.5f));
+    }
+
+    [Test]
+    public void DuelAndHordeUseDistinctCommittedPcgStrategies()
+    {
+        AirCombatMapSettings authored =
+            AirCombatMapSettings.CreateDefault();
+        AirCombatMapSettings duel = CombatMapModeProfiles.Create(
+            authored,
+            AirCombatMapMode.Duel);
+        AirCombatMapSettings horde = CombatMapModeProfiles.Create(
+            authored,
+            AirCombatMapMode.Horde);
+        int hordeSeed = CombatMapModeProfiles.SeedForMode(
+            authored.seed,
+            AirCombatMapMode.Horde);
+
+        CombatMapGenerationResult duelResult =
+            CombatMapGenerator.GenerateBest(
+                duel,
+                duel.mapCenterOffset,
+                duel.seed);
+        CombatMapGenerationResult hordeResult =
+            CombatMapGenerator.GenerateBest(
+                horde,
+                horde.mapCenterOffset,
+                hordeSeed);
+
+        Assert.IsTrue(
+            duelResult.CanCommit,
+            FormatViolations(duelResult.validation));
+        Assert.IsTrue(
+            hordeResult.CanCommit,
+            FormatViolations(hordeResult.validation));
+        Assert.AreEqual(AirCombatMapMode.Duel, duelResult.plan.mode);
+        Assert.AreEqual(AirCombatMapMode.Horde, hordeResult.plan.mode);
+        Assert.AreEqual(CombatMapTheme.Urban, hordeResult.plan.theme);
+        Assert.That(duelResult.plan.topologyVariant, Is.InRange(0, 5));
+        Assert.That(hordeResult.plan.topologyVariant, Is.InRange(100, 103));
+        Assert.AreNotEqual(
+            duelResult.plan.checksum,
+            hordeResult.plan.checksum);
+        Assert.IsFalse(
+            duelResult.plan.terrainStamps.Any(value =>
+                value != null
+                && value.stableId.StartsWith("terrain.horde.")));
+        Assert.IsTrue(
+            hordeResult.plan.terrainStamps.Any(value =>
+                value != null
+                && value.stableId.StartsWith("terrain.horde.")));
+        Assert.That(
+            hordeResult.plan.occluders.Count(value =>
+                value != null && value.type == CombatOccluderType.Tower),
+            Is.GreaterThan(
+                duelResult.plan.occluders.Count(value =>
+                    value != null
+                    && value.type == CombatOccluderType.Tower)));
+        AssertUrbanBuildingSpacing(
+            horde,
+            hordeResult.plan);
+        Assert.AreEqual(
+            AirCombatMapMode.Duel,
+            authored.mode,
+            "Mode profiles must not mutate the authored settings object.");
+    }
+
+    [Test]
+    public void UrbanPcgBuildsRoadFirstPlotsAndSeededTopologyFamilies()
+    {
+        AirCombatMapSettings authored =
+            AirCombatMapSettings.CreateDefault();
+        AirCombatMapSettings horde = CombatMapModeProfiles.Create(
+            authored,
+            AirCombatMapMode.Horde);
+        int firstSeed = CombatMapModeProfiles.SeedForMode(
+            authored.seed,
+            AirCombatMapMode.Horde);
+        CombatMapGenerationResult first = CombatMapGenerator.GenerateBest(
+            horde,
+            horde.mapCenterOffset,
+            firstSeed);
+
+        Assert.IsTrue(first.CanCommit, FormatViolations(first.validation));
+        Assert.That(first.plan.urbanRoads.Length, Is.GreaterThanOrEqualTo(4));
+        Assert.That(first.plan.urbanPlots.Length, Is.GreaterThanOrEqualTo(12));
+        Assert.IsTrue(first.plan.terrainStamps.Any(value =>
+            value != null
+            && value.type == CombatTerrainStampType.RoadBed));
+        Assert.IsTrue(first.plan.terrainStamps.Any(value =>
+            value != null
+            && value.type == CombatTerrainStampType.BuildingPad));
+        var roadIds = first.plan.urbanRoads
+            .Where(value => value != null)
+            .Select(value => value.stableId)
+            .ToHashSet();
+        Assert.IsTrue(first.plan.urbanPlots.All(value =>
+            value != null && roadIds.Contains(value.roadStableId)));
+
+        float highestBuilding = first.plan.occluders
+            .Where(value => value != null)
+            .Max(value => value.position.y + value.size.y * 0.5f);
+        Assert.That(
+            first.plan.flightCeiling,
+            Is.GreaterThanOrEqualTo(
+                highestBuilding
+                + Mathf.Max(12f, horde.vehicleWingspan * 0.75f)));
+
+        CombatMapGenerationResult differentTopology = null;
+        for (int offset = 1; offset <= 12; offset++)
+        {
+            int seed = CombatMapModeProfiles.SeedForMode(
+                authored.seed + offset,
+                AirCombatMapMode.Horde);
+            CombatMapGenerationResult candidate = CombatMapGenerator.Generate(
+                horde,
+                horde.mapCenterOffset,
+                seed);
+            if (candidate.plan.topologyVariant
+                != first.plan.topologyVariant)
+            {
+                differentTopology = candidate;
+                break;
+            }
+        }
+        Assert.IsNotNull(
+            differentTopology,
+            "Seed search did not expose a second urban topology family.");
+        Assert.AreNotEqual(
+            first.plan.topologyVariant,
+            differentTopology.plan.topologyVariant);
+        Assert.AreNotEqual(
+            first.plan.checksum,
+            differentTopology.plan.checksum);
+        Assert.AreNotEqual(
+            string.Join(",", first.plan.urbanRoads.Select(value => value.stableId)),
+            string.Join(",", differentTopology.plan.urbanRoads.Select(
+                value => value.stableId)));
+    }
+
+    [Test]
+    public void OutskirtsSkirtReplacesHardArenaBoundary()
+    {
+        var root = new GameObject("CombatMapBoundaryTest");
+        root.SetActive(false);
+        CombatMapRuntimeController controller =
+            root.AddComponent<CombatMapRuntimeController>();
+        AirCombatMapRecipe recipe =
+            ScriptableObject.CreateInstance<AirCombatMapRecipe>();
+        controller.Configure(recipe);
+        try
+        {
+            root.SetActive(true);
+            if (!controller.IsReady)
+                Assert.IsTrue(controller.Rebuild());
+            Transform generated = root.transform.Find(
+                CombatMapRuntimeController.GeneratedRootName
+                + "/OutskirtsTerrainSkirt");
+            Assert.IsNotNull(generated);
+            Assert.IsNull(root.transform.Find(
+                CombatMapRuntimeController.GeneratedRootName
+                + "/ArenaBoundaryVisual"));
+            MeshFilter filter = generated.GetComponent<MeshFilter>();
+            MeshCollider collider = generated.GetComponent<MeshCollider>();
+            Assert.IsNotNull(filter);
+            Assert.IsNotNull(filter.sharedMesh);
+            Assert.IsNotNull(collider);
+            Assert.AreSame(filter.sharedMesh, collider.sharedMesh);
+            Assert.IsFalse(collider.isTrigger);
+            Assert.That(
+                filter.sharedMesh.bounds.size.x,
+                Is.GreaterThanOrEqualTo(
+                    controller.CurrentSettings.mapSize * 4f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+            Object.DestroyImmediate(recipe);
+        }
+    }
+
+    [Test]
+    public void BakedRuntimeSceneContainsBothValidatedModeMaps()
+    {
+        const string path = "Assets/Scenes/CombatMapRuntime.unity";
+        Assert.IsNotNull(
+            AssetDatabase.LoadAssetAtPath<SceneAsset>(path),
+            "The additive CombatMap runtime scene must be baked.");
+
+        Scene scene = SceneManager.GetSceneByPath(path);
+        bool openedForTest = !scene.IsValid() || !scene.isLoaded;
+        if (openedForTest)
+        {
+            scene = EditorSceneManager.OpenScene(
+                path,
+                OpenSceneMode.Additive);
+        }
+
+        try
+        {
+            GameObject[] roots = scene.GetRootGameObjects();
+            BakedCombatMapFlightEnvironment provider =
+                ComponentsInScene<BakedCombatMapFlightEnvironment>(roots)
+                    .Single();
+            Assert.AreEqual(4, provider.BakeVersion);
+
+            GameObject duelRoot = roots.Single(value =>
+                value.name == "CombatMapEnvironment_Duel");
+            GameObject hordeRoot = roots.Single(value =>
+                value.name == "CombatMapEnvironment_Horde");
+            AssertBakedModeRoot(duelRoot, 8, false);
+            AssertBakedModeRoot(hordeRoot, 18, true);
+
+            provider.SetMode(CombatTestMode.Duel);
+            Assert.IsTrue(provider.TryGetPlayerSpawn(
+                out Vector3 duelSpawn,
+                out _));
+            float duelWarning = provider.WarningRadius;
+            float duelForfeit = provider.ForfeitRadius;
+            Assert.That(
+                Vector3.Distance(duelSpawn, provider.BattleCenter),
+                Is.LessThan(duelWarning));
+            Assert.That(duelWarning, Is.LessThan(duelForfeit));
+
+            provider.SetMode(CombatTestMode.Horde);
+            Assert.IsTrue(provider.TryGetPlayerSpawn(
+                out Vector3 hordeSpawn,
+                out _));
+            Assert.That(
+                Vector3.Distance(hordeSpawn, provider.BattleCenter),
+                Is.LessThan(provider.WarningRadius));
+            Assert.That(
+                provider.WarningRadius,
+                Is.LessThan(provider.ForfeitRadius));
+            Assert.AreNotEqual(duelSpawn, hordeSpawn);
+            Assert.AreNotEqual(duelWarning, provider.WarningRadius);
+            Assert.AreNotEqual(duelForfeit, provider.ForfeitRadius);
+        }
+        finally
+        {
+            if (openedForTest)
+                EditorSceneManager.CloseScene(scene, true);
+        }
+    }
+
+    static void AssertBakedModeRoot(
+        GameObject root,
+        int minimumModelCount,
+        bool expectsUrbanRoads)
+    {
+        Transform[] transforms =
+            root.GetComponentsInChildren<Transform>(true);
+        Assert.That(
+            transforms.Count(value =>
+                value.name.StartsWith("Model_")),
+            Is.GreaterThanOrEqualTo(minimumModelCount));
+
+        Transform collision = transforms.Single(value =>
+            value.name == "CollisionSurface");
+        MeshCollider terrainCollider =
+            collision.GetComponent<MeshCollider>();
+        Assert.IsNotNull(terrainCollider);
+        Assert.IsNotNull(terrainCollider.sharedMesh);
+
+        Transform skirt = transforms.Single(value =>
+            value.name == "OutskirtsTerrainSkirt");
+        MeshCollider skirtCollider = skirt.GetComponent<MeshCollider>();
+        Assert.IsNotNull(skirtCollider);
+        Assert.IsNotNull(skirtCollider.sharedMesh);
+        Assert.IsFalse(skirtCollider.isTrigger);
+        Assert.IsFalse(transforms.Any(value =>
+            value.name == "ArenaBoundaryVisual"));
+        AssertFittedModelsStayInsideCollisionProxies(root);
+
+        Transform roads = transforms.SingleOrDefault(value =>
+            value.name == "CityRoadNetwork");
+        if (!expectsUrbanRoads)
+        {
+            Assert.IsNull(roads);
+            return;
+        }
+        Assert.IsNotNull(roads);
+        Assert.That(
+            roads.GetComponentsInChildren<MeshFilter>(true).Length,
+            Is.GreaterThanOrEqualTo(4));
+        Assert.That(
+            roads.GetComponentsInChildren<Collider>(true).Length,
+            Is.EqualTo(0),
+            "Temporary roads must not replace or change terrain physics.");
+        Assert.That(
+            root.GetComponentsInChildren<LODGroup>(true).Length,
+            Is.EqualTo(0),
+            "Baked urban models must not retain billboard LODs that can "
+            + "render together with their complete shells during mode switching.");
+    }
+
+    static void AssertFittedModelsStayInsideCollisionProxies(
+        GameObject root)
+    {
+        BoxCollider[] proxies =
+            root.GetComponentsInChildren<BoxCollider>(true);
+        int checkedModels = 0;
+        for (int index = 0; index < proxies.Length; index++)
+        {
+            Transform model = null;
+            for (int child = 0;
+                 child < proxies[index].transform.childCount;
+                 child++)
+            {
+                Transform candidate =
+                    proxies[index].transform.GetChild(child);
+                if (candidate.name.StartsWith("Model_")
+                    || candidate.name == "OuterBuildingModel"
+                    || candidate.name == "OuterRockModel")
+                {
+                    model = candidate;
+                    break;
+                }
+            }
+            if (model == null)
+                continue;
+            Renderer[] renderers =
+                model.GetComponentsInChildren<Renderer>(true);
+            if (renderers.Length == 0)
+                continue;
+            Bounds modelBounds = renderers[0].bounds;
+            for (int renderer = 1;
+                 renderer < renderers.Length;
+                 renderer++)
+            {
+                modelBounds.Encapsulate(renderers[renderer].bounds);
+            }
+            Vector3 size = proxies[index].size;
+            Transform proxyTransform = proxies[index].transform;
+            Vector3 expected = Abs(
+                proxyTransform.TransformVector(Vector3.right * size.x))
+                + Abs(proxyTransform.TransformVector(Vector3.up * size.y))
+                + Abs(proxyTransform.TransformVector(Vector3.forward * size.z));
+            Assert.That(
+                modelBounds.size.x,
+                Is.LessThanOrEqualTo(expected.x * 1.12f + 0.01f),
+                proxies[index].name + " model escapes its X collision proxy.");
+            Assert.That(
+                modelBounds.size.y,
+                Is.LessThanOrEqualTo(expected.y * 1.12f + 0.01f),
+                proxies[index].name + " model escapes its Y collision proxy.");
+            Assert.That(
+                modelBounds.size.z,
+                Is.LessThanOrEqualTo(expected.z * 1.12f + 0.01f),
+                proxies[index].name + " model escapes its Z collision proxy.");
+            checkedModels++;
+        }
+        Assert.That(checkedModels, Is.GreaterThan(0));
+    }
+
+    static Vector3 Abs(Vector3 value)
+    {
+        return new Vector3(
+            Mathf.Abs(value.x),
+            Mathf.Abs(value.y),
+            Mathf.Abs(value.z));
+    }
+
+    static void AssertUrbanBuildingSpacing(
+        AirCombatMapSettings settings,
+        CombatSemanticPlan plan)
+    {
+        CombatOccluderData[] buildings = plan.occluders
+            .Where(value => value != null
+                && value.type == CombatOccluderType.Tower
+                && (value.decorationKind
+                        == CombatDecorationKind.Building
+                    || value.decorationKind
+                        == CombatDecorationKind.Beacon))
+            .ToArray();
+        float requiredGap = Mathf.Max(
+            72f,
+            Mathf.Max(
+                settings.designTurnRadius * 0.9f,
+                settings.vehicleWingspan * 2.5f));
+        for (int first = 0; first < buildings.Length; first++)
+        for (int second = first + 1;
+             second < buildings.Length;
+             second++)
+        {
+            CombatOccluderData a = buildings[first];
+            CombatOccluderData b = buildings[second];
+            float aRadius = new Vector2(a.size.x, a.size.z).magnitude * 0.5f;
+            float bRadius = new Vector2(b.size.x, b.size.z).magnitude * 0.5f;
+            float gap = Vector2.Distance(
+                new Vector2(a.position.x, a.position.z),
+                new Vector2(b.position.x, b.position.z))
+                - aRadius
+                - bRadius;
+            Assert.That(
+                gap,
+                Is.GreaterThanOrEqualTo(requiredGap - 0.01f),
+                a.stableId + " and " + b.stableId
+                + " leave no aircraft passage.");
+        }
+    }
 }

@@ -435,7 +435,7 @@ namespace UnityPlanet.ModularAssembly
         readonly List<WeaponRuntime> weapons = new List<WeaponRuntime>();
         readonly RaycastHit[] aimHits = new RaycastHit[64];
         GridAssemblyPresenter presenter;
-        GridFlightBridge flight;
+        IGridFlightSession flight;
         GridAssemblyModel model;
         GridTargetController target;
         Camera sceneCamera;
@@ -451,17 +451,44 @@ namespace UnityPlanet.ModularAssembly
         Transform lockedTarget;
         float aimCandidateSeconds;
         bool muzzleBlocked;
+        bool controlsEnabled = true;
+        bool drawHud = true;
         string status = string.Empty;
 
         public int ActiveGroup => activeGroup;
         public bool IsAiming => flight != null &&
                                 flight.IsFlying &&
+                                controlsEnabled &&
                                 Input.GetMouseButton(1);
         public VehicleStructureGraph StructureGraph => structureGraph;
+        public IReadOnlyList<WeaponRuntime> Weapons => weapons;
+        public Transform LockedTarget => lockedTarget;
+        public RuntimeEnergyBus EnergyBus => energy;
+        public bool MuzzleBlocked => muzzleBlocked;
+        public bool ControlsEnabled
+        {
+            get => controlsEnabled;
+            set
+            {
+                controlsEnabled = value;
+                if (!value)
+                {
+                    lockedTarget = null;
+                    aimCandidate = null;
+                    aimCandidateSeconds = 0f;
+                    RestoreFov();
+                }
+            }
+        }
+
+        public void SetHudVisible(bool value)
+        {
+            drawHud = value;
+        }
 
         public void Initialize(
             GridAssemblyPresenter assemblyPresenter,
-            GridFlightBridge flightBridge,
+            IGridFlightSession flightBridge,
             GridLabCameraController cameraController,
             GridAssemblyModel assemblyModel,
             GridTargetController targetController,
@@ -491,7 +518,8 @@ namespace UnityPlanet.ModularAssembly
             damageFeedback.Initialize(
                 structureGraph,
                 sceneCamera,
-                transform);
+                transform,
+                cameraController);
             presenter.Rebuilt += RebuildWeapons;
             flight.StateChanged += HandleFlightState;
             RebuildWeapons();
@@ -574,7 +602,7 @@ namespace UnityPlanet.ModularAssembly
 
         void Update()
         {
-            if (flight == null || !flight.IsFlying)
+            if (flight == null || !flight.IsFlying || !controlsEnabled)
             {
                 RestoreFov();
                 return;
@@ -754,7 +782,7 @@ namespace UnityPlanet.ModularAssembly
                         muzzle,
                         end,
                         profile.effectColor,
-                        0.07f,
+                        0.11f,
                         profile.projectileEffect);
                     break;
                 }
@@ -846,6 +874,8 @@ namespace UnityPlanet.ModularAssembly
 
         void OnGUI()
         {
+            if (!drawHud)
+                return;
             if (model != null && (flight == null || !flight.IsFlying))
             {
                 int cpu = ModuleCpuBudget.Total(model.Records);
@@ -1031,7 +1061,16 @@ namespace UnityPlanet.ModularAssembly
                 return;
             ISpaceDamageable damageable =
                 FindDamageable(collider.transform);
-            damageable?.ApplyDamage(new SpaceDamageInfo(
+            if (damageable == null)
+                return;
+            float integrityBefore = damageable.Integrity;
+            bool destroyedBefore = damageable.IsDestroyed;
+            VehicleCombatTeam sourceTeam = source != null
+                ? VehicleCombatTeamUtility.Resolve(source.transform)
+                : VehicleCombatTeam.Neutral;
+            VehicleCombatTeam targetTeam =
+                VehicleCombatTeamUtility.Resolve(collider.transform);
+            damageable.ApplyDamage(new SpaceDamageInfo(
                 damage,
                 point,
                 direction.normalized * Mathf.Clamp(
@@ -1040,6 +1079,14 @@ namespace UnityPlanet.ModularAssembly
                     160f),
                 SpaceDamageType.Projectile,
                 source));
+            ReportAppliedDamage(
+                sourceTeam,
+                targetTeam,
+                point,
+                damage,
+                integrityBefore,
+                damageable,
+                destroyedBefore);
         }
 
         public static void ApplyExplosion(
@@ -1079,13 +1126,68 @@ namespace UnityPlanet.ModularAssembly
                     (closest - point).sqrMagnitude > 0.001f
                         ? (closest - point).normalized
                         : Vector3.up;
+                float integrityBefore = target.Integrity;
+                bool destroyedBefore = target.IsDestroyed;
+                VehicleCombatTeam sourceTeam = source != null
+                    ? VehicleCombatTeamUtility.Resolve(source.transform)
+                    : VehicleCombatTeam.Neutral;
+                VehicleCombatTeam targetTeam =
+                    VehicleCombatTeamUtility.Resolve(collider.transform);
+                float appliedDamage = damage * falloff;
                 target.ApplyDamage(new SpaceDamageInfo(
-                    damage * falloff,
+                    appliedDamage,
                     closest,
-                    direction * damage * falloff,
+                    direction * appliedDamage,
                     SpaceDamageType.Explosion,
                     source));
+                ReportAppliedDamage(
+                    sourceTeam,
+                    targetTeam,
+                    closest,
+                    appliedDamage,
+                    integrityBefore,
+                    target,
+                    destroyedBefore);
             }
+        }
+
+        static void ReportAppliedDamage(
+            VehicleCombatTeam sourceTeam,
+            VehicleCombatTeam targetTeam,
+            Vector3 point,
+            float requestedDamage,
+            float integrityBefore,
+            ISpaceDamageable target,
+            bool destroyedBefore)
+        {
+            if (target == null)
+                return;
+            if (target is UnityEngine.Object unityTarget &&
+                unityTarget == null)
+            {
+                CombatDamageFeedbackBus.Report(
+                    new CombatDamageAppliedFeedback(
+                        sourceTeam,
+                        targetTeam,
+                        point,
+                        requestedDamage,
+                        !destroyedBefore));
+                return;
+            }
+            float integrityAfter = target.Integrity;
+            bool destroyed = !destroyedBefore && target.IsDestroyed;
+            float applied = Mathf.Clamp(
+                integrityBefore - integrityAfter,
+                0f,
+                Mathf.Max(0f, requestedDamage));
+            if (applied <= 0.0001f && !destroyed)
+                return;
+            CombatDamageFeedbackBus.Report(new CombatDamageAppliedFeedback(
+                sourceTeam,
+                targetTeam,
+                point,
+                applied,
+                destroyed));
         }
     }
 
@@ -1095,6 +1197,14 @@ namespace UnityPlanet.ModularAssembly
         {
             public GameObject Root;
             public LineRenderer Line;
+            public LineRenderer Halo;
+            public Vector3 Start;
+            public Vector3 End;
+            public Color Color;
+            public float CoreWidth;
+            public float HaloWidth;
+            public float SegmentFraction;
+            public float StartedAt;
             public float EndsAt;
         }
 
@@ -1212,8 +1322,18 @@ namespace UnityPlanet.ModularAssembly
         {
             RemoveDestroyedSlots();
             foreach (LineSlot slot in lines)
-                if (slot.Root.activeSelf && Time.time >= slot.EndsAt)
+            {
+                if (!slot.Root.activeSelf)
+                    continue;
+                if (Time.time >= slot.EndsAt)
+                {
+                    slot.Line.enabled = false;
+                    slot.Halo.enabled = false;
                     slot.Root.SetActive(false);
+                    continue;
+                }
+                UpdateTracer(slot);
+            }
             foreach (LaserSlot slot in lasers)
             {
                 if (!slot.Root.activeSelf || Time.time < slot.EndsAt)
@@ -1252,21 +1372,70 @@ namespace UnityPlanet.ModularAssembly
                              ShortEffectName(sourceEffect);
             slot.Root.SetActive(true);
             slot.Line.enabled = true;
-            slot.Line.SetPosition(0, start);
-            slot.Line.SetPosition(1, end);
-            slot.Line.startColor = color;
-            slot.Line.endColor = new Color(
-                color.r,
-                color.g,
-                color.b,
-                0.08f);
+            slot.Halo.enabled = true;
             float distance = Vector3.Distance(start, end);
-            slot.Line.startWidth = Mathf.Clamp(
-                0.035f + distance * 0.00008f,
-                0.035f,
-                0.12f);
-            slot.Line.endWidth = slot.Line.startWidth * 0.35f;
-            slot.EndsAt = Time.time + lifetime;
+            slot.Start = start;
+            slot.End = end;
+            slot.Color = color;
+            slot.CoreWidth = Mathf.Clamp(
+                0.11f + distance * 0.00045f,
+                0.11f,
+                0.32f);
+            slot.HaloWidth = Mathf.Clamp(
+                slot.CoreWidth * 2.75f,
+                0.28f,
+                0.82f);
+            slot.SegmentFraction = distance <= 20f
+                ? 1f
+                : Mathf.Clamp(26f / distance, 0.13f, 0.62f);
+            slot.StartedAt = Time.time;
+            slot.EndsAt = Time.time + Mathf.Max(0.11f, lifetime);
+            UpdateTracer(slot);
+        }
+
+        static void UpdateTracer(LineSlot slot)
+        {
+            float duration = Mathf.Max(
+                0.01f,
+                slot.EndsAt - slot.StartedAt);
+            float progress = Mathf.Clamp01(
+                (Time.time - slot.StartedAt) / duration);
+            float travel = progress * (1f - slot.SegmentFraction);
+            Vector3 visibleStart = Vector3.Lerp(
+                slot.Start,
+                slot.End,
+                travel);
+            Vector3 visibleEnd = Vector3.Lerp(
+                slot.Start,
+                slot.End,
+                Mathf.Min(1f, travel + slot.SegmentFraction));
+            float fade = 1f - Mathf.SmoothStep(0.58f, 1f, progress);
+
+            slot.Line.SetPosition(0, visibleStart);
+            slot.Line.SetPosition(1, visibleEnd);
+            Color core = Color.Lerp(slot.Color, Color.white, 0.72f);
+            core.a = Mathf.Clamp01(slot.Color.a) * fade;
+            slot.Line.startColor = core;
+            slot.Line.endColor = new Color(
+                core.r,
+                core.g,
+                core.b,
+                core.a * 0.48f);
+            slot.Line.startWidth = slot.CoreWidth;
+            slot.Line.endWidth = slot.CoreWidth * 0.52f;
+
+            slot.Halo.SetPosition(0, visibleStart);
+            slot.Halo.SetPosition(1, visibleEnd);
+            Color halo = slot.Color;
+            halo.a = Mathf.Clamp01(slot.Color.a) * 0.28f * fade;
+            slot.Halo.startColor = halo;
+            slot.Halo.endColor = new Color(
+                halo.r,
+                halo.g,
+                halo.b,
+                halo.a * 0.18f);
+            slot.Halo.startWidth = slot.HaloWidth;
+            slot.Halo.endWidth = slot.HaloWidth * 0.58f;
         }
 
         public void SpawnContinuousLaser(
@@ -1304,9 +1473,9 @@ namespace UnityPlanet.ModularAssembly
                 Quaternion.LookRotation(delta.normalized, Vector3.up));
             slot.Root.SetActive(true);
             float beamWidth = Mathf.Clamp(
-                0.085f + delta.magnitude * 0.00012f,
-                0.085f,
-                0.16f);
+                0.14f + delta.magnitude * 0.0002f,
+                0.14f,
+                0.32f);
             slot.Line.startColor = new Color(0.72f, 0.98f, 1f, 1f);
             slot.Line.endColor = new Color(0.08f, 0.68f, 1f, 0.92f);
             slot.Line.startWidth = beamWidth;
@@ -1611,9 +1780,26 @@ namespace UnityPlanet.ModularAssembly
             line.positionCount = 2;
             line.useWorldSpace = true;
             line.textureMode = LineTextureMode.Stretch;
+            line.alignment = LineAlignment.View;
             line.numCapVertices = 2;
+            line.numCornerVertices = 2;
+            GameObject haloRoot = new GameObject("TracerHalo");
+            haloRoot.transform.SetParent(root.transform, false);
+            LineRenderer halo = haloRoot.AddComponent<LineRenderer>();
+            halo.sharedMaterial = lineMaterial;
+            halo.positionCount = 2;
+            halo.useWorldSpace = true;
+            halo.textureMode = LineTextureMode.Stretch;
+            halo.alignment = LineAlignment.View;
+            halo.numCapVertices = 2;
+            halo.numCornerVertices = 2;
             root.SetActive(false);
-            slot = new LineSlot { Root = root, Line = line };
+            slot = new LineSlot
+            {
+                Root = root,
+                Line = line,
+                Halo = halo
+            };
             lines.Add(slot);
             return slot;
         }
@@ -1659,7 +1845,10 @@ namespace UnityPlanet.ModularAssembly
                     continue;
                 if (slot.Line != null)
                     slot.Line.enabled = false;
+                if (slot.Halo != null)
+                    slot.Halo.enabled = false;
                 slot.Root.SetActive(false);
+                slot.StartedAt = 0f;
                 slot.EndsAt = 0f;
             }
             foreach (LaserSlot slot in lasers)
@@ -1724,7 +1913,8 @@ namespace UnityPlanet.ModularAssembly
             lines.RemoveAll(item =>
                 item == null ||
                 item.Root == null ||
-                item.Line == null);
+                item.Line == null ||
+                item.Halo == null);
             lasers.RemoveAll(item =>
                 item == null ||
                 item.Root == null ||
@@ -2231,7 +2421,7 @@ namespace UnityPlanet.ModularAssembly
             new HashSet<string>(StringComparer.Ordinal);
         GridAssemblyModel model;
         GridAssemblyPresenter presenter;
-        GridFlightBridge flight;
+        IGridFlightSession flight;
         ModularBlueprintData flightBlueprint;
         int initialCpu;
         bool active;
@@ -2295,7 +2485,7 @@ namespace UnityPlanet.ModularAssembly
         public void Initialize(
             GridAssemblyModel assemblyModel,
             GridAssemblyPresenter assemblyPresenter,
-            GridFlightBridge flightBridge)
+            IGridFlightSession flightBridge)
         {
             model = assemblyModel;
             presenter = assemblyPresenter;
@@ -2494,9 +2684,12 @@ namespace UnityPlanet.ModularAssembly
             if (node.Health > 0f)
                 return;
             node.Destroyed = true;
+            SpawnDirectDebris(node, damage);
             if (runtimeId == GridAssemblyModel.CoreRuntimeId)
             {
                 DisableGameplay(node);
+                if (node.View != null)
+                    node.View.gameObject.SetActive(false);
                 var coreDelta = new VehicleStructureDelta
                 {
                     DirectHitRuntimeId = runtimeId,
@@ -2535,20 +2728,6 @@ namespace UnityPlanet.ModularAssembly
                 damage);
             combatRemovedRuntimeIds.UnionWith(removed);
             Rigidbody sourceBody = GetComponent<Rigidbody>();
-            if (node.View != null)
-            {
-                VehicleDetachedDebris.Spawn(
-                    new[]
-                    {
-                        new DetachedDebrisPart(
-                            node.Record.RuntimeId,
-                            node.View.gameObject,
-                            node.Record.Definition.MassKg)
-                    },
-                    sourceBody,
-                    damage.impulse,
-                    damage.point);
-            }
             foreach (List<Node> component in detachedComponents)
             {
                 List<DetachedDebrisPart> debrisParts = component
@@ -2595,6 +2774,23 @@ namespace UnityPlanet.ModularAssembly
                 DestroyVehicle(delta);
             else
                 StructureChanged?.Invoke(delta);
+        }
+
+        void SpawnDirectDebris(Node node, SpaceDamageInfo damage)
+        {
+            if (node?.View == null)
+                return;
+            VehicleDetachedDebris.SpawnDirectBreak(
+                new[]
+                {
+                    new DetachedDebrisPart(
+                        node.Record.RuntimeId,
+                        node.View.gameObject,
+                        node.Record.Definition.MassKg)
+                },
+                GetComponent<Rigidbody>(),
+                damage.impulse,
+                damage.point);
         }
 
         HashSet<string> ConnectedAliveToCore()
@@ -2881,7 +3077,7 @@ namespace UnityPlanet.ModularAssembly
 
     public sealed class WeaponAirCombatAi : MonoBehaviour
     {
-        GridFlightBridge flight;
+        IGridFlightSession flight;
         VehicleStructureGraph player;
         WeaponVisualPool visuals;
         Transform playerRoot;
@@ -2889,7 +3085,7 @@ namespace UnityPlanet.ModularAssembly
         float nextShot;
 
         public void Initialize(
-            GridFlightBridge flightBridge,
+            IGridFlightSession flightBridge,
             VehicleStructureGraph playerGraph,
             WeaponVisualPool effectPool,
             Transform playerTransform)

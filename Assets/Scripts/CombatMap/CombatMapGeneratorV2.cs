@@ -61,12 +61,14 @@ namespace UnityPlanet.CombatMap
             Layout layout = SolveLayout(settings, derivedSeed);
             var plan = new CombatSemanticPlan
             {
-                schemaVersion = 2,
+                schemaVersion = 3,
                 generatorVersion = Mathf.Max(
                     2,
                     settings.generatorVersion),
                 seed = derivedSeed,
                 topologyVariant = layout.variant,
+                mode = settings.mode,
+                theme = settings.theme,
                 mapCenter = center,
                 mapSize = settings.mapSize,
                 warningRadius = settings.warningRadius,
@@ -74,12 +76,13 @@ namespace UnityPlanet.CombatMap
             };
 
             float turn = settings.designTurnRadius;
+            bool horde = settings.mode == AirCombatMapMode.Horde;
             float bowlDiameter = Mathf.Clamp(
                 Mathf.Max(
-                    turn * 4.2f,
+                    turn * (horde ? 4.8f : 4.2f),
                     settings.mainRouteWidth * 1.35f),
                 220f,
-                settings.mapSize * 0.30f);
+                settings.mapSize * (horde ? 0.36f : 0.30f));
             float spawnDiameter = Mathf.Clamp(
                 Mathf.Max(
                     turn * 2.8f,
@@ -100,6 +103,18 @@ namespace UnityPlanet.CombatMap
                 settings.mapSize * 0.20f);
 
             float halfSpawn = settings.spawnDistance * 0.5f;
+            float bowlZ = horde
+                ? layout.bowlZ * 0.82f
+                : layout.bowlZ;
+            float bowlAmplitude = horde
+                ? layout.bowlAmplitude * 1.18f
+                : layout.bowlAmplitude;
+            float gateZ = horde
+                ? bowlZ * 0.38f
+                : layout.gateZ;
+            float recoveryZ = horde
+                ? bowlZ * 0.82f
+                : layout.recoveryZ;
             var volumes = new List<CombatTacticalVolume>
             {
                 Volume(
@@ -124,8 +139,8 @@ namespace UnityPlanet.CombatMap
                     "volume.bowl.south",
                     CombatTacticalVolumeType.ManeuverBowl,
                     center,
-                    -layout.handedness * layout.bowlAmplitude,
-                    -layout.bowlZ,
+                    horde ? 0f : -layout.handedness * bowlAmplitude,
+                    -bowlZ,
                     bowlDiameter,
                     Mathf.Max(58f, turn * 0.62f),
                     0),
@@ -134,7 +149,7 @@ namespace UnityPlanet.CombatMap
                     CombatTacticalVolumeType.ManeuverBowl,
                     center,
                     layout.handedness
-                        * layout.bowlAmplitude * 0.86f,
+                        * bowlAmplitude * (horde ? 0.25f : 0.86f),
                     0f,
                     bowlDiameter,
                     Mathf.Max(72f, turn * 0.78f),
@@ -143,8 +158,8 @@ namespace UnityPlanet.CombatMap
                     "volume.bowl.north",
                     CombatTacticalVolumeType.ManeuverBowl,
                     center,
-                    -layout.handedness * layout.bowlAmplitude,
-                    layout.bowlZ,
+                    horde ? 0f : -layout.handedness * bowlAmplitude,
+                    bowlZ,
                     bowlDiameter,
                     Mathf.Max(58f, turn * 0.62f),
                     0),
@@ -153,7 +168,7 @@ namespace UnityPlanet.CombatMap
                     CombatTacticalVolumeType.OcclusionGate,
                     center,
                     layout.flankX,
-                    -layout.gateZ,
+                    -gateZ,
                     gateDiameter,
                     Mathf.Max(30f, turn * 0.34f),
                     0),
@@ -162,7 +177,7 @@ namespace UnityPlanet.CombatMap
                     CombatTacticalVolumeType.OcclusionGate,
                     center,
                     layout.flankX,
-                    layout.gateZ,
+                    gateZ,
                     gateDiameter,
                     Mathf.Max(30f, turn * 0.34f),
                     0),
@@ -171,7 +186,7 @@ namespace UnityPlanet.CombatMap
                     CombatTacticalVolumeType.ExposureLane,
                     center,
                     layout.longX,
-                    -layout.gateZ,
+                    -gateZ,
                     gateDiameter * 1.08f,
                     Mathf.Max(88f, turn * 0.95f),
                     0),
@@ -180,7 +195,7 @@ namespace UnityPlanet.CombatMap
                     CombatTacticalVolumeType.ExposureLane,
                     center,
                     layout.longX,
-                    layout.gateZ,
+                    gateZ,
                     gateDiameter * 1.08f,
                     Mathf.Max(88f, turn * 0.95f),
                     0),
@@ -189,7 +204,7 @@ namespace UnityPlanet.CombatMap
                     CombatTacticalVolumeType.RecoveryPocket,
                     center,
                     layout.flankX * 0.66f,
-                    -layout.recoveryZ,
+                    -recoveryZ,
                     recoveryDiameter,
                     Mathf.Max(38f, turn * 0.42f),
                     -1),
@@ -198,7 +213,7 @@ namespace UnityPlanet.CombatMap
                     CombatTacticalVolumeType.RecoveryPocket,
                     center,
                     layout.longX * 0.66f,
-                    -layout.recoveryZ,
+                    -recoveryZ,
                     recoveryDiameter,
                     Mathf.Max(52f, turn * 0.56f),
                     -1),
@@ -207,7 +222,7 @@ namespace UnityPlanet.CombatMap
                     CombatTacticalVolumeType.RecoveryPocket,
                     center,
                     layout.flankX * 0.66f,
-                    layout.recoveryZ,
+                    recoveryZ,
                     recoveryDiameter,
                     Mathf.Max(38f, turn * 0.42f),
                     1),
@@ -216,7 +231,7 @@ namespace UnityPlanet.CombatMap
                     CombatTacticalVolumeType.RecoveryPocket,
                     center,
                     layout.longX * 0.66f,
-                    layout.recoveryZ,
+                    recoveryZ,
                     recoveryDiameter,
                     Mathf.Max(52f, turn * 0.56f),
                     1)
@@ -295,6 +310,7 @@ namespace UnityPlanet.CombatMap
                 longIds,
                 playerRetreatIds,
                 enemyRetreatIds);
+            BuildUrbanRoadLayout(settings, plan, layout);
 
             ResolveVolumeHeights(settings, plan);
             plan.routes = new[]
@@ -416,6 +432,8 @@ namespace UnityPlanet.CombatMap
                 plan,
                 layout,
                 derivedSeed);
+            BuildUrbanPlotsAndPads(settings, plan);
+            plan.flightCeiling = ComputeFlightCeiling(settings, plan);
             return plan;
         }
 
@@ -432,14 +450,23 @@ namespace UnityPlanet.CombatMap
             float localZ = worldZ - plan.mapCenter.z;
             float macroScale = Mathf.Max(
                 48f,
-                settings.mapSize * 0.23f);
+                settings.mapSize * 0.34f);
             float macro = EvenFractalNoise(
                 localX / macroScale,
                 localZ / macroScale,
                 plan.seed) * Mathf.Min(
+                    16f,
+                    settings.mountainHeight * 0.11f);
+            float mesoScale = Mathf.Max(
+                36f,
+                settings.mapSize * 0.105f);
+            float meso = EvenFractalNoise(
+                localX / mesoScale,
+                localZ / mesoScale,
+                plan.seed ^ 0x3C6EF372) * Mathf.Min(
                     9f,
-                    settings.mountainHeight * 0.055f);
-            float baseHeight = plan.mapCenter.y + 3f + macro;
+                    settings.mountainHeight * 0.065f);
+            float baseHeight = plan.mapCenter.y + 3f + macro + meso;
             float raised = baseHeight;
 
             if (plan.terrainStamps != null)
@@ -538,6 +565,49 @@ namespace UnityPlanet.CombatMap
             height += detail
                 * settings.microNoiseStrength
                 * detailMask;
+
+            // Roads and plots are the final grading pass. They can both cut
+            // and fill the landscape, which creates believable road beds and
+            // compact terraces instead of burying building meshes in slopes.
+            // The generous falloff remains natural terrain and hides the
+            // transition without a floating platform.
+            if (plan.terrainStamps != null)
+            {
+                for (int i = 0; i < plan.terrainStamps.Length; i++)
+                {
+                    CombatTerrainStamp stamp = plan.terrainStamps[i];
+                    if (stamp == null
+                        || (stamp.type != CombatTerrainStampType.RoadBed
+                            && stamp.type
+                                != CombatTerrainStampType.BuildingPad))
+                    {
+                        continue;
+                    }
+                    Vector2 start = new Vector2(
+                        stamp.start.x,
+                        stamp.start.z);
+                    Vector2 end = new Vector2(
+                        stamp.end.x,
+                        stamp.end.z);
+                    Vector2 segment = end - start;
+                    float denominator = segment.sqrMagnitude;
+                    float along = denominator > 0.0001f
+                        ? Mathf.Clamp01(
+                            Vector2.Dot(point - start, segment)
+                            / denominator)
+                        : 0f;
+                    float distance = DistanceToSegment(point, start, end);
+                    float mask = CompactMask(
+                        distance,
+                        stamp.radius,
+                        stamp.radius + stamp.falloff);
+                    float target = Mathf.Lerp(
+                        stamp.start.y,
+                        stamp.end.y,
+                        along);
+                    height = Mathf.Lerp(height, target, mask * mask);
+                }
+            }
             return IsFinite(height) ? height : plan.mapCenter.y;
         }
 
@@ -550,10 +620,13 @@ namespace UnityPlanet.CombatMap
             Add(ref hash, plan.generatorVersion);
             Add(ref hash, plan.seed);
             Add(ref hash, plan.topologyVariant);
+            Add(ref hash, (int)plan.mode);
+            Add(ref hash, (int)plan.theme);
             Add(ref hash, plan.mapCenter);
             Add(ref hash, plan.mapSize);
             Add(ref hash, plan.warningRadius);
             Add(ref hash, plan.forfeitRadius);
+            Add(ref hash, plan.flightCeiling);
             Add(ref hash, settings.chunkSize);
             Add(ref hash, settings.chunkResolution);
             Add(ref hash, settings.spawnDistance);
@@ -647,6 +720,39 @@ namespace UnityPlanet.CombatMap
                     Add(ref hash, (int)value.type);
                     Add(ref hash, value.position);
                     Add(ref hash, value.size);
+                    Add(ref hash, (int)value.decorationKind);
+                    Add(ref hash, value.yaw);
+                }
+            }
+            if (plan.urbanRoads != null)
+            {
+                for (int i = 0; i < plan.urbanRoads.Length; i++)
+                {
+                    CombatUrbanRoadData value = plan.urbanRoads[i];
+                    if (value == null)
+                        continue;
+                    Add(ref hash, value.stableId);
+                    Add(ref hash, value.start);
+                    Add(ref hash, value.end);
+                    Add(ref hash, value.width);
+                    Add(ref hash, value.shoulder);
+                    Add(ref hash, value.arterial ? 1 : 0);
+                }
+            }
+            if (plan.urbanPlots != null)
+            {
+                for (int i = 0; i < plan.urbanPlots.Length; i++)
+                {
+                    CombatUrbanPlotData value = plan.urbanPlots[i];
+                    if (value == null)
+                        continue;
+                    Add(ref hash, value.stableId);
+                    Add(ref hash, value.roadStableId);
+                    Add(ref hash, value.position);
+                    Add(ref hash, value.size.x);
+                    Add(ref hash, value.size.y);
+                    Add(ref hash, value.yaw);
+                    Add(ref hash, value.groundHeight);
                 }
             }
             return hash.ToString("X16");
@@ -658,21 +764,38 @@ namespace UnityPlanet.CombatMap
         {
             var random = new StableRandom(seed);
             float size = settings.mapSize;
+            bool horde = settings.mode == AirCombatMapMode.Horde;
             var current = new Layout
             {
-                variant = Mathf.Abs(seed % 3),
+                variant = horde
+                    ? 100 + Mathf.Abs(seed % 4)
+                    : Mathf.Abs(seed % 6),
                 handedness = random.Value() < 0.5f ? -1f : 1f,
-                bowlAmplitude = size * random.Range(0.075f, 0.115f),
-                bowlZ = size * random.Range(0.165f, 0.205f),
+                bowlAmplitude = size * random.Range(
+                    horde ? 0.09f : 0.07f,
+                    horde ? 0.17f : 0.135f),
+                bowlZ = size * random.Range(
+                    horde ? 0.125f : 0.145f,
+                    horde ? 0.19f : 0.225f),
                 flankX = 0f,
                 longX = 0f,
-                gateZ = size * random.Range(0.075f, 0.115f),
-                recoveryZ = size * random.Range(0.245f, 0.285f),
-                ridgeYaw = random.Range(-9f, 9f),
+                gateZ = size * random.Range(
+                    horde ? 0.105f : 0.06f,
+                    horde ? 0.18f : 0.14f),
+                recoveryZ = size * random.Range(
+                    horde ? 0.27f : 0.22f,
+                    horde ? 0.35f : 0.31f),
+                ridgeYaw = random.Range(
+                    horde ? -24f : -34f,
+                    horde ? 24f : 34f),
                 ridgeAmplitude = size
-                    * random.Range(0.105f, 0.135f)
+                    * random.Range(
+                        horde ? 0.15f : 0.085f,
+                        horde ? 0.22f : 0.165f)
             };
-            float lane = size * random.Range(0.255f, 0.305f);
+            float lane = size * random.Range(
+                horde ? 0.22f : 0.245f,
+                horde ? 0.31f : 0.33f);
             current.flankX = -current.handedness * lane;
             current.longX = current.handedness * lane;
             ProjectLayout(settings, current);
@@ -750,36 +873,37 @@ namespace UnityPlanet.CombatMap
             Layout layout)
         {
             float size = settings.mapSize;
+            bool horde = settings.mode == AirCombatMapMode.Horde;
             layout.bowlAmplitude = Mathf.Clamp(
                 layout.bowlAmplitude,
-                size * 0.07f,
-                size * 0.13f);
+                size * (horde ? 0.085f : 0.07f),
+                size * (horde ? 0.18f : 0.14f));
             layout.bowlZ = Mathf.Clamp(
                 layout.bowlZ,
-                size * 0.155f,
-                size * 0.215f);
+                size * (horde ? 0.115f : 0.14f),
+                size * (horde ? 0.20f : 0.23f));
             layout.gateZ = Mathf.Clamp(
                 layout.gateZ,
-                size * 0.065f,
-                size * 0.125f);
+                size * (horde ? 0.095f : 0.055f),
+                size * (horde ? 0.19f : 0.15f));
             layout.recoveryZ = Mathf.Clamp(
                 layout.recoveryZ,
-                size * 0.235f,
-                size * 0.295f);
+                size * (horde ? 0.26f : 0.215f),
+                size * (horde ? 0.36f : 0.32f));
             float lane = Mathf.Clamp(
                 Mathf.Abs(layout.flankX),
-                size * 0.245f,
-                size * 0.315f);
+                size * (horde ? 0.21f : 0.245f),
+                size * (horde ? 0.32f : 0.335f));
             layout.flankX = -layout.handedness * lane;
             layout.longX = layout.handedness * lane;
             layout.ridgeAmplitude = Mathf.Clamp(
                 layout.ridgeAmplitude,
-                size * 0.095f,
-                size * 0.145f);
+                size * (horde ? 0.14f : 0.08f),
+                size * (horde ? 0.23f : 0.175f));
             layout.ridgeYaw = Mathf.Clamp(
                 layout.ridgeYaw,
-                -12f,
-                12f);
+                horde ? -28f : -38f,
+                horde ? 28f : 38f);
         }
 
         static float LayoutEnergy(
@@ -852,7 +976,10 @@ namespace UnityPlanet.CombatMap
             string[] enemyRetreatIds)
         {
             var result = new List<CombatTerrainStamp>(48);
-            BuildBrokenRidge(settings, plan, layout, result);
+            if (settings.mode == AirCombatMapMode.Horde)
+                BuildHordePerimeter(settings, plan, layout, result);
+            else
+                BuildBrokenRidge(settings, plan, layout, result);
 
             if (plan.tacticalVolumes != null)
             {
@@ -929,14 +1056,277 @@ namespace UnityPlanet.CombatMap
             return result.ToArray();
         }
 
+        static void BuildUrbanRoadLayout(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan,
+            Layout layout)
+        {
+            if (plan.theme != CombatMapTheme.Urban
+                || settings.mode != AirCombatMapMode.Horde)
+            {
+                plan.urbanRoads = Array.Empty<CombatUrbanRoadData>();
+                return;
+            }
+
+            // A compact trapezoidal street belt follows the four playable
+            // districts. Its open centre preserves the aerial conflict bowl;
+            // the linked perimeter gives the settlement a legible human road
+            // hierarchy and avoids isolated tower islands.
+            Vector3 innerSouth = LocalToWorld(
+                plan.mapCenter,
+                layout.longX,
+                -layout.gateZ * 0.72f);
+            Vector3 innerNorth = LocalToWorld(
+                plan.mapCenter,
+                layout.longX,
+                layout.gateZ * 0.72f);
+            Vector3 outerSouth = LocalToWorld(
+                plan.mapCenter,
+                -layout.longX * 0.72f,
+                -layout.recoveryZ);
+            Vector3 outerNorth = LocalToWorld(
+                plan.mapCenter,
+                -layout.longX * 0.72f,
+                layout.recoveryZ);
+            float roadElevation = plan.mapCenter.y + 3.5f;
+            innerSouth.y = roadElevation;
+            innerNorth.y = roadElevation;
+            outerSouth.y = roadElevation;
+            outerNorth.y = roadElevation;
+
+            float width = Mathf.Clamp(
+                settings.vehicleWingspan * 1.65f,
+                28f,
+                40f);
+            float shoulder = Mathf.Clamp(
+                Mathf.Max(
+                    settings.vehicleWingspan,
+                    settings.designTurnRadius * 0.2f),
+                16f,
+                30f);
+            var roads = new List<CombatUrbanRoadData>(5)
+            {
+                UrbanRoad(
+                    "urban.road.inner",
+                    innerSouth,
+                    innerNorth,
+                    width,
+                    shoulder),
+                UrbanRoad(
+                    "urban.road.outer",
+                    outerNorth,
+                    outerSouth,
+                    width,
+                    shoulder)
+            };
+            int topology = Mathf.Abs(layout.variant) % 4;
+            if (topology == 0 || topology == 3)
+            {
+                roads.Add(UrbanRoad(
+                    "urban.road.north-link",
+                    innerNorth,
+                    outerNorth,
+                    width,
+                    shoulder));
+                roads.Add(UrbanRoad(
+                    "urban.road.south-link",
+                    outerSouth,
+                    innerSouth,
+                    width,
+                    shoulder));
+            }
+            else if (topology == 1)
+            {
+                // A protected natural break splits the city into two readable
+                // halves. The opposing approach roads stop before the green
+                // belt, producing flanking airspace without nonsensical roads
+                // climbing across the central landform.
+                roads.Add(UrbanRoad(
+                    "urban.road.north-approach",
+                    innerNorth,
+                    Vector3.Lerp(innerNorth, outerNorth, 0.43f),
+                    width,
+                    shoulder));
+                roads.Add(UrbanRoad(
+                    "urban.road.south-approach",
+                    outerSouth,
+                    Vector3.Lerp(outerSouth, innerSouth, 0.43f),
+                    width,
+                    shoulder));
+            }
+            else
+            {
+                Vector3 innerMid = Vector3.Lerp(
+                    innerSouth,
+                    innerNorth,
+                    0.5f);
+                Vector3 outerMid = Vector3.Lerp(
+                    outerSouth,
+                    outerNorth,
+                    0.5f);
+                roads.Add(UrbanRoad(
+                    "urban.road.central-link",
+                    innerMid,
+                    outerMid,
+                    width * 1.08f,
+                    shoulder));
+                roads.Add(UrbanRoad(
+                    "urban.road.north-link",
+                    innerNorth,
+                    outerNorth,
+                    width,
+                    shoulder));
+            }
+            if (topology == 3)
+            {
+                roads.Add(UrbanRoad(
+                    "urban.road.central-link",
+                    Vector3.Lerp(innerSouth, innerNorth, 0.5f),
+                    Vector3.Lerp(outerSouth, outerNorth, 0.5f),
+                    width * 1.08f,
+                    shoulder));
+            }
+            plan.urbanRoads = roads.ToArray();
+
+            var stamps = new List<CombatTerrainStamp>(
+                (plan.terrainStamps?.Length ?? 0)
+                + plan.urbanRoads.Length);
+            if (plan.terrainStamps != null)
+                stamps.AddRange(plan.terrainStamps);
+            for (int i = 0; i < plan.urbanRoads.Length; i++)
+            {
+                CombatUrbanRoadData road = plan.urbanRoads[i];
+                stamps.Add(Stamp(
+                    "terrain." + road.stableId,
+                    CombatTerrainStampType.RoadBed,
+                    road.start,
+                    road.end,
+                    road.width * 0.5f,
+                    road.shoulder,
+                    0f));
+            }
+            plan.terrainStamps = stamps.ToArray();
+        }
+
+        static CombatUrbanRoadData UrbanRoad(
+            string stableId,
+            Vector3 start,
+            Vector3 end,
+            float width,
+            float shoulder)
+        {
+            return new CombatUrbanRoadData
+            {
+                stableId = stableId,
+                start = start,
+                end = end,
+                width = width,
+                shoulder = shoulder,
+                arterial = true
+            };
+        }
+
+        static void BuildUrbanPlotsAndPads(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan)
+        {
+            if (plan.theme != CombatMapTheme.Urban
+                || plan.occluders == null)
+            {
+                plan.urbanPlots = Array.Empty<CombatUrbanPlotData>();
+                return;
+            }
+
+            var plots = new List<CombatUrbanPlotData>();
+            var stamps = new List<CombatTerrainStamp>(
+                (plan.terrainStamps?.Length ?? 0)
+                + plan.occluders.Length);
+            if (plan.terrainStamps != null)
+                stamps.AddRange(plan.terrainStamps);
+            for (int i = 0; i < plan.occluders.Length; i++)
+            {
+                CombatOccluderData building = plan.occluders[i];
+                if (building == null
+                    || building.type != CombatOccluderType.Tower
+                    || (building.decorationKind
+                            != CombatDecorationKind.Building
+                        && building.decorationKind
+                            != CombatDecorationKind.Beacon))
+                {
+                    continue;
+                }
+                float ground = building.position.y
+                    - building.size.y * 0.5f;
+                string roadId = NearestRoadId(
+                    plan,
+                    new Vector2(
+                        building.position.x,
+                        building.position.z));
+                var plot = new CombatUrbanPlotData
+                {
+                    stableId = "urban.plot." + i.ToString("D2"),
+                    roadStableId = roadId,
+                    position = new Vector3(
+                        building.position.x,
+                        ground,
+                        building.position.z),
+                    size = new Vector2(
+                        building.size.x
+                            + settings.vehicleWingspan * 0.65f,
+                        building.size.z
+                            + settings.vehicleWingspan * 0.65f),
+                    yaw = building.yaw,
+                    groundHeight = ground
+                };
+                plots.Add(plot);
+                float radius = plot.size.magnitude * 0.5f;
+                Vector3 pad = plot.position;
+                stamps.Add(Stamp(
+                    "terrain." + plot.stableId,
+                    CombatTerrainStampType.BuildingPad,
+                    pad,
+                    pad,
+                    radius,
+                    Mathf.Max(14f, settings.vehicleWingspan),
+                    0f));
+            }
+            plan.urbanPlots = plots.ToArray();
+            plan.terrainStamps = stamps.ToArray();
+        }
+
+        static string NearestRoadId(
+            CombatSemanticPlan plan,
+            Vector2 point)
+        {
+            string result = string.Empty;
+            float best = float.PositiveInfinity;
+            if (plan.urbanRoads == null)
+                return result;
+            for (int i = 0; i < plan.urbanRoads.Length; i++)
+            {
+                CombatUrbanRoadData road = plan.urbanRoads[i];
+                if (road == null)
+                    continue;
+                float distance = DistanceToSegment(
+                    point,
+                    new Vector2(road.start.x, road.start.z),
+                    new Vector2(road.end.x, road.end.z));
+                if (distance >= best)
+                    continue;
+                best = distance;
+                result = road.stableId;
+            }
+            return result;
+        }
+
         static void BuildBrokenRidge(
             AirCombatMapSettings settings,
             CombatSemanticPlan plan,
             Layout layout,
             List<CombatTerrainStamp> result)
         {
-            const int ridgeCount = 5;
-            const int piecesPerRidge = 3;
+            int ridgeCount = 4 + Mathf.Abs(layout.variant % 3);
+            int piecesPerRidge = 2 + Mathf.Abs(layout.variant % 2);
             float startS = -0.92f;
             float endS = 0.92f;
             float gap = Mathf.Clamp(
@@ -1043,14 +1433,110 @@ namespace UnityPlanet.CombatMap
             Layout layout,
             float s)
         {
-            float x = layout.handedness
-                * layout.ridgeAmplitude
-                * Mathf.Sin(Mathf.PI * s);
-            float z = size * 0.4f * s;
+            float wave;
+            switch (Mathf.Abs(layout.variant) % 6)
+            {
+                case 1:
+                    wave = Mathf.Sin(Mathf.PI * s * 1.5f) * 0.72f;
+                    break;
+                case 2:
+                    wave = Mathf.Sign(s) * (1f - Mathf.Abs(s)) * 1.25f;
+                    break;
+                case 3:
+                    wave = Mathf.Sin(Mathf.PI * s * 2f) * 0.58f;
+                    break;
+                case 4:
+                    wave = Mathf.Cos(Mathf.PI * s) * 0.82f;
+                    break;
+                case 5:
+                    wave = Mathf.Sin(Mathf.PI * s) * 0.45f
+                        + Mathf.Sin(Mathf.PI * s * 3f) * 0.28f;
+                    break;
+                default:
+                    wave = Mathf.Sin(Mathf.PI * s);
+                    break;
+            }
+            float x = layout.handedness * layout.ridgeAmplitude * wave;
+            float z = size * (0.36f + 0.025f * (layout.variant % 3)) * s;
             Vector2 rotated = Rotate(
                 new Vector2(x, z),
                 layout.ridgeYaw);
             return LocalToWorld(center, rotated.x, rotated.y);
+        }
+
+        static void BuildHordePerimeter(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan,
+            Layout layout,
+            List<CombatTerrainStamp> result)
+        {
+            // Urban ground is organized around four buildable districts.
+            // Broad basin stamps keep towers seated on believable blocks;
+            // isolated outcrops replace the old continuous mountain ring.
+            Vector2[] districts =
+            {
+                new Vector2(layout.longX, -layout.gateZ * 0.72f),
+                new Vector2(layout.longX, layout.gateZ * 0.72f),
+                new Vector2(-layout.longX * 0.72f, -layout.recoveryZ),
+                new Vector2(-layout.longX * 0.72f, layout.recoveryZ)
+            };
+            float districtRadius = Mathf.Max(
+                settings.designTurnRadius * 1.75f,
+                settings.mainRouteWidth * 0.82f);
+            for (int index = 0; index < districts.Length; index++)
+            {
+                Vector3 center = LocalToWorld(
+                    plan.mapCenter,
+                    districts[index].x,
+                    districts[index].y);
+                result.Add(Stamp(
+                    "terrain.horde.district." + index.ToString("D2"),
+                    CombatTerrainStampType.Basin,
+                    center,
+                    center,
+                    districtRadius,
+                    districtRadius * 0.42f,
+                    3f));
+            }
+
+            int outcropCount = 9 + Mathf.Abs(layout.variant % 2);
+            float rotation = layout.ridgeYaw * 0.65f
+                + Mathf.Abs(layout.variant % 4) * 9f;
+            float stampRadius = settings.mapSize * 0.038f;
+            for (int index = 0; index < outcropCount; index++)
+            {
+                float phase = index * 1.731f + plan.seed * 0.0017f;
+                float angle = rotation
+                    + index * 360f / outcropCount
+                    + Mathf.Sin(phase) * 16f;
+                float radialDistance = settings.mapSize
+                    * (0.31f + 0.055f * Mathf.Cos(phase * 1.37f));
+                Vector2 radial = Rotate(
+                    Vector2.up * radialDistance,
+                    angle);
+                Vector2 tangent = Rotate(
+                    Vector2.right
+                    * settings.mapSize
+                    * (0.018f + 0.012f * (index % 3)),
+                    angle + 18f * Mathf.Sin(phase));
+                result.Add(Stamp(
+                    "terrain.horde.outcrop." + index.ToString("D2"),
+                    index % 3 == 0
+                        ? CombatTerrainStampType.RidgeCapsule
+                        : CombatTerrainStampType.MesaCapsule,
+                    LocalToWorld(
+                        plan.mapCenter,
+                        radial.x - tangent.x,
+                        radial.y - tangent.y),
+                    LocalToWorld(
+                        plan.mapCenter,
+                        radial.x + tangent.x,
+                        radial.y + tangent.y),
+                    stampRadius,
+                    stampRadius * 0.75f,
+                    settings.mountainHeight
+                    * (0.42f + 0.13f * (index % 3))));
+            }
         }
 
         static void AddCorridorStamps(
@@ -1195,7 +1681,10 @@ namespace UnityPlanet.CombatMap
             bool closed = Vector3.Distance(
                 controls[0],
                 controls[controls.Count - 1]) < 0.01f;
-            for (int iteration = 0; iteration < 3; iteration++)
+            // A fourth Chaikin pass keeps the wider topology families inside
+            // the measured aircraft curvature envelope. This changes route
+            // geometry only; it does not alter vehicle steering or physics.
+            for (int iteration = 0; iteration < 4; iteration++)
             {
                 var next = new List<Vector3>(
                     smoothed.Count * 2);
@@ -1249,12 +1738,23 @@ namespace UnityPlanet.CombatMap
             Layout layout,
             int seed)
         {
+            bool horde = settings.mode == AirCombatMapMode.Horde;
             int requested = Mathf.Clamp(
                 settings.occluderTowerCount,
                 0,
-                12);
-            int firstCount = (requested + 1) / 2;
-            int secondCount = requested - firstCount;
+                horde ? 24 : 14);
+            int firstCount = horde
+                ? (requested + 3) / 4
+                : (requested + 1) / 2;
+            int secondCount = horde
+                ? (requested + 2) / 4
+                : requested - firstCount;
+            int thirdCount = horde
+                ? (requested + 1) / 4
+                : 0;
+            int fourthCount = horde
+                ? requested - firstCount - secondCount - thirdCount
+                : 0;
             var random = new StableRandom(seed ^ 0x51ED270B);
             var result = new List<CombatOccluderData>(requested + 1)
             {
@@ -1284,7 +1784,7 @@ namespace UnityPlanet.CombatMap
                 settings,
                 plan,
                 result,
-                random,
+                ref random,
                 clusterA,
                 firstCount,
                 0);
@@ -1292,10 +1792,29 @@ namespace UnityPlanet.CombatMap
                 settings,
                 plan,
                 result,
-                random,
+                ref random,
                 clusterB,
                 secondCount,
                 firstCount);
+            if (horde)
+            {
+                AddTowerCluster(
+                    settings,
+                    plan,
+                    result,
+                    ref random,
+                    new Vector2(-layout.longX * 0.72f, -layout.recoveryZ),
+                    thirdCount,
+                    firstCount + secondCount);
+                AddTowerCluster(
+                    settings,
+                    plan,
+                    result,
+                    ref random,
+                    new Vector2(-layout.longX * 0.72f, layout.recoveryZ),
+                    fourthCount,
+                    firstCount + secondCount + thirdCount);
+            }
             return result.ToArray();
         }
 
@@ -1303,36 +1822,65 @@ namespace UnityPlanet.CombatMap
             AirCombatMapSettings settings,
             CombatSemanticPlan plan,
             List<CombatOccluderData> result,
-            StableRandom random,
+            ref StableRandom random,
             Vector2 localCenter,
             int count,
             int baseIndex)
         {
-            float spreadX = Mathf.Max(
-                42f,
-                settings.designTurnRadius * 0.64f);
-            float spreadZ = Mathf.Max(
-                34f,
-                settings.designTurnRadius * 0.46f);
+            float spacingX = Mathf.Max(
+                128f,
+                settings.designTurnRadius * 1.55f);
+            float spacingZ = Mathf.Max(
+                118f,
+                settings.designTurnRadius * 1.4f);
+            int columns = count <= 4 ? 2 : 3;
+            int rows = Mathf.Max(1, Mathf.CeilToInt(count / (float)columns));
             for (int i = 0; i < count; i++)
             {
-                float angle = (i + 0.35f) * 2.399963f
-                    + random.Range(-0.18f, 0.18f);
-                float radius = Mathf.Sqrt((i + 0.5f)
-                    / Mathf.Max(1f, count));
+                int column = i % columns;
+                int row = i / columns;
                 float localX = localCenter.x
-                    + Mathf.Cos(angle) * spreadX * radius;
+                    + (column - (columns - 1) * 0.5f) * spacingX
+                    + random.Range(-spacingX * 0.08f, spacingX * 0.08f);
                 float localZ = localCenter.y
-                    + Mathf.Sin(angle) * spreadZ * radius;
-                float worldX = plan.mapCenter.x + localX;
-                float worldZ = plan.mapCenter.z + localZ;
-                float width = random.Range(22f, 36f);
-                float depth = random.Range(22f, 40f);
-                float height = Mathf.Clamp(
-                    random.Range(0.38f, 0.64f)
-                    * settings.mountainHeight,
-                    48f,
-                    150f);
+                    + (row - (rows - 1) * 0.5f) * spacingZ
+                    + random.Range(-spacingZ * 0.08f, spacingZ * 0.08f);
+                float width = random.Range(26f, 44f);
+                float depth = random.Range(28f, 50f);
+                float height = settings.mode == AirCombatMapMode.Horde
+                    ? Mathf.Clamp(
+                        random.Range(0.85f, 1.55f)
+                        * settings.mountainHeight,
+                        88f,
+                        220f)
+                    : Mathf.Clamp(
+                        random.Range(0.38f, 0.64f)
+                        * settings.mountainHeight,
+                        48f,
+                        150f);
+                bool districtLandmark = settings.mode
+                    == AirCombatMapMode.Horde && i == 0;
+                if (districtLandmark)
+                {
+                    width = Mathf.Max(width, random.Range(68f, 82f));
+                    depth = Mathf.Max(depth, random.Range(64f, 78f));
+                    height = Mathf.Max(
+                        height,
+                        random.Range(180f, 230f));
+                }
+                Vector2 clearPosition = ResolveClearTowerPosition(
+                    settings,
+                    plan,
+                    result,
+                    new Vector2(localX, localZ),
+                    localCenter,
+                    width,
+                    depth,
+                    spacingX,
+                    spacingZ,
+                    ref random);
+                float worldX = plan.mapCenter.x + clearPosition.x;
+                float worldZ = plan.mapCenter.z + clearPosition.y;
                 float ground = SampleHeight(
                     settings,
                     plan,
@@ -1348,10 +1896,267 @@ namespace UnityPlanet.CombatMap
                         ground + height * 0.5f,
                         worldZ),
                     size = new Vector3(width, height, depth),
+                    decorationKind = districtLandmark
+                        ? CombatDecorationKind.Beacon
+                        : ResolveDecorationKind(
+                            settings,
+                            baseIndex + i),
                     color = (baseIndex + i) % 2 == 0
                         ? new Color(0.29f, 0.34f, 0.4f)
-                        : new Color(0.39f, 0.31f, 0.24f)
+                        : new Color(0.39f, 0.31f, 0.24f),
+                    yaw = NearestRoadYaw(
+                        plan,
+                        new Vector2(worldX, worldZ))
                 });
+            }
+        }
+
+        static Vector2 ResolveClearTowerPosition(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan,
+            List<CombatOccluderData> placed,
+            Vector2 preferred,
+            Vector2 districtCenter,
+            float width,
+            float depth,
+            float spacingX,
+            float spacingZ,
+            ref StableRandom random)
+        {
+            Vector2 candidate = preferred;
+            for (int attempt = 0; attempt < 48; attempt++)
+            {
+                if (attempt > 0)
+                {
+                    float angle = attempt * 2.399963f
+                        + random.Range(-0.08f, 0.08f);
+                    float radius = Mathf.Max(spacingX, spacingZ)
+                        * (0.72f + 0.24f * Mathf.Sqrt(attempt));
+                    candidate = districtCenter + new Vector2(
+                        Mathf.Cos(angle) * radius,
+                        Mathf.Sin(angle) * radius);
+                }
+                float half = settings.mapSize * 0.5f
+                    - Mathf.Max(width, depth) * 0.5f
+                    - settings.vehicleWingspan;
+                candidate.x = Mathf.Clamp(candidate.x, -half, half);
+                candidate.y = Mathf.Clamp(candidate.y, -half, half);
+                if (TowerPlacementIsClear(
+                        settings,
+                        plan,
+                        placed,
+                        candidate,
+                        width,
+                        depth))
+                {
+                    return candidate;
+                }
+            }
+            return candidate;
+        }
+
+        static bool TowerPlacementIsClear(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan,
+            List<CombatOccluderData> placed,
+            Vector2 local,
+            float width,
+            float depth)
+        {
+            float worldX = plan.mapCenter.x + local.x;
+            float worldZ = plan.mapCenter.z + local.y;
+            float centerHeight = SampleHeight(
+                settings,
+                plan,
+                worldX,
+                worldZ);
+            float maximumVariation = 0f;
+            for (int z = -1; z <= 1; z += 2)
+            for (int x = -1; x <= 1; x += 2)
+            {
+                float corner = SampleHeight(
+                    settings,
+                    plan,
+                    worldX + x * width * 0.5f,
+                    worldZ + z * depth * 0.5f);
+                maximumVariation = Mathf.Max(
+                    maximumVariation,
+                    Mathf.Abs(corner - centerHeight));
+            }
+            if (maximumVariation > Mathf.Max(6f, settings.vehicleWingspan * 0.4f))
+                return false;
+
+            float requiredGap = Mathf.Max(
+                72f,
+                Mathf.Max(
+                    settings.designTurnRadius * 0.9f,
+                    settings.vehicleWingspan * 2.5f));
+            float radius = Mathf.Sqrt(width * width + depth * depth) * 0.5f;
+            if (plan.urbanRoads != null)
+            {
+                float setback = Mathf.Max(
+                    12f,
+                    settings.vehicleWingspan * 0.75f);
+                for (int index = 0;
+                     index < plan.urbanRoads.Length;
+                     index++)
+                {
+                    CombatUrbanRoadData road = plan.urbanRoads[index];
+                    if (road == null)
+                        continue;
+                    float distance = DistanceToSegment(
+                        new Vector2(worldX, worldZ),
+                        new Vector2(road.start.x, road.start.z),
+                        new Vector2(road.end.x, road.end.z));
+                    if (distance < road.width * 0.5f
+                        + setback
+                        + radius)
+                    {
+                        return false;
+                    }
+                }
+            }
+            for (int index = 0; index < placed.Count; index++)
+            {
+                CombatOccluderData other = placed[index];
+                if (other == null || other.type != CombatOccluderType.Tower)
+                    continue;
+                float otherRadius = Mathf.Sqrt(
+                    other.size.x * other.size.x
+                    + other.size.z * other.size.z) * 0.5f;
+                float distance = Vector2.Distance(
+                    new Vector2(other.position.x, other.position.z),
+                    new Vector2(worldX, worldZ));
+                if (distance < radius + otherRadius + requiredGap)
+                    return false;
+            }
+            return true;
+        }
+
+        static float NearestRoadYaw(
+            CombatSemanticPlan plan,
+            Vector2 point)
+        {
+            float result = 0f;
+            float best = float.PositiveInfinity;
+            if (plan.urbanRoads == null)
+                return result;
+            for (int i = 0; i < plan.urbanRoads.Length; i++)
+            {
+                CombatUrbanRoadData road = plan.urbanRoads[i];
+                if (road == null)
+                    continue;
+                float distance = DistanceToSegment(
+                    point,
+                    new Vector2(road.start.x, road.start.z),
+                    new Vector2(road.end.x, road.end.z));
+                if (distance >= best)
+                    continue;
+                Vector3 direction = road.end - road.start;
+                best = distance;
+                result = Mathf.Atan2(direction.x, direction.z)
+                    * Mathf.Rad2Deg;
+            }
+            return result;
+        }
+
+        static float ComputeFlightCeiling(
+            AirCombatMapSettings settings,
+            CombatSemanticPlan plan)
+        {
+            float highest = plan.mapCenter.y;
+            const int grid = 17;
+            float half = settings.mapSize * 0.5f;
+            for (int z = 0; z < grid; z++)
+            for (int x = 0; x < grid; x++)
+            {
+                float worldX = plan.mapCenter.x
+                    + Mathf.Lerp(-half, half, x / (float)(grid - 1));
+                float worldZ = plan.mapCenter.z
+                    + Mathf.Lerp(-half, half, z / (float)(grid - 1));
+                highest = Mathf.Max(
+                    highest,
+                    SampleHeight(settings, plan, worldX, worldZ));
+            }
+            if (plan.terrainStamps != null)
+            {
+                for (int i = 0; i < plan.terrainStamps.Length; i++)
+                {
+                    CombatTerrainStamp stamp = plan.terrainStamps[i];
+                    if (stamp == null)
+                        continue;
+                    highest = Mathf.Max(
+                        highest,
+                        SampleHeight(
+                            settings,
+                            plan,
+                            stamp.start.x,
+                            stamp.start.z),
+                        SampleHeight(
+                            settings,
+                            plan,
+                            stamp.end.x,
+                            stamp.end.z),
+                        SampleHeight(
+                            settings,
+                            plan,
+                            (stamp.start.x + stamp.end.x) * 0.5f,
+                            (stamp.start.z + stamp.end.z) * 0.5f));
+                }
+            }
+            if (plan.occluders != null)
+            {
+                for (int i = 0; i < plan.occluders.Length; i++)
+                {
+                    CombatOccluderData value = plan.occluders[i];
+                    if (value != null)
+                        highest = Mathf.Max(
+                            highest,
+                            value.position.y + value.size.y * 0.5f);
+                }
+            }
+            if (plan.routes != null)
+            {
+                for (int route = 0; route < plan.routes.Length; route++)
+                {
+                    Vector3[] points = plan.routes[route]?.waypoints;
+                    if (points == null)
+                        continue;
+                    for (int point = 0; point < points.Length; point++)
+                        highest = Mathf.Max(highest, points[point].y);
+                }
+            }
+            float margin = Mathf.Max(
+                18f,
+                settings.vehicleWingspan * 1.25f,
+                settings.designCombatSpeed * 0.32f);
+            return highest + margin;
+        }
+
+        static CombatDecorationKind ResolveDecorationKind(
+            AirCombatMapSettings settings,
+            int index)
+        {
+            switch (settings.theme)
+            {
+                case CombatMapTheme.Urban:
+                    return index % 7 == 0
+                        ? CombatDecorationKind.Beacon
+                        : CombatDecorationKind.Building;
+                case CombatMapTheme.Industrial:
+                    return index % 5 == 0
+                        ? CombatDecorationKind.Crystal
+                        : CombatDecorationKind.Building;
+                case CombatMapTheme.Natural:
+                    return index % 6 == 0
+                        ? CombatDecorationKind.Crystal
+                        : CombatDecorationKind.RockSpire;
+                default:
+                    return index % 3 == 0
+                        ? CombatDecorationKind.Building
+                        : index % 5 == 0
+                            ? CombatDecorationKind.Crystal
+                            : CombatDecorationKind.RockSpire;
             }
         }
 

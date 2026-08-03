@@ -496,6 +496,161 @@ public sealed class CombatVfxIntegrationTests
     }
 
     [Test]
+    public void FallbackTracer_IsLayeredReadableAndPresentationOnly()
+    {
+        DestroyTransientRoot();
+        var host = new GameObject("ReadableTracerTestHost");
+        WeaponVisualPool pool = null;
+        try
+        {
+            pool = host.AddComponent<WeaponVisualPool>();
+            InitializeWeaponVisualPool(pool);
+            pool.SpawnTracer(
+                Vector3.zero,
+                Vector3.forward * 160f,
+                new Color(0.2f, 0.75f, 1f),
+                0.11f,
+                "ReadabilityFallback");
+
+            Transform transientRoot = CombatTransientRoot.GetOrCreate();
+            LineRenderer core = transientRoot
+                .GetComponentsInChildren<LineRenderer>(true)
+                .Single(item =>
+                    item.gameObject.name ==
+                    "Tracer_ReadabilityFallback");
+            LineRenderer halo = core.transform
+                .Find("TracerHalo")
+                ?.GetComponent<LineRenderer>();
+
+            Assert.That(halo, Is.Not.Null);
+            Assert.That(core.startWidth, Is.GreaterThanOrEqualTo(0.17f));
+            Assert.That(
+                halo.startWidth,
+                Is.GreaterThan(core.startWidth * 2.5f));
+            Assert.That(core.startColor.r, Is.GreaterThan(0.7f));
+            AssertUsable(core.sharedMaterial, "tracer core");
+            AssertUsable(halo.sharedMaterial, "tracer halo");
+            Assert.That(
+                core.GetComponentsInParent<Rigidbody>(true),
+                Is.Empty);
+            Assert.That(
+                core.GetComponentsInChildren<Collider>(true),
+                Is.Empty);
+        }
+        finally
+        {
+            DisposeWeaponVisualPool(pool);
+            Object.DestroyImmediate(host);
+            DestroyTransientRoot();
+        }
+    }
+
+    [Test]
+    public void ReceivedHitPresentation_DoesNotDrawOrangeModuleFrame()
+    {
+        MethodInfo removedFrame =
+            typeof(VehicleDamageFeedbackPresenter).GetMethod(
+                "DrawModuleMarker",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+        MethodInfo vignette =
+            typeof(VehicleDamageFeedbackPresenter).GetMethod(
+                "DrawDamageVignette",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.That(
+            removedFrame,
+            Is.Null,
+            "The world-space orange module frame was reintroduced.");
+        Assert.That(vignette, Is.Not.Null);
+    }
+
+    [Test]
+    public void DamageImpulse_IsBoundedAndDoesNotTouchVehiclePhysics()
+    {
+        var cameraRoot = new GameObject("DamageImpulseCamera");
+        var vehicle = new GameObject("DamageImpulseVehicle");
+        try
+        {
+            Camera camera = cameraRoot.AddComponent<Camera>();
+            Rigidbody body = vehicle.AddComponent<Rigidbody>();
+            body.useGravity = false;
+            body.velocity = new Vector3(12f, -3f, 45f);
+            GridLabCameraController controller =
+                vehicle.AddComponent<GridLabCameraController>();
+            controller.Initialize(camera, vehicle.transform);
+            Vector3 velocityBefore = body.velocity;
+
+            controller.AddDamageImpulse(Vector3.right, 1f);
+            MethodInfo resolver = typeof(GridLabCameraController).GetMethod(
+                "ResolveDamageKickRotation",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(resolver, Is.Not.Null);
+            Quaternion kick = (Quaternion)resolver.Invoke(controller, null);
+
+            Assert.That(Quaternion.Angle(Quaternion.identity, kick),
+                Is.GreaterThan(0.15f));
+            Assert.That(Quaternion.Angle(Quaternion.identity, kick),
+                Is.LessThan(3.5f));
+            Assert.That(body.velocity, Is.EqualTo(velocityBefore));
+        }
+        finally
+        {
+            Object.DestroyImmediate(cameraRoot);
+            Object.DestroyImmediate(vehicle);
+        }
+    }
+
+    [Test]
+    public void AppliedEnemyDamage_EmitsOnePlayerHitConfirmation()
+    {
+        var source = new GameObject("PlayerDamageSource");
+        var target = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        int feedbackCount = 0;
+        CombatDamageAppliedFeedback observed = default;
+        Action<CombatDamageAppliedFeedback> handler = feedback =>
+        {
+            feedbackCount++;
+            observed = feedback;
+        };
+        try
+        {
+            VehicleCombatTeamUtility.SetTeam(
+                source,
+                VehicleCombatTeam.Player);
+            VehicleCombatTeamUtility.SetTeam(
+                target,
+                VehicleCombatTeam.Enemy);
+            CombatFeedbackTestDamageable damageable =
+                target.AddComponent<CombatFeedbackTestDamageable>();
+            CombatDamageFeedbackBus.DamageApplied += handler;
+
+            WeaponDamageUtility.ApplyDirect(
+                target.GetComponent<Collider>(),
+                25f,
+                target.transform.position,
+                Vector3.forward,
+                source);
+
+            Assert.That(feedbackCount, Is.EqualTo(1));
+            Assert.That(
+                observed.SourceTeam,
+                Is.EqualTo(VehicleCombatTeam.Player));
+            Assert.That(
+                observed.TargetTeam,
+                Is.EqualTo(VehicleCombatTeam.Enemy));
+            Assert.That(observed.DamageAmount, Is.EqualTo(25f));
+            Assert.That(observed.Destroyed, Is.False);
+            Assert.That(damageable.Integrity, Is.EqualTo(75f));
+        }
+        finally
+        {
+            CombatDamageFeedbackBus.DamageApplied -= handler;
+            Object.DestroyImmediate(source);
+            Object.DestroyImmediate(target);
+        }
+    }
+
+    [Test]
     public void WeaponFallback_UsesSupportedBuiltInShader()
     {
         MethodInfo resolver = typeof(WeaponVisualPool).GetMethod(
@@ -1817,5 +1972,18 @@ public sealed class CombatVfxIntegrationTests
             ShaderUtil.GetShaderMessages(shader),
             Is.Empty,
             context);
+    }
+}
+
+public sealed class CombatFeedbackTestDamageable : MonoBehaviour,
+    ISpaceDamageable
+{
+    public float Integrity { get; private set; } = 100f;
+    public float MaximumIntegrity => 100f;
+    public bool IsDestroyed => Integrity <= 0f;
+
+    public void ApplyDamage(SpaceDamageInfo damage)
+    {
+        Integrity = Mathf.Max(0f, Integrity - damage.amount);
     }
 }

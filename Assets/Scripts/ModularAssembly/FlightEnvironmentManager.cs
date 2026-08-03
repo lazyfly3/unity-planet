@@ -31,9 +31,12 @@ namespace UnityPlanet.ModularAssembly
 
     public interface ICombatArenaProvider
     {
+        CombatTestMode Mode { get; }
         Vector3 BattleCenter { get; }
         float WarningRadius { get; }
         float ForfeitRadius { get; }
+        float FlightCeiling { get; }
+        void SetMode(CombatTestMode mode);
         bool TryGetPlayerSpawn(out Vector3 position, out Quaternion rotation);
         bool TryGetEnemySpawn(out Vector3 position, out Quaternion rotation);
     }
@@ -64,6 +67,7 @@ namespace UnityPlanet.ModularAssembly
         private string preparationMessage = string.Empty;
         private bool preparing;
         private bool inFlight;
+        private CombatTestMode combatMode = CombatTestMode.Duel;
 
         public int Priority
         {
@@ -102,6 +106,11 @@ namespace UnityPlanet.ModularAssembly
         public ICombatArenaProvider ActiveArena
         {
             get { return ActiveProvider as ICombatArenaProvider; }
+        }
+
+        public CombatTestMode CombatMode
+        {
+            get { return combatMode; }
         }
 
         private IGridFlightEnvironment ActiveProvider
@@ -157,6 +166,24 @@ namespace UnityPlanet.ModularAssembly
                     : FlightEnvironmentKind.PlanetLab);
         }
 
+        public void SetCombatMode(CombatTestMode mode)
+        {
+            if (inFlight || combatMode == mode)
+                return;
+            combatMode = mode;
+            ICombatArenaProvider arena = ActiveArena;
+            if (arena != null)
+                arena.SetMode(mode);
+            if (selectedKind == FlightEnvironmentKind.CombatMapLab)
+            {
+                preparationState = CombatPreparationState.Idle;
+                preparationProgress = 0f;
+                preparationMessage = mode == CombatTestMode.Horde
+                    ? "正在准备割草战区"
+                    : "正在准备1v1战区";
+            }
+        }
+
         public IEnumerator Warmup(Action<bool, string> completed)
         {
             if (preparing)
@@ -207,6 +234,10 @@ namespace UnityPlanet.ModularAssembly
 
             bool providerReady = true;
             string providerMessage = string.Empty;
+            ICombatArenaProvider combatArena =
+                provider as ICombatArenaProvider;
+            if (combatArena != null)
+                combatArena.SetMode(combatMode);
             IGridFlightEnvironmentWarmup warmup = provider as IGridFlightEnvironmentWarmup;
             if (warmup != null)
             {
@@ -347,6 +378,10 @@ namespace UnityPlanet.ModularAssembly
                     planetEnvironment = candidate;
                 }
             }
+            ICombatArenaProvider arena =
+                combatEnvironment as ICombatArenaProvider;
+            if (arena != null)
+                arena.SetMode(combatMode);
         }
 
         private void EnsureSelectorUi()

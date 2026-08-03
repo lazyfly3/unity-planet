@@ -4,7 +4,7 @@ using UnityEngine;
 namespace UnityPlanet.CombatMap
 {
     /// <summary>
-    /// Editable authoring data for the finite CombatMapLab arena. The
+    /// Editable authoring data for the CombatMapLab battlefield. The
     /// generator consumes a validated value-copy so generation does not
     /// depend on a live UnityEngine.Object.
     /// </summary>
@@ -14,6 +14,10 @@ namespace UnityPlanet.CombatMap
     public sealed class AirCombatMapRecipe : ScriptableObject
     {
         [Header("生成标识")]
+        [SerializeField, InspectorName("战斗地图模式")]
+        AirCombatMapMode mode = AirCombatMapMode.Duel;
+        [SerializeField, InspectorName("场景主题")]
+        CombatMapTheme theme = CombatMapTheme.Ruins;
         [SerializeField, InspectorName("基础 Seed")] int seed = 7319;
         [SerializeField, Min(1), InspectorName("生成器版本")]
         int generatorVersion = 2;
@@ -69,12 +73,12 @@ namespace UnityPlanet.CombatMap
         [SerializeField, Min(16f), InspectorName("微地形噪声尺度")]
         float microNoiseScale = 72f;
 
-        [Header("飞行边界")]
-        [SerializeField, Min(100f), InspectorName("边界警告半径（米）")]
+        [Header("战区引导")]
+        [SerializeField, Min(100f), InspectorName("主要交战区提示半径（米）")]
         float warningRadius = 700f;
-        [SerializeField, Min(120f), InspectorName("判负半径（米）")]
+        [SerializeField, Min(120f), InspectorName("AI 战术活动外圈（米）")]
         float forfeitRadius = 760f;
-        [SerializeField, Min(0.5f), InspectorName("越界判负倒计时（秒）")]
+        [SerializeField, HideInInspector]
         float forfeitSeconds = 5f;
         [SerializeField, Min(1f), InspectorName("最低离地高度（米）")]
         float minimumGroundClearance = 12f;
@@ -92,6 +96,8 @@ namespace UnityPlanet.CombatMap
         [SerializeField, Range(5, 17), InspectorName("视线场采样边长")]
         int validationGridResolution = 9;
 
+        public AirCombatMapMode Mode => mode;
+        public CombatMapTheme Theme => theme;
         public int Seed => seed;
         public int GeneratorVersion => generatorVersion;
         public int CandidateCount => candidateCount;
@@ -135,6 +141,8 @@ namespace UnityPlanet.CombatMap
         {
             var settings = new AirCombatMapSettings
             {
+                mode = mode,
+                theme = theme,
                 seed = seedOverride ?? seed,
                 generatorVersion = generatorVersion,
                 candidateCount = candidateCount,
@@ -200,6 +208,8 @@ namespace UnityPlanet.CombatMap
 
         void Apply(AirCombatMapSettings value)
         {
+            mode = value.mode;
+            theme = value.theme;
             seed = value.seed;
             generatorVersion = value.generatorVersion;
             candidateCount = value.candidateCount;
@@ -242,6 +252,8 @@ namespace UnityPlanet.CombatMap
     [Serializable]
     public sealed class AirCombatMapSettings
     {
+        public AirCombatMapMode mode = AirCombatMapMode.Duel;
+        public CombatMapTheme theme = CombatMapTheme.Ruins;
         public int seed = 7319;
         public int generatorVersion = 2;
         public int candidateCount = 6;
@@ -294,6 +306,10 @@ namespace UnityPlanet.CombatMap
 
         public void Clamp()
         {
+            if (!Enum.IsDefined(typeof(AirCombatMapMode), mode))
+                mode = AirCombatMapMode.Duel;
+            if (!Enum.IsDefined(typeof(CombatMapTheme), theme))
+                theme = CombatMapTheme.Ruins;
             generatorVersion = Mathf.Max(1, generatorVersion);
             candidateCount = Mathf.Clamp(candidateCount, 1, 18);
             maximumCandidateBatches = Mathf.Clamp(
@@ -305,22 +321,6 @@ namespace UnityPlanet.CombatMap
             chunkSize = Mathf.Min(chunkSize, mapSize);
             chunkResolution = Mathf.Clamp(chunkResolution, 8, 64);
 
-            warningRadius = Mathf.Clamp(
-                warningRadius,
-                180f,
-                mapSize * 0.49f);
-            forfeitRadius = Mathf.Clamp(
-                forfeitRadius,
-                warningRadius + 20f,
-                mapSize * 0.5f);
-            spawnDistance = Mathf.Clamp(
-                spawnDistance,
-                160f,
-                Mathf.Min(mapSize * 0.82f, warningRadius * 1.6f));
-            spawnClearance = Mathf.Clamp(
-                spawnClearance,
-                12f,
-                180f);
             designCombatSpeed = Mathf.Clamp(
                 designCombatSpeed,
                 10f,
@@ -337,6 +337,34 @@ namespace UnityPlanet.CombatMap
                 vehicleWingspan,
                 2f,
                 120f);
+            float edgeSafety = RequiredEdgeSafetyMargin(
+                designCombatSpeed,
+                designTurnRadius,
+                vehicleWingspan);
+            float requiredMapSize = 2f * (220f + edgeSafety);
+            mapSize = Mathf.Clamp(
+                Mathf.Max(mapSize, requiredMapSize),
+                512f,
+                4096f);
+            float maximumForfeit = Mathf.Max(
+                220f,
+                mapSize * 0.5f - edgeSafety);
+            warningRadius = Mathf.Clamp(
+                warningRadius,
+                180f,
+                maximumForfeit - 20f);
+            forfeitRadius = Mathf.Clamp(
+                forfeitRadius,
+                warningRadius + 20f,
+                maximumForfeit);
+            spawnDistance = Mathf.Clamp(
+                spawnDistance,
+                160f,
+                Mathf.Min(mapSize * 0.82f, warningRadius * 1.6f));
+            spawnClearance = Mathf.Clamp(
+                spawnClearance,
+                12f,
+                180f);
             targetFirstContactSeconds = Mathf.Clamp(
                 targetFirstContactSeconds,
                 2f,
@@ -397,6 +425,27 @@ namespace UnityPlanet.CombatMap
                 17);
             if ((validationGridResolution & 1) == 0)
                 validationGridResolution++;
+        }
+
+        public float EdgeSafetyMargin => RequiredEdgeSafetyMargin(
+            designCombatSpeed,
+            designTurnRadius,
+            vehicleWingspan);
+
+        public float MaximumSafeForfeitRadius =>
+            mapSize * 0.5f - EdgeSafetyMargin;
+
+        public static float RequiredEdgeSafetyMargin(
+            float combatSpeed,
+            float turnRadius,
+            float wingspan)
+        {
+            return Mathf.Max(
+                48f,
+                Mathf.Max(
+                    Mathf.Max(10f, combatSpeed) * 1.5f,
+                    Mathf.Max(20f, turnRadius) * 0.75f),
+                Mathf.Max(2f, wingspan) * 2f);
         }
     }
 }

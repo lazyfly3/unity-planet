@@ -604,17 +604,42 @@ namespace ModularAssembly
                 error = "蓝图格式不受支持。";
                 return false;
             }
+            if (blueprint.modules.Length > ModuleLimit)
+            {
+                error = $"蓝图模块数量超过上限 {ModuleLimit}。";
+                return false;
+            }
             var restored = new List<GridModuleRecord>();
             var occupied = new HashSet<Vector3Int>();
+            var runtimeIds = new HashSet<string>(StringComparer.Ordinal);
+            var missingModuleIds = new HashSet<string>(StringComparer.Ordinal);
+            int coreCount = 0;
             foreach (ModularBlueprintModule module in blueprint.modules)
             {
-                if (module == null || !definitions.TryGetValue(module.moduleId, out GridModuleDefinition definition))
+                if (module == null || string.IsNullOrWhiteSpace(module.moduleId))
+                {
+                    error = "蓝图包含空的模块记录。";
+                    return false;
+                }
+                if (!definitions.TryGetValue(
+                        module.moduleId,
+                        out GridModuleDefinition definition))
+                {
+                    missingModuleIds.Add(module.moduleId);
                     continue;
+                }
                 string id = definition.Category == GridModuleCategory.Core
                     ? CoreRuntimeId
                     : string.IsNullOrWhiteSpace(module.runtimeId)
                         ? Guid.NewGuid().ToString("N")
                         : module.runtimeId;
+                if (definition.Category == GridModuleCategory.Core)
+                    coreCount++;
+                if (!runtimeIds.Add(id))
+                {
+                    error = $"蓝图包含重复的运行时模块 ID：{id}";
+                    return false;
+                }
                 GridModulePose pose = definition.Category == GridModuleCategory.Core
                     ? new GridModulePose(new Vector3Int(-1, -1, -1), 0)
                     : module.pose;
@@ -635,18 +660,25 @@ namespace ModularAssembly
                     occupied.Add(cell);
                 restored.Add(record);
             }
-            if (!restored.Exists(item => item.Definition.Category == GridModuleCategory.Core)
-                && definitions.TryGetValue(CoreModuleId, out GridModuleDefinition core))
+            if (missingModuleIds.Count > 0)
             {
-                restored.Insert(0, new GridModuleRecord
-                {
-                    RuntimeId = CoreRuntimeId,
-                    Definition = core,
-                    Pose = new GridModulePose(new Vector3Int(-1, -1, -1), 0)
-                });
+                error = "蓝图引用了当前目录中不存在的模块：" +
+                        string.Join(", ", missingModuleIds.OrderBy(id => id));
+                return false;
             }
+            if (coreCount != 1)
+            {
+                error = $"蓝图必须包含且只能包含一个驾驶核心，当前为 {coreCount} 个。";
+                return false;
+            }
+
+            List<GridModuleRecord> previous = records
+                .Select(item => item.Clone())
+                .ToList();
+            UnityPlanet.ModularAssembly.VehicleCoreAssistMode previousAssist =
+                coreAssistMode;
             records.Clear();
-            records.AddRange(restored.Take(ModuleLimit));
+            records.AddRange(restored);
             ClearOrphanedMirrorGroups();
             coreAssistMode = blueprint.coreAssistMode;
             if (!Enum.IsDefined(
@@ -655,6 +687,15 @@ namespace ModularAssembly
             {
                 coreAssistMode =
                     UnityPlanet.ModularAssembly.VehicleCoreAssistMode.Standard;
+            }
+            GridAssemblyValidation validation = Validate();
+            if (!validation.IsValid)
+            {
+                records.Clear();
+                records.AddRange(previous);
+                coreAssistMode = previousAssist;
+                error = "蓝图结构无效：" + validation.Message;
+                return false;
             }
             error = string.Empty;
             Changed?.Invoke();

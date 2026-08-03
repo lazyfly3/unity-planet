@@ -31,6 +31,21 @@ namespace UnityPlanet.ModularAssembly
             {
                 new GameObject("NeoXCoreVisualReplacer").AddComponent<NeoXCoreVisualReplacer>();
             }
+            if (Object.FindObjectOfType<AirBuildExperienceController>() == null)
+            {
+                new GameObject("AirBuildExperience")
+                    .AddComponent<AirBuildExperienceController>();
+            }
+            if (Object.FindObjectOfType<AirBuildNoseDirectionMarker>() == null)
+            {
+                new GameObject("AirBuildNoseDirectionMarker")
+                    .AddComponent<AirBuildNoseDirectionMarker>();
+            }
+            if (Object.FindObjectOfType<BuildPlatformSlabRemover>() == null)
+            {
+                new GameObject("BuildPlatformSlabRemover")
+                    .AddComponent<BuildPlatformSlabRemover>();
+            }
         }
     }
 }

@@ -44,6 +44,7 @@ namespace UnityPlanet.ModularAssembly
         private Text placementText;
         private Button flightButton;
         private Text flightButtonLabel;
+        private Button spaceLaunchButton;
         private Button savePresetButton;
         private Button presetFlightButton;
         private Button battleTestButton;
@@ -108,13 +109,18 @@ namespace UnityPlanet.ModularAssembly
         private IEnumerator Start()
         {
             HideLegacyBootstrapUi();
+            NeoXCatalogIntegration catalogIntegration = null;
             while (contentService == null || !contentService.IsReady ||
-                   controller == null || presenter == null)
+                   controller == null || presenter == null ||
+                   catalogIntegration == null ||
+                   !catalogIntegration.DefinitionsReady)
             {
                 contentService = FindObjectOfType<ModularContentService>();
                 controller = FindObjectOfType<ModularAssemblyLabController>();
                 presenter = FindObjectsOfType<GridAssemblyPresenter>()
                     .FirstOrDefault(item => item != null && item.name == "GridShip");
+                catalogIntegration =
+                    FindObjectOfType<NeoXCatalogIntegration>();
                 yield return null;
             }
 
@@ -141,6 +147,11 @@ namespace UnityPlanet.ModularAssembly
             StartThumbnailWorker();
             CancelPlacement();
             FocusAssembly();
+            if (ModularSpaceLaunchStatus.TryConsume(out string launchMessage)
+                && placementText != null)
+            {
+                placementText.text = launchMessage;
+            }
         }
 
         private static void HideLegacyBootstrapUi()
@@ -431,6 +442,26 @@ namespace UnityPlanet.ModularAssembly
             controller.SavePreset(out string message);
             if (placementText != null)
                 placementText.text = message;
+        }
+
+        private void SaveAndEnterSpaceFromBuildUi()
+        {
+            if (controller == null || controller.IsFlying)
+                return;
+            if (placing)
+                CancelPlacement();
+            if (!controller.TrySaveCanonical(out string message))
+            {
+                if (placementText != null)
+                    placementText.text = message;
+                return;
+            }
+
+            if (spaceLaunchButton != null)
+                spaceLaunchButton.interactable = false;
+            if (placementText != null)
+                placementText.text = "蓝图已安全保存，正在进入太空……";
+            SceneManager.LoadScene("InterstellarFlight", LoadSceneMode.Single);
         }
 
         private void LoadPresetFromBuildUi()
@@ -1175,7 +1206,7 @@ namespace UnityPlanet.ModularAssembly
             savePresetRect.anchorMin = new Vector2(1f, 1f);
             savePresetRect.anchorMax = new Vector2(1f, 1f);
             savePresetRect.pivot = new Vector2(1f, 1f);
-            savePresetRect.anchoredPosition = new Vector2(-160f, -94f);
+            savePresetRect.anchoredPosition = new Vector2(-364f, -94f);
             savePresetRect.sizeDelta = new Vector2(128f, 42f);
             savePresetButton.GetComponentInChildren<Text>().fontSize = 15;
             savePresetButton.onClick.AddListener(SavePresetFromBuildUi);
@@ -1186,7 +1217,7 @@ namespace UnityPlanet.ModularAssembly
             presetFlightRect.anchorMin = new Vector2(1f, 1f);
             presetFlightRect.anchorMax = new Vector2(1f, 1f);
             presetFlightRect.pivot = new Vector2(1f, 1f);
-            presetFlightRect.anchoredPosition = new Vector2(-24f, -94f);
+            presetFlightRect.anchoredPosition = new Vector2(-228f, -94f);
             presetFlightRect.sizeDelta = new Vector2(128f, 42f);
             presetFlightButton.GetComponent<Image>().color =
                 new Color(0.04f, 0.58f, 0.72f, 0.98f);
@@ -1200,7 +1231,7 @@ namespace UnityPlanet.ModularAssembly
             battleTestRect.anchorMin = new Vector2(1f, 1f);
             battleTestRect.anchorMax = new Vector2(1f, 1f);
             battleTestRect.pivot = new Vector2(1f, 1f);
-            battleTestRect.anchoredPosition = new Vector2(-296f, -94f);
+            battleTestRect.anchoredPosition = new Vector2(-500f, -94f);
             battleTestRect.sizeDelta = new Vector2(128f, 42f);
             battleTestButton.GetComponent<Image>().color =
                 new Color(0.82f, 0.22f, 0.12f, 0.98f);
@@ -1210,6 +1241,22 @@ namespace UnityPlanet.ModularAssembly
                 ModularLabSceneProfile.AllowsCombatTest(gameObject.scene));
 battleTestButton.onClick.AddListener(
                 StartCombatTestFromBuildUi);
+
+            spaceLaunchButton = CreateButton(
+                canvas.transform,
+                "保存并进入太空");
+            RectTransform spaceLaunchRect =
+                spaceLaunchButton.GetComponent<RectTransform>();
+            spaceLaunchRect.anchorMin = new Vector2(1f, 1f);
+            spaceLaunchRect.anchorMax = new Vector2(1f, 1f);
+            spaceLaunchRect.pivot = new Vector2(1f, 1f);
+            spaceLaunchRect.anchoredPosition = new Vector2(-24f, -94f);
+            spaceLaunchRect.sizeDelta = new Vector2(196f, 42f);
+            spaceLaunchButton.GetComponent<Image>().color =
+                new Color(0.12f, 0.48f, 0.92f, 0.98f);
+            spaceLaunchButton.GetComponentInChildren<Text>().fontSize = 15;
+            spaceLaunchButton.onClick.AddListener(
+                SaveAndEnterSpaceFromBuildUi);
 
             coreThrusterToggleButton = CreateButton(
                 canvas.transform,

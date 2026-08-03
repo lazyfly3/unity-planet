@@ -14,6 +14,7 @@ namespace SpacecraftEditor
         [SerializeField] private ShipHullDefinition currentHull;
         [SerializeField] private string currentMaterialId = SpacecraftPaintBinding.NativePaintId;
         [SerializeField] private SpacecraftMaterialCatalog materialCatalog;
+        private bool placementEnabled = true;
 
         public event Action<ShipHullDefinition> HullChanged;
 
@@ -60,10 +61,11 @@ namespace SpacecraftEditor
             hullCollider.convex = true;
             hullCollider.enabled = true;
             ResolvePlacementCollider();
-            placementCollider.sharedMesh = definition.PlacementSurfaceMesh;
+            placementCollider.enabled = false;
+            placementCollider.sharedMesh = null;
             placementCollider.convex = false;
-            placementCollider.enabled = definition.PlacementSurfaceMesh != null;
             currentHull = definition;
+            RefreshPlacementCollider();
             currentMaterialId = SpacecraftPaintBinding.NativePaintId;
             ApplyMaterials(model);
             HullChanged?.Invoke(currentHull);
@@ -96,8 +98,32 @@ namespace SpacecraftEditor
 
         public void SetPlacementEnabled(bool value)
         {
-            if (placementCollider != null && placementCollider.sharedMesh != null)
-                placementCollider.enabled = value;
+            placementEnabled = value;
+            RefreshPlacementCollider();
+        }
+
+        private void RefreshPlacementCollider()
+        {
+            if (placementCollider == null)
+                return;
+
+            placementCollider.enabled = false;
+            if (!placementEnabled || currentHull == null ||
+                currentHull.PlacementSurfaceMesh == null)
+                return;
+
+            Rigidbody body = GetComponentInParent<Rigidbody>();
+            if (body != null && !body.isKinematic)
+                return;
+
+            if (placementCollider.sharedMesh !=
+                currentHull.PlacementSurfaceMesh)
+            {
+                placementCollider.sharedMesh =
+                    currentHull.PlacementSurfaceMesh;
+            }
+            placementCollider.convex = false;
+            placementCollider.enabled = true;
         }
 
         private void ResolveReferences()

@@ -47,16 +47,14 @@ namespace ModularAssembly
         const string PresetExtension = ".preset.json";
         const string PhysicsRevision = "RC3.2";
 
-        readonly ModularBlueprintStore slotResolver = new ModularBlueprintStore();
         ModularPresetEntry cachedBuiltIn;
 
         public IReadOnlyList<ModularPresetEntry> ListPresets(
             GridAssemblyModel activeModel)
         {
             var result = new List<ModularPresetEntry>();
-            ModularPresetEntry builtIn = ResolveBuiltIn(activeModel);
-            if (builtIn != null)
-                result.Add(builtIn);
+            // The library is player-authored. Do not inject a generated
+            // trainer that can be mistaken for a Modular-saved design.
 
             string directory = GetPresetDirectory();
             if (Directory.Exists(directory))
@@ -735,9 +733,12 @@ namespace ModularAssembly
 
         string GetPresetDirectory()
         {
-            string spacecraft = GalaxySaveSlotService
-                .GetSpacecraftDirectory(slotResolver.ActiveSlotId);
-            return Path.Combine(spacecraft, "presets");
+            // Player presets are reusable authored designs, not world state.
+            // Keep them outside individual galaxy slots so every save sees
+            // the same library without duplicating preset files.
+            return Path.Combine(
+                Application.persistentDataPath,
+                "modular_presets");
         }
 
         static string NormalizeName(string value)

@@ -75,12 +75,14 @@ public sealed class InterstellarFlightHud : MonoBehaviour
 
     void Awake()
     {
-        if (ship == null)
+        if (flightRuntime == null)
+            flightRuntime = FindObjectOfType<InterstellarFlightRuntime>();
+        if (flightRuntime != null && flightRuntime.ShipController != null)
+            ship = flightRuntime.ShipController;
+        else if (ship == null)
             ship = FindObjectOfType<InterstellarShipController>();
         if (navigation == null)
             navigation = FindObjectOfType<InterstellarNavigationSystem>();
-        if (flightRuntime == null)
-            flightRuntime = FindObjectOfType<InterstellarFlightRuntime>();
         if (damageReceiver == null && ship != null)
             damageReceiver = ship.GetComponent<SpacecraftDamageReceiver>();
         if (pirateEncounterDirector == null)
@@ -170,6 +172,7 @@ public sealed class InterstellarFlightHud : MonoBehaviour
             }
         }
         unifiedLayout.SetPresentationMode(presentationMode);
+        UpdateFlightPanelVisibility();
     }
 
     public void SetPresentationMode(SpaceflightHudPresentationMode mode)
@@ -186,6 +189,7 @@ public sealed class InterstellarFlightHud : MonoBehaviour
             return 0;
 
         int count = 0;
+        InterstellarWeaponSnapshot weaponSnapshot = ship.WeaponSnapshot;
         int planetCount = navigation == null
             ? 0
             : navigation.CopyTargetSnapshots(planetSnapshots);
@@ -218,19 +222,16 @@ public sealed class InterstellarFlightHud : MonoBehaviour
                 distance = delta.magnitude,
                 color = HudDanger,
                 kind = SpaceflightRadarContactKind.Combatant,
-                selected = ship.WeaponSystem != null
-                    && ship.WeaponSystem.CurrentTarget != null
-                    && ship.WeaponSystem.CurrentTarget.Owns(threat.transform)
+                selected = weaponSnapshot.hasTargetLock
+                    && weaponSnapshot.OwnsTarget(threat.transform)
             };
         }
 
-        SpacecraftWeaponSystem weapons = ship.WeaponSystem;
-        ISpaceWeaponTarget target = weapons == null ? null : weapons.CurrentTarget;
-        if (target != null
-            && target.TargetKind == SpaceWeaponTargetKind.Asteroid
+        if (weaponSnapshot.hasTargetLock
+            && weaponSnapshot.targetKind == SpaceWeaponTargetKind.Asteroid
             && count < buffer.Length)
         {
-            Vector3 delta = target.AimPosition - ship.transform.position;
+            Vector3 delta = weaponSnapshot.targetAimPosition - ship.transform.position;
             buffer[count++] = new SpaceflightRadarContact
             {
                 localDirection = ship.transform.InverseTransformDirection(delta.normalized),
@@ -262,6 +263,7 @@ public sealed class InterstellarFlightHud : MonoBehaviour
 
     void Update()
     {
+        UpdateFlightPanelVisibility();
         SpacecraftControlTelemetry telemetry = ship == null ? default : ship.Telemetry;
         CaptureTelemetry(telemetry);
         if (targetText != null)
@@ -324,9 +326,20 @@ public sealed class InterstellarFlightHud : MonoBehaviour
             warpOverlay.SetIntensity(ship == null ? 0f : ship.WarpVisualIntensity);
     }
 
+    void UpdateFlightPanelVisibility()
+    {
+        if (unifiedLayout == null)
+            return;
+        InterstellarShipController activeShip = flightRuntime != null
+            && flightRuntime.ShipController != null
+                ? flightRuntime.ShipController
+                : ship;
+        unifiedLayout.SetFlightPanelsVisible(activeShip == null || !activeShip.IsModular);
+    }
+
     void CaptureTelemetry(SpacecraftControlTelemetry control)
     {
-        SpacecraftWeaponSystem weapons = ship == null ? null : ship.WeaponSystem;
+        InterstellarWeaponSnapshot weapons = ship == null ? null : ship.WeaponSnapshot;
         ISpaceWeaponTarget target = weapons == null ? null : weapons.CurrentTarget;
         float hullRatio = damageReceiver == null || damageReceiver.MaximumIntegrity <= 0f
             ? 1f
@@ -418,7 +431,7 @@ public sealed class InterstellarFlightHud : MonoBehaviour
 
     void UpdateWeapons()
     {
-        SpacecraftWeaponSystem weapons = ship == null ? null : ship.WeaponSystem;
+        InterstellarWeaponSnapshot weapons = ship == null ? null : ship.WeaponSnapshot;
         if (weaponGroupText != null)
             weaponGroupText.text = "武器组";
         if (weaponAmmoText != null)
@@ -459,7 +472,7 @@ public sealed class InterstellarFlightHud : MonoBehaviour
         UpdateWeaponTargetMarker(weapons);
     }
 
-    void UpdateWeaponBars(SpacecraftWeaponSystem weapons)
+    void UpdateWeaponBars(InterstellarWeaponSnapshot weapons)
     {
         if (unifiedLayout == null)
             return;
@@ -510,7 +523,7 @@ public sealed class InterstellarFlightHud : MonoBehaviour
         }
     }
 
-    void UpdateWeaponTargetMarker(SpacecraftWeaponSystem weapons)
+    void UpdateWeaponTargetMarker(InterstellarWeaponSnapshot weapons)
     {
         ISpaceWeaponTarget target = weapons == null ? null : weapons.CurrentTarget;
         if (weaponTargetMarker == null || worldCamera == null ||
