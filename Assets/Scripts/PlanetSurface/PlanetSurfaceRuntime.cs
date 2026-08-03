@@ -160,3 +160,8 @@ public sealed class LegacySphereSurfaceRuntime :
 public sealed class PlanetFloatingOriginParticipant : MonoBehaviour
 {
 }
+
+public interface IPlanetFloatingOriginShiftReceiver
+{
+    void OnPlanetFloatingOriginShift(Vector3 worldDelta);
+}

@@ -12,14 +12,26 @@ namespace UnityPlanet.ModularAssembly
         private const double FrameBudgetMilliseconds = 2.0;
 
         private FlightEnvironmentManager environmentManager;
-        private MonoBehaviour combatController;
+        private sealed class PendingRequest
+        {
+            public CombatTestMode Mode;
+            public Action<bool, string> Callback;
+        }
+
+        private CombatTestController combatController;
         private MonoBehaviour weaponCoordinator;
         private Coroutine warmupRoutine;
         private CombatPreparationState state;
         private float progress;
         private string message = string.Empty;
         private float dirtyAt = -1f;
-        private Action<bool, string> completion;
+        private readonly System.Collections.Generic.List<PendingRequest>
+            pendingRequests =
+                new System.Collections.Generic.List<PendingRequest>();
+        private CombatTestMode requestedMode = CombatTestMode.Duel;
+        private bool commonReady;
+        private bool duelReady;
+        private bool hordeReady;
 
         public CombatPreparationState State
         {
@@ -59,18 +71,47 @@ namespace UnityPlanet.ModularAssembly
         public void MarkDirty()
         {
             state = CombatPreparationState.Idle;
+            commonReady = false;
+            duelReady = false;
+            hordeReady = false;
+            requestedMode = CombatTestMode.Duel;
             dirtyAt = Time.unscaledTime + 0.25f;
         }
 
         public void EnsureReady(Action<bool, string> callback)
         {
-            if (state == CombatPreparationState.Ready)
+            EnsureReady(CombatTestMode.Duel, callback);
+        }
+
+        public bool IsReady(CombatTestMode mode)
+        {
+            return commonReady &&
+                   (mode == CombatTestMode.Horde
+                       ? hordeReady
+                       : duelReady);
+        }
+
+        public void EnsureReady(
+            CombatTestMode mode,
+            Action<bool, string> callback)
+        {
+            if (IsReady(mode))
             {
-                callback(true, message);
+                callback?.Invoke(true, message);
                 return;
             }
 
-            completion += callback;
+            requestedMode = mode == CombatTestMode.Horde
+                ? CombatTestMode.Horde
+                : requestedMode;
+            if (callback != null)
+            {
+                pendingRequests.Add(new PendingRequest
+                {
+                    Mode = mode,
+                    Callback = callback
+                });
+            }
             if (warmupRoutine == null)
             {
                 dirtyAt = -1f;
@@ -86,7 +127,7 @@ namespace UnityPlanet.ModularAssembly
             message = "正在准备测试场";
             Stopwatch budget = Stopwatch.StartNew();
 
-            if (environmentManager != null)
+            if (!commonReady && environmentManager != null)
             {
                 bool environmentReady = false;
                 string environmentMessage = string.Empty;
@@ -103,29 +144,74 @@ namespace UnityPlanet.ModularAssembly
                 }
             }
 
-            progress = 0.45f;
-            yield return YieldForBudget(budget);
-
-            object structureGraph =
-                ReadMember(weaponCoordinator, "StructureGraph");
-            InvokeNoArgument(
-                structureGraph as MonoBehaviour,
-                "PrepareCombatCache");
-            progress = 0.58f;
-            yield return YieldForBudget(budget);
-
-            InvokeNoArgument(combatController, "PrepareEnemyPool");
-            progress = 0.7f;
-            yield return YieldForBudget(budget);
-
-            InvokeNoArgument(weaponCoordinator, "PrewarmCombatResources");
-            CombatWeaponBudgetController budgetController =
-                weaponCoordinator != null
-                    ? weaponCoordinator.GetComponent<CombatWeaponBudgetController>()
-                    : null;
-            if (budgetController != null)
+            if (!commonReady)
             {
-                budgetController.RefreshNow();
+                progress = 0.35f;
+                yield return YieldForBudget(budget);
+
+                object structureGraph =
+                    ReadMember(weaponCoordinator, "StructureGraph");
+                InvokeNoArgument(
+                    structureGraph as MonoBehaviour,
+                    "PrepareCombatCache");
+                progress = 0.45f;
+                yield return YieldForBudget(budget);
+
+                InvokeNoArgument(weaponCoordinator, "PrewarmCombatResources");
+                CombatWeaponBudgetController budgetController =
+                    weaponCoordinator != null
+                        ? weaponCoordinator.GetComponent<CombatWeaponBudgetController>()
+                        : null;
+                if (budgetController != null)
+                    budgetController.RefreshNow();
+                commonReady = true;
+            }
+
+            if (!duelReady)
+            {
+                if (combatController == null)
+                {
+                    Finish(false, "战斗控制器未初始化，无法准备敌机池。");
+                    yield break;
+                }
+                yield return combatController.PrepareModeResources(
+                    CombatTestMode.Duel,
+                    (value, text) =>
+                    {
+                        progress = Mathf.Lerp(0.5f, 0.7f, value);
+                        message = text;
+                    });
+                duelReady = combatController.IsModePrepared(
+                    CombatTestMode.Duel,
+                    out string duelError);
+                if (!duelReady)
+                {
+                    Finish(false, string.IsNullOrWhiteSpace(duelError)
+                        ? "1v1敌机池准备失败。"
+                        : duelError);
+                    yield break;
+                }
+            }
+
+            if (requestedMode == CombatTestMode.Horde && !hordeReady)
+            {
+                yield return combatController.PrepareModeResources(
+                    CombatTestMode.Horde,
+                    (value, text) =>
+                    {
+                        progress = Mathf.Lerp(0.7f, 0.98f, value);
+                        message = text;
+                    });
+                hordeReady = combatController.IsModePrepared(
+                    CombatTestMode.Horde,
+                    out string hordeError);
+                if (!hordeReady)
+                {
+                    Finish(false, string.IsNullOrWhiteSpace(hordeError)
+                        ? "割草敌机池准备失败。"
+                        : hordeError);
+                    yield break;
+                }
             }
 
             progress = 1f;
@@ -149,11 +235,17 @@ namespace UnityPlanet.ModularAssembly
                 ? success ? "战斗资源已就绪" : "战斗资源准备失败"
                 : resultMessage;
             warmupRoutine = null;
-            Action<bool, string> pending = completion;
-            completion = null;
-            if (pending != null)
+            for (int index = pendingRequests.Count - 1; index >= 0; index--)
             {
-                pending(success, message);
+                PendingRequest request = pendingRequests[index];
+                if (success && !IsReady(request.Mode))
+                    continue;
+                pendingRequests.RemoveAt(index);
+                request.Callback?.Invoke(success, message);
+            }
+            if (success && pendingRequests.Count > 0 && warmupRoutine == null)
+            {
+                warmupRoutine = StartCoroutine(WarmupRoutine());
             }
         }
 
@@ -174,9 +266,9 @@ namespace UnityPlanet.ModularAssembly
                 }
 
                 string typeName = behaviour.GetType().Name;
-                if (combatController == null && typeName == "CombatTestController")
+                if (combatController == null && behaviour is CombatTestController controller)
                 {
-                    combatController = behaviour;
+                    combatController = controller;
                 }
                 else if (weaponCoordinator == null && typeName == "WeaponSystemCoordinator")
                 {

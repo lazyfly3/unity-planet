@@ -258,10 +258,12 @@ namespace UnityPlanet.ModularAssembly
 
         static Forge3DEffectPool ResolvePool(Transform host)
         {
+            Transform transientRoot = CombatTransientRoot.GetOrCreate();
             Forge3DEffectPool pool =
-                host.GetComponent<Forge3DEffectPool>();
+                transientRoot.GetComponent<Forge3DEffectPool>();
             if (pool == null)
-                pool = host.gameObject.AddComponent<Forge3DEffectPool>();
+                pool = transientRoot.gameObject
+                    .AddComponent<Forge3DEffectPool>();
             return pool;
         }
 
@@ -273,6 +275,8 @@ namespace UnityPlanet.ModularAssembly
 
     public sealed class Forge3DEffectPool : MonoBehaviour
     {
+        public const int MaximumSlots = 64;
+
         sealed class EffectSlot
         {
             public string Resource;
@@ -288,6 +292,7 @@ namespace UnityPlanet.ModularAssembly
         readonly Dictionary<string, GameObject> prefabs =
             new Dictionary<string, GameObject>(
                 StringComparer.OrdinalIgnoreCase);
+        public int SlotCount => slots.Count;
 
         public bool SpawnOneShot(
             string resource,
@@ -348,7 +353,10 @@ namespace UnityPlanet.ModularAssembly
             slot.Line.SetPosition(0, start);
             slot.Line.SetPosition(1, end);
             RestartParticles(slot);
-            if (!RendererIsUsable(slot.Line))
+            if (!slot.Line.enabled ||
+                !slot.Line.gameObject.activeInHierarchy ||
+                !RendererIsUsable(slot.Line) ||
+                !HasRenderableRenderer(slot))
             {
                 Reject(slot);
                 return false;
@@ -373,6 +381,12 @@ namespace UnityPlanet.ModularAssembly
             }
         }
 
+        public void Clear()
+        {
+            foreach (EffectSlot slot in slots)
+                Reject(slot);
+        }
+
         EffectSlot Acquire(string resource)
         {
             EffectSlot slot = slots.Find(item =>
@@ -383,6 +397,25 @@ namespace UnityPlanet.ModularAssembly
                 !item.Root.activeSelf);
             if (slot != null)
                 return slot;
+
+            if (slots.Count >= MaximumSlots)
+            {
+                foreach (EffectSlot candidate in slots)
+                {
+                    if (!string.Equals(
+                            candidate.Resource,
+                            resource,
+                            StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (slot == null ||
+                        candidate.EndsAt < slot.EndsAt)
+                        slot = candidate;
+                }
+                if (slot == null)
+                    return null;
+                Reject(slot);
+                return slot;
+            }
 
             if (!prefabs.TryGetValue(resource, out GameObject prefab))
             {
@@ -434,15 +467,33 @@ namespace UnityPlanet.ModularAssembly
 
         static bool HasRenderableRenderer(EffectSlot slot)
         {
-            if (slot?.Renderers == null)
+            return slot != null &&
+                   HasRenderableRendererSet(slot.Renderers);
+        }
+
+        public static bool HasRenderableRendererSet(GameObject root)
+        {
+            return root != null &&
+                   HasRenderableRendererSet(
+                       root.GetComponentsInChildren<Renderer>(true));
+        }
+
+        static bool HasRenderableRendererSet(Renderer[] renderers)
+        {
+            if (renderers == null)
                 return false;
-            foreach (Renderer renderer in slot.Renderers)
-                if (renderer != null &&
-                    renderer.enabled &&
-                    renderer.gameObject.activeInHierarchy &&
-                    RendererIsUsable(renderer))
-                    return true;
-            return false;
+            bool found = false;
+            foreach (Renderer renderer in renderers)
+            {
+                if (renderer == null ||
+                    !renderer.enabled ||
+                    !renderer.gameObject.activeInHierarchy)
+                    continue;
+                found = true;
+                if (!RendererIsUsable(renderer))
+                    return false;
+            }
+            return found;
         }
 
         static bool RendererIsUsable(Renderer renderer)
@@ -463,16 +514,12 @@ namespace UnityPlanet.ModularAssembly
             Material[] values = renderer.sharedMaterials;
             if (values == null || values.Length == 0)
                 return false;
-            bool found = false;
             foreach (Material material in values)
             {
-                if (material == null)
-                    continue;
-                found = true;
                 if (!MaterialIsUsable(material))
                     return false;
             }
-            return found;
+            return true;
         }
 
         static bool MaterialIsUsable(Material material)
@@ -504,6 +551,21 @@ namespace UnityPlanet.ModularAssembly
             if (slot.Root != null)
                 slot.Root.SetActive(false);
             slot.EndsAt = 0f;
+        }
+
+        void OnDestroy()
+        {
+            foreach (EffectSlot slot in slots)
+            {
+                if (slot?.Root == null)
+                    continue;
+                if (Application.isPlaying)
+                    Destroy(slot.Root);
+                else
+                    DestroyImmediate(slot.Root);
+            }
+            slots.Clear();
+            prefabs.Clear();
         }
     }
 
@@ -663,7 +725,9 @@ namespace UnityPlanet.ModularAssembly
             if (originalRenderers.Count == 0)
             {
                 Destroy(pivotObject);
+                Destroy(proxyObject);
                 visualPivot = null;
+                sampleProxy = null;
                 return;
             }
             recoilDistance = Mathf.Clamp(
@@ -676,11 +740,20 @@ namespace UnityPlanet.ModularAssembly
         {
             if (renderer == null || !renderer.enabled)
                 return false;
+            if (renderer.GetComponentInParent<LODGroup>() != null)
+                return false;
             string name = renderer.gameObject.name.ToLowerInvariant();
-            return !name.Contains("proxy") &&
-                   !name.Contains("ghost") &&
-                   !name.Contains("collider") &&
-                   !name.StartsWith("forge3d_");
+            if (name.Contains("proxy") ||
+                name.Contains("ghost") ||
+                name.Contains("collider") ||
+                name.Contains("collision") ||
+                name.StartsWith("forge3d_"))
+                return false;
+            return name.Contains("barrel") ||
+                   name.Contains("muzzle") ||
+                   name.Contains("bolt") ||
+                   name.Contains("slide") ||
+                   name.Contains("recoil");
         }
 
         static void CopyRelativeTransform(

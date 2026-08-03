@@ -43,6 +43,25 @@ namespace UnityPlanet.ModularAssembly
             return cachedRoot;
         }
 
+        public static void EnsureCameraDepthTexture(Camera camera = null)
+        {
+            if (camera == null)
+                camera = Camera.main;
+            if (camera == null)
+            {
+                Camera[] cameras = Camera.allCameras;
+                for (int index = 0; index < cameras.Length; index++)
+                {
+                    if (cameras[index] == null || !cameras[index].enabled)
+                        continue;
+                    camera = cameras[index];
+                    break;
+                }
+            }
+            if (camera != null)
+                camera.depthTextureMode |= DepthTextureMode.Depth;
+        }
+
         public static void ClearVisuals()
         {
             Transform root = cachedRoot;
@@ -56,10 +75,20 @@ namespace UnityPlanet.ModularAssembly
             if (root == null)
                 return;
 
+            foreach (WeaponVisualPool weaponVisuals in
+                     Object.FindObjectsOfType<WeaponVisualPool>(true))
+            {
+                if (weaponVisuals != null)
+                    weaponVisuals.Clear();
+            }
             CombatWeaponEffectPool weaponEffects =
                 root.GetComponent<CombatWeaponEffectPool>();
             if (weaponEffects != null)
                 weaponEffects.Clear();
+            Forge3DEffectPool forgeEffects =
+                root.GetComponent<Forge3DEffectPool>();
+            if (forgeEffects != null)
+                forgeEffects.Clear();
             foreach (ModuleDestructionEffectPool destructionEffects in
                      root.GetComponentsInChildren<
                          ModuleDestructionEffectPool>(true))
@@ -95,6 +124,7 @@ namespace UnityPlanet.ModularAssembly
             foreach (Transform child in root)
             {
                 if (child.name == "WeaponTracer" ||
+                    child.name.StartsWith("Tracer_") ||
                     child.name == "HeavyLaser_HovlRay")
                     child.gameObject.SetActive(false);
             }
@@ -102,7 +132,9 @@ namespace UnityPlanet.ModularAssembly
     }
 
     [DefaultExecutionOrder(10000)]
-    sealed class CombatTransientRootDriver : MonoBehaviour
+    sealed class CombatTransientRootDriver :
+        MonoBehaviour,
+        IPlanetFloatingOriginShiftReceiver
     {
         Vector3 previousPosition;
 
@@ -117,6 +149,35 @@ namespace UnityPlanet.ModularAssembly
             previousPosition = transform.position;
             if (delta.sqrMagnitude < 0.000001f)
                 return;
+
+            ShiftExistingVisuals(delta);
+        }
+
+        public void OnPlanetFloatingOriginShift(Vector3 worldDelta)
+        {
+            // InfinitePlanarSurfaceWorld invokes this synchronously with the
+            // rebase. Anything spawned later in the frame is already in the
+            // new coordinate frame and must not receive this delta again.
+            previousPosition = transform.position;
+            ShiftExistingVisuals(worldDelta);
+        }
+
+        void ShiftExistingVisuals(Vector3 delta)
+        {
+            if (delta.sqrMagnitude < 0.000001f)
+                return;
+
+            CombatWeaponEffectPool weaponEffects =
+                GetComponent<CombatWeaponEffectPool>();
+            if (weaponEffects != null)
+                weaponEffects.ShiftWorld(delta);
+            foreach (ModuleDestructionEffectPool destructionEffects in
+                     GetComponentsInChildren<
+                         ModuleDestructionEffectPool>(true))
+            {
+                if (destructionEffects != null)
+                    destructionEffects.ShiftWorld(delta);
+            }
 
             foreach (ParticleSystem system in
                      GetComponentsInChildren<ParticleSystem>(true))

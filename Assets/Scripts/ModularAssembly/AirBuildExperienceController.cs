@@ -47,6 +47,10 @@ namespace UnityPlanet.ModularAssembly
         private Button savePresetButton;
         private Button presetFlightButton;
         private Button battleTestButton;
+        private GameObject combatModeOverlay;
+        private Button duelModeButton;
+        private Button hordeModeButton;
+        private int selectedCombatMode;
         private Button coreThrusterToggleButton;
         private Text coreThrusterToggleLabel;
         private RobocraftMotionCoordinator motionCoordinatorRc1;
@@ -186,6 +190,25 @@ namespace UnityPlanet.ModularAssembly
             }
             if (flying)
             {
+                return;
+            }
+            if (combatModeOverlay != null && combatModeOverlay.activeSelf)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    CloseCombatModeSelector();
+                }
+                else if (Input.GetKeyDown(KeyCode.LeftArrow) ||
+                         Input.GetKeyDown(KeyCode.RightArrow))
+                {
+                    selectedCombatMode = 1 - selectedCombatMode;
+                    RefreshCombatModeSelection();
+                }
+                else if (Input.GetKeyDown(KeyCode.Return) ||
+                         Input.GetKeyDown(KeyCode.KeypadEnter))
+                {
+                    StartSelectedCombatMode();
+                }
                 return;
             }
             SyncGhostFrame();
@@ -425,13 +448,27 @@ namespace UnityPlanet.ModularAssembly
         {
             if (placing)
                 CancelPlacement();
+            OpenCombatModeSelector();
+        }
+
+        private void StartSelectedCombatMode()
+        {
+            StartCombatModeFromBuildUi(
+                selectedCombatMode == 0
+                    ? CombatTestMode.Duel
+                    : CombatTestMode.Horde);
+        }
+
+        private void StartCombatModeFromBuildUi(CombatTestMode mode)
+        {
+            CloseCombatModeSelector();
             CombatTestController combat =
                 FindObjectOfType<CombatTestController>();
             string message;
             if (combat == null)
                 message = "战斗测试系统尚未初始化。";
             else
-                combat.TryBeginCombat(out message);
+                combat.TryBeginCombat(mode, out message);
             if (placementText != null)
                 placementText.text = message;
         }
@@ -1218,8 +1255,152 @@ battleTestButton.onClick.AddListener(
             statsRect.anchoredPosition = new Vector2(-24f, -146f);
             statsRect.sizeDelta = new Vector2(408f, 230f);
             v3StatsText.alignment = TextAnchor.UpperRight;
+            BuildCombatModeSelector();
             RefreshCoreThrusterToggle();
             RefreshCategoryColors();
+        }
+
+        private void BuildCombatModeSelector()
+        {
+            combatModeOverlay = CreatePanel(
+                canvas.transform,
+                "CombatModeOverlay",
+                new Color(0.005f, 0.015f, 0.02f, 0.78f));
+            Stretch(combatModeOverlay.GetComponent<RectTransform>());
+            Button blocker = combatModeOverlay.AddComponent<Button>();
+            blocker.transition = Selectable.Transition.None;
+            blocker.onClick.AddListener(CloseCombatModeSelector);
+
+            GameObject panel = CreatePanel(
+                combatModeOverlay.transform,
+                "CombatModePanel",
+                new Color(0.018f, 0.065f, 0.085f, 0.98f));
+            RectTransform panelRect = panel.GetComponent<RectTransform>();
+            panelRect.anchorMin = panelRect.anchorMax =
+                new Vector2(0.5f, 0.5f);
+            panelRect.pivot = new Vector2(0.5f, 0.5f);
+            panelRect.anchoredPosition = Vector2.zero;
+            panelRect.sizeDelta = new Vector2(760f, 380f);
+
+            Text title = CreateText(
+                panel.transform,
+                "选择战斗测试模式",
+                30,
+                FontStyle.Bold,
+                new Color(0.16f, 0.95f, 0.84f, 1f));
+            title.alignment = TextAnchor.MiddleCenter;
+            RectTransform titleRect = title.rectTransform;
+            titleRect.anchorMin = titleRect.anchorMax =
+                new Vector2(0.5f, 1f);
+            titleRect.pivot = new Vector2(0.5f, 1f);
+            titleRect.anchoredPosition = new Vector2(0f, -24f);
+            titleRect.sizeDelta = new Vector2(600f, 48f);
+
+            duelModeButton = CreateCombatModeCard(
+                panel.transform,
+                "1v1 单挑",
+                "保留当前模块化敌机\n单体对决 · 模块损伤 · 完整物理",
+                new Vector2(-170f, -20f));
+            hordeModeButton = CreateCombatModeCard(
+                panel.transform,
+                "割草战斗",
+                "4分钟固定强度生存战\n规则化增援 · 自动航路 · 总体血量",
+                new Vector2(170f, -20f));
+            duelModeButton.onClick.AddListener(
+                () => StartCombatModeFromBuildUi(CombatTestMode.Duel));
+            hordeModeButton.onClick.AddListener(
+                () => StartCombatModeFromBuildUi(CombatTestMode.Horde));
+
+            Button close = CreateButton(panel.transform, "取消  Esc");
+            RectTransform closeRect = close.GetComponent<RectTransform>();
+            closeRect.anchorMin = closeRect.anchorMax =
+                new Vector2(0.5f, 0f);
+            closeRect.pivot = new Vector2(0.5f, 0f);
+            closeRect.anchoredPosition = new Vector2(0f, 22f);
+            closeRect.sizeDelta = new Vector2(180f, 44f);
+            close.onClick.AddListener(CloseCombatModeSelector);
+            combatModeOverlay.SetActive(false);
+        }
+
+        private Button CreateCombatModeCard(
+            Transform parent,
+            string title,
+            string description,
+            Vector2 position)
+        {
+            GameObject card = CreatePanel(
+                parent,
+                "CombatMode_" + title,
+                new Color(0.07f, 0.19f, 0.24f, 0.98f));
+            RectTransform rect = card.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = new Vector2(300f, 190f);
+            Button button = card.AddComponent<Button>();
+
+            Text heading = CreateText(
+                card.transform,
+                title,
+                26,
+                FontStyle.Bold,
+                Color.white);
+            heading.alignment = TextAnchor.MiddleCenter;
+            RectTransform headingRect = heading.rectTransform;
+            headingRect.anchorMin = new Vector2(0f, 1f);
+            headingRect.anchorMax = new Vector2(1f, 1f);
+            headingRect.pivot = new Vector2(0.5f, 1f);
+            headingRect.anchoredPosition = new Vector2(0f, -24f);
+            headingRect.sizeDelta = new Vector2(-24f, 42f);
+
+            Text details = CreateText(
+                card.transform,
+                description,
+                16,
+                FontStyle.Normal,
+                new Color(0.76f, 0.88f, 0.91f, 1f));
+            details.alignment = TextAnchor.MiddleCenter;
+            RectTransform detailsRect = details.rectTransform;
+            detailsRect.anchorMin = new Vector2(0f, 0f);
+            detailsRect.anchorMax = new Vector2(1f, 1f);
+            detailsRect.offsetMin = new Vector2(18f, 18f);
+            detailsRect.offsetMax = new Vector2(-18f, -72f);
+            return button;
+        }
+
+        private void OpenCombatModeSelector()
+        {
+            if (combatModeOverlay == null)
+                return;
+            selectedCombatMode = 0;
+            combatModeOverlay.transform.SetAsLastSibling();
+            combatModeOverlay.SetActive(true);
+            RefreshCombatModeSelection();
+        }
+
+        private void CloseCombatModeSelector()
+        {
+            if (combatModeOverlay != null)
+                combatModeOverlay.SetActive(false);
+        }
+
+        private void RefreshCombatModeSelection()
+        {
+            if (duelModeButton == null || hordeModeButton == null)
+                return;
+            duelModeButton.GetComponent<Image>().color =
+                selectedCombatMode == 0
+                    ? new Color(0.04f, 0.72f, 0.65f, 1f)
+                    : new Color(0.07f, 0.19f, 0.24f, 0.98f);
+            hordeModeButton.GetComponent<Image>().color =
+                selectedCombatMode == 1
+                    ? new Color(0.88f, 0.28f, 0.10f, 1f)
+                    : new Color(0.07f, 0.19f, 0.24f, 0.98f);
+            Button selected = selectedCombatMode == 0
+                ? duelModeButton
+                : hordeModeButton;
+            if (EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(selected.gameObject);
         }
 
         private RobocraftMotionCoordinator ResolveMotionCoordinatorRc1()

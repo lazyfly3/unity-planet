@@ -294,11 +294,12 @@ namespace UnityPlanet.ModularAssembly
                 new HashSet<string>(StringComparer.Ordinal);
         }
 
-        public void PlayDestruction(
+        public bool PlayDestruction(
             ModuleDestructionFeedbackContext context)
         {
             EnsurePool();
-            effectPool.Spawn(context);
+            CombatTransientRoot.EnsureCameraDepthTexture();
+            return effectPool.Spawn(context);
         }
 
         void HandleModuleDamaged(
@@ -314,7 +315,7 @@ namespace UnityPlanet.ModularAssembly
                 played = new HashSet<string>(StringComparer.Ordinal);
                 playedRuntimeIds[graph] = played;
             }
-            if (!played.Add(feedback.RuntimeId))
+            if (played.Contains(feedback.RuntimeId))
                 return;
             Vector3 normal = feedback.Impulse.sqrMagnitude > 0.0001f
                 ? -feedback.Impulse.normalized
@@ -326,7 +327,7 @@ namespace UnityPlanet.ModularAssembly
                 if (HasVisualExtent(vehicleBounds))
                     visualBounds = vehicleBounds;
             }
-            PlayDestruction(
+            bool spawned = PlayDestruction(
                 new ModuleDestructionFeedbackContext(
                     feedback.RuntimeId,
                     feedback.HitPoint,
@@ -335,6 +336,8 @@ namespace UnityPlanet.ModularAssembly
                     feedback.IsCore,
                     visualBounds,
                     0));
+            if (spawned)
+                played.Add(feedback.RuntimeId);
         }
 
         void HandleVehicleDestroyed(VehicleStructureGraph graph)
@@ -353,7 +356,7 @@ namespace UnityPlanet.ModularAssembly
             // ModuleDamaged callback. The Destroyed callback must only add
             // the vehicle-scale cue for connectivity/CPU collapse.
             if (played.Contains(GridAssemblyModel.CoreRuntimeId) ||
-                !played.Add(VehicleDestroyedVisualId))
+                played.Contains(VehicleDestroyedVisualId))
                 return;
 
             VehicleStructureDelta delta = graph.LastDestructionDelta;
@@ -374,7 +377,7 @@ namespace UnityPlanet.ModularAssembly
                     ? delta.DetachedComponents.Count
                     : 0;
 
-            PlayDestruction(
+            bool spawned = PlayDestruction(
                 new ModuleDestructionFeedbackContext(
                     VehicleDestroyedVisualId,
                     point,
@@ -385,6 +388,8 @@ namespace UnityPlanet.ModularAssembly
                         ? bounds
                         : new Bounds(point, Vector3.one),
                     detachedCount));
+            if (spawned)
+                played.Add(VehicleDestroyedVisualId);
         }
 
         void HandleStructureChanged(
@@ -550,6 +555,17 @@ namespace UnityPlanet.ModularAssembly
                 flash.Active = false;
                 flash.StartedAt = 0f;
                 flash.EndsAt = 0f;
+            }
+        }
+
+        public void ShiftWorld(Vector3 delta)
+        {
+            if (delta.sqrMagnitude < 0.000001f)
+                return;
+            foreach (SeverFlashSlot flash in severFlashes)
+            {
+                if (flash != null)
+                    flash.Center += delta;
             }
         }
 

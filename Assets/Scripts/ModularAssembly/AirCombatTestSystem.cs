@@ -91,6 +91,7 @@ namespace UnityPlanet.ModularAssembly
         Rigidbody playerBody;
         ModularBlueprintData playerSnapshot;
         EnemyAirCombatVehicle enemy;
+        HordeCombatDirector hordeDirector;
         Canvas combatCanvas;
         Text statusText;
         Text playerText;
@@ -98,6 +99,7 @@ namespace UnityPlanet.ModularAssembly
         Text warningText;
         GameObject resultPanel;
         Text resultText;
+        readonly List<Text> threatIndicators = new List<Text>(10);
         bool pendingCombat;
         bool waitingForPreparation;
         bool combatActive;
@@ -105,8 +107,12 @@ namespace UnityPlanet.ModularAssembly
         float outsideSeconds;
         float ineffectiveSeconds;
         Vector3 battleCenter;
+        Vector3 combatPlayerSpawn;
+        Quaternion combatPlayerRotation = Quaternion.identity;
         GameObject targetObject;
         ICombatArenaProvider arena;
+        int combatSessionId;
+        int hordeSeed;
         readonly CombatTtkTelemetry playerTtk =
             new CombatTtkTelemetry();
         readonly CombatTtkTelemetry enemyTtk =
@@ -114,6 +120,9 @@ namespace UnityPlanet.ModularAssembly
 
         public GridFlightSessionKind SessionKind { get; private set; } =
             GridFlightSessionKind.FreeFlight;
+
+        public CombatTestMode CurrentMode { get; private set; } =
+            CombatTestMode.Duel;
 
         [RuntimeInitializeOnLoadMethod(
             RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -252,6 +261,23 @@ namespace UnityPlanet.ModularAssembly
             warningText.rectTransform.pivot = new Vector2(0.5f, 0f);
             warningText.color = new Color(1f, 0.68f, 0.2f, 1f);
 
+            for (int index = 0; index < 10; index++)
+            {
+                Text indicator = CreateText(
+                    combatCanvas.transform,
+                    "▲",
+                    Vector2.zero,
+                    new Vector2(32f, 32f),
+                    TextAnchor.MiddleCenter,
+                    24);
+                indicator.name = "HordeThreatIndicator_" + index;
+                indicator.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+                indicator.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                indicator.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                indicator.gameObject.SetActive(false);
+                threatIndicators.Add(indicator);
+            }
+
             resultPanel = new GameObject(
                 "CombatResult",
                 typeof(RectTransform),
@@ -309,7 +335,10 @@ namespace UnityPlanet.ModularAssembly
         {
             if (!combatActive || resolving)
                 return;
+            if (CurrentMode == CombatTestMode.Horde)
+                hordeDirector?.Tick(Time.deltaTime);
             UpdateCombatHud();
+            UpdateThreatIndicators();
             CheckBattleOutcome();
         }
 
@@ -355,8 +384,15 @@ namespace UnityPlanet.ModularAssembly
 
         public bool TryBeginCombat(out string message)
         {
+            return TryBeginCombat(CombatTestMode.Duel, out message);
+        }
+
+        public bool TryBeginCombat(
+            CombatTestMode mode,
+            out string message)
+        {
             message = string.Empty;
-            if (pendingCombat || combatActive)
+            if (pendingCombat || combatActive || waitingForPreparation)
             {
                 message = "战斗测试已经在准备或进行中。";
                 return false;
@@ -369,28 +405,24 @@ namespace UnityPlanet.ModularAssembly
             }
             CombatPreparationCoordinator preparation =
                 FindObjectOfType<CombatPreparationCoordinator>(true);
-            if (preparation != null &&
-                preparation.State != CombatPreparationState.Ready)
+            if (preparation != null && !preparation.IsReady(mode))
             {
-                if (!waitingForPreparation)
-                {
-                    waitingForPreparation = true;
-                    preparation.EnsureReady(
-                        (success, preparationMessage) =>
+                waitingForPreparation = true;
+                preparation.EnsureReady(
+                    mode,
+                    (success, preparationMessage) =>
+                    {
+                        waitingForPreparation = false;
+                        if (success)
                         {
-                            waitingForPreparation = false;
-                            if (success)
-                            {
-                                string ignored;
-                                TryBeginCombat(out ignored);
-                            }
-                            else if (warningText != null)
-                            {
-                                warningText.text =
-                                    preparationMessage;
-                            }
-                        });
-                }
+                            string ignored;
+                            TryBeginCombat(mode, out ignored);
+                        }
+                        else if (warningText != null)
+                        {
+                            warningText.text = preparationMessage;
+                        }
+                    });
                 message =
                     "正在后台准备战斗资源 " +
                     Mathf.RoundToInt(preparation.Progress * 100f) +
@@ -399,9 +431,12 @@ namespace UnityPlanet.ModularAssembly
             }
 
             playerSnapshot = lab.Model.CaptureBlueprint();
+            CurrentMode = mode;
             pendingCombat = true;
             SessionKind = GridFlightSessionKind.CombatTest;
-            message = "正在进入战斗测试。";
+            message = mode == CombatTestMode.Horde
+                ? "正在进入割草战斗。"
+                : "正在进入1v1战斗。";
             lab.ToggleFlight();
             return true;
         }
@@ -454,6 +489,8 @@ namespace UnityPlanet.ModularAssembly
             {
                 battleCenter = playerSpawn;
             }
+            combatPlayerSpawn = playerSpawn;
+            combatPlayerRotation = playerRotation;
             if (!playerBody.isKinematic)
             {
                 playerBody.velocity = Vector3.zero;
@@ -462,7 +499,12 @@ namespace UnityPlanet.ModularAssembly
             playerBody.isKinematic = true;
             playerBody.position = playerSpawn;
             playerBody.rotation = playerRotation;
-            playerBody.isKinematic = false;
+            if (CurrentMode == CombatTestMode.Duel)
+                playerBody.isKinematic = false;
+
+            VehicleCombatTeamUtility.SetTeam(
+                playerBody.gameObject,
+                VehicleCombatTeam.Player);
 
             playerGraph = weapons.StructureGraph;
             if (playerGraph != null)
@@ -473,17 +515,72 @@ namespace UnityPlanet.ModularAssembly
             }
             if (targetObject != null)
                 targetObject.SetActive(false);
-            SpawnEnemy();
-            outsideSeconds = 0f;
-            ineffectiveSeconds = 0f;
-            playerTtk.Reset("player");
-            enemyTtk.Reset("enemy");
-            combatActive = true;
-            resolving = false;
+
             if (combatCanvas != null)
                 combatCanvas.gameObject.SetActive(true);
             if (resultPanel != null)
                 resultPanel.SetActive(false);
+
+            combatSessionId++;
+            if (CurrentMode == CombatTestMode.Horde)
+            {
+                EnsureHordeDirector();
+                statusText.text = "割草战斗  正在规划战区航路";
+                warningText.text = "玩家载具保持冻结，航路完成后开始计时";
+                float warningRadius = arena != null
+                    ? arena.WarningRadius
+                    : WarningRadius;
+                yield return hordeDirector.PrepareNavigation(
+                    playerBody,
+                    battleCenter,
+                    warningRadius,
+                    (progress, navigationMessage) =>
+                    {
+                        if (statusText != null)
+                        {
+                            statusText.text =
+                                $"割草战斗  规划战区航路 {progress * 100f:0}%";
+                        }
+                        if (warningText != null)
+                            warningText.text = navigationMessage;
+                    });
+                if (!hordeDirector.NavigationReady)
+                {
+                    combatActive = true;
+                    resolving = false;
+                    CompleteBattle(
+                        false,
+                        string.IsNullOrWhiteSpace(hordeDirector.NavigationError)
+                            ? "战区航路准备失败"
+                            : hordeDirector.NavigationError);
+                    yield break;
+                }
+                playerBody.isKinematic = false;
+                playerBody.WakeUp();
+                hordeSeed = StableHordeSeed(
+                    SceneManager.GetActiveScene().name,
+                    battleCenter);
+                hordeDirector.BeginSession(
+                    playerBody,
+                    battleCenter,
+                    warningRadius,
+                    hordeSeed,
+                    combatSessionId);
+                warningText.text = string.Empty;
+            }
+            else
+            {
+                SpawnEnemy();
+            }
+            outsideSeconds = 0f;
+            ineffectiveSeconds = 0f;
+            playerTtk.Reset("player");
+            enemyTtk.Reset(
+                CurrentMode == CombatTestMode.Horde
+                    ? "horde"
+                    : "enemy");
+            combatActive = true;
+            resolving = false;
         }
 
         void SpawnEnemy()
@@ -513,9 +610,15 @@ namespace UnityPlanet.ModularAssembly
                     playerBody,
                     pool,
                     projectilePool);
+                VehicleCombatTeamUtility.SetTeam(
+                    root,
+                    VehicleCombatTeam.Enemy);
             }
             else
             {
+                VehicleCombatTeamUtility.SetTeam(
+                    enemy.gameObject,
+                    VehicleCombatTeam.Enemy);
                 enemy.gameObject.SetActive(true);
                 enemy.ResetForCombat(
                     this,
@@ -540,8 +643,57 @@ namespace UnityPlanet.ModularAssembly
                 playerBody,
                 weapons.GetComponent<WeaponVisualPool>(),
                 weapons.GetComponent<WeaponProjectilePool>());
+            VehicleCombatTeamUtility.SetTeam(
+                root,
+                VehicleCombatTeam.Enemy);
             enemy.StopCombat();
             root.SetActive(false);
+        }
+
+        public IEnumerator PrepareModeResources(
+            CombatTestMode mode,
+            Action<float, string> progress)
+        {
+            PrepareEnemyPool();
+            progress?.Invoke(0.25f, "1v1敌机池已就绪");
+            if (mode != CombatTestMode.Horde)
+                yield break;
+            EnsureHordeDirector();
+            yield return hordeDirector.Prewarm(
+                this,
+                weapons != null
+                    ? weapons.GetComponent<WeaponVisualPool>()
+                    : null,
+                weapons != null
+                    ? weapons.GetComponent<WeaponProjectilePool>()
+                    : null,
+                (value, text) => progress?.Invoke(
+                    Mathf.Lerp(0.25f, 1f, value),
+                    text));
+        }
+
+        public bool IsModePrepared(
+            CombatTestMode mode,
+            out string error)
+        {
+            error = string.Empty;
+            if (mode == CombatTestMode.Duel)
+                return enemy != null;
+            EnsureHordeDirector();
+            if (hordeDirector.PreparationValid)
+                return true;
+            error = hordeDirector.PreparationError;
+            return false;
+        }
+
+        void EnsureHordeDirector()
+        {
+            if (hordeDirector == null)
+            {
+                hordeDirector =
+                    GetComponent<HordeCombatDirector>() ??
+                    gameObject.AddComponent<HordeCombatDirector>();
+            }
         }
 
         public void RecordPlayerDamage(float amount)
@@ -568,10 +720,24 @@ namespace UnityPlanet.ModularAssembly
                 CompleteBattle(false, "载具核心被摧毁");
                 return;
             }
-            if (enemy == null || !enemy.IsCombatCapable)
+            if (CurrentMode == CombatTestMode.Duel &&
+                (enemy == null || !enemy.IsCombatCapable))
             {
                 CompleteBattle(true, "敌机失去战斗能力");
                 return;
+            }
+            if (CurrentMode == CombatTestMode.Horde)
+            {
+                if (hordeDirector == null || !hordeDirector.IsRunning)
+                {
+                    CompleteBattle(false, "割草战斗导演意外停止");
+                    return;
+                }
+                if (hordeDirector.IsFinished)
+                {
+                    CompleteBattle(true, "计时结束，战区已清理");
+                    return;
+                }
             }
 
             float warningRadius =
@@ -620,14 +786,30 @@ namespace UnityPlanet.ModularAssembly
                     $"状态  {StateText(playerGraph.CapabilityState)}\n" +
                     $"武器  {CountPlayerWeapons()}";
             }
-            if (enemy != null)
+            if (CurrentMode == CombatTestMode.Duel && enemy != null)
             {
                 enemyText.text =
                     $"敌机  连接CPU {enemy.ConnectedRatio * 100f:0}%\n" +
                     $"状态  {StateText(enemy.CapabilityState)}\n" +
                     $"武器  {enemy.ActiveWeaponCount}";
             }
-            statusText.text = "空战测试  1 VS 1";
+            if (CurrentMode == CombatTestMode.Horde && hordeDirector != null)
+            {
+                string phase = hordeDirector.IsFinalClear
+                    ? "最终清场"
+                    : "阶段 " + hordeDirector.CurrentPhase;
+                int seconds = Mathf.CeilToInt(hordeDirector.RemainingSeconds);
+                statusText.text =
+                    $"割草战斗  {phase}  {seconds / 60:00}:{seconds % 60:00}";
+                enemyText.text =
+                    $"敌机  {hordeDirector.AliveCount}/{hordeDirector.CurrentActiveCap}\n" +
+                    $"击落  {hordeDirector.Kills}\n" +
+                    $"等待  {hordeDirector.QueuedCount}";
+            }
+            else
+            {
+                statusText.text = "空战测试  1 VS 1";
+            }
         }
 
         static string StateText(CombatCapabilityState state)
@@ -653,7 +835,7 @@ namespace UnityPlanet.ModularAssembly
 
         public void NotifyEnemyDestroyed(string reason)
         {
-            if (combatActive)
+            if (combatActive && CurrentMode == CombatTestMode.Duel)
                 CompleteBattle(true, reason);
         }
 
@@ -678,15 +860,43 @@ namespace UnityPlanet.ModularAssembly
                 }
                 playerBody.isKinematic = true;
             }
-            enemy?.StopCombat();
+            if (CurrentMode == CombatTestMode.Horde)
+                hordeDirector?.EndSession();
+            else
+                enemy?.StopCombat();
             if (resultPanel != null)
             {
                 resultPanel.SetActive(true);
-                resultText.text =
-                    (playerWon ? "战斗胜利" : "战斗失败") +
-                    "\n" + reason;
+                if (CurrentMode == CombatTestMode.Horde &&
+                    hordeDirector != null)
+                {
+                    resultText.fontSize = 22;
+                    resultText.rectTransform.sizeDelta =
+                        new Vector2(480f, 150f);
+                    int moduleLosses = playerGraph != null
+                        ? playerGraph.CaptureUnavailableRuntimeIds().Count
+                        : 0;
+                    resultText.text =
+                        (playerWon ? "战斗胜利" : "战斗失败") +
+                        "\n" + reason +
+                        $"\n击落 {hordeDirector.Kills}  " +
+                        $"受伤 {playerTtk.accumulatedEffectiveDamage:0}  " +
+                        $"损失模块 {moduleLosses}\n" +
+                        $"峰值敌机 {hordeDirector.PeakActive}  " +
+                        $"种子 {hordeSeed}";
+                }
+                else
+                {
+                    resultText.fontSize = 28;
+                    resultText.rectTransform.sizeDelta =
+                        new Vector2(480f, 90f);
+                    resultText.text =
+                        (playerWon ? "战斗胜利" : "战斗失败") +
+                        "\n" + reason;
+                }
             }
             warningText.text = string.Empty;
+            HideThreatIndicators();
         }
 
         void RestartCombat()
@@ -716,10 +926,27 @@ namespace UnityPlanet.ModularAssembly
                 playerBody.angularVelocity = Vector3.zero;
             }
             playerBody.isKinematic = true;
-            playerBody.position = battleCenter;
-            playerBody.rotation = Quaternion.identity;
+            playerBody.position = CurrentMode == CombatTestMode.Horde
+                ? combatPlayerSpawn
+                : battleCenter;
+            playerBody.rotation = CurrentMode == CombatTestMode.Horde
+                ? combatPlayerRotation
+                : Quaternion.identity;
             playerBody.isKinematic = false;
-            SpawnEnemy();
+            combatSessionId++;
+            if (CurrentMode == CombatTestMode.Horde)
+            {
+                hordeDirector.BeginSession(
+                    playerBody,
+                    battleCenter,
+                    arena != null ? arena.WarningRadius : WarningRadius,
+                    hordeSeed,
+                    combatSessionId);
+            }
+            else
+            {
+                SpawnEnemy();
+            }
             outsideSeconds = 0f;
             ineffectiveSeconds = 0f;
             combatActive = true;
@@ -808,6 +1035,11 @@ namespace UnityPlanet.ModularAssembly
             pendingCombat = false;
             resolving = false;
             SessionKind = GridFlightSessionKind.FreeFlight;
+            VehicleCombatTeamMarker playerTeam = playerBody != null
+                ? playerBody.GetComponent<VehicleCombatTeamMarker>()
+                : null;
+            if (playerTeam != null)
+                playerTeam.Team = VehicleCombatTeam.Neutral;
             if (playerGraph != null)
             {
                 playerGraph.SetAutomaticReturnToBuild(true);
@@ -824,15 +1056,128 @@ namespace UnityPlanet.ModularAssembly
             }
             if (combatCanvas != null)
                 combatCanvas.gameObject.SetActive(false);
+            HideThreatIndicators();
             playerSnapshot = null;
+            CurrentMode = CombatTestMode.Duel;
         }
 
         void DestroyEnemy()
         {
-            if (enemy == null)
+            hordeDirector?.EndSession();
+            if (enemy != null)
+            {
+                enemy.StopCombat();
+                enemy.gameObject.SetActive(false);
+            }
+        }
+
+        void UpdateThreatIndicators()
+        {
+            if (CurrentMode != CombatTestMode.Horde ||
+                hordeDirector == null || combatCanvas == null)
+            {
+                HideThreatIndicators();
                 return;
-            enemy.StopCombat();
-            enemy.gameObject.SetActive(false);
+            }
+            Camera camera = Camera.main;
+            RectTransform canvasRect =
+                combatCanvas.GetComponent<RectTransform>();
+            if (camera == null || canvasRect == null)
+            {
+                HideThreatIndicators();
+                return;
+            }
+            int alive = Mathf.Min(
+                threatIndicators.Count,
+                hordeDirector.AliveCount);
+            bool arrivalWarning = hordeDirector.TryGetArrivalWarning(
+                out Vector3 arrivalPosition);
+            for (int index = 0; index < threatIndicators.Count; index++)
+            {
+                Text indicator = threatIndicators[index];
+                HordeEnemyVehicle target = index < alive
+                    ? hordeDirector.GetAliveEnemy(index)
+                    : null;
+                bool arrival = target == null &&
+                               arrivalWarning &&
+                               index == alive;
+                if (target == null && !arrival)
+                {
+                    indicator.gameObject.SetActive(false);
+                    continue;
+                }
+                Vector3 screen = camera.WorldToScreenPoint(
+                    arrival ? arrivalPosition : target.BodyPosition);
+                bool behind = screen.z <= 0f;
+                if (behind)
+                {
+                    screen.x = Screen.width - screen.x;
+                    screen.y = Screen.height - screen.y;
+                }
+                bool onScreen = !behind &&
+                                screen.x >= 24f && screen.x <= Screen.width - 24f &&
+                                screen.y >= 120f && screen.y <= Screen.height - 120f;
+                if (onScreen)
+                {
+                    indicator.gameObject.SetActive(false);
+                    continue;
+                }
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    canvasRect,
+                    screen,
+                    null,
+                    out Vector2 local);
+                Rect rect = canvasRect.rect;
+                float halfWidth = Mathf.Max(120f, rect.width * 0.5f - 42f);
+                float halfHeight = Mathf.Max(160f, rect.height * 0.5f - 120f);
+                Vector2 direction = local.sqrMagnitude > 0.01f
+                    ? local.normalized
+                    : Vector2.up;
+                float scale = Mathf.Min(
+                    halfWidth / Mathf.Max(0.001f, Mathf.Abs(direction.x)),
+                    halfHeight / Mathf.Max(0.001f, Mathf.Abs(direction.y)));
+                Vector2 edge = direction * scale;
+                if (Mathf.Abs(edge.x) < 100f && Mathf.Abs(edge.y) < 100f)
+                    edge = direction * 140f;
+                indicator.rectTransform.anchoredPosition = edge;
+                indicator.rectTransform.localRotation = Quaternion.Euler(
+                    0f,
+                    0f,
+                    Mathf.Atan2(-direction.x, direction.y) * Mathf.Rad2Deg);
+                indicator.color = arrival || target.IsThreatening
+                    ? new Color(1f, 0.16f, 0.06f, 1f)
+                    : new Color(1f, 0.68f, 0.16f, 0.92f);
+                indicator.gameObject.SetActive(true);
+            }
+        }
+
+        void HideThreatIndicators()
+        {
+            for (int index = 0; index < threatIndicators.Count; index++)
+                if (threatIndicators[index] != null)
+                    threatIndicators[index].gameObject.SetActive(false);
+        }
+
+        static int StableHordeSeed(string sceneName, Vector3 center)
+        {
+            unchecked
+            {
+                uint hash = 2166136261u;
+                string value = sceneName ?? string.Empty;
+                for (int index = 0; index < value.Length; index++)
+                {
+                    hash ^= value[index];
+                    hash *= 16777619u;
+                }
+                hash ^= (uint)Mathf.RoundToInt(center.x * 10f);
+                hash *= 16777619u;
+                hash ^= (uint)Mathf.RoundToInt(center.y * 10f);
+                hash *= 16777619u;
+                hash ^= (uint)Mathf.RoundToInt(center.z * 10f);
+                hash *= 16777619u;
+                hash ^= 0x484F5244u;
+                return (int)hash;
+            }
         }
 
         static Button CreateButton(
@@ -901,6 +1246,7 @@ namespace UnityPlanet.ModularAssembly
 
         void OnDestroy()
         {
+            hordeDirector?.EndSession();
             if (flight != null)
                 flight.StateChanged -= HandleFlightState;
             if (playerGraph != null)

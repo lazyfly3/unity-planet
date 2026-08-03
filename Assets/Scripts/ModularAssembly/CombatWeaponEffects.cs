@@ -828,6 +828,20 @@ namespace UnityPlanet.ModularAssembly
                 Deactivate(slot);
         }
 
+        public void ShiftWorld(Vector3 delta)
+        {
+            if (delta.sqrMagnitude < 0.000001f)
+                return;
+            foreach (LineSlot slot in lineSlots)
+            {
+                if (slot == null)
+                    continue;
+                slot.Start += delta;
+                slot.End += delta;
+                slot.Center += delta;
+            }
+        }
+
         static void Deactivate(ParticleSlot slot)
         {
             if (slot?.Root == null)

@@ -850,7 +850,11 @@ namespace UnityPlanet.ModularAssembly
             {
                 int cpu = ModuleCpuBudget.Total(model.Records);
                 GUI.Box(
-                    new Rect(Screen.width - 220f, 122f, 196f, 34f),
+                    new Rect(
+                        Screen.width * 0.5f - 98f,
+                        24f,
+                        196f,
+                        34f),
                     "CPU " + cpu + " / " + ModuleCpuBudget.Maximum);
                 return;
             }
@@ -978,7 +982,11 @@ namespace UnityPlanet.ModularAssembly
             {
                 RaycastHit hit = Hits[index];
                 if (hit.collider == null ||
-                    hit.collider.transform.IsChildOf(ownerRoot) ||
+                    (ownerRoot != null &&
+                     hit.collider.transform.IsChildOf(ownerRoot)) ||
+                    VehicleCombatTeamUtility.AreFriendly(
+                        ownerRoot,
+                        hit.collider.transform) ||
                     hit.distance >= nearest)
                     continue;
                 nearest = hit.distance;
@@ -1016,10 +1024,13 @@ namespace UnityPlanet.ModularAssembly
             Vector3 direction,
             GameObject source)
         {
+            if (collider == null ||
+                VehicleCombatTeamUtility.AreFriendly(
+                    source,
+                    collider.transform))
+                return;
             ISpaceDamageable damageable =
-                collider == null
-                    ? null
-                    : FindDamageable(collider.transform);
+                FindDamageable(collider.transform);
             damageable?.ApplyDamage(new SpaceDamageInfo(
                 damage,
                 point,
@@ -1049,7 +1060,11 @@ namespace UnityPlanet.ModularAssembly
             {
                 Collider collider = Overlaps[index];
                 if (collider == null ||
-                    collider.transform.IsChildOf(ownerRoot))
+                    (ownerRoot != null &&
+                     collider.transform.IsChildOf(ownerRoot)) ||
+                    VehicleCombatTeamUtility.AreFriendly(
+                        source,
+                        collider.transform))
                     continue;
                 ISpaceDamageable target =
                     FindDamageable(collider.transform);
@@ -1089,6 +1104,7 @@ namespace UnityPlanet.ModularAssembly
             public LineRenderer Line;
             public Transform HitRoot;
             public ParticleSystem[] Particles;
+            public MaterialPropertyBlock Properties;
             public float EndsAt;
         }
 
@@ -1101,22 +1117,42 @@ namespace UnityPlanet.ModularAssembly
         GameObject hovlLaserPrefab;
         CombatWeaponEffectPool combatWeaponEffects;
         bool laserValidationErrorLogged;
+        bool fallbackMaterialErrorLogged;
 
         void Awake()
         {
-            Shader unlit = Shader.Find(
-                               "Universal Render Pipeline/Unlit") ??
-                           Shader.Find("Unlit/Color");
-            lineMaterial = new Material(unlit);
-            particleMaterial = new Material(unlit);
+            Shader unlit = ResolveRuntimeUnlitShader();
+            if (unlit != null)
+            {
+                lineMaterial = new Material(unlit)
+                {
+                    name = "RuntimeWeaponFallbackLine"
+                };
+                particleMaterial = new Material(unlit)
+                {
+                    name = "RuntimeWeaponFallbackParticle"
+                };
+            }
+            else
+            {
+                LogFallbackMaterialError();
+            }
             hovlLaserPrefab = Resources.Load<GameObject>(
                 "WeaponEffects/HovlLaserRay");
+            CombatTransientRoot.EnsureCameraDepthTexture();
             if (hovlLaserPrefab != null &&
                 !HasRenderableLaserMaterials(hovlLaserPrefab))
             {
                 LogLaserValidationError();
                 hovlLaserPrefab = null;
             }
+            EnsureCombatWeaponEffects();
+        }
+
+        void EnsureCombatWeaponEffects()
+        {
+            if (combatWeaponEffects != null)
+                return;
             Transform transientRoot = CombatTransientRoot.GetOrCreate();
             combatWeaponEffects =
                 transientRoot.GetComponent<CombatWeaponEffectPool>() ??
@@ -1125,8 +1161,41 @@ namespace UnityPlanet.ModularAssembly
             combatWeaponEffects.Prewarm();
         }
 
+        static Shader ResolveRuntimeUnlitShader()
+        {
+            string[] candidates =
+            {
+                "Sprites/Default",
+                "Particles/Standard Unlit",
+                "Unlit/Color"
+            };
+            foreach (string name in candidates)
+            {
+                Shader shader = Shader.Find(name);
+                if (shader != null &&
+                    shader.isSupported &&
+                    shader.name.IndexOf(
+                        "InternalErrorShader",
+                        StringComparison.OrdinalIgnoreCase) < 0)
+                    return shader;
+            }
+            return null;
+        }
+
+        void LogFallbackMaterialError()
+        {
+            if (fallbackMaterialErrorLogged)
+                return;
+            fallbackMaterialErrorLogged = true;
+            Debug.LogError(
+                "[Combat VFX] No supported Built-in unlit shader is " +
+                "available for the emergency weapon visual fallback.");
+        }
+
         public void Prewarm()
         {
+            RemoveDestroyedSlots();
+            EnsureCombatWeaponEffects();
             LineSlot line = AcquireLine();
             if (line != null && line.Root != null)
                 line.Root.SetActive(false);
@@ -1141,6 +1210,7 @@ namespace UnityPlanet.ModularAssembly
 
         void Update()
         {
+            RemoveDestroyedSlots();
             foreach (LineSlot slot in lines)
                 if (slot.Root.activeSelf && Time.time >= slot.EndsAt)
                     slot.Root.SetActive(false);
@@ -1173,9 +1243,15 @@ namespace UnityPlanet.ModularAssembly
                     lifetime))
                 return;
             LineSlot slot = AcquireLine();
+            if (slot == null)
+            {
+                LogFallbackMaterialError();
+                return;
+            }
             slot.Root.name = "Tracer_" +
                              ShortEffectName(sourceEffect);
             slot.Root.SetActive(true);
+            slot.Line.enabled = true;
             slot.Line.SetPosition(0, start);
             slot.Line.SetPosition(1, end);
             slot.Line.startColor = color;
@@ -1200,6 +1276,7 @@ namespace UnityPlanet.ModularAssembly
             bool hasHit,
             float lifetime)
         {
+            CombatTransientRoot.EnsureCameraDepthTexture();
             LaserSlot slot = AcquireLaser();
             if (slot == null)
             {
@@ -1239,18 +1316,39 @@ namespace UnityPlanet.ModularAssembly
             slot.Line.positionCount = 2;
             slot.Line.SetPosition(0, start);
             slot.Line.SetPosition(1, end);
-            Material beamMaterial = slot.Line.material;
+            Material beamMaterial = slot.Line.sharedMaterial;
             float distance = delta.magnitude;
+            MaterialPropertyBlock properties =
+                slot.Properties ?? new MaterialPropertyBlock();
+            slot.Properties = properties;
+            slot.Line.GetPropertyBlock(properties);
             if (beamMaterial != null &&
                 beamMaterial.HasProperty("_MainTex"))
-                beamMaterial.SetTextureScale(
-                    "_MainTex",
-                    new Vector2(Mathf.Max(1f, distance), 1f));
+            {
+                Vector2 offset =
+                    beamMaterial.GetTextureOffset("_MainTex");
+                properties.SetVector(
+                    "_MainTex_ST",
+                    new Vector4(
+                        Mathf.Max(1f, distance),
+                        1f,
+                        offset.x,
+                        offset.y));
+            }
             if (beamMaterial != null &&
                 beamMaterial.HasProperty("_Noise"))
-                beamMaterial.SetTextureScale(
-                    "_Noise",
-                    new Vector2(Mathf.Max(1f, distance), 1f));
+            {
+                Vector2 offset =
+                    beamMaterial.GetTextureOffset("_Noise");
+                properties.SetVector(
+                    "_Noise_ST",
+                    new Vector4(
+                        Mathf.Max(1f, distance),
+                        1f,
+                        offset.x,
+                        offset.y));
+            }
+            slot.Line.SetPropertyBlock(properties);
 
             if (slot.HitRoot != null)
             {
@@ -1285,6 +1383,7 @@ namespace UnityPlanet.ModularAssembly
             string sourceEffect,
             Transform weaponRoot)
         {
+            EnsureCombatWeaponEffects();
             if (combatWeaponEffects != null &&
                 combatWeaponEffects.SpawnMuzzle(
                     position,
@@ -1317,6 +1416,7 @@ namespace UnityPlanet.ModularAssembly
             string sourceEffect,
             float radius)
         {
+            EnsureCombatWeaponEffects();
             if (string.Equals(
                     sourceEffect,
                     "HovlLaserRayHit",
@@ -1377,6 +1477,11 @@ namespace UnityPlanet.ModularAssembly
             float speed)
         {
             ParticleSystem system = AcquireParticles();
+            if (system == null)
+            {
+                LogFallbackMaterialError();
+                return;
+            }
             system.gameObject.name = effectName;
             system.transform.position = position;
             system.transform.rotation = Quaternion.LookRotation(
@@ -1395,6 +1500,7 @@ namespace UnityPlanet.ModularAssembly
 
         LaserSlot AcquireLaser()
         {
+            RemoveDestroyedSlots();
             if (hovlLaserPrefab == null)
                 return null;
             LaserSlot slot = lasers.Find(item => !item.Root.activeSelf);
@@ -1430,7 +1536,8 @@ namespace UnityPlanet.ModularAssembly
                 Line = line,
                 HitRoot = hitRoot,
                 Particles =
-                    root.GetComponentsInChildren<ParticleSystem>(true)
+                    root.GetComponentsInChildren<ParticleSystem>(true),
+                Properties = new MaterialPropertyBlock()
             };
             root.SetActive(false);
             lasers.Add(slot);
@@ -1489,6 +1596,9 @@ namespace UnityPlanet.ModularAssembly
 
         LineSlot AcquireLine()
         {
+            RemoveDestroyedSlots();
+            if (!IsRenderableMaterial(lineMaterial))
+                return null;
             LineSlot slot = lines.Find(item => !item.Root.activeSelf);
             if (slot != null)
                 return slot;
@@ -1510,6 +1620,9 @@ namespace UnityPlanet.ModularAssembly
 
         ParticleSystem AcquireParticles()
         {
+            RemoveDestroyedSlots();
+            if (!IsRenderableMaterial(particleMaterial))
+                return null;
             ParticleSystem system = particles.Find(item =>
                 item != null && !item.IsAlive(true));
             if (system != null)
@@ -1535,6 +1648,109 @@ namespace UnityPlanet.ModularAssembly
             renderer.lengthScale = 2f;
             particles.Add(system);
             return system;
+        }
+
+        public void Clear()
+        {
+            RemoveDestroyedSlots();
+            foreach (LineSlot slot in lines)
+            {
+                if (slot?.Root == null)
+                    continue;
+                if (slot.Line != null)
+                    slot.Line.enabled = false;
+                slot.Root.SetActive(false);
+                slot.EndsAt = 0f;
+            }
+            foreach (LaserSlot slot in lasers)
+            {
+                if (slot?.Root == null)
+                    continue;
+                foreach (ParticleSystem particle in slot.Particles)
+                {
+                    if (particle == null)
+                        continue;
+                    particle.Stop(
+                        true,
+                        ParticleSystemStopBehavior.StopEmittingAndClear);
+                    particle.Clear(true);
+                }
+                if (slot.Line != null)
+                    slot.Line.enabled = false;
+                slot.Root.SetActive(false);
+                slot.EndsAt = 0f;
+            }
+            foreach (ParticleSystem particle in particles)
+            {
+                if (particle == null)
+                    continue;
+                particle.Stop(
+                    true,
+                    ParticleSystemStopBehavior.StopEmittingAndClear);
+                particle.Clear(true);
+            }
+        }
+
+        void OnDisable()
+        {
+            Clear();
+        }
+
+        void OnDestroy()
+        {
+            DestroyOwnedVisuals();
+            DestroyRuntimeMaterial(lineMaterial);
+            DestroyRuntimeMaterial(particleMaterial);
+            lineMaterial = null;
+            particleMaterial = null;
+        }
+
+        void DestroyOwnedVisuals()
+        {
+            foreach (LineSlot slot in lines)
+                DestroyRuntimeObject(slot?.Root);
+            foreach (LaserSlot slot in lasers)
+                DestroyRuntimeObject(slot?.Root);
+            foreach (ParticleSystem particle in particles)
+                DestroyRuntimeObject(
+                    particle == null ? null : particle.gameObject);
+            lines.Clear();
+            lasers.Clear();
+            particles.Clear();
+        }
+
+        void RemoveDestroyedSlots()
+        {
+            lines.RemoveAll(item =>
+                item == null ||
+                item.Root == null ||
+                item.Line == null);
+            lasers.RemoveAll(item =>
+                item == null ||
+                item.Root == null ||
+                item.Line == null);
+            particles.RemoveAll(item => item == null);
+        }
+
+        static void DestroyRuntimeObject(GameObject value)
+        {
+            if (value == null)
+                return;
+            value.SetActive(false);
+            if (Application.isPlaying)
+                Destroy(value);
+            else
+                DestroyImmediate(value);
+        }
+
+        static void DestroyRuntimeMaterial(Material material)
+        {
+            if (material == null)
+                return;
+            if (Application.isPlaying)
+                Destroy(material);
+            else
+                DestroyImmediate(material);
         }
 
         static string ShortEffectName(string source)
@@ -1624,6 +1840,9 @@ namespace UnityPlanet.ModularAssembly
 
     public sealed class WeaponProjectile : MonoBehaviour
     {
+        static readonly HashSet<string> InvalidFlightVisualErrors =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         readonly RaycastHit[] hits = new RaycastHit[32];
         WeaponProjectilePool pool;
         WeaponVisualPool visuals;
@@ -1645,6 +1864,13 @@ namespace UnityPlanet.ModularAssembly
             profile != null &&
             profile.delivery ==
             WeaponDeliveryKind.GuidedProjectile;
+
+        [RuntimeInitializeOnLoadMethod(
+            RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetValidationErrors()
+        {
+            InvalidFlightVisualErrors.Clear();
+        }
 
         public void Initialize(WeaponProjectilePool source)
         {
@@ -1762,6 +1988,25 @@ namespace UnityPlanet.ModularAssembly
                         <ParticleSystem>(true);
             }
 
+            // A pooled projectile may have used a non-Forge profile between
+            // two energy shots, which intentionally leaves this cached child
+            // inactive. Reactivate the candidate before evaluating only the
+            // renderers that would actually be visible.
+            flightVisual.SetActive(true);
+            if (!Forge3DEffectPool.HasRenderableRendererSet(flightVisual))
+            {
+                if (InvalidFlightVisualErrors.Add(resource))
+                {
+                    Debug.LogError(
+                        "[Combat VFX] Projectile visual '" + resource +
+                        "' contains an active renderer with a missing or " +
+                        "unsupported material. The native projectile body " +
+                        "remains enabled.");
+                }
+                RejectFlightVisual();
+                return;
+            }
+
             if (bodyRenderer != null)
                 bodyRenderer.enabled = false;
             flightVisual.transform.localScale =
@@ -1776,6 +2021,24 @@ namespace UnityPlanet.ModularAssembly
                     ParticleSystemStopBehavior.StopEmittingAndClear);
                 particle.Play(true);
             }
+        }
+
+        void RejectFlightVisual()
+        {
+            if (flightVisual != null)
+            {
+                flightVisual.SetActive(false);
+                if (Application.isPlaying)
+                    Destroy(flightVisual);
+                else
+                    DestroyImmediate(flightVisual);
+            }
+            flightVisual = null;
+            flightVisualResource = null;
+            flightVisualBaseScale = Vector3.one;
+            flightVisualParticles = Array.Empty<ParticleSystem>();
+            if (bodyRenderer != null)
+                bodyRenderer.enabled = true;
         }
 
         void FixedUpdate()
@@ -1885,6 +2148,9 @@ namespace UnityPlanet.ModularAssembly
                 if (hit.collider == null ||
                     (owner != null &&
                      hit.collider.transform.IsChildOf(owner)) ||
+                    VehicleCombatTeamUtility.AreFriendly(
+                        owner,
+                        hit.collider.transform) ||
                     hit.distance >= nearest)
                     continue;
                 nearest = hit.distance;

@@ -438,7 +438,15 @@ public sealed class InfinitePlanarSurfaceWorld :
         }
         if (root == transform || !shiftedTransforms.Add(root))
             return;
+        Vector3 before = root.position;
         root.position -= shift;
+        Vector3 worldDelta = root.position - before;
+        foreach (MonoBehaviour behaviour in
+                 root.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            if (behaviour is IPlanetFloatingOriginShiftReceiver receiver)
+                receiver.OnPlanetFloatingOriginShift(worldDelta);
+        }
     }
 
     IEnumerator PlacePlayerWhenCollisionReady(double x, double z)
