@@ -7,6 +7,7 @@ using SpacecraftEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityPlanet.ModularAssembly;
+using UnityPlanet.SpaceStation;
 
 public static class ModularSpaceLaunchStatus
 {
@@ -663,9 +664,13 @@ public sealed class InterstellarModularVehicleLoader : MonoBehaviour
                 model,
                 contentService.Catalog);
         var store = new ModularBlueprintStore();
-        if (!store.TryLoad(
-                out ModularBlueprintData blueprint,
-                out string loadError))
+        ModularBlueprintData blueprint;
+        string loadError = string.Empty;
+        bool hasTransientBlueprint =
+            SpaceStationFlowContext.TryTakePendingSpaceBlueprint(
+                out blueprint);
+        if (!hasTransientBlueprint &&
+            !store.TryLoad(out blueprint, out loadError))
         {
             completed?.Invoke(
                 false,

@@ -33,8 +33,8 @@ public sealed class StartMenuController : MonoBehaviour
     [SerializeField] Text deleteMessageText;
 
     [Header("Scenes")]
-    [SerializeField] string workshopSceneName = "SpacecraftWorkshop";
-    [SerializeField] string modularAssemblySceneName = "ModularAssemblyLab";
+    [SerializeField] string spaceStationSceneName =
+        "SpaceStationUpgradeTest";
 
     readonly List<StartMenuSaveRow> rows = new List<StartMenuSaveRow>();
     StartMenuSaveRow selectedRow;
@@ -233,27 +233,16 @@ selectedRow = row;
             : enterButton.GetComponentInChildren<Text>();
         if (enterLabel != null)
         {
-            SpacecraftBlueprintRoute route = usable
-                ? SpacecraftBlueprintRouteResolver.Resolve(
-                    selectedRow.Slot.SlotId,
-                    launchModularAssembly)
-                : SpacecraftBlueprintRoute.ModularAssembly;
-            enterLabel.text = route == SpacecraftBlueprintRoute.LegacyWorkshop
-                ? "进入飞船工坊"
-                : "进入模块拼装";
+            enterLabel.text = "进入空间站";
         }
     }
 
     void LoadConstructionScene(string slotId, bool forceModular)
     {
-        SpacecraftBlueprintRoute route =
-            SpacecraftBlueprintRouteResolver.Resolve(
-                slotId,
-                forceModular);
         SceneManager.LoadScene(
-            route == SpacecraftBlueprintRoute.LegacyWorkshop
-                ? workshopSceneName
-                : modularAssemblySceneName,
+            string.IsNullOrWhiteSpace(spaceStationSceneName)
+                ? "SpaceStationUpgradeTest"
+                : spaceStationSceneName,
             LoadSceneMode.Single);
     }
 

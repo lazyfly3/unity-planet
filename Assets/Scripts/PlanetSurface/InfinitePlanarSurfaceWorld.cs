@@ -686,7 +686,11 @@ public sealed class InfinitePlanarSurfaceEntryCoordinator : MonoBehaviour
         VoxelPlanetPlayerController player = world.Player;
         if (loadingUI != null)
             yield return loadingUI.CompleteAndFade(0.6f);
-        if (player != null)
+        if (restorer != null && restorer.IsVehicleOnlyMode)
+        {
+            restorer.SetGameplayReady(true);
+        }
+        else if (player != null)
         {
             player.SetSurfacePhysicsReady(true);
             player.SetGameplayInputBlocked(false);

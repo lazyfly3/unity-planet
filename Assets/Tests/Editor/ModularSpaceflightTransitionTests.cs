@@ -152,6 +152,50 @@ public sealed class ModularSpaceflightTransitionTests
     }
 
     [Test]
+    public void PlanarSurfaceModularLoaderStartsWithExclusiveRc3Physics()
+    {
+        GameObject runtimeRoot =
+            new GameObject("PlanarSurfaceModularLoaderTest");
+        GameObject vehicleRoot = null;
+        try
+        {
+            PlanarSurfaceModularVehicleLoader loader =
+                runtimeRoot.AddComponent<
+                    PlanarSurfaceModularVehicleLoader>();
+            loader.Prepare(null, null);
+            Rigidbody body = loader.Body;
+            vehicleRoot = body.gameObject;
+
+            Assert.That(body.useGravity, Is.False);
+            Assert.That(body.drag, Is.Zero);
+            Assert.That(body.angularDrag, Is.Zero);
+            Assert.That(body.isKinematic, Is.True);
+            Assert.That(
+                vehicleRoot.GetComponent<SpacecraftIfcsMotor>(),
+                Is.Null);
+            Assert.That(
+                vehicleRoot.GetComponent<KeyboardMouseFlightInput>(),
+                Is.Null);
+            Assert.That(
+                vehicleRoot.GetComponent<PlanetSurfaceFlightEnvironment>(),
+                Is.Null);
+            Assert.That(
+                vehicleRoot.GetComponent<SurfaceSpacecraftController>(),
+                Is.Null,
+                "Vehicle-only planet entry must not add the legacy F disembark controller.");
+            Assert.That(
+                vehicleRoot.GetComponent<IRobocraftPilotAimSource>(),
+                Is.TypeOf<PlanarSurfacePilotAimSource>());
+        }
+        finally
+        {
+            if (vehicleRoot != null)
+                Object.DestroyImmediate(vehicleRoot);
+            Object.DestroyImmediate(runtimeRoot);
+        }
+    }
+
+    [Test]
     public void ModularSpaceAimUsesWorldHeadingAndYieldsToExternalControl()
     {
         GameObject root = new GameObject("ModularSpaceAimTest");
