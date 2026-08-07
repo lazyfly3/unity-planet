@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Cold Sunset
-  m_Shader: {fileID: 10700, guid: 0000000000000000f000000000000000, type: 0}
+  m_Shader: {fileID: 104, guid: 0000000000000000f000000000000000, type: 0}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -24,30 +24,33 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BackTex:
-        m_Texture: {fileID: 2800000, guid: c9048563aff5b4ba8b76134bd1e8c6a8, type: 3}
+        m_Texture: {fileID: 2800000, guid: e9b1fd6c6d1a77743b3ba6e02e60c2d8, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DownTex:
-        m_Texture: {fileID: 2800000, guid: 6d049c4f333d64734a9f20000a8dc652, type: 3}
+        m_Texture: {fileID: 2800000, guid: d645c7697bfa1544983cb849428a1d7e, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _FrontTex:
-        m_Texture: {fileID: 2800000, guid: 9b0acc4cee1904c44b8e97f00cb1412b, type: 3}
+        m_Texture: {fileID: 2800000, guid: 12adfc70e6bb8254fb313cc9ac5f687b, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _LeftTex:
-        m_Texture: {fileID: 2800000, guid: e0a90aff5af3b4f6ea0ada44115e29f0, type: 3}
+        m_Texture: {fileID: 2800000, guid: ad162c35816c9454e8049cc8e8dc2b9e, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _RightTex:
-        m_Texture: {fileID: 2800000, guid: 14658c1a76a8b48c2806bb09c582eeaa, type: 3}
+        m_Texture: {fileID: 2800000, guid: 5153196b4228a3349870afe3b854f428, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _UpTex:
-        m_Texture: {fileID: 2800000, guid: a33a2facdeb844d12b0e102afd385a37, type: 3}
+        m_Texture: {fileID: 2800000, guid: 3de2157e1cf14fc46afc13f15d735371, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
-    m_Colors: []
+    m_Floats:
+    - _Exposure: 1
+    - _Rotation: 0
+    m_Colors:
+    - _Tint: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
   m_BuildTextureStacks: []

@@ -4,6 +4,7 @@ using NUnit.Framework;
 using SpacecraftEditor;
 using UnityEngine;
 using UnityPlanet.ModularAssembly;
+using UnityPlanet.SpaceStation;
 
 public sealed class ModularSpaceflightTransitionTests
 {
@@ -26,8 +27,44 @@ public sealed class ModularSpaceflightTransitionTests
     [TearDown]
     public void TearDown()
     {
+        SpaceStationFlowContext.EnterStation();
         Object.DestroyImmediate(core);
         Object.DestroyImmediate(structure);
+    }
+
+    [TestCase(VehicleCoreAssistMode.Standard)]
+    [TestCase(VehicleCoreAssistMode.Training)]
+    [TestCase(VehicleCoreAssistMode.Disabled)]
+    public void FormalExpeditionPreservesSelectedCoreAssistMode(
+        VehicleCoreAssistMode selectedMode)
+    {
+        GridAssemblyModel model = CreateModelWithStructure();
+        model.SetCoreAssistMode(selectedMode);
+
+        SpaceStationFlowContext.PrepareSpaceLaunch(
+            model.CaptureBlueprint());
+
+        Assert.That(SpaceStationFlowContext.TryTakePendingSpaceBlueprint(
+            out ModularBlueprintData spaceBlueprint), Is.True);
+        Assert.That(spaceBlueprint.coreAssistMode,
+            Is.EqualTo(selectedMode));
+        Assert.That(SpaceStationFlowContext.TryGetActiveExpeditionBlueprint(
+            out ModularBlueprintData planetCombatBlueprint), Is.True);
+        Assert.That(planetCombatBlueprint.coreAssistMode,
+            Is.EqualTo(selectedMode));
+    }
+
+    [Test]
+    public void InitialAssemblyPrimaryButtonEntersSpaceStation()
+    {
+        SpaceStationFlowContext.BeginInitialAssembly();
+
+        Assert.That(SpaceStationFlowContext.MustSaveInitialAssembly, Is.True);
+        Assert.That(SpaceStationFlowContext.CanReturnToStationFromAssembly,
+            Is.True);
+        Assert.That(AirBuildExperienceController.ResolvePrimaryDestinationLabel(
+            SpaceStationFlowContext.MustSaveInitialAssembly),
+            Is.EqualTo("进入空间站"));
     }
 
     [TestCase(false, false, false, SpacecraftBlueprintRoute.ModularAssembly)]

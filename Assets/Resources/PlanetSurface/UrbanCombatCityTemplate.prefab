@@ -1,0 +1,108 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &9132384015936400294
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3922778992126534246}
+  - component: {fileID: 4414024592503589615}
+  m_Layer: 0
+  m_Name: UrbanCombatCityTemplate
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &3922778992126534246
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9132384015936400294}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4414024592503589615
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9132384015936400294}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb26a51d6ab541349bbe3ac077dc8c71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  settings:
+    seed: 7319
+    mission: 0
+    mapSize: 1664
+    combatSpeed: 55
+    turnRadius: 95
+    weaponRange: 480
+    wingspan: 18
+    lowAltitude: 70
+    mediumAltitude: 135
+    highAltitude: 220
+    maximumAltitude: 350
+    buildingSpacing: 63.6
+    buildingDensity: 0.91
+    maximumAttempts: 10
+  palette:
+    road: {fileID: 2100000, guid: 514fcb48999763744ab368bc720b155a, type: 2}
+    asphalt: {fileID: 2100000, guid: 514fcb48999763744ab368bc720b155a, type: 2}
+    cityBlockPaving: {fileID: 2100000, guid: 357cee6c340117c4b91cd36d18ec3bb0, type: 2}
+    sidewalk: {fileID: 2100000, guid: 55f3a5083a34cdd40978457afe6af730, type: 2}
+    curb: {fileID: 2100000, guid: 27aca6b40a801c94abf0dc0bd952d41f, type: 2}
+    laneMarking: {fileID: 2100000, guid: adde1f043ad39ca4fb85b7b9e9a06772, type: 2}
+    dangerLaneMarking: {fileID: 2100000, guid: 233e0f26e21f55d418f6f425529c2776, type: 2}
+    repairCourtyard: {fileID: 2100000, guid: d507cbc790d31b249a89b2c5f24c5e5c, type: 2}
+    parkSurface: {fileID: 2100000, guid: eb0bfafe91378634fa9648dda3db28ad, type: 2}
+    lowBuilding: {fileID: 2100000, guid: 1c4e99caba350b049907c70d73e5200a, type: 2}
+    mediumBuilding: {fileID: 2100000, guid: cf2baac4ccf65b140bb7d7852a8f991c, type: 2}
+    highBuilding: {fileID: 2100000, guid: 0eca4ac245d68864f832d2431fc99657, type: 2}
+    facility: {fileID: 2100000, guid: 0da3a72c028927447a9a56b8eb4fb505, type: 2}
+    mainRoute: {fileID: 2100000, guid: 3a0695307b7644a47930ff16853c46ec, type: 2}
+    maskedRoute: {fileID: 2100000, guid: dd5ee052cb09bac4da18e8c69df8a576, type: 2}
+    longRangeRoute: {fileID: 2100000, guid: 1595c79274fd79442ad3acd72d3b28e5, type: 2}
+    suicideRoute: {fileID: 2100000, guid: 40796ef02ff0c4c41ac61b3c1271df97, type: 2}
+    rangedRoute: {fileID: 2100000, guid: ad9324b21f6dfd94db880ac16e9bbbf8, type: 2}
+    spawn: {fileID: 2100000, guid: 8c0c3fdee8a7926498bdb7f2e1ae81a7, type: 2}
+    objective: {fileID: 2100000, guid: 7ee803f48c6feab46b69f39474cbb9f2, type: 2}
+    maneuverVolume: {fileID: 2100000, guid: 1cde7f7dd27b7d340875b278786e9ee9, type: 2}
+    recoveryVolume: {fileID: 2100000, guid: fa3ea89967fe3f9448f11714385f4b03, type: 2}
+    occlusionVolume: {fileID: 2100000, guid: 48bb740249e0be24d8ac57a1f028efd8, type: 2}
+    exposureVolume: {fileID: 2100000, guid: 8b191ead6a225894caea7e4f106a26cc, type: 2}
+  buildingCatalog: {fileID: 11400000, guid: 502d3b97934aec24c8df7eaa640beb2b, type: 2}
+  darkCity2Catalog: {fileID: 11400000, guid: 39f6900667b79fe45a6cbfed552fd235, type: 2}
+  roadJunctionPrefab: {fileID: 0}
+  parkTreePrefab: {fileID: 0}
+  rooftopMechanicalPrefab: {fileID: 0}
+  rooftopBillboardPrefabs: []
+  streetLightPrefab: {fileID: 0}
+  parkPlanterPrefab: {fileID: 0}
+  showSemanticGizmos: 1
+  showLabels: 1
+  showRuntimePanel: 1
+  keepBuildingColliders: 1
+  destructionSettings:
+    maximumPhysicalDebris: 48
+    maximumVisualDebris: 96
+    debrisLifetime: 7.5
+    physicalCollisionSeconds: 1.35
+    highSpeedImpactThreshold: 34
+    impactDamageScale: 1
+    demolitionIntegrityFraction: 0.48
+    normalProjectileDamageScale: 0.08
+    explosionDamageScale: 0.38

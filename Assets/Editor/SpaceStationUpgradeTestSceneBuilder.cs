@@ -7,12 +7,14 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using UnityPlanet.SpaceStation;
+using UnityPlanet.SpaceStation.Enhancement;
 
 public static class SpaceStationUpgradeTestSceneBuilder
 {
     public const string SourceScenePath = "Assets/ThirdParty/SciFiSpaceModular/SourceScene/SciFiSpaceStationDemo.unity";
     public const string TargetScenePath = "Assets/Scenes/SpaceStationUpgradeTest.unity";
     public const string DefaultShipPath = "Assets/SpacecraftEditor/ExternalFleet/Prefabs/Hulls/sf_stealth_fighter.prefab";
+    public const string CelesteNpcPath = "Assets/Ida Faber/Stellar Girl Celeste/Prefabs/SK_Celeste_01 Blue.prefab";
 
     static readonly Vector3 DockCenter = new Vector3(-20.54f, 0f, 1.2f);
     // Center of the room whose unnumbered floor tile is named "Floor01".
@@ -25,6 +27,7 @@ public static class SpaceStationUpgradeTestSceneBuilder
     {
         RequireAsset<SceneAsset>(SourceScenePath);
         GameObject shipPrefab = RequireAsset<GameObject>(DefaultShipPath);
+        GameObject celestePrefab = RequireAsset<GameObject>(CelesteNpcPath);
 
         string targetDirectory = Path.GetDirectoryName(TargetScenePath)?.Replace('\\', '/');
         if (!string.IsNullOrEmpty(targetDirectory) && !AssetDatabase.IsValidFolder(targetDirectory))
@@ -49,6 +52,7 @@ public static class SpaceStationUpgradeTestSceneBuilder
         GameObject systems = CreateSceneOrganization();
         GameObject dock = CreateDockingBay(systems.transform, shipPrefab);
         CreateStationLights(systems.transform);
+        CreateCelesteNpc(systems.transform, environment, celestePrefab);
         GameObject player = CreatePlayer(systems.transform, dock.transform);
         int automaticDoorCount = ConfigureAutomaticDoors(environment, systems.transform, player.transform);
         Transform defaultShip = dock.transform.Find(
@@ -448,6 +452,30 @@ public static class SpaceStationUpgradeTestSceneBuilder
         CreateHangarLight(parent, "DockKeyLight", DockCenter + new Vector3(0f, 5.45f, 0f), new Color(0.76f, 0.90f, 1f), 2.25f, true);
         CreateHangarLight(parent, "DockWarmLight_A", DockCenter + new Vector3(0f, 4.2f, -6.4f), new Color(1f, 0.48f, 0.22f), 1.35f, false);
         CreateHangarLight(parent, "DockWarmLight_B", DockCenter + new Vector3(0f, 4.2f, 6.4f), new Color(1f, 0.48f, 0.22f), 1.35f, false);
+
+        // The source station has emissive ceiling panels but no actual lights outside
+        // the docking bay. Keep these short-range fills on the room/corridor side of
+        // x = -16.5 so the hangar lighting remains visually independent.
+        Color interiorColor = new Color(0.76f, 0.88f, 1f);
+        CreateInteriorLight(parent, "InteriorFill_Main_South", new Vector3(4f, 2.45f, -2f), interiorColor, 1.30f);
+        CreateInteriorLight(parent, "InteriorFill_Main_North", new Vector3(4f, 2.45f, 4f), interiorColor, 1.30f);
+        CreateInteriorLight(parent, "InteriorFill_Corridor_South", new Vector3(-12.5f, 2.45f, -5f), interiorColor, 1.20f);
+        CreateInteriorLight(parent, "InteriorFill_Corridor_Center", new Vector3(-12.5f, 2.45f, 1f), interiorColor, 1.20f);
+        CreateInteriorLight(parent, "InteriorFill_Corridor_North", new Vector3(-12.5f, 2.45f, 7f), interiorColor, 1.20f);
+    }
+
+    static void CreateInteriorLight(Transform parent, string name, Vector3 position, Color color, float intensity)
+    {
+        GameObject lightObject = new GameObject(name);
+        lightObject.transform.SetParent(parent, false);
+        lightObject.transform.position = position;
+        Light light = lightObject.AddComponent<Light>();
+        light.type = LightType.Point;
+        light.color = color;
+        light.intensity = intensity;
+        light.range = 5.5f;
+        light.shadows = LightShadows.None;
+        light.renderMode = LightRenderMode.Auto;
     }
 
     static void CreateHangarLight(Transform parent, string name, Vector3 position, Color color, float intensity, bool shadows)
@@ -461,6 +489,114 @@ public static class SpaceStationUpgradeTestSceneBuilder
         light.intensity = intensity;
         light.range = 11f;
         light.shadows = shadows ? LightShadows.Soft : LightShadows.None;
+    }
+
+    static void CreateCelesteNpc(Transform systems, GameObject environment, GameObject prefab)
+    {
+        Transform npcParent = systems.Find("FutureNPCs");
+        if (npcParent == null)
+        {
+            throw new InvalidOperationException("FutureNPCs scene group was not created.");
+        }
+
+        Transform floor = RequireSceneTransform(
+            environment,
+            "Floor01 (10)",
+            // Vendor prefab pivot is at the opposite tile corner; renderer bounds
+            // below provide the actual walkable deck center (-10.5, 0, 1).
+            new Vector3(-8.5f, 0f, -1f));
+        Bounds floorBounds = CalculateWorldRendererBounds(floor.gameObject);
+
+        GameObject npc = (GameObject)PrefabUtility.InstantiatePrefab(
+            prefab,
+            systems.gameObject.scene);
+        npc.name = "NPC_Celeste_Floor01_10";
+        npc.transform.SetParent(npcParent, true);
+        npc.transform.SetPositionAndRotation(Vector3.zero, Quaternion.Euler(0f, -90f, 0f));
+        npc.transform.localScale = Vector3.one;
+
+        Bounds initialBounds = CalculateWorldRendererBounds(npc);
+        float scale = 1.78f / Mathf.Max(0.01f, initialBounds.size.y);
+        npc.transform.localScale = Vector3.one * scale;
+        npc.transform.position = new Vector3(floorBounds.center.x, 0f, floorBounds.center.z);
+
+        Bounds scaledBounds = CalculateWorldRendererBounds(npc);
+        npc.transform.position += Vector3.up * (floorBounds.max.y + 0.008f - scaledBounds.min.y);
+
+        CapsuleCollider collider = npc.AddComponent<CapsuleCollider>();
+        collider.direction = 1;
+        collider.isTrigger = false;
+        collider.radius = 0.32f;
+        collider.height = 1.88f;
+        collider.center = new Vector3(0f, 0.905f, 0f);
+
+        npc.AddComponent<SpaceStationEnhancementNpcController>();
+
+        ApplyNaturalStandingPose(npc);
+        foreach (SkinnedMeshRenderer renderer in npc.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+        {
+            renderer.updateWhenOffscreen = false;
+            renderer.shadowCastingMode = ShadowCastingMode.On;
+            renderer.receiveShadows = true;
+        }
+    }
+
+    static void ApplyNaturalStandingPose(GameObject npc)
+    {
+        Animator animator = npc.GetComponentInChildren<Animator>(true);
+        if (animator == null || animator.avatar == null || !animator.avatar.isHuman)
+        {
+            return;
+        }
+
+        PoseArm(
+            animator,
+            HumanBodyBones.LeftUpperArm,
+            HumanBodyBones.LeftLowerArm,
+            HumanBodyBones.LeftHand,
+            npc.transform,
+            -1f);
+        PoseArm(
+            animator,
+            HumanBodyBones.RightUpperArm,
+            HumanBodyBones.RightLowerArm,
+            HumanBodyBones.RightHand,
+            npc.transform,
+            1f);
+        animator.applyRootMotion = false;
+        animator.enabled = false;
+    }
+
+    static void PoseArm(
+        Animator animator,
+        HumanBodyBones upperArmBone,
+        HumanBodyBones lowerArmBone,
+        HumanBodyBones handBone,
+        Transform character,
+        float sideSign)
+    {
+        Transform upperArm = animator.GetBoneTransform(upperArmBone);
+        Transform lowerArm = animator.GetBoneTransform(lowerArmBone);
+        Transform hand = animator.GetBoneTransform(handBone);
+        if (upperArm == null || lowerArm == null || hand == null)
+        {
+            return;
+        }
+
+        Vector3 side = character.right * sideSign;
+        Vector3 currentUpperDirection = (lowerArm.position - upperArm.position).normalized;
+        Vector3 desiredUpperDirection =
+            (-character.up * 0.98f + side * 0.18f + character.forward * 0.03f).normalized;
+        upperArm.rotation =
+            Quaternion.FromToRotation(currentUpperDirection, desiredUpperDirection) *
+            upperArm.rotation;
+
+        Vector3 currentLowerDirection = (hand.position - lowerArm.position).normalized;
+        Vector3 desiredLowerDirection =
+            (-character.up * 0.93f + side * 0.10f + character.forward * 0.30f).normalized;
+        lowerArm.rotation =
+            Quaternion.FromToRotation(currentLowerDirection, desiredLowerDirection) *
+            lowerArm.rotation;
     }
 
     static int ConfigureAutomaticDoors(GameObject environment, Transform systems, Transform player)

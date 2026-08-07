@@ -169,16 +169,24 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
             : default;
         initializeNearFrameAtRest = manager != null
             && !string.IsNullOrEmpty(manager.NearObservationPlanetId);
+        bool hasPendingSurfaceDeparture = false;
+        Quaternion pendingDepartureRotation = Quaternion.identity;
+        Vector3 pendingDepartureVelocity = Vector3.zero;
         if (shipBody != null)
         {
             shipBody.position = Vector3.zero;
-            if (PendingSurfaceDepartureContext.TryConsume(
-                out Quaternion departureRotation,
-                out Vector3 departureVelocity))
+            hasPendingSurfaceDeparture =
+                PendingSurfaceDepartureContext.TryConsume(
+                    out pendingDepartureRotation,
+                    out pendingDepartureVelocity);
+            if (hasPendingSurfaceDeparture)
             {
-                shipBody.rotation = departureRotation;
-                shipBody.velocity = departureVelocity;
-                shipBody.angularVelocity = Vector3.zero;
+                shipBody.rotation = pendingDepartureRotation;
+                if (!shipBody.isKinematic)
+                {
+                    shipBody.velocity = pendingDepartureVelocity;
+                    shipBody.angularVelocity = Vector3.zero;
+                }
                 initializeNearFrameAtRest = false;
             }
             originalDetectCollisions = shipBody.detectCollisions;
@@ -201,6 +209,16 @@ public sealed class InterstellarFlightRuntime : MonoBehaviour
                 {
                     modularLoader.AbortAndReturnToLab(message);
                     return;
+                }
+                // The modular loader owns the kinematic-to-dynamic handoff.
+                // Apply the unchanged surface departure impulse only after it
+                // has completed, otherwise Unity rejects velocity writes to
+                // the temporary kinematic construction body.
+                if (hasPendingSurfaceDeparture && shipBody != null)
+                {
+                    shipBody.rotation = pendingDepartureRotation;
+                    shipBody.velocity = pendingDepartureVelocity;
+                    shipBody.angularVelocity = Vector3.zero;
                 }
                 initialized = true;
                 interactionEvaluationStartsAt = Time.unscaledTime + 1f;

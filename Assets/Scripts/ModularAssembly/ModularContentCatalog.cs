@@ -282,6 +282,8 @@ namespace UnityPlanet.ModularAssembly
 
         private readonly Dictionary<string, GameObject> prefabCache =
             new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, GameObject> preparedVisualCache =
+            new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, AssetBundleCreateRequest> loadingBundles =
             new Dictionary<string, AssetBundleCreateRequest>(StringComparer.OrdinalIgnoreCase);
         private int pendingAssetRequests;
@@ -341,6 +343,12 @@ namespace UnityPlanet.ModularAssembly
                 yield break;
             }
 
+            if (TryInstantiatePrepared(record, parent, out GameObject prepared))
+            {
+                completed?.Invoke(prepared);
+                yield break;
+            }
+
             if (!prefabCache.TryGetValue(record.sourceId, out GameObject prefab))
             {
                 yield return LoadPrefab(record, value => prefab = value);
@@ -367,7 +375,56 @@ namespace UnityPlanet.ModularAssembly
                 yield break;
             }
             EnsureBoundsCollider(instance);
+            if (prefab != null)
+            {
+                CachePreparedVisual(record, instance);
+            }
             completed?.Invoke(instance);
+        }
+
+        public bool TryInstantiatePrepared(
+            ModularContentRecord record,
+            Transform parent,
+            out GameObject instance)
+        {
+            instance = null;
+            if (record == null || string.IsNullOrWhiteSpace(record.sourceId) ||
+                !preparedVisualCache.TryGetValue(
+                    record.sourceId,
+                    out GameObject prepared) ||
+                prepared == null)
+            {
+                return false;
+            }
+
+            instance = Instantiate(prepared, parent, false);
+            instance.name = record.neoXId;
+            instance.SetActive(true);
+            NeoXBehaviorModule behavior =
+                instance.GetComponent<NeoXBehaviorModule>() ??
+                instance.AddComponent<NeoXBehaviorModule>();
+            behavior.Configure(record);
+            EnsureBoundsCollider(instance);
+            return true;
+        }
+
+        private void CachePreparedVisual(
+            ModularContentRecord record,
+            GameObject instance)
+        {
+            if (record == null || instance == null ||
+                string.IsNullOrWhiteSpace(record.sourceId) ||
+                preparedVisualCache.TryGetValue(
+                    record.sourceId,
+                    out GameObject existing) && existing != null)
+            {
+                return;
+            }
+
+            GameObject prepared = Instantiate(instance, transform, false);
+            prepared.name = "PreparedVisualCache_" + record.neoXId;
+            prepared.SetActive(false);
+            preparedVisualCache[record.sourceId] = prepared;
         }
 
         private IEnumerator ApplyRuntimeMaterial(ModularContentRecord record, GameObject instance)
@@ -678,8 +735,21 @@ namespace UnityPlanet.ModularAssembly
             // the same global AssetBundle object still used by the others.
             bundles.Clear();
             prefabCache.Clear();
+            ClearPreparedVisualCache();
             loadingBundles.Clear();
             Resources.UnloadUnusedAssets();
+        }
+
+        private void ClearPreparedVisualCache()
+        {
+            foreach (GameObject prepared in preparedVisualCache.Values)
+            {
+                if (prepared != null)
+                {
+                    Destroy(prepared);
+                }
+            }
+            preparedVisualCache.Clear();
         }
 
         private void OnDestroy()
@@ -690,6 +760,7 @@ namespace UnityPlanet.ModularAssembly
             // Unity releases them when the player/editor process exits.
             bundles.Clear();
             prefabCache.Clear();
+            preparedVisualCache.Clear();
             loadingBundles.Clear();
         }
 

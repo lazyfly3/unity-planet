@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Blue Lagoon
-  m_Shader: {fileID: 10700, guid: 0000000000000000f000000000000000, type: 0}
+  m_Shader: {fileID: 104, guid: 0000000000000000f000000000000000, type: 0}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -24,30 +24,33 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BackTex:
-        m_Texture: {fileID: 2800000, guid: 1b9104c916f1f4c02a2c5af31efd2272, type: 3}
+        m_Texture: {fileID: 2800000, guid: 6a609c499caa78a4ba18e91dbaa657e1, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DownTex:
-        m_Texture: {fileID: 2800000, guid: 60898d6a15ab54646aa5e77802606c49, type: 3}
+        m_Texture: {fileID: 2800000, guid: ac49c8534e1adf94998b228fb39ec8d8, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _FrontTex:
-        m_Texture: {fileID: 2800000, guid: e76124d45bd8847fb864f8eb8d1315b2, type: 3}
+        m_Texture: {fileID: 2800000, guid: 7b9f171c170c4a24c9a949bcd936e179, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _LeftTex:
-        m_Texture: {fileID: 2800000, guid: 2fa86eb9fbf3240529b3311cc9a7ebce, type: 3}
+        m_Texture: {fileID: 2800000, guid: 30b99e339a9aa8c429ba3c6031be4982, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _RightTex:
-        m_Texture: {fileID: 2800000, guid: 9f5639649ae514c42bf94024d93b0633, type: 3}
+        m_Texture: {fileID: 2800000, guid: deb43aa9f15872e4eb8fed8212dbb2ae, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _UpTex:
-        m_Texture: {fileID: 2800000, guid: 272be48b8fde84eadb0b0dec6521378c, type: 3}
+        m_Texture: {fileID: 2800000, guid: a55a257f176efc842947037f3097491b, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
-    m_Colors: []
+    m_Floats:
+    - _Exposure: 1
+    - _Rotation: 0
+    m_Colors:
+    - _Tint: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
   m_BuildTextureStacks: []

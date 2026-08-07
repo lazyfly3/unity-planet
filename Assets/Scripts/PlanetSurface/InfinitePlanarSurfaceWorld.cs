@@ -12,6 +12,14 @@ public sealed class InfinitePlanarSurfaceWorld :
 {
     public const float RebaseThreshold = 2048f;
     public const float ChunkSize = PlanetLabPlanarSettings.InfiniteChunkSize;
+    public const float DefaultFiniteCombatRadius = 760f;
+    public const float DefaultFiniteCombatFlightCeilingHeight = 420f;
+    public const float FiniteCombatTerrainEdgeClearance = 24f;
+    public const float FiniteCombatChunkSize = 320f;
+    public const int FiniteCombatChunkResolution = 40;
+    public const int FiniteCombatViewRadius = 2;
+    const float FiniteCombatFarClipSafetyMargin = 160f;
+    const float FiniteCombatFarClipStep = 100f;
 
     readonly HashSet<string> harvestedIds = new HashSet<string>();
     readonly HashSet<Transform> shiftedTransforms = new HashSet<Transform>();
@@ -26,12 +34,22 @@ public sealed class InfinitePlanarSurfaceWorld :
     Material terrainMaterial;
     Material oceanMaterial;
     Material previousSkybox;
+    Material activeSkybox;
     Camera skyboxCamera;
     CameraClearFlags previousCameraClearFlags;
+    Camera finiteCombatVisibilityCamera;
+    float previousFiniteCombatFarClipPlane;
+    float appliedFiniteCombatFarClipPlane;
+    bool finiteCombatFarClipRaised;
+    FinitePlanetCombatTerrainPlan finiteCombatTerrainPlan;
     double globalOriginX;
     double globalOriginZ;
     bool configured;
     bool initialPlayerPlaced;
+    bool finiteCombatArea;
+    float finiteCombatRadius = DefaultFiniteCombatRadius;
+    float finiteCombatFlightCeilingHeight =
+        DefaultFiniteCombatFlightCeilingHeight;
     Transform movementTarget;
 
     public PlanetSurfaceTopology Topology =>
@@ -59,6 +77,62 @@ public sealed class InfinitePlanarSurfaceWorld :
         droppedObjectSystem;
     public PlanarCityRuntimeSystem CityRuntimeSystem =>
         cityRuntimeSystem;
+    public bool IsFiniteCombatArea => finiteCombatArea;
+    public float FiniteCombatRadius => finiteCombatRadius;
+    public float FiniteCombatFlightCeilingHeight =>
+        finiteCombatFlightCeilingHeight;
+    public FinitePlanetCombatTerrainPlan FiniteCombatTerrainPlan =>
+        finiteCombatTerrainPlan;
+
+    public static float CalculateFiniteCombatRequiredFarClip(
+        float combatRadius,
+        float flightCeilingHeight,
+        float maximumTerrainHeight)
+    {
+        float terrainHalfExtent =
+            (FiniteCombatViewRadius + 0.5f)
+            * FiniteCombatChunkSize;
+        float maximumHorizontalDistance =
+            terrainHalfExtent * Mathf.Sqrt(2f)
+            + Mathf.Max(0f, combatRadius);
+        float maximumVerticalDistance = Mathf.Max(
+            0f,
+            flightCeilingHeight,
+            maximumTerrainHeight);
+        float requiredDistance = Mathf.Sqrt(
+            maximumHorizontalDistance * maximumHorizontalDistance
+            + maximumVerticalDistance * maximumVerticalDistance)
+            + FiniteCombatFarClipSafetyMargin;
+        return Mathf.Ceil(
+            requiredDistance / FiniteCombatFarClipStep)
+            * FiniteCombatFarClipStep;
+    }
+
+    public void ConfigureFiniteCombatMode(
+        float combatRadius = DefaultFiniteCombatRadius,
+        float flightCeilingHeight =
+            DefaultFiniteCombatFlightCeilingHeight)
+    {
+        if (configured)
+        {
+            throw new System.InvalidOperationException(
+                "Finite combat mode must be selected before the planar "
+                + "surface is configured.");
+        }
+
+        float terrainHalfExtent =
+            (FiniteCombatViewRadius + 0.5f)
+            * FiniteCombatChunkSize;
+        finiteCombatArea = true;
+        finiteCombatRadius = Mathf.Clamp(
+            combatRadius,
+            FiniteCombatChunkSize,
+            terrainHalfExtent - FiniteCombatTerrainEdgeClearance);
+        finiteCombatFlightCeilingHeight = Mathf.Clamp(
+            flightCeilingHeight,
+            80f,
+            1000f);
+    }
 
     public void Configure(
         GalaxyPlanetDefinition valueDefinition,
@@ -70,7 +144,9 @@ public sealed class InfinitePlanarSurfaceWorld :
         definition = valueDefinition;
         loadedSave = save;
         player = valuePlayer;
-        movementTarget = player != null ? player.transform : null;
+        movementTarget = finiteCombatArea
+            ? null
+            : player != null ? player.transform : null;
         if (definition == null)
             throw new System.ArgumentNullException(nameof(valueDefinition));
 
@@ -80,6 +156,26 @@ public sealed class InfinitePlanarSurfaceWorld :
         OceanEnabled = visual.oceanEnabled;
         AnchorDirection = ResolveAnchor(definition, save, landing);
         RestoreHarvestedIds(save);
+
+        PlanetCelestialProfile celestial = definition.celestial
+            ?? PlanetCelestialProfile.CreateCompatibleDefault();
+        float combatSeaHeight = visual.oceanLevel
+            * Mathf.Max(1f, celestial.maximumTerrainElevation);
+        if (finiteCombatArea)
+        {
+            finiteCombatTerrainPlan =
+                FinitePlanetCombatTerrainPlanner.Create(
+                    definition,
+                    PlanetOrbitChapterSelectionContext.MissionId,
+                    PlanetOrbitChapterSelectionContext.MissionSeed,
+                    finiteCombatRadius,
+                    combatSeaHeight,
+                    OceanEnabled);
+            finiteCombatFlightCeilingHeight = Mathf.Min(
+                finiteCombatFlightCeilingHeight,
+                finiteCombatTerrainPlan
+                    .RecommendedFlightCeilingHeight);
+        }
 
         var settings = new PlanetLabPlanarSettings
         {
@@ -101,20 +197,29 @@ public sealed class InfinitePlanarSurfaceWorld :
                 template);
         oceanMaterial =
             PlanetLabPlanarMaterialFactory.CreateOceanMaterial(definition);
+        if (finiteCombatTerrainPlan != null && terrainMaterial != null)
+        {
+            float terrainHeightScale = Mathf.Max(
+                celestial.maximumTerrainElevation,
+                finiteCombatTerrainPlan.MaximumTerrainHeightAboveBase);
+            if (terrainMaterial.HasProperty("_HeightScale"))
+            {
+                terrainMaterial.SetFloat(
+                    "_HeightScale",
+                    terrainHeightScale);
+            }
+            if (terrainMaterial.HasProperty("_SeaHeight"))
+                terrainMaterial.SetFloat("_SeaHeight", combatSeaHeight);
+        }
 
         previousSkybox = RenderSettings.skybox;
-        Material skybox = PlanetLabPlanarMaterialFactory.SelectSkybox(
+        activeSkybox = PlanetLabPlanarMaterialFactory.SelectSkybox(
             definition,
             assets != null ? assets.skyboxLibrary : null,
             template);
-        if (skybox != null)
-            RenderSettings.skybox = skybox;
-        skyboxCamera = Camera.main;
-        if (skyboxCamera != null)
-        {
-            previousCameraClearFlags = skyboxCamera.clearFlags;
-            skyboxCamera.clearFlags = CameraClearFlags.Skybox;
-        }
+        BindSkyboxCamera(Camera.main);
+        Camera.onPreCull += HandleCameraPreCull;
+        MaintainSkyboxPresentation();
         RenderSettings.fog = false;
         RenderSettings.ambientMode =
             UnityEngine.Rendering.AmbientMode.Flat;
@@ -129,49 +234,73 @@ public sealed class InfinitePlanarSurfaceWorld :
         streamer.Configure(
             definition,
             settings,
-            player != null ? player.transform : null,
+            finiteCombatArea
+                ? null
+                : player != null ? player.transform : null,
             terrainMaterial,
             oceanMaterial,
             OceanEnabled,
-            PlanetLabPlanarSettings.InfiniteViewRadius,
-            PlanetLabPlanarSettings.InfiniteChunkResolution,
-            PlanetLabPlanarSettings.InfiniteChunkSize);
+            finiteCombatArea
+                ? FiniteCombatViewRadius
+                : PlanetLabPlanarSettings.InfiniteViewRadius,
+            finiteCombatArea
+                ? FiniteCombatChunkResolution
+                : PlanetLabPlanarSettings.InfiniteChunkResolution,
+            finiteCombatArea
+                ? FiniteCombatChunkSize
+                : PlanetLabPlanarSettings.InfiniteChunkSize,
+            finiteCombatTerrainPlan);
 
-        ResolveInitialGlobalPosition(
-            save,
-            out double playerX,
-            out double playerZ);
+        double playerX;
+        double playerZ;
+        if (finiteCombatArea)
+        {
+            // Mission arenas always start from their authored origin. They do
+            // not inherit an open-world player's last persistent coordinate.
+            playerX = 0d;
+            playerZ = 0d;
+        }
+        else
+        {
+            ResolveInitialGlobalPosition(
+                save,
+                out playerX,
+                out playerZ);
+        }
         globalOriginX =
             System.Math.Floor(playerX / ChunkSize) * ChunkSize;
         globalOriginZ =
             System.Math.Floor(playerZ / ChunkSize) * ChunkSize;
         streamer.SetGlobalOrigin(globalOriginX, globalOriginZ);
-        droppedObjectSystem =
-            GetComponent<PlanarDroppedObjectSystem>();
-        if (droppedObjectSystem == null)
+        if (!finiteCombatArea)
         {
             droppedObjectSystem =
-                gameObject.AddComponent<PlanarDroppedObjectSystem>();
-        }
-        droppedObjectSystem.Configure(
-            this,
-            streamer,
-            definition.celestial,
-            save != null ? save.droppedObjects : null);
-        cityRuntimeSystem =
-            GetComponent<PlanarCityRuntimeSystem>();
-        if (cityRuntimeSystem == null)
-        {
+                GetComponent<PlanarDroppedObjectSystem>();
+            if (droppedObjectSystem == null)
+            {
+                droppedObjectSystem =
+                    gameObject.AddComponent<PlanarDroppedObjectSystem>();
+            }
+            droppedObjectSystem.Configure(
+                this,
+                streamer,
+                definition.celestial,
+                save != null ? save.droppedObjects : null);
             cityRuntimeSystem =
-                gameObject.AddComponent<
-                    PlanarCityRuntimeSystem>();
+                GetComponent<PlanarCityRuntimeSystem>();
+            if (cityRuntimeSystem == null)
+            {
+                cityRuntimeSystem =
+                    gameObject.AddComponent<
+                        PlanarCityRuntimeSystem>();
+            }
+            cityRuntimeSystem.Configure(
+                this,
+                streamer,
+                droppedObjectSystem,
+                player,
+                save != null ? save.planarCities : null);
         }
-        cityRuntimeSystem.Configure(
-            this,
-            streamer,
-            droppedObjectSystem,
-            player,
-            save != null ? save.planarCities : null);
         if (player != null)
         {
             if (player.gameObject
@@ -197,10 +326,30 @@ public sealed class InfinitePlanarSurfaceWorld :
 
     public void SetMovementTarget(Transform value)
     {
+        if (finiteCombatArea)
+        {
+            movementTarget = null;
+            streamer?.SetTarget(null);
+            return;
+        }
         movementTarget = value != null
             ? value
             : player != null ? player.transform : null;
         streamer?.SetTarget(movementTarget);
+    }
+
+    public bool ContainsFiniteCombatPoint(
+        Vector3 worldPosition,
+        float inwardMargin = 0f)
+    {
+        if (!finiteCombatArea)
+            return true;
+        float usableRadius = Mathf.Max(
+            0f,
+            finiteCombatRadius - Mathf.Max(0f, inwardMargin));
+        Vector3 local = transform.InverseTransformPoint(worldPosition);
+        return local.x * local.x + local.z * local.z
+               <= usableRadius * usableRadius;
     }
 
     public bool TryDropPlaceholderCube(
@@ -362,19 +511,8 @@ public sealed class InfinitePlanarSurfaceWorld :
     {
         if (!configured)
             return;
-        // Legacy surface camera setup can restore SolidColor after the travel
-        // manager has configured the scene. The planar runtime owns the fixed
-        // sky presentation, so keep the gameplay camera on the selected
-        // deterministic skybox.
-        if (skyboxCamera == null)
-            skyboxCamera = Camera.main;
-        if (skyboxCamera != null
-            && skyboxCamera.clearFlags != CameraClearFlags.Skybox)
-        {
-            skyboxCamera.clearFlags = CameraClearFlags.Skybox;
-        }
-        if (RenderSettings.fog)
-            RenderSettings.fog = false;
+        if (finiteCombatArea)
+            return;
 
         Transform target = movementTarget != null
             ? movementTarget
@@ -392,6 +530,108 @@ public sealed class InfinitePlanarSurfaceWorld :
         float shiftZ =
             Mathf.Floor(local.z / ChunkSize) * ChunkSize;
         Rebase(shiftX, shiftZ);
+    }
+
+    void LateUpdate()
+    {
+        if (configured)
+            MaintainSkyboxPresentation();
+    }
+
+    void HandleCameraPreCull(Camera value)
+    {
+        if (!configured
+            || value == null
+            || value.cameraType != CameraType.Game)
+        {
+            return;
+        }
+
+        Camera main = Camera.main;
+        if (main != null && main != skyboxCamera)
+            BindSkyboxCamera(main);
+        if (value == skyboxCamera || value == main)
+            MaintainSkyboxPresentation(value);
+    }
+
+    void BindSkyboxCamera(Camera value)
+    {
+        if (value == null)
+            return;
+        if (value == skyboxCamera)
+        {
+            MaintainFiniteCombatCameraVisibility(value);
+            return;
+        }
+        skyboxCamera = value;
+        previousCameraClearFlags = value.clearFlags;
+        MaintainFiniteCombatCameraVisibility(value);
+    }
+
+    void MaintainSkyboxPresentation(Camera renderingCamera = null)
+    {
+        Camera main = Camera.main;
+        if (main != null && main != skyboxCamera)
+            BindSkyboxCamera(main);
+        Camera target = renderingCamera != null
+            ? renderingCamera
+            : skyboxCamera;
+        MaintainFiniteCombatCameraVisibility(target);
+        if (target != null
+            && target.clearFlags != CameraClearFlags.Skybox)
+        {
+            target.clearFlags = CameraClearFlags.Skybox;
+        }
+        if (activeSkybox != null
+            && RenderSettings.skybox != activeSkybox)
+        {
+            RenderSettings.skybox = activeSkybox;
+        }
+        if (RenderSettings.fog)
+            RenderSettings.fog = false;
+    }
+
+    void MaintainFiniteCombatCameraVisibility(Camera target)
+    {
+        if (!finiteCombatArea || target == null)
+            return;
+
+        if (target != finiteCombatVisibilityCamera)
+        {
+            RestoreFiniteCombatCameraVisibility();
+            finiteCombatVisibilityCamera = target;
+            previousFiniteCombatFarClipPlane = target.farClipPlane;
+            finiteCombatFarClipRaised = false;
+        }
+
+        float maximumTerrainHeight = finiteCombatTerrainPlan != null
+            ? finiteCombatTerrainPlan.MaximumTerrainHeightAboveBase
+            : finiteCombatFlightCeilingHeight;
+        float requiredFarClip = CalculateFiniteCombatRequiredFarClip(
+            finiteCombatRadius,
+            finiteCombatFlightCeilingHeight,
+            maximumTerrainHeight);
+        if (target.farClipPlane + 0.01f >= requiredFarClip)
+            return;
+
+        target.farClipPlane = requiredFarClip;
+        appliedFiniteCombatFarClipPlane = requiredFarClip;
+        finiteCombatFarClipRaised = true;
+    }
+
+    void RestoreFiniteCombatCameraVisibility()
+    {
+        if (finiteCombatVisibilityCamera != null
+            && finiteCombatFarClipRaised
+            && Mathf.Abs(
+                finiteCombatVisibilityCamera.farClipPlane
+                - appliedFiniteCombatFarClipPlane) <= 0.01f)
+        {
+            finiteCombatVisibilityCamera.farClipPlane =
+                previousFiniteCombatFarClipPlane;
+        }
+        finiteCombatVisibilityCamera = null;
+        finiteCombatFarClipRaised = false;
     }
 
     void Rebase(float shiftX, float shiftZ)
@@ -586,6 +826,8 @@ public sealed class InfinitePlanarSurfaceWorld :
 
     void OnDestroy()
     {
+        Camera.onPreCull -= HandleCameraPreCull;
+        RestoreFiniteCombatCameraVisibility();
         PlanetSurfaceRuntimeRegistry.Unregister(this);
         PlanetWaterRegistry.Unregister(this);
         if (streamer != null)

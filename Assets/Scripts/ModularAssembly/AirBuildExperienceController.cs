@@ -468,6 +468,11 @@ namespace UnityPlanet.ModularAssembly
         {
             if (controller == null || controller.IsFlying)
                 return;
+            if (SpaceStationFlowContext.MustSaveInitialAssembly)
+            {
+                TryReturnToStation();
+                return;
+            }
             if (placing)
                 CancelPlacement();
             GridAssemblyValidation validation =
@@ -494,14 +499,36 @@ namespace UnityPlanet.ModularAssembly
         {
             if (!SpaceStationFlowContext.CanReturnToStationFromAssembly)
                 return false;
+
+            bool initialAssembly =
+                SpaceStationFlowContext.MustSaveInitialAssembly;
+            if (initialAssembly)
+            {
+                if (controller == null || controller.IsFlying)
+                    return false;
+                if (placing)
+                    CancelPlacement();
+                if (!controller.TrySaveCanonical(out string saveMessage))
+                {
+                    if (placementText != null)
+                    {
+                        placementText.text =
+                            "首次飞船未能保存，仍停留在改装界面：" +
+                            saveMessage;
+                    }
+                    return false;
+                }
+            }
+
             if (spaceLaunchButton != null)
                 spaceLaunchButton.interactable = false;
             if (saveCanonicalButton != null)
                 saveCanonicalButton.interactable = false;
             if (placementText != null)
             {
-                placementText.text =
-                    "正在返回空间站；未保存的改动不会替换停靠飞船……";
+                placementText.text = initialAssembly
+                    ? "首次飞船已保存，正在进入空间站……"
+                    : "正在返回空间站；未保存的改动不会替换停靠飞船……";
             }
             SpaceStationFlowContext.CompleteAssemblyReturn();
             SceneManager.LoadScene(
@@ -1290,7 +1317,8 @@ battleTestButton.onClick.AddListener(
 
             spaceLaunchButton = CreateButton(
                 canvas.transform,
-                "进入太空");
+                ResolvePrimaryDestinationLabel(
+                    SpaceStationFlowContext.MustSaveInitialAssembly));
             RectTransform spaceLaunchRect =
                 spaceLaunchButton.GetComponent<RectTransform>();
             spaceLaunchRect.anchorMin = new Vector2(1f, 1f);
@@ -1523,6 +1551,12 @@ battleTestButton.onClick.AddListener(
             return motionCoordinatorRc1;
         }
 
+        public static string ResolvePrimaryDestinationLabel(
+            bool initialAssembly)
+        {
+            return initialAssembly ? "进入空间站" : "进入太空";
+        }
+
         private void ToggleBuiltInCoreThrusters()
         {
             RobocraftMotionCoordinator coordinator =
@@ -1532,9 +1566,7 @@ battleTestButton.onClick.AddListener(
             VehicleCoreAssistMode next =
                 coordinator.CoreAssistMode == VehicleCoreAssistMode.Standard
                     ? VehicleCoreAssistMode.Training
-                    : coordinator.CoreAssistMode == VehicleCoreAssistMode.Training
-                        ? VehicleCoreAssistMode.Disabled
-                        : VehicleCoreAssistMode.Standard;
+                    : VehicleCoreAssistMode.Standard;
             coordinator.SetCoreAssistMode(next);
             RefreshCoreThrusterToggle();
         }
@@ -1556,7 +1588,7 @@ battleTestButton.onClick.AddListener(
                 {
                     case VehicleCoreAssistMode.Training:
                         coreThrusterToggleLabel.text =
-                            "\u6838\u5fc3\u8f85\u52a9\uff1a\u65b0\u624b";
+                            "\u6838\u5fc3\u8f85\u52a9\uff1a\u8857\u673a";
                         break;
                     case VehicleCoreAssistMode.Disabled:
                         coreThrusterToggleLabel.text =
@@ -1587,7 +1619,11 @@ battleTestButton.onClick.AddListener(
                     modeColor;
             }
             if (controlSchemeLabel != null)
-                controlSchemeLabel.text = "控制：RC相机转向";
+            {
+                controlSchemeLabel.text = level == VehicleCoreAssistMode.Training
+                    ? "街机：W/S沿准星飞行，A/D横移，松键自停"
+                    : "标准：RC物理推力，Space/Ctrl升降";
+            }
             if (v3StatsText != null && coordinator != null)
                 v3StatsText.text = coordinator.Telemetry.BuildSummary();
         }

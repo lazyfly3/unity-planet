@@ -69,6 +69,7 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
     Transform target;
     Material terrainMaterial;
     Material oceanMaterial;
+    FinitePlanetCombatTerrainPlan combatTerrainPlan;
     Mesh oceanMesh;
     Vector3 anchorDirection = Vector3.up;
     Vector3 east = Vector3.right;
@@ -103,6 +104,8 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         && buildQueue.Count == 0;
     public double GlobalOriginX => globalOriginX;
     public double GlobalOriginZ => globalOriginZ;
+    public FinitePlanetCombatTerrainPlan CombatTerrainPlan =>
+        combatTerrainPlan;
 
     public event Action<Vector2Int> ChunkActivated;
     public event Action<Vector2Int> ChunkRecycled;
@@ -141,7 +144,8 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         bool valueOceanEnabled,
         int valueViewRadius = PlanetLabPlanarSettings.InfiniteViewRadius,
         int valueChunkResolution = PlanetLabPlanarSettings.InfiniteChunkResolution,
-        float valueChunkSize = PlanetLabPlanarSettings.InfiniteChunkSize)
+        float valueChunkSize = PlanetLabPlanarSettings.InfiniteChunkSize,
+        FinitePlanetCombatTerrainPlan valueCombatTerrainPlan = null)
     {
         definition = valueDefinition
             ?? throw new ArgumentNullException(nameof(valueDefinition));
@@ -152,6 +156,7 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         terrainMaterial = valueTerrainMaterial;
         oceanMaterial = valueOceanMaterial;
         oceanEnabled = valueOceanEnabled;
+        combatTerrainPlan = valueCombatTerrainPlan;
         viewRadius = Mathf.Clamp(valueViewRadius, 1, 4);
         chunkResolution = Mathf.Clamp(valueChunkResolution, 8, 64);
         chunkSize = Mathf.Clamp(valueChunkSize, 32f, 512f);
@@ -226,7 +231,8 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
                 east,
                 north,
                 worldX,
-                worldZ);
+                worldZ,
+                combatTerrainPlan);
     }
 
     public bool TrySampleSurface(
@@ -455,7 +461,8 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
             chunkSize,
             chunkResolution,
             chunk.terrainMesh,
-            chunk.buffers);
+            chunk.buffers,
+            combatTerrainPlan);
         chunk.terrainFilter.sharedMesh = chunk.terrainMesh;
         chunk.terrainCollider.sharedMesh = null;
         chunk.terrainCollider.sharedMesh = chunk.terrainMesh;
@@ -653,10 +660,13 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         Vector3 east,
         Vector3 north,
         float worldX,
-        float worldZ)
+        float worldZ,
+        FinitePlanetCombatTerrainPlan combatTerrainPlan = null)
     {
         if (definition == null)
             throw new ArgumentNullException(nameof(definition));
+        if (combatTerrainPlan != null)
+            return combatTerrainPlan.SampleHeight(worldX, worldZ);
         PlanetCelestialProfile celestial = definition.celestial
             ?? PlanetCelestialProfile.CreateCompatibleDefault();
         Vector3 samplePoint = anchor.normalized * Mathf.Max(1f, celestial.radius)
@@ -677,7 +687,8 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         float size,
         int resolution,
         Mesh reuse = null,
-        PlanetLabInfiniteChunkBuffers buffers = null)
+        PlanetLabInfiniteChunkBuffers buffers = null,
+        FinitePlanetCombatTerrainPlan combatTerrainPlan = null)
     {
         if (definition == null)
             throw new ArgumentNullException(nameof(definition));
@@ -700,7 +711,12 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         float centerZ = coordinate.y * size;
         PlanetCelestialProfile celestial = definition.celestial
             ?? PlanetCelestialProfile.CreateCompatibleDefault();
-        float heightScale = Mathf.Max(1f, celestial.maximumTerrainElevation);
+        float heightScale = Mathf.Max(
+            1f,
+            celestial.maximumTerrainElevation,
+            combatTerrainPlan != null
+                ? combatTerrainPlan.Settings.mountainHeight * 1.65f
+                : 0f);
 
         for (int sampleZ = 0; sampleZ < sampleSide; sampleZ++)
         for (int sampleX = 0; sampleX < sampleSide; sampleX++)
@@ -709,7 +725,13 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
             float worldZ = centerZ - half + (sampleZ - 1) * step;
             heightSamples[sampleZ * sampleSide + sampleX] =
                 SampleInfiniteHeight(
-                    definition, anchor, east, north, worldX, worldZ);
+                    definition,
+                    anchor,
+                    east,
+                    north,
+                    worldX,
+                    worldZ,
+                    combatTerrainPlan);
         }
 
         for (int zIndex = 0; zIndex <= resolution; zIndex++)

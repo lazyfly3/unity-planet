@@ -73,6 +73,7 @@ public sealed class GalaxySaveSlotMetadata
     public float spacecraftHullIntegrity = 100f;
     public VisitedPlanetRecord[] visitedPlanets = Array.Empty<VisitedPlanetRecord>();
     public PlanetSurfaceTopology surfaceTopology = PlanetSurfaceTopology.LegacySphere;
+    public bool bossBridgeHintSeen;
 }
 
 public sealed class GalaxySaveSlotInfo

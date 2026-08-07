@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using ModularAssembly;
 using UnityEngine;
+using UnityPlanet.SpaceStation.Skills;
 
 namespace UnityPlanet.ModularAssembly
 {
@@ -74,12 +75,27 @@ namespace UnityPlanet.ModularAssembly
         Gunship
     }
 
+    public enum HordeEnemyAttackKind
+    {
+        Suicide,
+        Ranged
+    }
+
     public enum HordeFormationKind
     {
         V,
         LineAbreast,
         Pincer,
         Echelon
+    }
+
+    public enum HordeSpawnRuleKind
+    {
+        OpeningSweep,
+        InterceptorScreen,
+        StrikerEscort,
+        PincerPressure,
+        GunshipCommand
     }
 
     [Serializable]
@@ -94,6 +110,9 @@ namespace UnityPlanet.ModularAssembly
         public float preferredMaximumRange;
         public float shotDamage;
         public int gunCount;
+        public HordeEnemyAttackKind attackKind;
+        public float detonationDamage;
+        public float detonationRadius;
         public int threatCost;
         public int attackTokenCost;
         public Color hullColor;
@@ -114,6 +133,7 @@ namespace UnityPlanet.ModularAssembly
                         preferredMaximumRange = 130f,
                         shotDamage = 10f,
                         gunCount = 1,
+                        attackKind = HordeEnemyAttackKind.Ranged,
                         threatCost = 2,
                         attackTokenCost = 1,
                         hullColor = new Color(0.72f, 0.18f, 0.08f)
@@ -130,6 +150,7 @@ namespace UnityPlanet.ModularAssembly
                         preferredMaximumRange = 180f,
                         shotDamage = 12f,
                         gunCount = 2,
+                        attackKind = HordeEnemyAttackKind.Ranged,
                         threatCost = 3,
                         attackTokenCost = 2,
                         hullColor = new Color(0.55f, 0.10f, 0.06f)
@@ -142,10 +163,13 @@ namespace UnityPlanet.ModularAssembly
                         massKg = 850f,
                         maximumSpeed = 70f,
                         maximumAcceleration = 18f,
-                        preferredMinimumRange = 55f,
-                        preferredMaximumRange = 85f,
-                        shotDamage = 8f,
-                        gunCount = 1,
+                        preferredMinimumRange = 0f,
+                        preferredMaximumRange = 8f,
+                        shotDamage = 0f,
+                        gunCount = 0,
+                        attackKind = HordeEnemyAttackKind.Suicide,
+                        detonationDamage = 110f,
+                        detonationRadius = 11f,
                         threatCost = 1,
                         attackTokenCost = 1,
                         hullColor = new Color(0.86f, 0.27f, 0.08f)
@@ -580,15 +604,27 @@ namespace UnityPlanet.ModularAssembly
         }
 
         const int PoolSize = 10;
-        const float DurationSeconds = 240f;
+        const int MaximumSpawnAttempts = 8;
+        const int SectorCount = 7;
+        const float SectorCooldownSeconds = 8f;
         const float SharedAttackCooldown = 0.45f;
+        public const float SessionDurationSeconds = 120f;
+        public const float FinalClearStartSeconds = 108f;
+        static readonly int[] FrontSectors = { -1, 0, 1 };
+        static readonly int[] WideSectors = { -2, -1, 0, 1, 2 };
+        static readonly int[] FlankSectors = { -3, -2, 2, 3 };
         readonly List<HordeEnemyVehicle> pool =
             new List<HordeEnemyVehicle>(PoolSize);
         readonly List<HordeEnemyVehicle> active =
             new List<HordeEnemyVehicle>(PoolSize);
         readonly Queue<QueuedSpawn> spawnQueue =
             new Queue<QueuedSpawn>(24);
+        readonly List<Vector3> plannedIngresses =
+            new List<Vector3>(8);
+        readonly List<Vector3> spawnPathProbe =
+            new List<Vector3>(24);
         readonly Collider[] spawnOverlaps = new Collider[32];
+        readonly float[] sectorReadyAt = new float[SectorCount];
         CombatTestController owner;
         WeaponVisualPool visuals;
         WeaponProjectilePool projectiles;
@@ -604,25 +640,37 @@ namespace UnityPlanet.ModularAssembly
         int seed;
         int sessionId;
         int spawnSequence;
+        int killsAtLastDecision;
         int lastSector = -1;
         HordeFormationKind lastFormation = (HordeFormationKind)(-1);
+        HordeSpawnRuleKind lastRule = HordeSpawnRuleKind.OpeningSweep;
         bool running;
         bool finalClear;
+        bool objectiveDrivenSession;
+
+        float EncounterClock => objectiveDrivenSession
+            ? Mathf.Min(elapsed, FinalClearStartSeconds - 0.01f)
+            : elapsed;
 
         public bool PreparationValid { get; private set; }
         public string PreparationError { get; private set; } = string.Empty;
         public bool NavigationReady => navigation != null && navigation.IsReady;
         public string NavigationError => navigation?.FailureReason ?? string.Empty;
         public float Elapsed => elapsed;
-        public float RemainingSeconds => Mathf.Max(0f, DurationSeconds - elapsed);
+        public float RemainingSeconds =>
+            Mathf.Max(0f, SessionDurationSeconds - elapsed);
         public int Kills { get; private set; }
         public int Escaped { get; private set; }
         public int PeakActive { get; private set; }
         public int QueuedCount => spawnQueue.Count;
         public int SessionId => sessionId;
+        public int PlannedIngressCount => plannedIngresses.Count;
+        public HordeSpawnRuleKind CurrentSpawnRule => lastRule;
         public bool IsFinalClear => finalClear;
         public bool IsRunning => running;
-        public bool IsFinished => finalClear && AliveCount == 0;
+        public bool IsFinished =>
+            running && !objectiveDrivenSession &&
+            elapsed >= SessionDurationSeconds;
 
         public int AliveCount
         {
@@ -636,22 +684,56 @@ namespace UnityPlanet.ModularAssembly
             }
         }
 
-        public int CurrentPhase => PhaseAt(elapsed);
-        public int CurrentActiveCap => ActiveCapAt(elapsed);
+        public int CurrentPhase => PhaseAt(EncounterClock);
+        public int CurrentActiveCap => ActiveCapAt(EncounterClock);
+
+        /// <summary>
+        /// Planet missions end when their authored objective is complete, not
+        /// when the two-minute combat-test timer expires. In that mode the
+        /// director keeps its final wave cadence until the mission controller
+        /// explicitly requests a final clear.
+        /// </summary>
+        public void ConfigureObjectiveDrivenSession(bool enabled)
+        {
+            objectiveDrivenSession = enabled;
+        }
 
         public static int PhaseAt(float seconds)
         {
-            return seconds < 45f ? 1 : seconds < 180f ? 2 : 3;
+            return seconds < 45f ? 1 :
+                seconds < 90f ? 2 :
+                seconds < FinalClearStartSeconds ? 3 : 4;
         }
 
         public static int ActiveCapAt(float seconds)
         {
-            return seconds < 45f ? 4 : seconds < 180f ? 8 : 10;
+            return seconds < 12f ? 3 :
+                seconds < 45f ? 4 :
+                seconds < 90f ? 7 : 10;
         }
 
         public static float SpawnIntervalAt(float seconds)
         {
-            return seconds < 45f ? 8f : seconds < 180f ? 6f : 5f;
+            return seconds < 12f ? 7f :
+                seconds < 45f ? 6f :
+                seconds < 90f ? 5f :
+                seconds < FinalClearStartSeconds ? 4f :
+                float.PositiveInfinity;
+        }
+
+        public static int ThreatBudgetAt(float seconds)
+        {
+            return seconds < 12f ? 2 :
+                seconds < 45f ? 2 :
+                seconds < 90f ? 3 :
+                seconds < FinalClearStartSeconds ? 4 : 0;
+        }
+
+        public static int ThreatCapAt(float seconds)
+        {
+            return seconds < 12f ? 3 :
+                seconds < 45f ? 5 :
+                seconds < 90f ? 10 : 15;
         }
 
         public IEnumerator Prewarm(
@@ -666,7 +748,10 @@ namespace UnityPlanet.ModularAssembly
             PreparationValid = false;
             PreparationError = string.Empty;
 
-            if (owner == null || visuals == null || projectiles == null)
+            // Planet-surface missions reuse this director without installing the
+            // combat-test controller or its UI. The owner is only a telemetry
+            // sink; both weapon pools remain mandatory.
+            if (visuals == null || projectiles == null)
             {
                 PreparationError = "割草战斗缺少武器或特效池。";
                 yield break;
@@ -718,6 +803,70 @@ namespace UnityPlanet.ModularAssembly
             progress?.Invoke(1f, "割草战斗资源已就绪");
         }
 
+        /// <summary>
+        /// Supplies the authored/PCG perimeter entrances of a finite arena.
+        /// CombatTest does not call this method and keeps its original
+        /// player-relative spawning behaviour.
+        /// </summary>
+        public void ConfigurePlannedIngresses(
+            IEnumerable<Vector3> worldPositions)
+        {
+            plannedIngresses.Clear();
+            if (worldPositions == null)
+                return;
+            foreach (Vector3 position in worldPositions)
+            {
+                if (float.IsNaN(position.x) || float.IsNaN(position.y) ||
+                    float.IsNaN(position.z) || float.IsInfinity(position.x) ||
+                    float.IsInfinity(position.y) || float.IsInfinity(position.z))
+                {
+                    continue;
+                }
+                plannedIngresses.Add(position);
+            }
+        }
+
+        public static int SelectPlannedIngressIndex(
+            IReadOnlyList<Vector3> ingresses,
+            Vector3 playerPosition,
+            Vector3 playerForward,
+            int tacticalSector,
+            int attempt)
+        {
+            if (ingresses == null || ingresses.Count == 0)
+                return -1;
+            Vector3 forward = Vector3.ProjectOnPlane(
+                playerForward,
+                Vector3.up);
+            if (forward.sqrMagnitude < 0.01f)
+                forward = Vector3.forward;
+            forward.Normalize();
+            float desiredAngle = tacticalSector * 45f;
+            int best = 0;
+            float bestDelta = float.PositiveInfinity;
+            for (int index = 0; index < ingresses.Count; index++)
+            {
+                Vector3 direction = Vector3.ProjectOnPlane(
+                    ingresses[index] - playerPosition,
+                    Vector3.up);
+                if (direction.sqrMagnitude < 0.01f)
+                    continue;
+                float angle = Vector3.SignedAngle(
+                    forward,
+                    direction,
+                    Vector3.up);
+                float delta = Mathf.Abs(Mathf.DeltaAngle(
+                    desiredAngle,
+                    angle));
+                if (delta >= bestDelta)
+                    continue;
+                best = index;
+                bestDelta = delta;
+            }
+            int offset = Mathf.Abs(attempt) % ingresses.Count;
+            return (best + offset) % ingresses.Count;
+        }
+
         public IEnumerator PrepareNavigation(
             Rigidbody targetBody,
             Vector3 center,
@@ -754,8 +903,12 @@ namespace UnityPlanet.ModularAssembly
             nextAttackAt = 0f;
             attackTokens = 0;
             spawnSequence = 0;
+            killsAtLastDecision = 0;
             lastSector = -1;
             lastFormation = (HordeFormationKind)(-1);
+            lastRule = HordeSpawnRuleKind.OpeningSweep;
+            for (int index = 0; index < sectorReadyAt.Length; index++)
+                sectorReadyAt[index] = 0f;
             Kills = 0;
             Escaped = 0;
             PeakActive = 0;
@@ -779,19 +932,34 @@ namespace UnityPlanet.ModularAssembly
                 }
             }
 
-            elapsed = Mathf.Min(DurationSeconds, elapsed + Mathf.Max(0f, deltaTime));
-            if (elapsed >= DurationSeconds)
+            elapsed = Mathf.Min(
+                objectiveDrivenSession ? 86400f : SessionDurationSeconds,
+                elapsed + Mathf.Max(0f, deltaTime));
+            float encounterClock = EncounterClock;
+            if (!objectiveDrivenSession &&
+                elapsed >= FinalClearStartSeconds)
             {
                 finalClear = true;
                 spawnQueue.Clear();
             }
-            else if (Time.time >= nextSpawnAt && !InReliefWindow(elapsed))
+            else if (Time.time >= nextSpawnAt &&
+                     !InReliefWindow(encounterClock))
             {
-                QueueSpawnBeat();
-                nextSpawnAt = Time.time + SpawnIntervalAt(elapsed);
+                if (TryQueueSpawnRule())
+                {
+                    float jitter = random == null
+                        ? 1f
+                        : Mathf.Lerp(0.9f, 1.1f, (float)random.NextDouble());
+                    nextSpawnAt = Time.time +
+                                  SpawnIntervalAt(encounterClock) * jitter;
+                }
+                else
+                {
+                    nextSpawnAt = Time.time + 1f;
+                }
             }
 
-            int cap = ActiveCapAt(elapsed);
+            int cap = ActiveCapAt(encounterClock);
             while (!finalClear && spawnQueue.Count > 0 && AliveCount < cap)
             {
                 if (!TrySpawnQueued())
@@ -815,6 +983,14 @@ namespace UnityPlanet.ModularAssembly
             active.Clear();
         }
 
+        public void BeginFinalClear()
+        {
+            if (!running)
+                return;
+            finalClear = true;
+            spawnQueue.Clear();
+        }
+
         public HordeEnemyVehicle GetAliveEnemy(int aliveIndex)
         {
             int found = 0;
@@ -834,6 +1010,18 @@ namespace UnityPlanet.ModularAssembly
             if (enemy == null || playerBody == null)
                 return battleCenter;
             HordeEnemyProfile profile = enemy.Profile;
+            if (profile.attackKind == HordeEnemyAttackKind.Suicide)
+            {
+                float leadSeconds = Mathf.Clamp(
+                    Vector3.Distance(
+                        enemy.BodyPosition,
+                        playerBody.worldCenterOfMass) /
+                    Mathf.Max(1f, profile.maximumSpeed),
+                    0f,
+                    0.65f);
+                return playerBody.worldCenterOfMass +
+                       playerBody.velocity * leadSeconds;
+            }
             float distance = (profile.preferredMinimumRange +
                               profile.preferredMaximumRange) * 0.5f;
             float angle = (enemy.SlotIndex * 137.5f +
@@ -904,6 +1092,20 @@ namespace UnityPlanet.ModularAssembly
             QueuedSpawn queued = spawnQueue.Peek();
             if (queued.ReadyAt <= Time.time)
                 return false;
+            if (plannedIngresses.Count > 0)
+            {
+                int ingressIndex = SelectPlannedIngressIndex(
+                    plannedIngresses,
+                    playerBody.worldCenterOfMass,
+                    playerBody.transform.forward,
+                    queued.Sector,
+                    queued.Attempts);
+                if (ingressIndex >= 0)
+                {
+                    worldPosition = plannedIngresses[ingressIndex];
+                    return true;
+                }
+            }
             Vector3 forward = Vector3.ProjectOnPlane(
                 playerBody.transform.forward,
                 Vector3.up);
@@ -958,36 +1160,48 @@ namespace UnityPlanet.ModularAssembly
             Escaped++;
         }
 
-        void QueueSpawnBeat()
+        bool TryQueueSpawnRule()
         {
+            if (random == null || playerBody == null || finalClear)
+                return false;
+
             int phase = CurrentPhase;
-            int budget = phase == 1 ? 2 : phase == 2 ? 3 : 4;
-            HordeFormationKind formation = NextFormation(phase);
-            int sector = NextSector(phase);
+            float encounterClock = EncounterClock;
+            int availableSlots = ActiveCapAt(encounterClock) -
+                                 AliveCount - spawnQueue.Count;
+            int threatRoom = ThreatCapAt(encounterClock) -
+                             ActiveThreat() - QueuedThreat();
+            if (availableSlots <= 0 || threatRoom <= 0)
+                return false;
+
+            int killsSinceDecision = Mathf.Max(0, Kills - killsAtLastDecision);
+            int budget = Mathf.Min(
+                ThreatBudgetAt(encounterClock),
+                threatRoom);
+            if (phase >= 2 && killsSinceDecision >= 3 &&
+                availableSlots >= 2 && threatRoom > budget)
+            {
+                budget++;
+            }
+            killsAtLastDecision = Kills;
+
+            HordeSpawnRuleKind rule = SelectSpawnRule(
+                phase,
+                budget,
+                availableSlots,
+                killsSinceDecision);
             var roles = new HordeEnemyRole[4];
-            int count = 0;
+            int count = BuildRuleRoles(
+                rule,
+                phase,
+                budget,
+                availableSlots,
+                roles);
+            if (count <= 0 || !TrySelectSector(rule, count, out int sector))
+                return false;
 
-            if (phase == 3 && !HasGunship() && spawnSequence % 3 == 0)
-            {
-                roles[count++] = HordeEnemyRole.Gunship;
-                budget -= 3;
-            }
-            else if (phase >= 2 && budget >= 2 && spawnSequence % 2 == 1)
-            {
-                roles[count++] = HordeEnemyRole.Striker;
-                budget -= 2;
-            }
-            else if (phase == 1 && spawnSequence % 4 == 3)
-            {
-                roles[count++] = HordeEnemyRole.Striker;
-                budget -= 2;
-            }
-
-            while (budget > 0 && count < roles.Length)
-            {
-                roles[count++] = HordeEnemyRole.Interceptor;
-                budget--;
-            }
+            HordeFormationKind formation = SelectFormation(rule, phase);
+            float readyAt = Time.time + WarningSecondsFor(rule);
             for (int index = 0; index < count; index++)
             {
                 spawnQueue.Enqueue(new QueuedSpawn
@@ -998,14 +1212,335 @@ namespace UnityPlanet.ModularAssembly
                     MemberIndex = index,
                     MemberCount = count,
                     Attempts = 0,
-                    ReadyAt = phase >= 2
-                        ? Time.time + 1.2f
-                        : Time.time
+                    ReadyAt = readyAt
                 });
             }
+
+            lastRule = rule;
             lastFormation = formation;
             lastSector = sector;
+            sectorReadyAt[sector + 3] = Time.time + SectorCooldownSeconds;
             spawnSequence++;
+            return true;
+        }
+
+        HordeSpawnRuleKind SelectSpawnRule(
+            int phase,
+            int budget,
+            int availableSlots,
+            int killsSinceDecision)
+        {
+            if (EncounterClock < 12f)
+                return HordeSpawnRuleKind.OpeningSweep;
+
+            var candidates = new HordeSpawnRuleKind[4];
+            var weights = new int[4];
+            int count = 0;
+            candidates[count] = HordeSpawnRuleKind.InterceptorScreen;
+            weights[count++] = 4;
+
+            int strikerLimit = phase >= 3 ? 2 : 1;
+            if (budget >= 2 && availableSlots >= 1 &&
+                CountRole(HordeEnemyRole.Striker) < strikerLimit)
+            {
+                candidates[count] = HordeSpawnRuleKind.StrikerEscort;
+                weights[count++] = phase == 1 ? 2 : 3;
+            }
+            if (phase >= 2 && budget >= 2 && availableSlots >= 2)
+            {
+                candidates[count] = HordeSpawnRuleKind.PincerPressure;
+                weights[count++] = phase >= 3 ? 4 : 2;
+            }
+            if (phase >= 3 && budget >= 3 && availableSlots >= 1 &&
+                !HasGunship())
+            {
+                candidates[count] = HordeSpawnRuleKind.GunshipCommand;
+                weights[count++] = 5;
+            }
+
+            int totalWeight = 0;
+            for (int index = 0; index < count; index++)
+            {
+                if (candidates[index] == lastRule && count > 1)
+                    weights[index] = Mathf.Max(1, weights[index] / 2);
+                if (killsSinceDecision >= 3 &&
+                    (candidates[index] == HordeSpawnRuleKind.PincerPressure ||
+                     candidates[index] == HordeSpawnRuleKind.GunshipCommand))
+                {
+                    weights[index] += 2;
+                }
+                totalWeight += weights[index];
+            }
+
+            int roll = random.Next(0, Mathf.Max(1, totalWeight));
+            for (int index = 0; index < count; index++)
+            {
+                if (roll < weights[index])
+                    return candidates[index];
+                roll -= weights[index];
+            }
+            return HordeSpawnRuleKind.InterceptorScreen;
+        }
+
+        int BuildRuleRoles(
+            HordeSpawnRuleKind rule,
+            int phase,
+            int budget,
+            int availableSlots,
+            HordeEnemyRole[] roles)
+        {
+            int count = 0;
+            switch (rule)
+            {
+                case HordeSpawnRuleKind.StrikerEscort:
+                    count = AppendRole(
+                        roles,
+                        count,
+                        HordeEnemyRole.Striker,
+                        ref budget,
+                        ref availableSlots);
+                    count = AppendRole(
+                        roles,
+                        count,
+                        HordeEnemyRole.Interceptor,
+                        ref budget,
+                        ref availableSlots);
+                    break;
+                case HordeSpawnRuleKind.PincerPressure:
+                    count = AppendRole(
+                        roles,
+                        count,
+                        HordeEnemyRole.Interceptor,
+                        ref budget,
+                        ref availableSlots);
+                    count = AppendRole(
+                        roles,
+                        count,
+                        HordeEnemyRole.Interceptor,
+                        ref budget,
+                        ref availableSlots);
+                    if (phase >= 3 && CountRole(HordeEnemyRole.Striker) < 2)
+                    {
+                        count = AppendRole(
+                            roles,
+                            count,
+                            HordeEnemyRole.Striker,
+                            ref budget,
+                            ref availableSlots);
+                    }
+                    count = AppendRole(
+                        roles,
+                        count,
+                        HordeEnemyRole.Interceptor,
+                        ref budget,
+                        ref availableSlots);
+                    break;
+                case HordeSpawnRuleKind.GunshipCommand:
+                    count = AppendRole(
+                        roles,
+                        count,
+                        HordeEnemyRole.Gunship,
+                        ref budget,
+                        ref availableSlots);
+                    count = AppendRole(
+                        roles,
+                        count,
+                        HordeEnemyRole.Interceptor,
+                        ref budget,
+                        ref availableSlots);
+                    break;
+                default:
+                    int desired = rule == HordeSpawnRuleKind.OpeningSweep
+                        ? 2
+                        : phase >= 2 ? 3 : 2;
+                    while (count < desired && budget > 0 && availableSlots > 0)
+                    {
+                        count = AppendRole(
+                            roles,
+                            count,
+                            HordeEnemyRole.Interceptor,
+                            ref budget,
+                            ref availableSlots);
+                    }
+                    break;
+            }
+            return count;
+        }
+
+        static int AppendRole(
+            HordeEnemyRole[] roles,
+            int count,
+            HordeEnemyRole role,
+            ref int budget,
+            ref int availableSlots)
+        {
+            int cost = ThreatCost(role);
+            if (roles == null || count >= roles.Length ||
+                availableSlots <= 0 || budget < cost)
+                return count;
+            roles[count] = role;
+            budget -= cost;
+            availableSlots--;
+            return count + 1;
+        }
+
+        bool TrySelectSector(
+            HordeSpawnRuleKind rule,
+            int memberCount,
+            out int sector)
+        {
+            sector = 0;
+            int[] options = rule == HordeSpawnRuleKind.PincerPressure
+                ? FlankSectors
+                : rule == HordeSpawnRuleKind.OpeningSweep
+                    ? FrontSectors
+                    : WideSectors;
+            int maximumInSector = Mathf.Max(
+                2,
+                Mathf.CeilToInt(ActiveCapAt(EncounterClock) * 0.4f));
+            int start = random.Next(0, options.Length);
+            for (int pass = 0; pass < 2; pass++)
+            {
+                for (int offset = 0; offset < options.Length; offset++)
+                {
+                    int candidate = options[(start + offset) % options.Length];
+                    if (pass == 0 && options.Length > 1 && candidate == lastSector)
+                        continue;
+                    int sectorIndex = candidate + 3;
+                    if (sectorIndex < 0 || sectorIndex >= sectorReadyAt.Length ||
+                        Time.time < sectorReadyAt[sectorIndex] ||
+                        CountAssignedToSector(candidate) + memberCount >
+                        maximumInSector)
+                    {
+                        continue;
+                    }
+                    sector = candidate;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        int CountAssignedToSector(int sector)
+        {
+            int count = 0;
+            foreach (QueuedSpawn queued in spawnQueue)
+                if (queued.Sector == sector)
+                    count++;
+            if (playerBody == null)
+                return count;
+
+            Vector3 forward = Vector3.ProjectOnPlane(
+                playerBody.transform.forward,
+                Vector3.up);
+            if (forward.sqrMagnitude < 0.01f)
+                forward = Vector3.forward;
+            forward.Normalize();
+            float targetAngle = sector * 45f;
+            for (int index = 0; index < active.Count; index++)
+            {
+                HordeEnemyVehicle enemy = active[index];
+                if (enemy == null || !enemy.IsCombatCapable)
+                    continue;
+                Vector3 direction = Vector3.ProjectOnPlane(
+                    enemy.BodyPosition - playerBody.worldCenterOfMass,
+                    Vector3.up);
+                if (direction.sqrMagnitude < 0.01f)
+                    continue;
+                float angle = Vector3.SignedAngle(forward, direction, Vector3.up);
+                if (Mathf.Abs(Mathf.DeltaAngle(targetAngle, angle)) <= 30f)
+                    count++;
+            }
+            return count;
+        }
+
+        HordeFormationKind SelectFormation(
+            HordeSpawnRuleKind rule,
+            int phase)
+        {
+            if (rule == HordeSpawnRuleKind.PincerPressure)
+                return HordeFormationKind.Pincer;
+            if (rule == HordeSpawnRuleKind.StrikerEscort)
+                return HordeFormationKind.Echelon;
+
+            HordeFormationKind[] options =
+                rule == HordeSpawnRuleKind.GunshipCommand
+                    ? new[] { HordeFormationKind.V, HordeFormationKind.LineAbreast }
+                    : phase == 1
+                        ? new[] { HordeFormationKind.V, HordeFormationKind.LineAbreast }
+                        : new[]
+                        {
+                            HordeFormationKind.V,
+                            HordeFormationKind.LineAbreast,
+                            HordeFormationKind.Echelon
+                        };
+            int start = random.Next(0, options.Length);
+            for (int offset = 0; offset < options.Length; offset++)
+            {
+                HordeFormationKind candidate =
+                    options[(start + offset) % options.Length];
+                if (candidate != lastFormation || options.Length == 1)
+                    return candidate;
+            }
+            return options[start];
+        }
+
+        static float WarningSecondsFor(HordeSpawnRuleKind rule)
+        {
+            switch (rule)
+            {
+                case HordeSpawnRuleKind.GunshipCommand:
+                    return 2.5f;
+                case HordeSpawnRuleKind.PincerPressure:
+                    return 1.8f;
+                case HordeSpawnRuleKind.StrikerEscort:
+                    return 1.6f;
+                case HordeSpawnRuleKind.OpeningSweep:
+                    return 0.9f;
+                default:
+                    return 1.2f;
+            }
+        }
+
+        static int ThreatCost(HordeEnemyRole role)
+        {
+            return role == HordeEnemyRole.Gunship ? 3 :
+                role == HordeEnemyRole.Striker ? 2 : 1;
+        }
+
+        int ActiveThreat()
+        {
+            int threat = 0;
+            for (int index = 0; index < active.Count; index++)
+            {
+                HordeEnemyVehicle enemy = active[index];
+                if (enemy != null && enemy.IsCombatCapable)
+                    threat += ThreatCost(enemy.Role);
+            }
+            return threat;
+        }
+
+        int QueuedThreat()
+        {
+            int threat = 0;
+            foreach (QueuedSpawn queued in spawnQueue)
+                threat += ThreatCost(queued.Role);
+            return threat;
+        }
+
+        int CountRole(HordeEnemyRole role)
+        {
+            int count = 0;
+            for (int index = 0; index < active.Count; index++)
+            {
+                HordeEnemyVehicle enemy = active[index];
+                if (enemy != null && enemy.IsCombatCapable && enemy.Role == role)
+                    count++;
+            }
+            foreach (QueuedSpawn queued in spawnQueue)
+                if (queued.Role == role)
+                    count++;
+            return count;
         }
 
         bool TrySpawnQueued()
@@ -1019,7 +1554,8 @@ namespace UnityPlanet.ModularAssembly
             if (!TryResolveSpawnPosition(queued, out Vector3 position))
             {
                 queued.Attempts++;
-                spawnQueue.Enqueue(queued);
+                if (queued.Attempts < MaximumSpawnAttempts)
+                    spawnQueue.Enqueue(queued);
                 return false;
             }
             HordeEnemyVehicle enemy = FindAvailableEnemy();
@@ -1055,15 +1591,26 @@ namespace UnityPlanet.ModularAssembly
             position = Vector3.zero;
             if (playerBody == null || navigation == null)
                 return false;
+            if (plannedIngresses.Count > 0)
+                return TryResolvePlannedIngressPosition(queued, out position);
             Vector3 forward = Vector3.ProjectOnPlane(
                 playerBody.transform.forward,
                 Vector3.up);
             if (forward.sqrMagnitude < 0.01f)
                 forward = Vector3.forward;
             forward.Normalize();
-            float angle = queued.Sector * 45f + queued.Attempts * 22.5f;
+            float attemptOffset = queued.Attempts == 0
+                ? 0f
+                : (queued.Attempts % 2 == 1 ? 1f : -1f) *
+                  Mathf.Ceil(queued.Attempts * 0.5f) * 7.5f;
+            float angle = queued.Sector * 45f + attemptOffset;
             Vector3 radial = Quaternion.AngleAxis(angle, Vector3.up) * forward;
-            float distance = 190f + (queued.Attempts * 23 + spawnSequence * 17) % 100;
+            float speedDistance = Mathf.Clamp(
+                playerBody.velocity.magnitude * 4f,
+                190f,
+                275f);
+            float distance = speedDistance +
+                             (queued.Attempts * 17 + spawnSequence * 11) % 36;
             Vector3 lateral = Vector3.Cross(Vector3.up, radial).normalized;
             float centered = queued.MemberIndex - (queued.MemberCount - 1) * 0.5f;
             Vector3 offset;
@@ -1096,8 +1643,10 @@ namespace UnityPlanet.ModularAssembly
             float playerDistance = Vector3.Distance(
                 candidate,
                 playerBody.worldCenterOfMass);
-            if (playerDistance < 150f || playerDistance > 320f ||
+            if (playerDistance < 170f || playerDistance > 320f ||
                 Vector3.Distance(candidate, battleCenter) > warningRadius * 0.75f)
+                return false;
+            if (playerDistance < 250f && IsUnoccludedInPlayerView(candidate))
                 return false;
             for (int index = 0; index < active.Count; index++)
             {
@@ -1125,6 +1674,139 @@ namespace UnityPlanet.ModularAssembly
             return true;
         }
 
+        bool TryResolvePlannedIngressPosition(
+            QueuedSpawn queued,
+            out Vector3 position)
+        {
+            position = Vector3.zero;
+            int ingressIndex = SelectPlannedIngressIndex(
+                plannedIngresses,
+                playerBody.worldCenterOfMass,
+                playerBody.transform.forward,
+                queued.Sector,
+                queued.Attempts);
+            if (ingressIndex < 0)
+                return false;
+
+            Vector3 entrance = plannedIngresses[ingressIndex];
+            Vector3 radial = Vector3.ProjectOnPlane(
+                battleCenter - entrance,
+                Vector3.up);
+            if (radial.sqrMagnitude < 0.01f)
+                radial = Vector3.ProjectOnPlane(
+                    playerBody.worldCenterOfMass - entrance,
+                    Vector3.up);
+            if (radial.sqrMagnitude < 0.01f)
+                radial = Vector3.forward;
+            radial.Normalize();
+            Vector3 lateral = Vector3.Cross(Vector3.up, radial).normalized;
+            float centered = queued.MemberIndex -
+                             (queued.MemberCount - 1) * 0.5f;
+            Vector3 offset;
+            switch (queued.Formation)
+            {
+                case HordeFormationKind.LineAbreast:
+                    offset = lateral * centered * 38f;
+                    break;
+                case HordeFormationKind.Pincer:
+                    offset = lateral * Mathf.Sign(centered == 0f ? 1f : centered) *
+                             (30f + Mathf.Abs(centered) * 20f) -
+                             radial * Mathf.Abs(centered) * 14f;
+                    break;
+                case HordeFormationKind.Echelon:
+                    offset = lateral * centered * 34f +
+                             Vector3.up * centered * 15f -
+                             radial * Mathf.Abs(centered) * 12f;
+                    break;
+                default:
+                    offset = lateral * centered * 38f -
+                             radial * Mathf.Abs(centered) * 22f;
+                    break;
+            }
+
+            Vector3 candidate = entrance + offset;
+            if (!navigation.TrySampleGround(
+                    candidate.x,
+                    candidate.z,
+                    out float ground))
+            {
+                return false;
+            }
+            float roleHeight = queued.Role == HordeEnemyRole.Gunship
+                ? 105f
+                : 70f;
+            candidate.y = ground + roleHeight +
+                          Mathf.Max(0f, offset.y);
+
+            float playerDistance = Vector3.Distance(
+                candidate,
+                playerBody.worldCenterOfMass);
+            float centerDistance = Vector3.Distance(candidate, battleCenter);
+            if (playerDistance < 170f ||
+                playerDistance > warningRadius * 0.95f ||
+                centerDistance > warningRadius * 0.82f)
+            {
+                return false;
+            }
+            // First try every PCG entrance without a visible pop. If the whole
+            // arena is visible, the existing arrival warning is preferable to
+            // silently starving the wave after all entrances were checked.
+            if (queued.Attempts < plannedIngresses.Count &&
+                IsUnoccludedInPlayerView(candidate))
+            {
+                return false;
+            }
+            for (int index = 0; index < active.Count; index++)
+            {
+                HordeEnemyVehicle other = active[index];
+                if (other != null && other.IsCombatCapable &&
+                    Vector3.Distance(candidate, other.BodyPosition) < 35f)
+                {
+                    return false;
+                }
+            }
+            int overlapCount = Physics.OverlapSphereNonAlloc(
+                candidate,
+                12f,
+                spawnOverlaps,
+                ~0,
+                QueryTriggerInteraction.Ignore);
+            for (int index = 0; index < overlapCount; index++)
+            {
+                Collider collider = spawnOverlaps[index];
+                if (collider != null && collider.enabled)
+                    return false;
+            }
+
+            Vector3 inbound = playerBody.worldCenterOfMass +
+                              Vector3.up * 25f;
+            if (!navigation.FindPath(candidate, inbound, spawnPathProbe))
+                return false;
+            position = candidate;
+            return true;
+        }
+
+        static bool IsUnoccludedInPlayerView(Vector3 position)
+        {
+            Camera camera = Camera.main;
+            if (camera == null || !camera.isActiveAndEnabled)
+                return false;
+            Vector3 delta = position - camera.transform.position;
+            float distance = delta.magnitude;
+            if (distance < 0.01f)
+                return true;
+            Vector3 direction = delta / distance;
+            if (Vector3.Dot(camera.transform.forward, direction) < 0.42f)
+                return false;
+            Vector3 origin = camera.transform.position + direction * 2.5f;
+            return !Physics.Raycast(
+                origin,
+                direction,
+                Mathf.Max(0f, distance - 5f),
+                ~0,
+                QueryTriggerInteraction.Ignore);
+        }
+
         HordeEnemyVehicle FindAvailableEnemy()
         {
             for (int index = 0; index < pool.Count; index++)
@@ -1146,33 +1828,10 @@ namespace UnityPlanet.ModularAssembly
             return false;
         }
 
-        HordeFormationKind NextFormation(int phase)
-        {
-            int allowed = phase == 1 ? 2 : 4;
-            HordeFormationKind result;
-            do
-            {
-                result = (HordeFormationKind)random.Next(0, allowed);
-            } while (allowed > 1 && result == lastFormation);
-            return result;
-        }
-
-        int NextSector(int phase)
-        {
-            int[] early = { -2, -1, 0, 1, 2 };
-            int result;
-            do
-            {
-                result = phase == 1
-                    ? early[random.Next(0, early.Length)]
-                    : random.Next(-3, 4);
-            } while (result == lastSector);
-            return result;
-        }
-
         static bool InReliefWindow(float seconds)
         {
-            return seconds > 8f && seconds % 24f >= 20f;
+            return seconds >= 26f && seconds < FinalClearStartSeconds &&
+                   seconds % 30f >= 26f;
         }
     }
 
@@ -1199,6 +1858,12 @@ namespace UnityPlanet.ModularAssembly
         BoxCollider rootCollider;
         Renderer[] renderers = Array.Empty<Renderer>();
         Material hullMaterial;
+        GameObject fallbackHullVisual;
+        GameObject interceptorVisual;
+        GameObject strikerVisual;
+        GameObject gunshipVisual;
+        GameObject activeHullVisual;
+        MaterialPropertyBlock hullPaint;
         HordeEnemyProfile profile;
         WeaponProfile weaponProfile;
         Vector3 desiredVelocity;
@@ -1211,6 +1876,7 @@ namespace UnityPlanet.ModularAssembly
         float outsideSeconds;
         float attackStateUntil;
         float nextShotAt;
+        float nextSuicideWarningAt;
         float returnAt;
         int routeIndex;
         int sessionId;
@@ -1232,6 +1898,9 @@ namespace UnityPlanet.ModularAssembly
         public float Integrity => health;
         public float MaximumIntegrity => profile?.maximumHealth ?? 0f;
         public bool IsDestroyed => dead;
+        public bool IsSuicide =>
+            profile != null &&
+            profile.attackKind == HordeEnemyAttackKind.Suicide;
 
         public bool Initialize(
             HordeCombatDirector source,
@@ -1243,6 +1912,7 @@ namespace UnityPlanet.ModularAssembly
             director = source;
             visuals = effectPool;
             projectiles = projectilePool;
+            hullPaint = new MaterialPropertyBlock();
             body = gameObject.AddComponent<Rigidbody>();
             body.useGravity = false;
             body.drag = 0f;
@@ -1271,7 +1941,8 @@ namespace UnityPlanet.ModularAssembly
                 name = "RuntimeHordeEnemyHull"
             };
             BuildHull();
-            renderers = GetComponentsInChildren<Renderer>(true);
+            BuildFleetVisuals();
+            SelectRoleVisual(HordeEnemyRole.Interceptor);
             if (!Forge3DEffectPool.HasRenderableRendererSet(gameObject))
             {
                 error = "割草敌机机身存在缺失或不受支持的材质。";
@@ -1307,6 +1978,7 @@ namespace UnityPlanet.ModularAssembly
             attackState = AttackState.Tracking;
             attackStateUntil = spawnAt + 2f;
             nextShotAt = 0f;
+            nextSuicideWarningAt = 0f;
             returnAt = float.PositiveInfinity;
             route.Clear();
             routeIndex = 0;
@@ -1377,6 +2049,8 @@ namespace UnityPlanet.ModularAssembly
         {
             if (!activeForCombat || dead || playerBody == null ||
                 director == null || director.SessionId != sessionId)
+                return;
+            if (PlayerSkillCombatEffects.AreEnemiesFrozen)
                 return;
             UpdateNavigation();
             UpdateAttack();
@@ -1500,6 +2174,12 @@ namespace UnityPlanet.ModularAssembly
 
         void UpdateAttack()
         {
+            if (IsSuicide)
+            {
+                UpdateSuicideAttack();
+                return;
+            }
+
             Vector3 target = playerBody.worldCenterOfMass;
             float distance = Vector3.Distance(body.worldCenterOfMass, target);
             bool canEngage = Time.time >= spawnAt + 2f &&
@@ -1546,6 +2226,62 @@ namespace UnityPlanet.ModularAssembly
                         director.ReleaseAttackToken(this);
                         attackState = AttackState.Recovering;
                         attackStateUntil = Time.time + 0.9f;
+                    }
+                    break;
+                default:
+                    if (Time.time >= attackStateUntil)
+                        attackState = AttackState.Tracking;
+                    break;
+            }
+        }
+
+        void UpdateSuicideAttack()
+        {
+            Vector3 target = playerBody.worldCenterOfMass;
+            float distance = Vector3.Distance(body.worldCenterOfMass, target);
+            bool hasApproach =
+                director.HasLineOfTravel(body.worldCenterOfMass, target);
+            switch (attackState)
+            {
+                case AttackState.Tracking:
+                    if (Time.time >= spawnAt + 1.25f &&
+                        distance <= 36f && hasApproach &&
+                        director.TryAcquireAttackToken(this))
+                    {
+                        attackState = AttackState.Telegraph;
+                        attackStateUntil = Time.time + 0.55f;
+                        nextSuicideWarningAt = 0f;
+                    }
+                    break;
+                case AttackState.Telegraph:
+                    if (Time.time >= nextSuicideWarningAt)
+                    {
+                        nextSuicideWarningAt = Time.time + 0.12f;
+                        visuals?.SpawnTracer(
+                            body.worldCenterOfMass,
+                            target,
+                            new Color(1f, 0.12f, 0.02f, 0.9f),
+                            0.1f,
+                            "HordeSuicideTelegraph");
+                    }
+                    if (!hasApproach || distance > 48f)
+                    {
+                        director.ReleaseAttackToken(this);
+                        attackState = AttackState.Recovering;
+                        attackStateUntil = Time.time + 0.25f;
+                    }
+                    else if (Time.time >= attackStateUntil)
+                    {
+                        if (distance <= Mathf.Max(
+                                10f,
+                                profile.detonationRadius * 1.1f))
+                        {
+                            Detonate();
+                        }
+                        else
+                        {
+                            attackStateUntil = Time.time + 0.12f;
+                        }
                     }
                     break;
                 default:
@@ -1649,8 +2385,53 @@ namespace UnityPlanet.ModularAssembly
                     GridModuleCategory.Core,
                     true,
                     bounds,
-                    0));
+                    0,
+                    appliedDamage > 0.01f ? 3f : 1f));
             SetRenderers(false);
+        }
+
+        void OnCollisionEnter(Collision collision)
+        {
+            if (!IsCombatCapable || !IsSuicide || collision == null ||
+                playerBody == null)
+            {
+                return;
+            }
+            Transform hit = collision.transform;
+            if (collision.rigidbody == playerBody ||
+                (hit != null && hit.IsChildOf(playerBody.transform)))
+            {
+                Detonate();
+            }
+        }
+
+        void Detonate()
+        {
+            if (!IsCombatCapable || !IsSuicide)
+                return;
+            Vector3 point = body.worldCenterOfMass;
+            director?.ReleaseAttackToken(this);
+            visuals?.SpawnImpact(
+                point,
+                Vector3.up,
+                new Color(1f, 0.16f, 0.02f, 1f),
+                "HordeSuicideExplosion",
+                profile.detonationRadius);
+            WeaponDamageUtility.ApplyExplosion(
+                point,
+                profile.detonationRadius,
+                profile.detonationDamage,
+                transform,
+                gameObject,
+                affectUrbanStructures: true);
+            Die(
+                new SpaceDamageInfo(
+                    health,
+                    point,
+                    Vector3.zero,
+                    SpaceDamageType.Explosion,
+                    gameObject),
+                0f);
         }
 
         void ConfigureForProfile()
@@ -1661,11 +2442,15 @@ namespace UnityPlanet.ModularAssembly
             float scale = profile.role == HordeEnemyRole.Gunship
                 ? 1.25f
                 : profile.role == HordeEnemyRole.Striker ? 1.08f : 0.92f;
-            Transform hull = transform.Find("HullVisual");
-            if (hull != null)
-                hull.localScale = Vector3.one * scale;
+            SelectRoleVisual(profile.role);
+            if (activeHullVisual == fallbackHullVisual &&
+                fallbackHullVisual != null)
+            {
+                fallbackHullVisual.transform.localScale = Vector3.one * scale;
+                hullMaterial.color = profile.hullColor;
+            }
+            ApplyActiveHullPaint(IsSuicide);
             rootCollider.size = new Vector3(7f, 2.5f, 10f) * scale;
-            hullMaterial.color = profile.hullColor;
             weaponProfile = WeaponProfileLibrary.Resolve(null);
             weaponProfile.delivery = WeaponDeliveryKind.PhysicalProjectile;
             weaponProfile.damage = profile.shotDamage;
@@ -1681,6 +2466,7 @@ namespace UnityPlanet.ModularAssembly
         void BuildHull()
         {
             GameObject hull = new GameObject("HullVisual");
+            fallbackHullVisual = hull;
             hull.transform.SetParent(transform, false);
             CreateHullPart(
                 hull.transform,
@@ -1731,6 +2517,84 @@ namespace UnityPlanet.ModularAssembly
                 else
                     DestroyImmediate(collider);
             }
+        }
+
+        void BuildFleetVisuals()
+        {
+            interceptorVisual = EnemyFleetVisualLibrary.Create(
+                transform,
+                "hull.sf_stealth_fighter",
+                "HullVisual_Suicide",
+                9.2f);
+            strikerVisual = EnemyFleetVisualLibrary.Create(
+                transform,
+                "hull.sf_fighter_gr2",
+                "HullVisual_Striker",
+                10.8f);
+            gunshipVisual = EnemyFleetVisualLibrary.Create(
+                transform,
+                "hull.sf_dropship_r35",
+                "HullVisual_Gunship",
+                12.5f);
+        }
+
+        void SelectRoleVisual(HordeEnemyRole role)
+        {
+            SetVisualActive(fallbackHullVisual, false);
+            SetVisualActive(interceptorVisual, false);
+            SetVisualActive(strikerVisual, false);
+            SetVisualActive(gunshipVisual, false);
+
+            switch (role)
+            {
+                case HordeEnemyRole.Striker:
+                    activeHullVisual = strikerVisual;
+                    break;
+                case HordeEnemyRole.Gunship:
+                    activeHullVisual = gunshipVisual;
+                    break;
+                default:
+                    activeHullVisual = interceptorVisual;
+                    break;
+            }
+            if (activeHullVisual == null)
+                activeHullVisual = fallbackHullVisual;
+            SetVisualActive(activeHullVisual, true);
+            renderers = activeHullVisual == null
+                ? Array.Empty<Renderer>()
+                : activeHullVisual.GetComponentsInChildren<Renderer>(true);
+        }
+
+        void ApplyActiveHullPaint(bool suicidePaint)
+        {
+            if (hullPaint == null)
+                hullPaint = new MaterialPropertyBlock();
+            Color redPaint = new Color(1f, 0.055f, 0.025f, 1f);
+            Color redEmission = new Color(2.4f, 0.025f, 0.008f, 1f);
+            for (int index = 0; index < renderers.Length; index++)
+            {
+                Renderer renderer = renderers[index];
+                if (renderer == null)
+                    continue;
+                hullPaint.Clear();
+                if (suicidePaint)
+                {
+                    Material material = renderer.sharedMaterial;
+                    if (material != null && material.HasProperty("_BaseColor"))
+                        hullPaint.SetColor("_BaseColor", redPaint);
+                    if (material != null && material.HasProperty("_Color"))
+                        hullPaint.SetColor("_Color", redPaint);
+                    if (material != null && material.HasProperty("_EmissionColor"))
+                        hullPaint.SetColor("_EmissionColor", redEmission);
+                }
+                renderer.SetPropertyBlock(hullPaint);
+            }
+        }
+
+        static void SetVisualActive(GameObject visual, bool value)
+        {
+            if (visual != null && visual.activeSelf != value)
+                visual.SetActive(value);
         }
 
         Bounds ResolveBounds()

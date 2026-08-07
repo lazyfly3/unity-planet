@@ -35,10 +35,12 @@ public sealed class InterstellarCameraRig : MonoBehaviour
 
     [Header("Motion")]
     [SerializeField, Min(0f)] float rotationSharpness = 14f;
+    [SerializeField, Min(0f)] float arcadeRotationSharpness = 32f;
     [SerializeField, Min(0f)] float accelerationSetback = 0.006f;
     [SerializeField, Min(0f)] float maximumSetback = 0.8f;
     [SerializeField, Min(0f)] float localRecoilSharpness = 8f;
     [SerializeField, Min(1f)] float maximumFovSpeed = 1800f;
+    [SerializeField, Min(1f)] float arcadeMaximumFovSpeed = 140f;
     [SerializeField, Min(0f)] float freeLookSensitivity = 2.2f;
 
     Rigidbody targetBody;
@@ -226,7 +228,11 @@ public sealed class InterstellarCameraRig : MonoBehaviour
         }
         else
         {
-            float poseBlend = 1f - Mathf.Exp(-rotationSharpness * Time.unscaledDeltaTime);
+            float effectiveRotationSharpness = UsesArcadeAssist()
+                ? Mathf.Max(rotationSharpness, arcadeRotationSharpness)
+                : rotationSharpness;
+            float poseBlend = 1f - Mathf.Exp(
+                -effectiveRotationSharpness * Time.unscaledDeltaTime);
             if (UsesModularFlightFraming())
             {
                 // Keep the modular ship rigidly framed while its physics body
@@ -260,7 +266,10 @@ public sealed class InterstellarCameraRig : MonoBehaviour
         if (targetCamera != null)
         {
             float speed = CurrentPresentationVelocity().magnitude;
-            float speedRatio = Mathf.Clamp01(speed / maximumFovSpeed);
+            float fovSpeedReference = UsesArcadeAssist()
+                ? Mathf.Max(1f, arcadeMaximumFovSpeed)
+                : maximumFovSpeed;
+            float speedRatio = Mathf.Clamp01(speed / fovSpeedReference);
             float thirdFov = Mathf.Lerp(fieldOfViewRange.x, fieldOfViewRange.y, speedRatio);
             float cockpitFov = cockpitFieldOfView
                 + Mathf.Lerp(0f, cockpitSpeedFovAddition, speedRatio);
@@ -560,6 +569,13 @@ public sealed class InterstellarCameraRig : MonoBehaviour
                target == ship.transform &&
                cinematicPresentationTarget == null &&
                targetCamera != null;
+    }
+
+    bool UsesArcadeAssist()
+    {
+        return UsesModularFlightFraming() &&
+               modularPilotAim is ModularInterstellarControlAdapter adapter &&
+               adapter.ArcadeAssistActive;
     }
 
     void UpdateModularFlightBounds(bool immediate)

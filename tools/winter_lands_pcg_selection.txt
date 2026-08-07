@@ -1,0 +1,31 @@
+# Curated gameplay-facing subset of Winter Lands. Dependencies are resolved by
+# GUID by extract_unitypackage_subset.py; demo scenes and project settings are
+# deliberately excluded.
+Assets/_DLNK/Winter Lands/[Prefabs]/Snow Rocks/IceRock001.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Snow Rocks/IceRock002.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Snow Rocks/IceRock003.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Snow Rocks/IceRockBlock00.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Ice Cliffs/WinterCliff00.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Ice Cliffs/WinterCliff003.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Ice Cliffs/WinterCliff005.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Ice Crystals/IceCrystal000.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Ice Crystals/IceCrystal004.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Ice Crystals/IceCrystal009.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Ice Crystals/IceCrystalBlock00.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Deco Elements/Ruins/AncientArcBig00_Snow.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Deco Elements/Ruins/AncientColumn00_Snow.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Deco Elements/Ruins/AncientRuinsDeco00.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Deco Elements/Ruins/Arcs/AncientArc00.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Deco Elements/Ruins/Walls/AncientWall00.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Deco Elements/Ruins/Walls/AncientWall004.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Snow Bridge/WinterBridge00.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Snow Bridge/WinterBridgeLarge00.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Snow Wall/WinterBlock00.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Snow Wall/WinterTower00.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Snow Wall/WinterTower01.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Snow Wall/WinterWall001b.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Snow Wall/WinterWall002.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Lighting Props/StreetLight00_Snow.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/Lighting Props/StreetLight01_Snow.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/FXs/Snow Low.prefab
+Assets/_DLNK/Winter Lands/[Prefabs]/FXs/Snow Storm Medium.prefab

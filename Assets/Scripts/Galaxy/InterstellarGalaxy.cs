@@ -64,6 +64,7 @@ public sealed class ProceduralInterstellarGenerator
 {
     public const int CurrentVersion = 3;
     public const long MacroCellSize = 4L;
+    public const int StarterSystemPlanetCount = 6;
     public const double SystemSpacingMeters = PhysicalConstants.LightYear * 6d;
     // Compatibility address spacing. Physical positions come from the system
     // barycenter plus a Kepler orbit and must not be reconstructed from this value.
@@ -197,6 +198,12 @@ public sealed class ProceduralInterstellarGenerator
 
     int GetPlanetCount(InterstellarCoordinate systemCoordinate)
     {
+        // Every new save starts in the origin system. Keep that first chapter
+        // deterministic and large enough to provide a six-step difficulty
+        // progression, regardless of the player's world seed.
+        if (systemCoordinate == InterstellarCoordinate.Zero)
+            return StarterSystemPlanetCount;
+
         ulong hash = Hash(worldSeed, systemCoordinate, 0xA24BAED4963EE407UL);
         return 2 + (int)(hash % 5UL);
     }

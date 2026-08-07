@@ -111,6 +111,9 @@ namespace UnityPlanet.ModularAssembly
         Vector3[] actualTorques = Array.Empty<Vector3>();
         float[] targetThrottles = Array.Empty<float>();
         float[] actualThrottles = Array.Empty<float>();
+        float[] solveBaseUse = Array.Empty<float>();
+        float[] solveAdditions = Array.Empty<float>();
+        Vector3[] solveBases = Array.Empty<Vector3>();
         Vector3 centerOfMass;
         Vector3 halfExtents = Vector3.one;
         Vector3 coreForce;
@@ -210,6 +213,25 @@ namespace UnityPlanet.ModularAssembly
 
         public Rcs24SolveResult CompleteStep(float deltaTime)
         {
+            return CompleteStepInternal(deltaTime, true);
+        }
+
+        /// <summary>
+        /// Completes the step without cloning the throttle buffer. The
+        /// returned array is owned by this allocator and remains valid only
+        /// until the next completed step. Runtime motion consumes it
+        /// immediately; the original CompleteStep API keeps snapshot
+        /// semantics for callers that retain results.
+        /// </summary>
+        public Rcs24SolveResult CompleteStepBuffered(float deltaTime)
+        {
+            return CompleteStepInternal(deltaTime, false);
+        }
+
+        Rcs24SolveResult CompleteStepInternal(
+            float deltaTime,
+            bool snapshotThrottles)
+        {
             foreach (Contribution contribution in contributions)
             {
                 if (contribution.core)
@@ -263,7 +285,9 @@ namespace UnityPlanet.ModularAssembly
                 residualError = 0f,
                 missingAxisMask = lastMissingAxisMask,
                 bottleneckAxis = lastBottleneckAxis,
-                thrusterThrottles = (float[])actualThrottles.Clone()
+                thrusterThrottles = snapshotThrottles
+                    ? (float[])actualThrottles.Clone()
+                    : actualThrottles
             };
         }
 
@@ -392,18 +416,20 @@ namespace UnityPlanet.ModularAssembly
             }
 
             int count = contributions.Count;
-            float[] baseUse = new float[count];
-            float[] additions = new float[count];
-            Vector3[] bases = new Vector3[count];
+            EnsureSolveScratchCapacity(count);
+            Array.Clear(solveAdditions, 0, count);
             for (int i = 0; i < count; i++)
             {
                 Contribution contribution = contributions[i];
-                baseUse[i] = contribution.usedFraction;
-                bases[i] = (torque
+                solveBaseUse[i] = contribution.usedFraction;
+                solveBases[i] = (torque
                     ? contribution.torqueVector
                     : contribution.forceVector) *
                     contribution.stepScale;
             }
+
+            if (!torque)
+                SeedBalancedAxisForces(target, ref achieved, count);
 
             // Bounded coordinate descent. Each physical thruster owns one
             // scalar here, so its split X/Y/Z authority cannot be spent more
@@ -420,9 +446,9 @@ namespace UnityPlanet.ModularAssembly
                 bool changed = false;
                 for (int i = 0; i < count; i++)
                 {
-                    Vector3 basis = bases[i];
+                    Vector3 basis = solveBases[i];
                     float denominator = basis.sqrMagnitude;
-                    float available = 1f - baseUse[i];
+                    float available = 1f - solveBaseUse[i];
                     if (denominator < Epsilon * Epsilon ||
                         available <= Epsilon)
                     {
@@ -433,13 +459,13 @@ namespace UnityPlanet.ModularAssembly
                         Vector3.Dot(target - achieved, basis) /
                         denominator;
                     float next = Mathf.Clamp(
-                        additions[i] + delta,
+                        solveAdditions[i] + delta,
                         0f,
                         available);
-                    float applied = next - additions[i];
+                    float applied = next - solveAdditions[i];
                     if (Mathf.Abs(applied) <= 0.000001f)
                         continue;
-                    additions[i] = next;
+                    solveAdditions[i] = next;
                     achieved += basis * applied;
                     changed = true;
                 }
@@ -463,12 +489,12 @@ namespace UnityPlanet.ModularAssembly
 
             for (int i = 0; i < count; i++)
             {
-                float use = additions[i];
+                float use = solveAdditions[i];
                 if (use <= Epsilon)
                     continue;
                 Contribution contribution = contributions[i];
-                contribution.usedFraction = baseUse[i] + use;
-                Vector3 allocation = bases[i] * use;
+                contribution.usedFraction = solveBaseUse[i] + use;
+                Vector3 allocation = solveBases[i] * use;
                 Vector3 physicalForce = contribution.forceVector *
                     contribution.stepScale * use;
                 if (torque)
@@ -492,6 +518,125 @@ namespace UnityPlanet.ModularAssembly
                     contribution.stepScale * use);
             }
             return achieved.sqrMagnitude > Epsilon * Epsilon;
+        }
+
+        void SeedBalancedAxisForces(
+            Vector3 target,
+            ref Vector3 achieved,
+            int count)
+        {
+            for (int axis = 0; axis < 3; axis++)
+            {
+                float residual = target[axis] - achieved[axis];
+                if (Mathf.Abs(residual) < Epsilon)
+                    continue;
+                float sign = Mathf.Sign(residual);
+                int candidateCount = 0;
+                Vector3 unitTorqueSum = Vector3.zero;
+                float minimumBaseUse = float.PositiveInfinity;
+                float maximumBaseUse = float.NegativeInfinity;
+                float minimumResponse = float.PositiveInfinity;
+                float maximumResponse = float.NegativeInfinity;
+                for (int index = 0; index < count; index++)
+                {
+                    if (!IsBalancedAxisCandidate(index, axis, sign))
+                        continue;
+                    Contribution contribution = contributions[index];
+                    candidateCount++;
+                    unitTorqueSum += Vector3.Cross(
+                        contribution.localPosition - centerOfMass,
+                        Axis(axis) * sign);
+                    minimumBaseUse = Mathf.Min(
+                        minimumBaseUse,
+                        solveBaseUse[index]);
+                    maximumBaseUse = Mathf.Max(
+                        maximumBaseUse,
+                        solveBaseUse[index]);
+                    float response = thrusters[
+                        contribution.thrusterIndex].responseTime;
+                    minimumResponse = Mathf.Min(minimumResponse, response);
+                    maximumResponse = Mathf.Max(maximumResponse, response);
+                }
+
+                float leverTolerance = Mathf.Max(
+                    0.001f,
+                    halfExtents.magnitude * candidateCount * 0.0001f);
+                if (candidateCount < 2 ||
+                    unitTorqueSum.magnitude > leverTolerance ||
+                    maximumBaseUse - minimumBaseUse > 0.0001f ||
+                    maximumResponse - minimumResponse > 0.0001f)
+                {
+                    continue;
+                }
+
+                float remaining = Mathf.Abs(residual);
+                for (int pass = 0;
+                     pass < candidateCount && remaining > Epsilon;
+                     pass++)
+                {
+                    int activeCount = 0;
+                    for (int index = 0; index < count; index++)
+                    {
+                        if (!IsBalancedAxisCandidate(index, axis, sign))
+                            continue;
+                        float axialForce = Mathf.Abs(solveBases[index][axis]);
+                        float availableFraction = Mathf.Max(
+                            0f,
+                            1f - solveBaseUse[index] -
+                            solveAdditions[index]);
+                        if (axialForce * availableFraction > Epsilon)
+                            activeCount++;
+                    }
+                    if (activeCount == 0)
+                        break;
+
+                    float equalForceShare = remaining / activeCount;
+                    bool changed = false;
+                    for (int index = 0; index < count; index++)
+                    {
+                        if (!IsBalancedAxisCandidate(index, axis, sign))
+                            continue;
+                        float axialForce = Mathf.Abs(solveBases[index][axis]);
+                        float availableFraction = Mathf.Max(
+                            0f,
+                            1f - solveBaseUse[index] -
+                            solveAdditions[index]);
+                        float availableForce =
+                            axialForce * availableFraction;
+                        if (availableForce <= Epsilon)
+                            continue;
+                        float force = Mathf.Min(
+                            equalForceShare,
+                            availableForce);
+                        float addition = force / axialForce;
+                        solveAdditions[index] += addition;
+                        achieved += solveBases[index] * addition;
+                        remaining = Mathf.Max(0f, remaining - force);
+                        changed = true;
+                    }
+                    if (!changed)
+                        break;
+                }
+            }
+        }
+
+        bool IsBalancedAxisCandidate(int index, int axis, float sign)
+        {
+            Contribution contribution = contributions[index];
+            if (contribution.core ||
+                contribution.thrusterIndex < 0 ||
+                contribution.thrusterIndex >= thrusters.Length)
+            {
+                return false;
+            }
+            Vector3 basis = solveBases[index];
+            float axial = basis[axis] * sign;
+            if (axial <= Epsilon)
+                return false;
+            float lateralSquared = Mathf.Max(
+                0f,
+                basis.sqrMagnitude - basis[axis] * basis[axis]);
+            return lateralSquared <= axial * axial * 0.000001f;
         }
 
         Vector3 CurrentAllocatedVector(bool torque)
@@ -757,6 +902,16 @@ namespace UnityPlanet.ModularAssembly
             actualTorques = new Vector3[count];
             targetThrottles = new float[count];
             actualThrottles = new float[count];
+        }
+
+        void EnsureSolveScratchCapacity(int count)
+        {
+            if (solveBaseUse.Length >= count)
+                return;
+
+            solveBaseUse = new float[count];
+            solveAdditions = new float[count];
+            solveBases = new Vector3[count];
         }
 
         static void AddSigned(

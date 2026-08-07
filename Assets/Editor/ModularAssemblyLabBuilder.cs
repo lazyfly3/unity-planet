@@ -4,11 +4,9 @@ using System.Linq;
 using ModularAssembly;
 using SpacecraftEditor;
 using UnityEditor;
-using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 public static class ModularAssemblyLabBuilder
 {
@@ -102,7 +100,6 @@ public static class ModularAssemblyLabBuilder
         bootstrap.ConfigureAssets(definitions, camera);
         EditorSceneManager.SaveScene(scene, ScenePath);
         AddSceneToBuildSettings(ScenePath);
-        AddStartMenuButton();
         EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -282,39 +279,6 @@ public static class ModularAssemblyLabBuilder
     {
         foreach (Collider collider in target.GetComponentsInChildren<Collider>(true))
             UnityEngine.Object.DestroyImmediate(collider);
-    }
-
-    static void AddStartMenuButton()
-    {
-        const string startMenuPath = "Assets/Scenes/StartMenu.unity";
-        Scene scene = EditorSceneManager.OpenScene(startMenuPath, OpenSceneMode.Single);
-        StartMenuController controller = UnityEngine.Object.FindObjectOfType<StartMenuController>(true);
-        if (controller == null || GameObject.Find("ModularAssemblyButton") != null)
-        {
-            EditorSceneManager.SaveScene(scene);
-            return;
-        }
-        SerializedObject serialized = new SerializedObject(controller);
-        GameObject mainPanel = serialized.FindProperty("mainPanel").objectReferenceValue as GameObject;
-        Button source = mainPanel == null ? null : mainPanel.GetComponentInChildren<Button>(true);
-        if (source == null)
-        {
-            Debug.LogWarning("Could not create ModularAssembly start-menu button: no source button.");
-            return;
-        }
-        Button button = UnityEngine.Object.Instantiate(source, source.transform.parent);
-        button.name = "ModularAssemblyButton";
-        button.onClick = new Button.ButtonClickedEvent();
-        UnityEventTools.AddPersistentListener(button.onClick, controller.ShowModularAssemblyBrowser);
-        Text label = button.GetComponentInChildren<Text>(true);
-        if (label != null)
-            label.text = "模块拼装实验场";
-        RectTransform rect = button.GetComponent<RectTransform>();
-        if (rect != null && button.transform.parent.GetComponent<LayoutGroup>() == null)
-            rect.anchoredPosition += new Vector2(0f, -72f);
-        EditorUtility.SetDirty(controller);
-        EditorSceneManager.MarkSceneDirty(scene);
-        EditorSceneManager.SaveScene(scene);
     }
 
     static void AddSceneToBuildSettings(string path)

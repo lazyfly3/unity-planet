@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Winter Lake
-  m_Shader: {fileID: 10700, guid: 0000000000000000f000000000000000, type: 0}
+  m_Shader: {fileID: 104, guid: 0000000000000000f000000000000000, type: 0}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -24,30 +24,33 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BackTex:
-        m_Texture: {fileID: 2800000, guid: 9f7d07ca2cd6946828117bd111faf66e, type: 3}
+        m_Texture: {fileID: 2800000, guid: 42e3ec6e2119c854ea89d4117b9ad4d8, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DownTex:
-        m_Texture: {fileID: 2800000, guid: f9a35b28e1aac4559acc635f9d0d4747, type: 3}
+        m_Texture: {fileID: 2800000, guid: 787d73201efa7b94ba7097f541968afc, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _FrontTex:
-        m_Texture: {fileID: 2800000, guid: 48b9d8f8e36404d0bbc9dc7c7a7607be, type: 3}
+        m_Texture: {fileID: 2800000, guid: 5dea59ebc41698140b5a11d640558ade, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _LeftTex:
-        m_Texture: {fileID: 2800000, guid: 2e9e75167a7424722af79df2dbfb2e59, type: 3}
+        m_Texture: {fileID: 2800000, guid: 53ee752af725fc94eaab00d8d7e91a45, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _RightTex:
-        m_Texture: {fileID: 2800000, guid: 1ff179ad4450148b99e0a325fc541746, type: 3}
+        m_Texture: {fileID: 2800000, guid: cd78f999a9c2ff5478f8025baf35d6c1, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _UpTex:
-        m_Texture: {fileID: 2800000, guid: 7362a64256aa94fb38f4e05ae98f5098, type: 3}
+        m_Texture: {fileID: 2800000, guid: 797f6943460ecf94da60a779ef96960a, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
-    m_Colors: []
+    m_Floats:
+    - _Exposure: 1
+    - _Rotation: 0
+    m_Colors:
+    - _Tint: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
   m_BuildTextureStacks: []

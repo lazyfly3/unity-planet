@@ -44,6 +44,18 @@ namespace UnityPlanet.ModularAssembly
         bool ForceNoWind { get; set; }
     }
 
+    /// <summary>
+    /// Optional fast path for consumers that only need atmospheric values.
+    /// Surface normals require four additional terrain height samples and are
+    /// intentionally omitted because airflow never reads them.
+    /// </summary>
+    public interface IPlanetAirEnvironmentProvider
+    {
+        PlanetEnvironmentSample SampleAirflow(
+            Vector3 worldPosition,
+            double simulationTime);
+    }
+
     public static class PlanetEnvironmentRuntime
     {
         public static IPlanetEnvironmentProvider Active { get; internal set; }
@@ -63,7 +75,8 @@ namespace UnityPlanet.ModularAssembly
     [DisallowMultipleComponent]
     public sealed class PlanetEnvironmentProvider :
         MonoBehaviour,
-        IPlanetEnvironmentProvider
+        IPlanetEnvironmentProvider,
+        IPlanetAirEnvironmentProvider
     {
         InfinitePlanarSurfaceWorld world;
         PlanetPhysicalProfile physical;
@@ -90,16 +103,47 @@ namespace UnityPlanet.ModularAssembly
             Vector3 worldPosition,
             double simulationTime)
         {
+            return SampleInternal(
+                worldPosition,
+                simulationTime,
+                true);
+        }
+
+        public PlanetEnvironmentSample SampleAirflow(
+            Vector3 worldPosition,
+            double simulationTime)
+        {
+            return SampleInternal(
+                worldPosition,
+                simulationTime,
+                false);
+        }
+
+        PlanetEnvironmentSample SampleInternal(
+            Vector3 worldPosition,
+            double simulationTime,
+            bool sampleSurfaceNormal)
+        {
             float groundHeight = 0f;
             Vector3 groundNormal = Vector3.up;
             bool hasSurface = false;
             if (world != null && world.Streamer != null)
             {
-                hasSurface = world.Streamer.TrySampleSurface(
-                    worldPosition.x,
-                    worldPosition.z,
-                    out groundHeight,
-                    out groundNormal);
+                if (sampleSurfaceNormal)
+                {
+                    hasSurface = world.Streamer.TrySampleSurface(
+                        worldPosition.x,
+                        worldPosition.z,
+                        out groundHeight,
+                        out groundNormal);
+                }
+                else
+                {
+                    groundHeight = world.Streamer.SampleHeight(
+                        worldPosition.x,
+                        worldPosition.z);
+                    hasSurface = true;
+                }
                 if (!hasSurface)
                 {
                     groundHeight = world.Streamer.SampleHeight(
@@ -273,9 +317,15 @@ namespace UnityPlanet.ModularAssembly
 
         public PlanetEnvironmentSample Sample(Vector3 worldPoint)
         {
-            return provider != null
-                ? provider.Sample(worldPoint, Time.fixedTimeAsDouble)
-                : fallback;
+            if (provider == null)
+                return fallback;
+            if (provider is IPlanetAirEnvironmentProvider airProvider)
+            {
+                return airProvider.SampleAirflow(
+                    worldPoint,
+                    Time.fixedTimeAsDouble);
+            }
+            return provider.Sample(worldPoint, Time.fixedTimeAsDouble);
         }
 
         public Vector3 RelativeAirVelocity(
@@ -286,6 +336,21 @@ namespace UnityPlanet.ModularAssembly
             if (body == null)
                 return Vector3.zero;
             PlanetEnvironmentSample sample = Sample(worldPoint);
+            return RelativeAirVelocity(
+                body,
+                worldPoint,
+                targetRuntimeId,
+                sample);
+        }
+
+        public Vector3 RelativeAirVelocity(
+            Rigidbody body,
+            Vector3 worldPoint,
+            string targetRuntimeId,
+            PlanetEnvironmentSample sample)
+        {
+            if (body == null)
+                return Vector3.zero;
             Vector3 washVelocity = Vector3.zero;
             for (int index = 0; index < washes.Count; index++)
             {

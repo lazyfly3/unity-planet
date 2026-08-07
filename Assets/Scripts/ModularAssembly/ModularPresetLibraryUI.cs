@@ -498,7 +498,7 @@ namespace UnityPlanet.ModularAssembly
                             VehicleCoreAssistMode.Disabled
                 ? "无辅助"
                 : entry.coreAssistMode == VehicleCoreAssistMode.Training
-                    ? "新手"
+                    ? "街机"
                     : "标准";
             string qualification = entry.qualification?.message ??
                                    "未执行飞行校验";

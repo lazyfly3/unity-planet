@@ -222,7 +222,12 @@ namespace UnityPlanet.ModularAssembly
             UpdateRc33Snapshot();
         }
 
-        public void PrepareAerodynamics(Rigidbody body, Transform root, float fallbackDensity, VehicleAirflowField airflow)
+        public void PrepareAerodynamics(
+            Rigidbody body,
+            Transform root,
+            float fallbackDensity,
+            VehicleAirflowField airflow,
+            PlanetEnvironmentSample vehicleEnvironment)
         {
             controlTorqueAuthority = Vector3.zero;
             if (body == null || root == null)
@@ -231,12 +236,24 @@ namespace UnityPlanet.ModularAssembly
             {
                 AeroPanelRuntimeState panel = aeroPanels[i];
                 Vector3 worldPoint = root.TransformPoint(panel.centerLocal);
-                Vector3 localVelocity = root.InverseTransformDirection(airflow != null
-                    ? airflow.RelativeAirVelocity(body, worldPoint, panel.runtimeId)
-                    : body.GetPointVelocity(worldPoint));
+                // A ship is small compared with a planetary wind cell. Reuse
+                // the center sample so modular geometry still affects forces
+                // without querying procedural terrain for every block face.
+                PlanetEnvironmentSample localEnvironment =
+                    vehicleEnvironment;
+                Vector3 localVelocity = root.InverseTransformDirection(
+                    airflow != null
+                        ? airflow.RelativeAirVelocity(
+                            body,
+                            worldPoint,
+                            panel.runtimeId,
+                            localEnvironment)
+                        : body.GetPointVelocity(worldPoint));
                 localVelocity -= panel.spanLocal * Vector3.Dot(localVelocity, panel.spanLocal);
                 float speed = localVelocity.magnitude;
-                float localDensity = airflow != null ? Mathf.Max(0f, airflow.Sample(worldPoint).airDensity) : Mathf.Max(0f, fallbackDensity);
+                float localDensity = airflow != null
+                    ? Mathf.Max(0f, localEnvironment.airDensity)
+                    : Mathf.Max(0f, fallbackDensity);
                 float chordSpeed = Vector3.Dot(localVelocity, panel.chordLocal);
                 float normalSpeed = Vector3.Dot(localVelocity, panel.normalLocal);
                 panel.localAirVelocity = localVelocity;
@@ -248,7 +265,10 @@ namespace UnityPlanet.ModularAssembly
                     ? Mathf.Asin(Mathf.Clamp(Vector3.Dot(localVelocity / speed, panel.spanLocal), -1f, 1f)) * Mathf.Rad2Deg
                     : 0f;
                 panel.shadowEfficiency = PanelVisibility(panel, localVelocity);
-                panel.groundEffect = GroundEffect(panel, worldPoint, airflow);
+                panel.groundEffect = GroundEffect(
+                    panel,
+                    localEnvironment,
+                    airflow != null);
                 panel.wakeEfficiency = 1f;
                 panel.downwashRadians = 0f;
                 aeroPanels[i] = panel;
@@ -282,7 +302,7 @@ namespace UnityPlanet.ModularAssembly
             if (mode == VehicleCoreAssistMode.Disabled || !flightEnvelope.active)
                 return requestedLocalTorque;
             float scale = mode == VehicleCoreAssistMode.Training
-                ? Mathf.Max(0.1f, flightEnvelope.inputScale * 0.72f)
+                ? Mathf.Max(0.35f, flightEnvelope.inputScale)
                 : flightEnvelope.inputScale;
             Vector3 recovery = flightEnvelope.recoveryTorqueLocal;
             Vector3 result = requestedLocalTorque;
@@ -348,7 +368,13 @@ namespace UnityPlanet.ModularAssembly
             UpdateRc33Snapshot();
         }
 
-        public void AccumulateAerodynamics(Rigidbody body, Transform root, float density, VehicleAirflowField airflow, VehicleForceLedger ledger)
+        public void AccumulateAerodynamics(
+            Rigidbody body,
+            Transform root,
+            float density,
+            VehicleAirflowField airflow,
+            PlanetEnvironmentSample vehicleEnvironment,
+            VehicleForceLedger ledger)
         {
             VehiclePhysicsSnapshot snapshot = Snapshot;
             snapshot.currentLift = 0f;
@@ -369,11 +395,21 @@ namespace UnityPlanet.ModularAssembly
             {
                 Vector3 position = root.TransformPoint(face.centerLocal);
                 Vector3 normal = root.TransformDirection(face.normalLocal).normalized;
-                Vector3 relativeVelocity = airflow != null ? airflow.RelativeAirVelocity(body, position, face.runtimeId) : body.GetPointVelocity(position);
+                PlanetEnvironmentSample localEnvironment =
+                    vehicleEnvironment;
+                Vector3 relativeVelocity = airflow != null
+                    ? airflow.RelativeAirVelocity(
+                        body,
+                        position,
+                        face.runtimeId,
+                        localEnvironment)
+                    : body.GetPointVelocity(position);
                 float normalSpeed = Vector3.Dot(relativeVelocity, normal);
                 if (normalSpeed <= 0.05f)
                     continue;
-                float localDensity = airflow != null ? airflow.Sample(position).airDensity : density;
+                float localDensity = airflow != null
+                    ? localEnvironment.airDensity
+                    : density;
                 Vector3 force = -normal * (0.5f * localDensity * face.dragCoefficient * face.area * normalSpeed * normalSpeed);
                 ledger.AddForceAtPoint(force, position);
                 float magnitude = force.magnitude;
@@ -520,11 +556,13 @@ namespace UnityPlanet.ModularAssembly
             return Mathf.Lerp(0.25f, 1f, visible / 5f);
         }
 
-        float GroundEffect(AeroPanelRuntimeState panel, Vector3 worldPoint, VehicleAirflowField airflow)
+        float GroundEffect(
+            AeroPanelRuntimeState panel,
+            PlanetEnvironmentSample sample,
+            bool hasAirflow)
         {
-            if (airflow == null)
+            if (!hasAirflow)
                 return 0f;
-            PlanetEnvironmentSample sample = airflow.Sample(worldPoint);
             if (!sample.hasSurface || sample.surfaceDistance < 0f)
                 return 0f;
             return Mathf.Clamp01(1f - sample.surfaceDistance / Mathf.Max(0.5f, panel.spanLength));

@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: FantasySky_Fire
-  m_Shader: {fileID: 10700, guid: 0000000000000000f000000000000000, type: 0}
+  m_Shader: {fileID: 104, guid: 0000000000000000f000000000000000, type: 0}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -24,19 +24,19 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BackTex:
-        m_Texture: {fileID: 2800000, guid: 526ee4053c2df46afa1b4fc23abaeb92, type: 3}
+        m_Texture: {fileID: 2800000, guid: d26f0eb4981bfec478a35a8fb366c6af, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DownTex:
-        m_Texture: {fileID: 2800000, guid: 42681bd78fdee4ec880bad851ab17122, type: 3}
+        m_Texture: {fileID: 2800000, guid: adc2d1afc434bc74abc12bdda5791524, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _FrontTex:
-        m_Texture: {fileID: 2800000, guid: ed02660e7248a437ab78f5b6eb03a777, type: 3}
+        m_Texture: {fileID: 2800000, guid: 6cdae5cba874f9646805521174c7d246, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _LeftTex:
-        m_Texture: {fileID: 2800000, guid: 65443b8eab471469db5771eb8c14e961, type: 3}
+        m_Texture: {fileID: 2800000, guid: d6b20e88baeda314e93521dfd09ac036, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
@@ -44,15 +44,18 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _RightTex:
-        m_Texture: {fileID: 2800000, guid: 72bc81893bba7490cb6b09bcc47dbfbf, type: 3}
+        m_Texture: {fileID: 2800000, guid: bde63682505bd1e43b5c62e7453b784e, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _UpTex:
-        m_Texture: {fileID: 2800000, guid: 041970becced64b8eb9c45d1dcdeeb45, type: 3}
+        m_Texture: {fileID: 2800000, guid: ca285bbb12d198b4890f6cde330e3abc, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
+    m_Floats:
+    - _Exposure: 1
+    - _Rotation: 0
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Tint: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
   m_BuildTextureStacks: []

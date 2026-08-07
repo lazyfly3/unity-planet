@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: FantasySky_Night_2
-  m_Shader: {fileID: 10700, guid: 0000000000000000f000000000000000, type: 0}
+  m_Shader: {fileID: 104, guid: 0000000000000000f000000000000000, type: 0}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -24,30 +24,33 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BackTex:
-        m_Texture: {fileID: 2800000, guid: 741e9416dc62343c1b567beffe549b8d, type: 3}
+        m_Texture: {fileID: 2800000, guid: 78eba382f8a8dbe46a94dafe9f3a4e9a, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DownTex:
-        m_Texture: {fileID: 2800000, guid: b489b97053cec45368b8ddc94b182b8b, type: 3}
+        m_Texture: {fileID: 2800000, guid: 85423dfb99c2b354798b6f8d7a4075e8, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _FrontTex:
-        m_Texture: {fileID: 2800000, guid: d3b84c3e0b4d24eceae88da3156eafa6, type: 3}
+        m_Texture: {fileID: 2800000, guid: b5b5a37becb116545b2384ca86915e8e, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _LeftTex:
-        m_Texture: {fileID: 2800000, guid: f5709f84693bb4ee882b9a848d7f305f, type: 3}
+        m_Texture: {fileID: 2800000, guid: 90010eb1576845c44b1c26978596a678, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _RightTex:
-        m_Texture: {fileID: 2800000, guid: c8d47fc121d1644e384049336eb9b5d6, type: 3}
+        m_Texture: {fileID: 2800000, guid: 429ec5cadcc8c5e45be1610a1f0c4d73, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _UpTex:
-        m_Texture: {fileID: 2800000, guid: 39877ad7111e4438aa504230aeac88fc, type: 3}
+        m_Texture: {fileID: 2800000, guid: 3209712dc247871458eebc059ef747f8, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
-    m_Colors: []
+    m_Floats:
+    - _Exposure: 1
+    - _Rotation: 0
+    m_Colors:
+    - _Tint: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
   m_BuildTextureStacks: []

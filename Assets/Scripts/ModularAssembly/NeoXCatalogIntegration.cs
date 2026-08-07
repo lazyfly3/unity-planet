@@ -331,7 +331,16 @@ namespace UnityPlanet.ModularAssembly
         private IEnumerator UpgradeView(string runtimeId, GridModuleView view, ModularContentRecord record)
         {
             GameObject loaded = null;
-            yield return contentService.InstantiateAsync(record, view.transform, value => loaded = value);
+            if (!contentService.TryInstantiatePrepared(
+                    record,
+                    view.transform,
+                    out loaded))
+            {
+                yield return contentService.InstantiateAsync(
+                    record,
+                    view.transform,
+                    value => loaded = value);
+            }
             if (view == null || loaded == null)
             {
                 pendingViewUpgrades = Mathf.Max(

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityPlanet.SpaceStation;
 
 public sealed class StartMenuController : MonoBehaviour
 {
@@ -33,6 +35,8 @@ public sealed class StartMenuController : MonoBehaviour
     [SerializeField] Text deleteMessageText;
 
     [Header("Scenes")]
+    [SerializeField] string modularAssemblySceneName =
+        "ModularAssemblyLab";
     [SerializeField] string spaceStationSceneName =
         "SpaceStationUpgradeTest";
 
@@ -108,7 +112,10 @@ int? seed = null;
         {
             GalaxySaveSlotMetadata metadata = GalaxySaveSlotService.CreateSlot(createNameInput.text, seed);
             GalaxyLaunchContext.SelectSlot(metadata.slotId);
-            LoadConstructionScene(metadata.slotId, true);
+            LoadConstructionScene(
+                metadata.slotId,
+                true,
+                true);
         }
         catch (Exception exception)
         {
@@ -177,9 +184,12 @@ if (selectedRow == null)
 if (!HasUsableSelection())
             return;
         GalaxyLaunchContext.SelectSlot(selectedRow.Slot.SlotId);
+        bool requiresInitialAssembly =
+            !HasSavedModularDesign(selectedRow.Slot.SlotId);
         LoadConstructionScene(
             selectedRow.Slot.SlotId,
-            launchModularAssembly);
+            launchModularAssembly || requiresInitialAssembly,
+            requiresInitialAssembly);
     
 }
 
@@ -237,13 +247,43 @@ selectedRow = row;
         }
     }
 
-    void LoadConstructionScene(string slotId, bool forceModular)
+    void LoadConstructionScene(
+        string slotId,
+        bool forceModular,
+        bool initialAssembly = false)
     {
+        if (forceModular)
+        {
+            if (initialAssembly)
+            {
+                SpaceStationFlowContext.BeginInitialAssembly();
+            }
+            else
+            {
+                SpaceStationFlowContext.BeginAssemblyFromStation();
+            }
+            SceneManager.LoadScene(
+                string.IsNullOrWhiteSpace(modularAssemblySceneName)
+                    ? "ModularAssemblyLab"
+                    : modularAssemblySceneName,
+                LoadSceneMode.Single);
+            return;
+        }
+
         SceneManager.LoadScene(
             string.IsNullOrWhiteSpace(spaceStationSceneName)
                 ? "SpaceStationUpgradeTest"
                 : spaceStationSceneName,
             LoadSceneMode.Single);
+    }
+
+    static bool HasSavedModularDesign(string slotId)
+    {
+        string spacecraftDirectory =
+            GalaxySaveSlotService.GetSpacecraftDirectory(slotId);
+        return File.Exists(Path.Combine(
+            spacecraftDirectory,
+            "modular_ship.json"));
     }
 
     bool HasUsableSelection()

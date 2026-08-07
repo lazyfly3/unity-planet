@@ -80,7 +80,7 @@ namespace UnityPlanet.ModularAssembly
             {
                 GameObject active = Active.Dequeue();
                 if (active != null)
-                    UnityEngine.Object.Destroy(active);
+                    DestroyRuntimeObject(active);
             }
 
             Transform transientRoot = CombatTransientRoot.GetOrCreate();
@@ -93,8 +93,18 @@ namespace UnityPlanet.ModularAssembly
                     child.name.StartsWith(
                         "DetachedModuleCluster",
                         StringComparison.Ordinal))
-                    UnityEngine.Object.Destroy(child.gameObject);
+                    DestroyRuntimeObject(child.gameObject);
             }
+        }
+
+        static void DestroyRuntimeObject(UnityEngine.Object value)
+        {
+            if (value == null)
+                return;
+            if (Application.isPlaying)
+                UnityEngine.Object.Destroy(value);
+            else
+                UnityEngine.Object.DestroyImmediate(value);
         }
 
         public static GameObject Spawn(

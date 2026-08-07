@@ -6,6 +6,7 @@ using ModularAssembly;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityPlanet.SpaceStation.Skills;
 
 namespace UnityPlanet.ModularAssembly
 {
@@ -1310,6 +1311,7 @@ namespace UnityPlanet.ModularAssembly
         Material thrusterMaterial;
         Material weaponMaterial;
         Material energyMaterial;
+        GameObject fleetVisual;
         float initialCpu;
         float currentCpu;
         float movementScale;
@@ -1433,6 +1435,7 @@ namespace UnityPlanet.ModularAssembly
             orbitDirection = UnityEngine.Random.value < 0.5f ? -1f : 1f;
             CreateMaterials();
             BuildStandardEnemy();
+            InstallFleetVisual();
             CaptureInitialArcadeCapabilities();
             RebuildGraphsAndMass();
             initialCpu = currentCpu;
@@ -1472,6 +1475,8 @@ namespace UnityPlanet.ModularAssembly
                 if (node.Object != null)
                     node.Object.SetActive(true);
             }
+            if (fleetVisual != null)
+                fleetVisual.SetActive(true);
             transform.SetPositionAndRotation(position, rotation);
             RebuildGraphsAndMass();
             if (body != null)
@@ -1531,6 +1536,25 @@ namespace UnityPlanet.ModularAssembly
             AddNode(new Vector3Int(2, 0, 4), ModuleRole.Weapon, "MissileR");
             AddNode(new Vector3Int(-1, 1, -1), ModuleRole.Energy, "EnergyL");
             AddNode(new Vector3Int(1, 1, -1), ModuleRole.Energy, "EnergyR");
+        }
+
+        void InstallFleetVisual()
+        {
+            fleetVisual = EnemyFleetVisualLibrary.Create(
+                transform,
+                "hull.sf_modular_pirate",
+                "EnemyFleetVisual_Duel",
+                12f);
+            if (fleetVisual == null)
+                return;
+
+            // The hidden module renderers still retain their individual
+            // colliders, damage receivers, topology and mass contribution.
+            foreach (Node node in nodes.Values)
+            {
+                if (node.Renderer != null)
+                    node.Renderer.enabled = false;
+            }
         }
 
         void AddNode(
@@ -1951,6 +1975,13 @@ namespace UnityPlanet.ModularAssembly
         {
             if (stopped || playerBody == null || body == null)
                 return;
+            if (PlayerSkillCombatEffects.AreEnemiesFrozen)
+            {
+                weaponCommand = default;
+                if (telegraphLine != null)
+                    telegraphLine.enabled = false;
+                return;
+            }
             if (Time.time >= nextDecision)
             {
                 nextDecision = Time.time + 0.25f;
@@ -2867,6 +2898,8 @@ namespace UnityPlanet.ModularAssembly
             desiredWorldVelocity = Vector3.zero;
             weaponCommand = default;
             ResetDelayedAttack(0f);
+            if (fleetVisual != null)
+                fleetVisual.SetActive(false);
             if (body != null)
             {
                 if (!body.isKinematic)

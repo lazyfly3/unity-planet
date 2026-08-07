@@ -39,7 +39,10 @@ namespace UnityPlanet.CombatMap
         PlayerRetreat = 3,
         EnemyRetreat = 4,
         PowerPosition = 5,
-        Landmark = 6
+        Landmark = 6,
+        // Planet-surface defence arenas can receive enemies from several
+        // perimeter directions instead of a single mirrored opponent spawn.
+        EnemyIngress = 7
     }
 
     public enum CombatRouteType
@@ -47,7 +50,8 @@ namespace UnityPlanet.CombatMap
         Main = 0,
         TerrainMaskedFlank = 1,
         LongRange = 2,
-        Retreat = 3
+        Retreat = 3,
+        EnemyIngress = 4
     }
 
     public enum CombatOccluderType

@@ -554,6 +554,7 @@ public static class PlanetClimateClassifier
             case "crimson": climate = PlanetClimate.Volcanic; return true;
             case "azure": climate = PlanetClimate.Tropical; return true;
             case "violet": climate = PlanetClimate.Crystal; return true;
+            case "glacial": climate = PlanetClimate.Tundra; return true;
             default: climate = PlanetClimate.Barren; return false;
         }
     }

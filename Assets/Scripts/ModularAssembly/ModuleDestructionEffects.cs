@@ -23,6 +23,7 @@ namespace UnityPlanet.ModularAssembly
         public readonly bool IsCore;
         public readonly Bounds WorldBounds;
         public readonly int DetachedComponentCount;
+        public readonly float VisualScale;
 
         public ModuleDestructionFeedbackContext(
             string runtimeId,
@@ -31,7 +32,8 @@ namespace UnityPlanet.ModularAssembly
             GridModuleCategory category,
             bool isCore,
             Bounds worldBounds,
-            int detachedComponentCount)
+            int detachedComponentCount,
+            float visualScale = 1f)
         {
             RuntimeId = runtimeId ?? string.Empty;
             HitPoint = hitPoint;
@@ -43,6 +45,7 @@ namespace UnityPlanet.ModularAssembly
             WorldBounds = worldBounds;
             DetachedComponentCount =
                 Mathf.Max(0, detachedComponentCount);
+            VisualScale = Mathf.Max(0.05f, visualScale);
         }
     }
 
@@ -834,7 +837,8 @@ namespace UnityPlanet.ModularAssembly
             float targetRadius =
                 definition.ResolveVisualTargetRadius(
                     context.WorldBounds,
-                    context.DetachedComponentCount);
+                    context.DetachedComponentCount) *
+                context.VisualScale;
             float scale = targetRadius / slot.SourceRadius;
             slot.Root.transform.localScale = slot.BaseScale * scale;
             ConfigureRenderers(slot, observerDistance);

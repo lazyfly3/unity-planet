@@ -22,6 +22,8 @@ namespace UnityPlanet.ModularAssembly
         ExhaustStyle style;
         float targetThrottle;
         float currentThrottle;
+        float presentationScale = 1f;
+        float emissionScale = 1f;
         Material exhaustMaterial;
 
         public static bool Supports(NeoXBehaviorModule value)
@@ -61,6 +63,14 @@ namespace UnityPlanet.ModularAssembly
             targetThrottle = Mathf.Clamp01(value);
             if (targetThrottle > 0.001f && effectRoot == null)
                 BuildEffect();
+        }
+
+        public void SetPresentationTuning(float sizeScale, float brightnessScale)
+        {
+            presentationScale = Mathf.Clamp(sizeScale, 0.1f, 2f);
+            emissionScale = Mathf.Clamp(brightnessScale, 0.1f, 2f);
+            if (effectRoot != null)
+                ApplyThrottle();
         }
 
         void LateUpdate()
@@ -403,23 +413,23 @@ namespace UnityPlanet.ModularAssembly
             SetEmission(
                 nozzleGlow,
                 style == ExhaustStyle.Propeller
-                    ? 145f * visibleThrottle
-                    : 210f * visibleThrottle);
+                    ? 145f * visibleThrottle * emissionScale
+                    : 210f * visibleThrottle * emissionScale);
             SetEmission(
                 core,
                 style == ExhaustStyle.Propeller
-                    ? 125f * visibleThrottle
-                    : 190f * visibleThrottle);
+                    ? 125f * visibleThrottle * emissionScale
+                    : 190f * visibleThrottle * emissionScale);
             SetEmission(
                 plume,
                 style == ExhaustStyle.Propeller
-                    ? 74f * visibleThrottle
-                    : 135f * visibleThrottle);
+                    ? 74f * visibleThrottle * emissionScale
+                    : 135f * visibleThrottle * emissionScale);
             SetEmission(
                 turbulence,
                 style == ExhaustStyle.Propeller
-                    ? 42f * visibleThrottle
-                    : 68f * visibleThrottle);
+                    ? 42f * visibleThrottle * emissionScale
+                    : 68f * visibleThrottle * emissionScale);
             SetPlaying(nozzleGlow, active);
             SetPlaying(core, active);
             SetPlaying(plume, active);
@@ -427,7 +437,8 @@ namespace UnityPlanet.ModularAssembly
 
             float width = Mathf.Lerp(0.52f, 1.18f, visibleThrottle);
             float length = Mathf.Lerp(0.6f, 2.35f, visibleThrottle);
-            effectRoot.localScale = new Vector3(width, width, length);
+            effectRoot.localScale = new Vector3(width, width, length) *
+                                    presentationScale;
         }
 
         static void SetEmission(

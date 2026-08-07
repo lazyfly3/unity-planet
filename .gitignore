@@ -37,6 +37,25 @@ sysinfo.txt
 *.aab
 *.unitypackage
 
+# Local audit caches (e.g. NewGenUrbanAudit_* copies of NewGenUrban3D.unitypackage
+# stored as hashed "asset" blobs that bypass *.unitypackage).
+/tmp/
+/Artifacts/
+
+# Large third-party art packs kept locally, not in git (push size / GitHub limits).
+/Assets/Dark City 2/
+/Assets/Dark City 2.meta
+/Assets/Reversed Interactive/
+/Assets/Reversed Interactive.meta
+/Assets/CityPcgPrinciplesLab/DarkCity2Derived/
+/Assets/CityPcgPrinciplesLab/DarkCity2Derived.meta
+/Assets/CodeRespawn/
+/Assets/CodeRespawn.meta
+/Assets/_DLNK/
+/Assets/_DLNK.meta
+/Assets/Ida Faber/
+/Assets/Ida Faber.meta
+
 # Safety rules: raw extraction and reverse-engineering material always stays
 # outside this repository under ../_research/NeoX.
 /APKExtracted/

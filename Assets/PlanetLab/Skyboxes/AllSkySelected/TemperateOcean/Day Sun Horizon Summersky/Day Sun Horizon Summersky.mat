@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Day Sun Horizon Summersky
-  m_Shader: {fileID: 10700, guid: 0000000000000000f000000000000000, type: 0}
+  m_Shader: {fileID: 104, guid: 0000000000000000f000000000000000, type: 0}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -24,19 +24,19 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BackTex:
-        m_Texture: {fileID: 2800000, guid: 0f90484156a754c189365b6649efce7a, type: 3}
+        m_Texture: {fileID: 2800000, guid: b8425f093411b1542a1aa7b6ae78e47b, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DownTex:
-        m_Texture: {fileID: 2800000, guid: 774e022475f2247a78236ddd7dc5f2e8, type: 3}
+        m_Texture: {fileID: 2800000, guid: 41c96e65d0ee1984e8d3143f10c2db96, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _FrontTex:
-        m_Texture: {fileID: 2800000, guid: 6be83bd7bf2104acbb1ea8bd07169975, type: 3}
+        m_Texture: {fileID: 2800000, guid: fdc73c24dbbaf6040aaa806c7758eb05, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _LeftTex:
-        m_Texture: {fileID: 2800000, guid: 1b5ef388f86314d0d8f292025c98f59f, type: 3}
+        m_Texture: {fileID: 2800000, guid: 779282f510f279d42bda25cc37651547, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
@@ -44,15 +44,18 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _RightTex:
-        m_Texture: {fileID: 2800000, guid: 874aa5dba8b934ddfb0df2c572728a4f, type: 3}
+        m_Texture: {fileID: 2800000, guid: f5631527161d2354da286100d3b5ba1d, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _UpTex:
-        m_Texture: {fileID: 2800000, guid: ac93c6e38d0294594a12922f13834175, type: 3}
+        m_Texture: {fileID: 2800000, guid: 2d918893e333aae479aa58bd66c30cbd, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
+    m_Floats:
+    - _Exposure: 1
+    - _Rotation: 0
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Tint: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
   m_BuildTextureStacks: []

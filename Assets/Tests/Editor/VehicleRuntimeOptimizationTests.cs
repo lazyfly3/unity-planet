@@ -1,0 +1,668 @@
+using NUnit.Framework;
+using SpacecraftEditor;
+using UnityEngine;
+using UnityPlanet.IcePlanet;
+using UnityPlanet.ModularAssembly;
+
+public sealed class VehicleRuntimeOptimizationTests
+{
+    sealed class CountingEnvironmentProvider :
+        IPlanetEnvironmentProvider,
+        IPlanetAirEnvironmentProvider
+    {
+        public int fullSamples;
+        public int airflowSamples;
+        public bool ForceNoWind { get; set; }
+
+        public PlanetEnvironmentSample Sample(
+            Vector3 worldPosition,
+            double simulationTime)
+        {
+            fullSamples++;
+            return CreateSample();
+        }
+
+        public PlanetEnvironmentSample SampleAirflow(
+            Vector3 worldPosition,
+            double simulationTime)
+        {
+            airflowSamples++;
+            return CreateSample();
+        }
+
+        static PlanetEnvironmentSample CreateSample()
+        {
+            return new PlanetEnvironmentSample
+            {
+                airDensity = 0.82f,
+                atmosphereVelocity = new Vector3(3f, -1f, 2f),
+                hasAtmosphere = true,
+                hasSurface = true,
+                surfaceDistance = 12f,
+                surfaceNormal = Vector3.up
+            };
+        }
+    }
+
+    [Test]
+    public void AirflowUsesFastSampleAndReusesItForRelativeVelocity()
+    {
+        var provider = new CountingEnvironmentProvider();
+        var airflow = new VehicleAirflowField();
+        airflow.Configure(
+            provider,
+            default,
+            null,
+            null);
+
+        PlanetEnvironmentSample sample = airflow.Sample(Vector3.one);
+        Assert.AreEqual(0, provider.fullSamples);
+        Assert.AreEqual(1, provider.airflowSamples);
+
+        var bodyObject = new GameObject("AirflowSampleBody");
+        try
+        {
+            Rigidbody body = bodyObject.AddComponent<Rigidbody>();
+            body.useGravity = false;
+            Vector3 relative = airflow.RelativeAirVelocity(
+                body,
+                Vector3.one,
+                "test-face",
+                sample);
+
+            Assert.AreEqual(0, provider.fullSamples);
+            Assert.AreEqual(1, provider.airflowSamples);
+            Assert.That(relative.x, Is.EqualTo(-3f).Within(0.00001f));
+            Assert.That(relative.y, Is.EqualTo(1f).Within(0.00001f));
+            Assert.That(relative.z, Is.EqualTo(-2f).Within(0.00001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(bodyObject);
+        }
+    }
+
+    [Test]
+    public void IcePlanetConditionsPreserveFastAirflowSampling()
+    {
+        var provider = new CountingEnvironmentProvider();
+        var conditionsObject = new GameObject("IceConditionsFastAirTest");
+        try
+        {
+            var area = conditionsObject.AddComponent<IcePlanetCombatArea>();
+            var conditions =
+                conditionsObject.AddComponent<IcePlanetEnvironmentConditions>();
+            SetPrivateField(area, "arenaSize", new Vector2(1000f, 1000f));
+            SetPrivateField(conditions, "source", provider);
+            SetPrivateField(conditions, "combatArea", area);
+            SetPrivateField(conditions, "seed", 7341);
+            SetPrivateField(conditions, "densityMultiplier", 1.09f);
+            SetPrivateField(conditions, "windMultiplier", 1.35f);
+            SetPrivateField(conditions, "crossWindSpeed", 9f);
+            SetPrivateField(conditions, "additionalGustSpeed", 7f);
+
+            Assert.That(
+                conditions,
+                Is.InstanceOf<IPlanetAirEnvironmentProvider>());
+            PlanetEnvironmentSample fullSample =
+                conditions.Sample(Vector3.one, 12d);
+            PlanetEnvironmentSample airflowSample =
+                conditions.SampleAirflow(Vector3.one, 12d);
+
+            Assert.AreEqual(1, provider.fullSamples);
+            Assert.AreEqual(1, provider.airflowSamples);
+            Assert.That(
+                airflowSample.airDensity,
+                Is.EqualTo(fullSample.airDensity).Within(0.000001f));
+            Assert.AreEqual(
+                fullSample.meanWindVelocity,
+                airflowSample.meanWindVelocity);
+            Assert.AreEqual(
+                fullSample.gustVelocity,
+                airflowSample.gustVelocity);
+            Assert.AreEqual(
+                fullSample.atmosphereVelocity,
+                airflowSample.atmosphereVelocity);
+        }
+        finally
+        {
+            Object.DestroyImmediate(conditionsObject);
+        }
+    }
+
+    [Test]
+    public void CoherentVehicleAirflowRetainsBuildDragAndTorqueDifferences()
+    {
+        var provider = new CountingEnvironmentProvider();
+        var airflow = new VehicleAirflowField();
+        PlanetEnvironmentSample environment =
+            PlanetEnvironmentSample.EarthLike(Vector3.down * 9.81f, 20f);
+        environment.airDensity = 1f;
+        environment.meanWindVelocity = Vector3.zero;
+        environment.gustVelocity = Vector3.zero;
+        environment.atmosphereVelocity = Vector3.zero;
+        airflow.Configure(provider, environment, null, null);
+
+        var bodyObject = new GameObject("CoherentAirflowBuildTest");
+        try
+        {
+            Rigidbody body = bodyObject.AddComponent<Rigidbody>();
+            body.useGravity = false;
+            body.velocity = Vector3.right * 20f;
+
+            var compact = new VehiclePhysicsRc3State();
+            AddExposedFace(compact, "core", Vector3.zero, 1f);
+            var compactLedger = new VehicleForceLedger();
+            compactLedger.Begin(body);
+            compact.AccumulateAerodynamics(
+                body,
+                bodyObject.transform,
+                environment.airDensity,
+                airflow,
+                environment,
+                compactLedger);
+
+            var modified = new VehiclePhysicsRc3State();
+            AddExposedFace(modified, "core", Vector3.zero, 1f);
+            AddExposedFace(
+                modified,
+                "offset-armor",
+                Vector3.up * 2f,
+                1f);
+            var modifiedLedger = new VehicleForceLedger();
+            modifiedLedger.Begin(body);
+            modified.AccumulateAerodynamics(
+                body,
+                bodyObject.transform,
+                environment.airDensity,
+                airflow,
+                environment,
+                modifiedLedger);
+
+            Assert.AreEqual(0, provider.fullSamples);
+            Assert.AreEqual(0, provider.airflowSamples);
+            Assert.That(
+                modified.Snapshot.currentDrag,
+                Is.GreaterThan(compact.Snapshot.currentDrag * 1.9f));
+            Assert.That(
+                Mathf.Abs(modified.Snapshot.aerodynamicTorqueLocal.z),
+                Is.GreaterThan(100f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(bodyObject);
+        }
+    }
+
+    [Test]
+    public void BufferedRcsCompletionMatchesSnapshotCompletion()
+    {
+        var input = new[]
+        {
+            new Rcs24ThrusterInput
+            {
+                sourceIndex = 0,
+                localPosition = new Vector3(1f, 0f, -2f),
+                localDirection = Vector3.forward,
+                maximumForce = 120f,
+                responseTime = 0.1f
+            }
+        };
+        var snapshotAllocator = new VirtualRcs24Allocator();
+        var bufferedAllocator = new VirtualRcs24Allocator();
+        snapshotAllocator.Rebuild(
+            input,
+            Vector3.zero,
+            false,
+            0f,
+            0f,
+            0f);
+        bufferedAllocator.Rebuild(
+            input,
+            Vector3.zero,
+            false,
+            0f,
+            0f,
+            0f);
+
+        var scales = new[] { 0.75f };
+        var request = new Rcs24SolveRequest
+        {
+            desired = Vector3.forward * 60f,
+            strictDirection = true,
+            group = "buffer-equivalence"
+        };
+        snapshotAllocator.BeginStep(scales);
+        bufferedAllocator.BeginStep(scales);
+        snapshotAllocator.SolveTranslation(request);
+        bufferedAllocator.SolveTranslation(request);
+
+        Rcs24SolveResult snapshot =
+            snapshotAllocator.CompleteStep(0.02f);
+        Rcs24SolveResult buffered =
+            bufferedAllocator.CompleteStepBuffered(0.02f);
+
+        Assert.AreEqual(snapshot.localForce, buffered.localForce);
+        Assert.AreEqual(snapshot.localTorque, buffered.localTorque);
+        CollectionAssert.AreEqual(
+            snapshot.thrusterThrottles,
+            buffered.thrusterThrottles);
+
+        float retainedSnapshot = snapshot.thrusterThrottles[0];
+        bufferedAllocator.BeginStep(scales);
+        Rcs24SolveResult nextBuffered =
+            bufferedAllocator.CompleteStepBuffered(0.02f);
+        Assert.AreSame(
+            buffered.thrusterThrottles,
+            nextBuffered.thrusterThrottles);
+        Assert.AreEqual(
+            retainedSnapshot,
+            snapshot.thrusterThrottles[0]);
+    }
+
+    [Test]
+    public void RcsScratchBuffersRetainKnownMultiAxisWrenchBaseline()
+    {
+        var inputs = new[]
+        {
+            Thruster(0, new Vector3(-2f, 0f, -3f),
+                new Vector3(0f, 1f, 0.25f), 120f, 0.12f),
+            Thruster(1, new Vector3(2f, 0f, -3f),
+                new Vector3(0f, 1f, 0.25f), 120f, 0.12f),
+            Thruster(2, new Vector3(-2f, 0f, 3f),
+                new Vector3(0f, 1f, -0.25f), 120f, 0.12f),
+            Thruster(3, new Vector3(2f, 0f, 3f),
+                new Vector3(0f, 1f, -0.25f), 120f, 0.12f),
+            Thruster(4, new Vector3(-2f, 0f, -2f),
+                Vector3.right, 80f, 0.08f),
+            Thruster(5, new Vector3(2f, 0f, 2f),
+                Vector3.left, 80f, 0.08f),
+            Thruster(6, new Vector3(-2f, 0f, 2f),
+                Vector3.forward, 90f, 0.1f),
+            Thruster(7, new Vector3(2f, 0f, -2f),
+                Vector3.back, 90f, 0.1f)
+        };
+        var allocator = new VirtualRcs24Allocator();
+        allocator.Rebuild(
+            inputs,
+            new Vector3(0.15f, -0.2f, 0.35f),
+            false,
+            0f,
+            0f,
+            0f);
+        allocator.BeginStep(new[]
+        {
+            1f, 0.85f, 0.95f, 0.7f, 1f, 0.6f, 0.9f, 0.8f
+        });
+        allocator.SolveRotation(new Rcs24SolveRequest
+        {
+            desired = new Vector3(35f, -18f, 22f),
+            strictDirection = false,
+            group = "baseline-rotation"
+        });
+        allocator.SolveTranslation(new Rcs24SolveRequest
+        {
+            desired = new Vector3(42f, 150f, -28f),
+            strictDirection = false,
+            group = "baseline-translation"
+        });
+
+        Rcs24SolveResult result = allocator.CompleteStepBuffered(0.02f);
+
+        AssertVector(
+            new Vector3(9.290367f, 22.9234962f, -5.675398f),
+            result.localForce);
+        AssertVector(
+            new Vector3(46.7091827f, 1.53092957f, -39.6263428f),
+            result.localTorque);
+        Assert.AreEqual(1f, result.commonScale);
+        Assert.AreEqual(0, result.missingAxisMask);
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                0.137280673f,
+                0.0213912949f,
+                0.0367314555f,
+                0.009357311f,
+                0.119333036f,
+                0.00533909f,
+                0.00607854826f,
+                0.131752491f
+            },
+            result.thrusterThrottles);
+    }
+
+    [Test]
+    public void ArcadeAssist_ReleasingMovementBrakesAndHoldsPosition()
+    {
+        TrainingFlightAssistDemand demand =
+            TrainingFlightAssist.CalculateDemand(
+                new Vector3(4f, 8f, -3f),
+                new Vector3(12f, -3f, 5f),
+                Vector3.zero,
+                false,
+                Vector3.zero,
+                30f);
+
+        Assert.That(
+            Vector3.Dot(
+                demand.controlAccelerationWorld,
+                new Vector3(12f, -3f, 5f)),
+            Is.LessThan(0f));
+        Assert.That(demand.controlAccelerationWorld.y, Is.GreaterThan(0f));
+        AssertVector(new Vector3(4f, 8f, -3f), demand.holdPosition);
+    }
+
+    [Test]
+    public void ArcadeAssist_SpaceAndControlRequestOppositeVerticalSpeeds()
+    {
+        TrainingFlightAssistDemand ascend =
+            TrainingFlightAssist.CalculateDemand(
+                Vector3.zero,
+                Vector3.zero,
+                Vector3.zero,
+                true,
+                Vector3.up,
+                14f);
+        TrainingFlightAssistDemand descend =
+            TrainingFlightAssist.CalculateDemand(
+                Vector3.zero,
+                Vector3.zero,
+                Vector3.zero,
+                true,
+                Vector3.down,
+                10f);
+
+        Assert.That(ascend.targetVelocityWorld.y, Is.EqualTo(14f));
+        Assert.That(ascend.controlAccelerationWorld.y, Is.GreaterThan(0f));
+        Assert.That(descend.targetVelocityWorld.y, Is.EqualTo(-10f));
+        Assert.That(descend.controlAccelerationWorld.y, Is.LessThan(0f));
+    }
+
+    [Test]
+    public void ArcadeTargetSpeed_IncreasesWithInstalledDirectionalAuthority()
+    {
+        float weakForward =
+            TrainingFlightAssist.CalculateTargetSpeed(2.5f, false);
+        float strongForward =
+            TrainingFlightAssist.CalculateTargetSpeed(8f, false);
+
+        Assert.That(strongForward, Is.GreaterThan(weakForward));
+        Assert.That(
+            TrainingFlightAssist.CalculateTargetSpeed(8f, true),
+            Is.GreaterThan(strongForward));
+    }
+
+    [Test]
+    public void ArcadePlanarVectoringScalesWithLiveDriveAndStaysBounded()
+    {
+        const float mass = 500f;
+        float noDrive = TrainingFlightAssist.CalculatePlanarAssistForce(
+            mass,
+            0f);
+        float healthyDrive =
+            TrainingFlightAssist.CalculatePlanarAssistForce(
+                mass,
+                6000f);
+        float extremeDrive =
+            TrainingFlightAssist.CalculatePlanarAssistForce(
+                mass,
+                1000000f);
+
+        Assert.That(
+            noDrive,
+            Is.EqualTo(TrainingFlightAssist.BasePlanarAssistForce));
+        Assert.That(healthyDrive, Is.GreaterThan(noDrive));
+        Assert.That(
+            extremeDrive,
+            Is.EqualTo(
+                TrainingFlightAssist.BasePlanarAssistForce +
+                mass * TrainingFlightAssist.MaximumVectoringAcceleration)
+                .Within(0.001f));
+    }
+
+    [Test]
+    public void ArcadeCommandAuthorityKeepsWasdInReticleFrameDuringTurns()
+    {
+        Vector3 positive = new Vector3(4f, 6f, 12f);
+        Vector3 negative = new Vector3(3f, 5f, 8f);
+
+        float forward = TrainingFlightAssist.CalculateCommandAcceleration(
+            Vector3.forward,
+            positive,
+            negative);
+        float strafeLeft =
+            TrainingFlightAssist.CalculateCommandAcceleration(
+                Vector3.left,
+                positive,
+                negative);
+        float diagonal = TrainingFlightAssist.CalculateCommandAcceleration(
+            new Vector3(-1f, 0f, 1f),
+            positive,
+            negative);
+
+        Assert.That(forward, Is.EqualTo(12f).Within(0.001f));
+        Assert.That(strafeLeft, Is.EqualTo(3f).Within(0.001f));
+        Assert.That(diagonal, Is.EqualTo(7.5f).Within(0.001f));
+    }
+
+    [Test]
+    public void ArcadeAssist_ForwardVelocityFollowsThreeDimensionalAim()
+    {
+        Vector3 aim = new Vector3(0.35f, 0.60f, 0.72f).normalized;
+        TrainingFlightAssistDemand demand =
+            TrainingFlightAssist.CalculateDemand(
+                Vector3.zero,
+                Vector3.zero,
+                Vector3.zero,
+                true,
+                aim,
+                36f);
+
+        Assert.That(
+            Vector3.Dot(demand.targetVelocityWorld.normalized, aim),
+            Is.GreaterThan(0.9999f));
+        Assert.That(demand.targetVelocityWorld.y, Is.GreaterThan(0f));
+        Assert.That(demand.targetSpeed, Is.EqualTo(36f).Within(0.001f));
+    }
+
+    [Test]
+    public void ArcadeAssist_PrimaryVelocityResponseIsUnderTwoTenths()
+    {
+        Assert.That(
+            TrainingFlightAssist.VelocityResponseSeconds,
+            Is.LessThanOrEqualTo(0.20f));
+    }
+
+    [Test]
+    public void TrainingAllocator_InstalledAndRemovedThrustersChangeRealAuthority()
+    {
+        var allocator = new VirtualRcs24Allocator();
+        allocator.Rebuild(
+            System.Array.Empty<Rcs24ThrusterInput>(),
+            Vector3.zero,
+            true,
+            13000f,
+            3000f,
+            2500f);
+        DirectionalAuthority24 coreOnly = allocator.Authority;
+
+        allocator.Rebuild(
+            new[]
+            {
+                Thruster(
+                    0,
+                    new Vector3(0f, 0f, -2f),
+                    Vector3.forward,
+                    6000f,
+                    0.12f),
+                Thruster(
+                    1,
+                    new Vector3(0f, -2f, 0f),
+                    Vector3.up,
+                    6000f,
+                    0.12f)
+            },
+            Vector3.zero,
+            true,
+            13000f,
+            3000f,
+            2500f);
+        DirectionalAuthority24 upgraded = allocator.Authority;
+
+        Assert.That(
+            upgraded.positiveForce.z - coreOnly.positiveForce.z,
+            Is.EqualTo(6000f).Within(0.01f));
+        Assert.That(
+            upgraded.positiveForce.y - coreOnly.positiveForce.y,
+            Is.EqualTo(6000f).Within(0.01f));
+
+        allocator.Rebuild(
+            System.Array.Empty<Rcs24ThrusterInput>(),
+            Vector3.zero,
+            true,
+            13000f,
+            3000f,
+            2500f);
+        Assert.That(
+            allocator.Authority.positiveForce.z,
+            Is.EqualTo(coreOnly.positiveForce.z).Within(0.01f));
+        Assert.That(
+            allocator.Authority.positiveForce.y,
+            Is.EqualTo(coreOnly.positiveForce.y).Within(0.01f));
+    }
+
+    [Test]
+    public void ArcadeTurnVectoringUsesDriveAuthorityButStandardDoesNot()
+    {
+        const float mass = 500f;
+        const float driveForce = 6000f;
+        float arcadePlanarForce =
+            TrainingFlightAssist.CalculatePlanarAssistForce(
+                mass,
+                driveForce);
+        Rcs24ThrusterInput[] forwardDrive =
+        {
+            Thruster(
+                0,
+                new Vector3(0f, 0f, -2f),
+                Vector3.forward,
+                driveForce,
+                0.12f)
+        };
+        var allocator = new VirtualRcs24Allocator();
+        allocator.Rebuild(
+            forwardDrive,
+            Vector3.zero,
+            true,
+            13000f,
+            3000f,
+            arcadePlanarForce);
+        allocator.BeginStep(new[] { 1f });
+        Rcs24SolveResult arcade = allocator.SolveTranslation(
+            new Rcs24SolveRequest
+            {
+                desired = Vector3.right * arcadePlanarForce,
+                strictDirection = true,
+                group = "arcade_turn_vectoring"
+            });
+
+        Assert.That(arcade.commonScale, Is.GreaterThan(0.99f));
+        Assert.That(
+            arcade.localForce.x,
+            Is.GreaterThan(TrainingFlightAssist.BasePlanarAssistForce));
+
+        allocator.Rebuild(
+            forwardDrive,
+            Vector3.zero,
+            false,
+            13000f,
+            3000f,
+            arcadePlanarForce);
+        allocator.BeginStep(new[] { 1f });
+        Rcs24SolveResult standard = allocator.SolveTranslation(
+            new Rcs24SolveRequest
+            {
+                desired = Vector3.right * arcadePlanarForce,
+                strictDirection = true,
+                group = "standard_no_vectoring"
+            });
+
+        Assert.That(standard.commonScale, Is.Zero);
+        Assert.That(standard.missingAxisMask & 1, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void FlightKeyboardBinding_EitherControlKeyRequestsDescent()
+    {
+        Assert.That(
+            KeyboardMouseFlightInput.ResolveVerticalAxis(false, true, false),
+            Is.EqualTo(-1f));
+        Assert.That(
+            KeyboardMouseFlightInput.ResolveVerticalAxis(false, false, true),
+            Is.EqualTo(-1f));
+        Assert.That(
+            KeyboardMouseFlightInput.ResolveVerticalAxis(true, true, false),
+            Is.EqualTo(0f));
+    }
+
+    static Rcs24ThrusterInput Thruster(
+        int index,
+        Vector3 position,
+        Vector3 direction,
+        float force,
+        float responseTime)
+    {
+        return new Rcs24ThrusterInput
+        {
+            sourceIndex = index,
+            localPosition = position,
+            localDirection = direction.normalized,
+            maximumForce = force,
+            responseTime = responseTime
+        };
+    }
+
+    static void AssertVector(Vector3 expected, Vector3 actual)
+    {
+        Assert.That(actual.x, Is.EqualTo(expected.x).Within(0.0001f));
+        Assert.That(actual.y, Is.EqualTo(expected.y).Within(0.0001f));
+        Assert.That(actual.z, Is.EqualTo(expected.z).Within(0.0001f));
+    }
+
+    static void SetPrivateField(
+        object target,
+        string fieldName,
+        object value)
+    {
+        target.GetType()
+            .GetField(
+                fieldName,
+                System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic)
+            .SetValue(target, value);
+    }
+
+    static void AddExposedFace(
+        VehiclePhysicsRc3State state,
+        string runtimeId,
+        Vector3 center,
+        float area)
+    {
+        var faces = (System.Collections.Generic.List<ExposedAeroFace>)
+            typeof(VehiclePhysicsRc3State)
+                .GetField(
+                    "faces",
+                    System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic)
+                .GetValue(state);
+        faces.Add(new ExposedAeroFace
+        {
+            runtimeId = runtimeId,
+            centerLocal = center,
+            normalLocal = Vector3.right,
+            area = area,
+            dragCoefficient = 0.7f
+        });
+    }
+}

@@ -144,6 +144,142 @@ namespace UnityPlanet.ModularAssembly
         public Vector2 evadeDirection;
     }
 
+    public struct TrainingFlightAssistDemand
+    {
+        public Vector3 holdPosition;
+        public Vector3 controlAccelerationWorld;
+        public Vector3 targetVelocityWorld;
+        public float targetSpeed;
+    }
+
+    /// <summary>
+    /// The persisted Training enum now represents the player-facing arcade
+    /// mode. It converts a full 3D movement intent into a responsive velocity
+    /// target and switches to position hold as soon as the player releases the
+    /// controls. The returned acceleration remains a physical request: RC3's
+    /// normal actuator allocator still limits it to installed/core authority.
+    /// </summary>
+    public static class TrainingFlightAssist
+    {
+        public const float VelocityResponseSeconds = 0.16f;
+        public const float BasePlanarAssistForce = 2500f;
+        public const float DriveVectoringFraction = 0.72f;
+        public const float MaximumVectoringAcceleration = 14f;
+        const float HoldPositionGain = 5.00f;
+        const float HoldVelocityGain = 4.60f;
+
+        /// <summary>
+        /// Arcade mode treats part of the installed planar drive as bounded
+        /// thrust vectoring while the hull is still turning toward the mouse
+        /// aim.  It keeps W/A responsive in the camera/reticle frame without
+        /// granting a fixed force that ignores propulsion damage.
+        /// </summary>
+        public static float CalculatePlanarAssistForce(
+            float vehicleMass,
+            float strongestInstalledPlanarForce)
+        {
+            float vectoringForce = Mathf.Min(
+                Mathf.Max(0f, strongestInstalledPlanarForce) *
+                DriveVectoringFraction,
+                Mathf.Max(1f, vehicleMass) *
+                MaximumVectoringAcceleration);
+            return BasePlanarAssistForce + vectoringForce;
+        }
+
+        /// <summary>
+        /// Resolves arcade speed authority from the player's semantic axes,
+        /// not from the hull's unfinished rotation.  W therefore continues to
+        /// use forward-drive authority while the ship turns toward the aim;
+        /// A/D and Space/Ctrl retain their own installed-axis authority.
+        /// </summary>
+        public static float CalculateCommandAcceleration(
+            Vector3 localCommandAxes,
+            Vector3 positiveAxisAcceleration,
+            Vector3 negativeAxisAcceleration)
+        {
+            Vector3 command = Vector3.ClampMagnitude(
+                localCommandAxes,
+                1f);
+            Vector3 weights = new Vector3(
+                Mathf.Abs(command.x),
+                Mathf.Abs(command.y),
+                Mathf.Abs(command.z));
+            float totalWeight = weights.x + weights.y + weights.z;
+            if (totalWeight <= 0.0001f)
+                return 0f;
+
+            float x = command.x >= 0f
+                ? positiveAxisAcceleration.x
+                : negativeAxisAcceleration.x;
+            float y = command.y >= 0f
+                ? positiveAxisAcceleration.y
+                : negativeAxisAcceleration.y;
+            float z = command.z >= 0f
+                ? positiveAxisAcceleration.z
+                : negativeAxisAcceleration.z;
+            return Mathf.Max(
+                0f,
+                (weights.x * Mathf.Max(0f, x) +
+                 weights.y * Mathf.Max(0f, y) +
+                 weights.z * Mathf.Max(0f, z)) /
+                totalWeight);
+        }
+
+        public static float CalculateTargetSpeed(
+            float availableAcceleration,
+            bool boost)
+        {
+            float speed = Mathf.Clamp(
+                12f + Mathf.Max(0f, availableAcceleration) * 3.5f,
+                12f,
+                65f);
+            return speed * (boost ? 1.60f : 1f);
+        }
+
+        public static TrainingFlightAssistDemand CalculateDemand(
+            Vector3 position,
+            Vector3 velocity,
+            Vector3 holdPosition,
+            bool holdInitialized,
+            Vector3 movementInputWorld,
+            float targetSpeed)
+        {
+            if (!holdInitialized)
+                holdPosition = position;
+
+            Vector3 movementInput = Vector3.ClampMagnitude(
+                movementInputWorld,
+                1f);
+            Vector3 targetVelocity = Vector3.zero;
+            Vector3 controlAcceleration;
+            if (movementInput.sqrMagnitude > 0.0001f)
+            {
+                holdPosition = position;
+                targetVelocity = movementInput.normalized *
+                    Mathf.Max(0f, targetSpeed) *
+                    movementInput.magnitude;
+                controlAcceleration =
+                    (targetVelocity - velocity) /
+                    VelocityResponseSeconds;
+            }
+            else
+            {
+                Vector3 positionError = holdPosition - position;
+                controlAcceleration =
+                    positionError * HoldPositionGain -
+                    velocity * HoldVelocityGain;
+            }
+
+            return new TrainingFlightAssistDemand
+            {
+                holdPosition = holdPosition,
+                controlAccelerationWorld = controlAcceleration,
+                targetVelocityWorld = targetVelocity,
+                targetSpeed = targetVelocity.magnitude
+            };
+        }
+    }
+
     public interface IRobocraftPilotAimSource
     {
         bool TryGetPilotAim(out Vector3 worldForward);
@@ -158,7 +294,6 @@ namespace UnityPlanet.ModularAssembly
         const float CoreDampingTorque = 1200f;
         const float TrainingUpForce = 13000f;
         const float TrainingDownForce = 3000f;
-        const float TrainingPlanarForce = 2500f;
         const float TrainingTorque = 1200f;
         const float CruiseThrottle = 0.72f;
         const float EvasionSpeedDelta = 26f;
@@ -222,12 +357,22 @@ namespace UnityPlanet.ModularAssembly
         bool controlsEnabled = true;
         bool injectedControlActive;
         RobocraftControlFrame injectedControlFrame;
+        float actuatorForceMultiplier = 1f;
+        float massGeometryScale = 1f;
+        float trainingPlanarAssistForce =
+            TrainingFlightAssist.BasePlanarAssistForce;
+        float trainingUpAssistForce = TrainingUpForce;
+        float trainingDownAssistForce = TrainingDownForce;
+        bool trainingCoreAuthorityOverride;
         bool damageDisabled;
         bool rebuildPending;
         Vector3 heldAimForward = Vector3.forward;
         Vector3 hoverPosition;
         bool hoverHeld;
+        Vector3 trainingHoldPosition;
+        bool trainingHoldInitialized;
         float[] moverForceScales = Array.Empty<float>();
+        bool moverForceScalesValid;
         Vector3 bodyCdArea = Vector3.one * 0.7f;
         float totalWingArea;
         Vector3 trimTorqueLocal;
@@ -282,6 +427,12 @@ namespace UnityPlanet.ModularAssembly
             }
         }
         public VehicleCoreAssistMode CoreAssistMode => coreAssistMode;
+        public float ActuatorForceMultiplier => actuatorForceMultiplier;
+        public float MassGeometryScale => massGeometryScale;
+        public float TrainingPlanarAssistForce =>
+            trainingPlanarAssistForce;
+        public float TrainingUpAssistForce => trainingUpAssistForce;
+        public float TrainingDownAssistForce => trainingDownAssistForce;
         public RobocraftTelemetry Telemetry => telemetry;
         public VehicleEvasionSnapshot EvasionSnapshot =>
             evasionSnapshot;
@@ -398,6 +549,7 @@ public void ConfigureExplicit(
             ResolvePilotAimSource();
             diagnosticFlight = false;
             ResetEvasion();
+            ResetTrainingHold();
             ClearQueuedExternalImpulses();
             rc3Physics.ResetAerodynamicsRuntime();
             trimTorqueLocal = Vector3.zero;
@@ -443,6 +595,7 @@ public void ConfigureExplicit(
                 return;
             diagnosticFlight = true;
             ResetEvasion();
+            ResetTrainingHold();
             ClearQueuedExternalImpulses();
             rc3Physics.ResetAerodynamicsRuntime();
             trimTorqueLocal = Vector3.zero;
@@ -479,6 +632,7 @@ public void ConfigureExplicit(
             damageDisabled = false;
             diagnosticFlight = false;
             ResetEvasion();
+            ResetTrainingHold();
             evasionPresentation?.SetFlightActive(false);
             ClearQueuedExternalImpulses();
             rc3Physics.ResetAerodynamicsRuntime();
@@ -493,9 +647,76 @@ public void ConfigureExplicit(
             if (!Enum.IsDefined(typeof(VehicleCoreAssistMode), value))
                 value = VehicleCoreAssistMode.Standard;
             coreAssistMode = value;
+            ResetTrainingHold();
             model?.SetCoreAssistMode(value);
             RebuildRcs24Allocator();
             RefreshTelemetry();
+        }
+
+        /// <summary>
+        /// Supplies vehicle-specific pseudo-physical emergency authority for
+        /// Training assist. Standard flight remains entirely module-driven.
+        /// This is used by oversized modular Bosses so losing thrusters makes
+        /// them slower and less stable without ever removing basic flight.
+        /// </summary>
+        public void ConfigureTrainingCoreAuthority(
+            float upwardForce,
+            float downwardForce,
+            float planarForce)
+        {
+            trainingCoreAuthorityOverride = true;
+            trainingUpAssistForce = SanitizeTrainingForce(
+                upwardForce,
+                TrainingUpForce);
+            trainingDownAssistForce = SanitizeTrainingForce(
+                downwardForce,
+                TrainingDownForce);
+            trainingPlanarAssistForce = SanitizeTrainingForce(
+                planarForce,
+                TrainingFlightAssist.BasePlanarAssistForce);
+            RebuildRcs24Allocator();
+            RefreshTelemetry();
+        }
+
+        static float SanitizeTrainingForce(float value, float fallback)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return fallback;
+            return Mathf.Clamp(value, 1f, 100000000f);
+        }
+
+        /// <summary>
+        /// Applies a vehicle-level calibration to installed movement modules.
+        /// The default is one. Damage still removes individual actuators, so
+        /// asymmetric thrust and lost authority remain fully represented.
+        /// </summary>
+        public void SetActuatorForceMultiplier(float value)
+        {
+            float sanitized = Mathf.Clamp(
+                float.IsNaN(value) || float.IsInfinity(value) ? 1f : value,
+                0.01f,
+                64f);
+            if (Mathf.Approximately(actuatorForceMultiplier, sanitized))
+                return;
+            actuatorForceMultiplier = sanitized;
+            Rebuild();
+        }
+
+        /// <summary>
+        /// Scales module centers and dimensions for rigidbody mass geometry
+        /// without changing module mass. This keeps inertia consistent with
+        /// vehicles whose individual module colliders are visually enlarged.
+        /// </summary>
+        public void SetMassGeometryScale(float value)
+        {
+            float sanitized = Mathf.Clamp(
+                float.IsNaN(value) || float.IsInfinity(value) ? 1f : value,
+                0.1f,
+                20f);
+            if (Mathf.Approximately(massGeometryScale, sanitized))
+                return;
+            massGeometryScale = sanitized;
+            Rebuild();
         }
 
         public void SetPlanetEnvironment(
@@ -760,9 +981,10 @@ public void ConfigureExplicit(
                     Key(KeyCode.D, KeyCode.A),
                     Key(KeyCode.W, KeyCode.S)),
                 vertical =
-                    (Input.GetKey(KeyCode.Space) ? 1f : 0f) -
-                    ((Input.GetKey(KeyCode.LeftControl) ||
-                      Input.GetKey(KeyCode.RightControl)) ? 1f : 0f),
+                    KeyboardMouseFlightInput.ResolveVerticalAxis(
+                        Input.GetKey(KeyCode.Space),
+                        Input.GetKey(KeyCode.LeftControl),
+                        Input.GetKey(KeyCode.RightControl)),
                 roll = Key(KeyCode.E, KeyCode.Q),
                 boost = Input.GetKey(KeyCode.LeftShift) ||
                         Input.GetKey(KeyCode.RightShift),
@@ -808,13 +1030,15 @@ public void ConfigureExplicit(
             gravity = environmentSample.gravityAcceleration;
             airDensity = Mathf.Max(0f, environmentSample.airDensity);
             altitude = Mathf.Max(0f, environmentSample.altitude);
+            BuildMoverForceScales();
             BuildPropellerWashes();
             ConfigureAirflow(provider);
             rc3Physics.PrepareAerodynamics(
                 body,
                 transform,
                 airDensity,
-                airflowField);
+                airflowField,
+                environmentSample);
 
             ledger.Begin(body);
             physicsStepRunning = true;
@@ -1183,6 +1407,7 @@ public void ConfigureExplicit(
         void SuppressControlsForEvasion()
         {
             hoverHeld = false;
+            ResetTrainingHold();
             pilotRotationActive = true;
             plannedAeroTorqueLocal =
                 rc3Physics.AllocateControlSurfaceTorque(
@@ -1404,11 +1629,16 @@ void ApplyAirMovement(
                 cameraForward = CameraPlanarForward(up);
             Vector3 cameraRight =
                 Vector3.Cross(up, cameraForward).normalized;
-            rcs24.BeginStep(BuildMoverForceScales());
+            rcs24.BeginStep(moverForceScales);
 
+            float resolvedRoll = coreAssistMode ==
+                                 VehicleCoreAssistMode.Training &&
+                                 !freeLook
+                ? Mathf.Clamp(roll + move.x * 0.22f, -1f, 1f)
+                : roll;
             Vector3 requestedWorldTorque = ResolveOrientationTorque(
                 up,
-                roll,
+                resolvedRoll,
                 freeLook,
                 braking,
                 aimForwardOverride);
@@ -1445,6 +1675,11 @@ void ApplyAirMovement(
                 {
                     hoverPosition = body.position;
                     hoverHeld = true;
+                }
+                if (coreAssistMode == VehicleCoreAssistMode.Training)
+                {
+                    trainingHoldPosition = hoverPosition;
+                    trainingHoldInitialized = true;
                 }
                 float heightError =
                     Vector3.Dot(hoverPosition - body.position, up);
@@ -1500,9 +1735,58 @@ void ApplyAirMovement(
                     }
                 }
             }
+            else if (coreAssistMode == VehicleCoreAssistMode.Training)
+            {
+                hoverHeld = false;
+                Vector3 arcadeForward = aimForwardOverride.HasValue
+                    ? aimForwardOverride.Value
+                    : CameraForward();
+                if (arcadeForward.sqrMagnitude < 0.0001f)
+                    arcadeForward = transform.forward;
+                arcadeForward.Normalize();
+                Vector3 arcadeRight = Vector3.Cross(
+                    up,
+                    arcadeForward);
+                if (arcadeRight.sqrMagnitude < 0.0001f)
+                    arcadeRight = cameraRight;
+                else
+                    arcadeRight.Normalize();
+                Vector3 arcadeMovementInput = Vector3.ClampMagnitude(
+                    arcadeForward * move.y +
+                    arcadeRight * move.x +
+                    up * vertical,
+                    1f);
+                float commandAcceleration =
+                    CalculateArcadeCommandAcceleration(
+                        new Vector3(move.x, vertical, move.y));
+                desiredLocalForce = CalculateArcadeDesiredLocalForce(
+                    up,
+                    arcadeMovementInput,
+                    commandAcceleration,
+                    boost,
+                    airControlScale,
+                    hoverControlScale);
+                if (desiredLocalForce.sqrMagnitude > 0.01f)
+                {
+                    Rcs24SolveResult translationResult =
+                        rcs24.SolveTranslation(
+                            new Rcs24SolveRequest
+                            {
+                                desired = desiredLocalForce,
+                                strictDirection = true,
+                                group = "arcade_velocity_hold"
+                            });
+                    if (translationResult.commonScale <= 0f ||
+                        translationResult.missingAxisMask != 0)
+                    {
+                        desiredLocalForce = Vector3.zero;
+                    }
+                }
+            }
             else
             {
                 hoverHeld = false;
+                ResetTrainingHold();
                 Vector3 cameraPlanarDirection =
                     cameraForward * move.y +
                     cameraRight * move.x;
@@ -1568,7 +1852,7 @@ void ApplyAirMovement(
             }
 
             Rcs24SolveResult output =
-                rcs24.CompleteStep(Time.fixedDeltaTime);
+                rcs24.CompleteStepBuffered(Time.fixedDeltaTime);
             requestedControlForceWorld =
                 transform.TransformDirection(desiredLocalForce);
             requestedControlTorqueWorld =
@@ -1583,13 +1867,104 @@ void ApplyAirMovement(
             UpdateAirMoverOutputs(output.thrusterThrottles);
         }
 
+        Vector3 CalculateArcadeDesiredLocalForce(
+            Vector3 up,
+            Vector3 movementInputWorld,
+            float commandAcceleration,
+            bool boost,
+            float airControlScale,
+            float hoverControlScale)
+        {
+            float mass = Mathf.Max(1f, body.mass);
+            float gravityMagnitude = Mathf.Max(0f, gravity.magnitude);
+            Vector3 movementInput = Vector3.ClampMagnitude(
+                movementInputWorld,
+                1f);
+
+            if (airControlScale < 0.5f &&
+                movementInput.sqrMagnitude < 0.0001f)
+            {
+                trainingHoldPosition = body.position;
+                trainingHoldInitialized = true;
+            }
+
+            float targetSpeed = 0f;
+            if (movementInput.sqrMagnitude > 0.0001f)
+            {
+                float netAcceleration = Mathf.Max(
+                    0f,
+                    commandAcceleration + Vector3.Dot(
+                        gravity,
+                        movementInput.normalized));
+                targetSpeed =
+                    TrainingFlightAssist.CalculateTargetSpeed(
+                        netAcceleration,
+                        boost);
+            }
+
+            TrainingFlightAssistDemand demand =
+                TrainingFlightAssist.CalculateDemand(
+                    body.position,
+                    body.velocity,
+                    trainingHoldPosition,
+                    trainingHoldInitialized,
+                    movementInput,
+                    targetSpeed);
+            trainingHoldPosition = demand.holdPosition;
+            trainingHoldInitialized = true;
+
+            Vector3 requestedAcceleration =
+                demand.controlAccelerationWorld * airControlScale +
+                up * gravityMagnitude * hoverControlScale;
+            return transform.InverseTransformDirection(
+                requestedAcceleration * mass);
+        }
+
+        float CalculateArcadeCommandAcceleration(
+            Vector3 localCommandAxes)
+        {
+            float inverseMass = 1f / Mathf.Max(1f, body.mass);
+            Vector3 positive = new Vector3(
+                CalculateDirectionalForce(transform.right),
+                CalculateDirectionalForce(transform.up),
+                CalculateDirectionalForce(transform.forward)) *
+                inverseMass;
+            Vector3 negative = new Vector3(
+                CalculateDirectionalForce(-transform.right),
+                CalculateDirectionalForce(-transform.up),
+                CalculateDirectionalForce(-transform.forward)) *
+                inverseMass;
+            return TrainingFlightAssist.CalculateCommandAcceleration(
+                localCommandAxes,
+                positive,
+                negative);
+        }
+
+        void ResetTrainingHold()
+        {
+            trainingHoldPosition = body != null
+                ? body.position
+                : transform.position;
+            trainingHoldInitialized = false;
+        }
+
         float[] BuildMoverForceScales()
         {
             if (moverForceScales.Length != airMovers.Count)
                 moverForceScales = new float[airMovers.Count];
             for (int i = 0; i < airMovers.Count; i++)
                 moverForceScales[i] = EffectiveThrustFactor(airMovers[i]);
+            moverForceScalesValid = true;
             return moverForceScales;
+        }
+
+        float CachedMoverForceScale(int index)
+        {
+            return moverForceScalesValid
+                && index >= 0
+                && index < moverForceScales.Length
+                    ? moverForceScales[index]
+                    : EffectiveThrustFactor(airMovers[index]);
         }
 
         void UpdateAirMoverOutputs(float[] throttles)
@@ -1613,25 +1988,26 @@ void ApplyAirMovement(
 
             Vector3 direction = worldDirection.normalized;
             float force = 0f;
-            foreach (AirMover mover in airMovers)
+            for (int index = 0; index < airMovers.Count; index++)
             {
+                AirMover mover = airMovers[index];
                 float alignment = Vector3.Dot(WorldDirection(mover), direction);
                 if (alignment <= 0.0001f)
                     continue;
                 force += mover.maximumForce *
                          alignment *
-                         EffectiveThrustFactor(mover);
+                         CachedMoverForceScale(index);
             }
 
             if (coreAssistMode == VehicleCoreAssistMode.Training)
             {
                 Vector3 local =
                     transform.InverseTransformDirection(direction);
-                force += Mathf.Abs(local.x) * TrainingPlanarForce;
-                force += Mathf.Abs(local.z) * TrainingPlanarForce;
+                force += Mathf.Abs(local.x) * trainingPlanarAssistForce;
+                force += Mathf.Abs(local.z) * trainingPlanarAssistForce;
                 force += local.y >= 0f
-                    ? local.y * TrainingUpForce
-                    : -local.y * TrainingDownForce;
+                    ? local.y * trainingUpAssistForce
+                    : -local.y * trainingDownAssistForce;
             }
 
             return force;
@@ -1697,8 +2073,12 @@ Vector3 ResolveOrientationTorque(
                     2f * alphaMax.z * 45f * Mathf.Deg2Rad)));
             Vector3 localAxis =
                 transform.InverseTransformDirection(axis).normalized;
+            float trackingGain = coreAssistMode ==
+                                 VehicleCoreAssistMode.Training
+                ? 5.2f
+                : 3f;
             Vector3 targetAngularVelocity =
-                localAxis * angle * Mathf.Deg2Rad * 3f;
+                localAxis * angle * Mathf.Deg2Rad * trackingGain;
             targetAngularVelocity = ClampAxes(
                 targetAngularVelocity,
                 maxAngularSpeed);
@@ -1708,9 +2088,13 @@ Vector3 ResolveOrientationTorque(
                 coreAssistMode == VehicleCoreAssistMode.Disabled
                     ? Vector3.zero
                     : currentAngularVelocity;
+            float angularResponse =
+                coreAssistMode == VehicleCoreAssistMode.Training
+                    ? braking ? 0.08f : 0.10f
+                    : braking ? 0.14f : 0.25f;
             Vector3 requestedAlpha =
                 (targetAngularVelocity - feedback) /
-                (braking ? 0.14f : 0.25f);
+                angularResponse;
             requestedAlpha = ClampAxes(requestedAlpha, alphaMax);
             Vector3 requestedTorque =
                 rc3Physics.TorqueForAngularAcceleration(requestedAlpha);
@@ -1744,7 +2128,13 @@ Vector3 ResolveOrientationTorque(
 
         void ApplyAerodynamics()
         {
-            rc3Physics.AccumulateAerodynamics(body, transform, airDensity, airflowField, ledger);
+            rc3Physics.AccumulateAerodynamics(
+                body,
+                transform,
+                airDensity,
+                airflowField,
+                environmentSample,
+                ledger);
             VehiclePhysicsSnapshot snapshot = rc3Physics.Snapshot;
             telemetry.currentLift = snapshot.currentLift;
             telemetry.currentDrag = snapshot.currentDrag;
@@ -1775,15 +2165,16 @@ Vector3 ResolveOrientationTorque(
         {
             float result =
                 coreAssistMode == VehicleCoreAssistMode.Training
-                    ? TrainingUpForce
+                    ? trainingUpAssistForce
                     : 0f;
-            foreach (AirMover mover in airMovers)
+            for (int index = 0; index < airMovers.Count; index++)
             {
+                AirMover mover = airMovers[index];
                 result += Mathf.Max(
                               0f,
                               Vector3.Dot(WorldDirection(mover), up)) *
                           mover.maximumForce *
-                          EffectiveThrustFactor(mover);
+                          CachedMoverForceScale(index);
             }
             return result;
         }
@@ -1851,8 +2242,9 @@ Vector3 ResolveOrientationTorque(
             propellerWashes.Clear();
             if (!environmentSample.hasAtmosphere || airDensity <= 0.0001f)
                 return;
-            foreach (AirMover mover in airMovers)
+            for (int index = 0; index < airMovers.Count; index++)
             {
+                AirMover mover = airMovers[index];
                 if (!mover.propeller || mover.actualThrottle <= 0.0001f)
                     continue;
                 Vector3 diskCenter =
@@ -1863,7 +2255,7 @@ Vector3 ResolveOrientationTorque(
                 float axial = Mathf.Max(0f, Vector3.Dot(relativeAir, forceAxis));
                 float area = Mathf.PI * mover.diskRadius * mover.diskRadius;
                 float thrust = mover.maximumForce *
-                    EffectiveThrustFactor(mover) *
+                    CachedMoverForceScale(index) *
                     mover.actualThrottle;
                 float induced = 0.5f *
                     (-axial + Mathf.Sqrt(
@@ -1889,11 +2281,28 @@ Vector3 ResolveOrientationTorque(
         {
             IPlanetEnvironmentProvider provider =
                 environmentProvider ?? PlanetEnvironmentRuntime.Active;
-            PlanetEnvironmentSample sample = provider != null
-                ? provider.Sample(worldPosition, Time.fixedTimeAsDouble)
-                : environmentSample;
+            PlanetEnvironmentSample sample = SampleAirEnvironment(
+                provider,
+                worldPosition);
             return body.GetPointVelocity(worldPosition) -
                    sample.atmosphereVelocity;
+        }
+
+        PlanetEnvironmentSample SampleAirEnvironment(
+            IPlanetEnvironmentProvider provider,
+            Vector3 worldPosition)
+        {
+            if (provider == null)
+                return environmentSample;
+            if (provider is IPlanetAirEnvironmentProvider airProvider)
+            {
+                return airProvider.SampleAirflow(
+                    worldPosition,
+                    Time.fixedTimeAsDouble);
+            }
+            return provider.Sample(
+                worldPosition,
+                Time.fixedTimeAsDouble);
         }
 
         void ConfigureAirflow(IPlanetEnvironmentProvider provider)
@@ -1969,7 +2378,11 @@ Vector3 ResolveOrientationTorque(
 
         void BuildMassProperties(GridModuleView[] views)
         {
-            rc3Physics.Rebuild(views, body, transform);
+            rc3Physics.Rebuild(
+                views,
+                body,
+                transform,
+                massGeometryScale);
             VehicleMassProperties properties = rc3Physics.MassProperties;
             telemetry.totalMass = properties.totalMass;
             telemetry.centerOfMassLocal = properties.centerOfMassLocal;
@@ -2112,7 +2525,7 @@ Vector3 ResolveOrientationTorque(
                 localPosition = transform.InverseTransformPoint(
                     module.WorldExhaustPosition),
                 localDirection = direction,
-                maximumForce = force,
+                maximumForce = force * actuatorForceMultiplier,
                 responseTime = response,
                 softSpeed = speed,
                 atmosphereOnly = atmosphereOnly,
@@ -2158,18 +2571,55 @@ Vector3 ResolveOrientationTorque(
                     responseTime = mover.responseTime
                 };
             }
+            float strongestInstalledPlanarForce = Mathf.Max(
+                Mathf.Max(
+                    CalculatePhysicalDirectionalForce(Vector3.right),
+                    CalculatePhysicalDirectionalForce(Vector3.left)),
+                Mathf.Max(
+                    CalculatePhysicalDirectionalForce(Vector3.forward),
+                    CalculatePhysicalDirectionalForce(Vector3.back)));
+            if (!trainingCoreAuthorityOverride)
+            {
+                trainingUpAssistForce = TrainingUpForce;
+                trainingDownAssistForce = TrainingDownForce;
+                trainingPlanarAssistForce =
+                    TrainingFlightAssist.CalculatePlanarAssistForce(
+                        body.mass,
+                        strongestInstalledPlanarForce);
+            }
             moverForceScales = new float[airMovers.Count];
+            moverForceScalesValid = false;
             rcs24.Rebuild(
                 inputs,
                 body.centerOfMass,
                 coreAssistMode == VehicleCoreAssistMode.Training,
-                TrainingUpForce,
-                TrainingDownForce,
-                TrainingPlanarForce);
+                trainingUpAssistForce,
+                trainingDownAssistForce,
+                trainingPlanarAssistForce);
+        }
+
+        float CalculatePhysicalDirectionalForce(Vector3 localDirection)
+        {
+            if (localDirection.sqrMagnitude < 0.0001f)
+                return 0f;
+            Vector3 direction = localDirection.normalized;
+            float force = 0f;
+            for (int index = 0; index < airMovers.Count; index++)
+            {
+                AirMover mover = airMovers[index];
+                float alignment = Vector3.Dot(
+                    mover.localDirection,
+                    direction);
+                if (alignment <= 0.0001f)
+                    continue;
+                force += mover.maximumForce * alignment;
+            }
+            return force;
         }
 
 void RefreshTelemetry()
         {
+            BuildMoverForceScales();
             RefreshAerodynamicMetrics();
             Vector3 positiveForce = new Vector3(
                 CalculateDirectionalForce(transform.right),
@@ -2244,7 +2694,7 @@ void RefreshTelemetry()
             else if (fixedWingCapable)
                 telemetry.status = "固定翼可起飞";
             else if (coreAssistMode == VehicleCoreAssistMode.Training)
-                telemetry.status = "依赖新手辅助";
+                telemetry.status = "街机辅助飞行";
             else if (airMovers.Count > 0)
                 telemetry.status = "推力不足";
             else

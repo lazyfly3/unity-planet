@@ -75,6 +75,8 @@ namespace UnityPlanet.ModularAssembly
             if (root == null)
                 return;
 
+            VehicleDetachedDebris.ClearAll();
+
             foreach (WeaponVisualPool weaponVisuals in
                      Object.FindObjectsOfType<WeaponVisualPool>(true))
             {

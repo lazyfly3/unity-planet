@@ -8,6 +8,31 @@ using UnityEngine;
 
 public sealed class InterstellarPlanetGenerationTests
 {
+    [TestCase(7319)]
+    [TestCase(1)]
+    [TestCase(-1842357)]
+    public void StarterSystemAlwaysContainsSixPlanets(int worldSeed)
+    {
+        var generator = new ProceduralInterstellarGenerator(
+            worldSeed,
+            Array.Empty<GalaxyResourceCatalogEntry>());
+        int planetCount = 0;
+
+        for (long z = 0; z < ProceduralInterstellarGenerator.MacroCellSize; z++)
+        for (long y = 0; y < ProceduralInterstellarGenerator.MacroCellSize; y++)
+        for (long x = 0; x < ProceduralInterstellarGenerator.MacroCellSize; x++)
+        {
+            if (generator.HasPlanet(new InterstellarCoordinate(x, y, z)))
+                planetCount++;
+        }
+
+        Assert.That(
+            planetCount,
+            Is.EqualTo(
+                ProceduralInterstellarGenerator.StarterSystemPlanetCount));
+        Assert.That(planetCount, Is.GreaterThanOrEqualTo(6));
+    }
+
     [Test]
     public void GeneratedPlanetsAreDeterministicAndDoNotGenerateRivers()
     {

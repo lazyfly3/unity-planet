@@ -91,7 +91,10 @@ namespace SpacecraftEditor
             Vector2 processed = ApplyResponseCurve(vjoyCursor);
             command.translation = Vector3.ClampMagnitude(new Vector3(
                 DigitalAxis(KeyCode.A, KeyCode.D),
-                DigitalAxis(KeyCode.LeftControl, KeyCode.Space),
+                ResolveVerticalAxis(
+                    Input.GetKey(KeyCode.Space),
+                    Input.GetKey(KeyCode.LeftControl),
+                    Input.GetKey(KeyCode.RightControl)),
                 DigitalAxis(KeyCode.S, KeyCode.W)), 1f);
             command.vjoy = new Vector2(-processed.y, processed.x);
             command.roll = DigitalAxis(KeyCode.E, KeyCode.Q);
@@ -194,6 +197,15 @@ namespace SpacecraftEditor
         static float DigitalAxis(KeyCode negative, KeyCode positive)
         {
             return (Input.GetKey(positive) ? 1f : 0f) - (Input.GetKey(negative) ? 1f : 0f);
+        }
+
+        public static float ResolveVerticalAxis(
+            bool ascendHeld,
+            bool leftControlHeld,
+            bool rightControlHeld)
+        {
+            return (ascendHeld ? 1f : 0f) -
+                   (leftControlHeld || rightControlHeld ? 1f : 0f);
         }
     }
 }

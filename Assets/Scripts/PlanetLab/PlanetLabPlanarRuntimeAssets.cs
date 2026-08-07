@@ -79,9 +79,14 @@ public static class PlanetLabPlanarMaterialFactory
         PlanetLabSkyboxLibrary library,
         ProceduralPlanetLabTemplate template)
     {
-        return library != null
-            ? library.SelectMaterial(definition.seed, template)
-            : null;
+        if (library == null)
+            return null;
+        // Formal planet surfaces use one authored AllSky material per climate
+        // so a planet's visual identity is stable across saves and missions.
+        // Keep the seeded template selection as a compatibility fallback for
+        // incomplete/custom libraries.
+        return library.SelectClimateMaterial(definition.climate)
+               ?? library.SelectMaterial(definition.seed, template);
     }
 
     static void ApplyTerrainProperties(

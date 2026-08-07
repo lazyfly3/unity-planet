@@ -140,8 +140,13 @@ namespace UnityPlanet.ModularAssembly
         public void Rebuild(
             IReadOnlyList<GridModuleView> views,
             Rigidbody body,
-            Transform root)
+            Transform root,
+            float massGeometryScale = 1f)
         {
+            massGeometryScale = Mathf.Clamp(
+                massGeometryScale,
+                0.1f,
+                20f);
             masses.Clear();
             faces.Clear();
             wings.Clear();
@@ -166,8 +171,9 @@ namespace UnityPlanet.ModularAssembly
                     {
                         runtimeId = record.RuntimeId,
                         mass = Mathf.Max(0.01f, record.Definition.MassKg),
-                        centerLocal = GridAssemblyModel.ModuleCenter(record),
-                        sizeLocal = (Vector3)size
+                        centerLocal = GridAssemblyModel.ModuleCenter(record) *
+                                      massGeometryScale,
+                        sizeLocal = (Vector3)size * massGeometryScale
                     });
                     foreach (Vector3Int cell in GridOrientation.NormalizedCells(
                                  record.Definition.Footprint,

@@ -398,6 +398,30 @@ public sealed class ProceduralPlanetLabTests
             Assert.AreEqual(template, first.template);
             Assert.IsNotNull(first.material);
         }
+
+        foreach (PlanetLabSkyboxEntry entry in library.entries)
+        {
+            Assert.IsNotNull(entry.material, entry.id);
+            Assert.IsNotNull(entry.material.shader, entry.id);
+            Assert.AreEqual(
+                "Skybox/6 Sided",
+                entry.material.shader.name,
+                entry.id);
+            foreach (string textureName in new[]
+                     {
+                         "_FrontTex",
+                         "_BackTex",
+                         "_LeftTex",
+                         "_RightTex",
+                         "_UpTex",
+                         "_DownTex"
+                     })
+            {
+                Assert.IsNotNull(
+                    entry.material.GetTexture(textureName),
+                    entry.id + " " + textureName);
+            }
+        }
     }
 
     [Test]

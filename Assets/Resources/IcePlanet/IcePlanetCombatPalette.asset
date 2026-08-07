@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf6f53cdb8d9e3c419582381f86fcf89, type: 3}
+  m_Name: IcePlanetCombatPalette
+  m_EditorClassIdentifier: 
+  boundaryCliffs:
+  - {fileID: 8111088568635639631, guid: e4715e40561531d43b93db77c3d587d3, type: 3}
+  - {fileID: 6168413775535964795, guid: c3c61b7192c8ca64787d704cfd977802, type: 3}
+  - {fileID: 4107347068799672028, guid: 6b24a5ad56a792648a3006fcf6e6611e, type: 3}
+  coverRocks:
+  - {fileID: 517757558297852472, guid: 728eb145e00fffe44a776fc46084e61b, type: 3}
+  - {fileID: 2091664835349463610, guid: c21ecff78fb5b7142a14ae0246398aa6, type: 3}
+  - {fileID: 5342826898391336233, guid: 334016dfd1ce56244a49a75040015da5, type: 3}
+  - {fileID: 6492455329735329206, guid: c67a7c2df57ff9f4594ad765dccbb41d, type: 3}
+  iceCrystals:
+  - {fileID: 6711069936241327671, guid: d4371bcc8ee4aa14daf1ddfb3fd9e9b4, type: 3}
+  - {fileID: 1440851699522481392, guid: e41164c7599459a4eb5117c0da726a7f, type: 3}
+  - {fileID: 6964066256114538151, guid: dce53b23551262444a723bb56b03cf72, type: 3}
+  - {fileID: 4472685324349641198, guid: b186d27e9d71a314baf152f0aa92058b, type: 3}
+  ruins:
+  - {fileID: 100000, guid: c7b393b12a97b9a4c81fcfbbdbfffa03, type: 3}
+  - {fileID: 1699990650141113521, guid: 76fe76c8da45a7a48979d01ba29a682f, type: 3}
+  - {fileID: 6595187408419226019, guid: bfe90ebe97936b94eb860269c672afe8, type: 3}
+  - {fileID: 5280012916044084277, guid: 85a71a8836f90854eb9c7337c821c5a2, type: 3}
+  - {fileID: 3120394067879181719, guid: 23e9b53959c407d4a85000f8fc7642a1, type: 3}
+  - {fileID: 2035614878097632573, guid: 46050299b66531549be8da71b488d694, type: 3}
+  walls:
+  - {fileID: 1073417354537063090, guid: db810a302fc465e47b59f12d00fdd2a1, type: 3}
+  - {fileID: 6022431433048146029, guid: b96f6ba7e6854ce44b116b7f0683691e, type: 3}
+  - {fileID: 543606368515452903, guid: 3100f5b1b48e14c44a969ef1a2661eb8, type: 3}
+  towers:
+  - {fileID: 5233884624802226399, guid: b0c2ede165417514fbe07f915276ddab, type: 3}
+  - {fileID: 339853600629265019, guid: 9d4e7447d27d54b42a1ac6e20fe59464, type: 3}
+  bridges:
+  - {fileID: 8992734654059749402, guid: 97b00ed27f898df4ea98216ecf39f796, type: 3}
+  - {fileID: 6116121369566922586, guid: 91c3b4766e1d6944392e3571feaa2cac, type: 3}
+  lights:
+  - {fileID: 5039441450966008042, guid: 1991b29d98b7fbc46af42d738c23c84e, type: 3}
+  - {fileID: 3246827021493962680, guid: 0c38230c52383e145b26bf1a3c54ec7a, type: 3}
+  snowFx:
+  - {fileID: 100000, guid: ef1d5a67430c89442b3b017a688f62f6, type: 3}
+  - {fileID: 1377001280523800, guid: ed6a4dba3ec83d74ca122210b1547795, type: 3}

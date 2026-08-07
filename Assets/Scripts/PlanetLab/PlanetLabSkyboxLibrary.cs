@@ -91,6 +91,53 @@ public sealed class PlanetLabSkyboxLibrary : ScriptableObject
         ProceduralPlanetLabTemplate template)
         => SelectEntry(seed, template)?.material;
 
+    public PlanetLabSkyboxEntry SelectClimateEntry(PlanetClimate climate)
+    {
+        string selectedId = GetClimateSkyboxId(climate);
+        if (entries == null || string.IsNullOrEmpty(selectedId))
+            return null;
+
+        for (int index = 0; index < entries.Count; index++)
+        {
+            PlanetLabSkyboxEntry entry = entries[index];
+            if (entry != null
+                && entry.material != null
+                && string.Equals(
+                    entry.id,
+                    selectedId,
+                    StringComparison.Ordinal))
+            {
+                return entry;
+            }
+        }
+        return null;
+    }
+
+    public Material SelectClimateMaterial(PlanetClimate climate)
+        => SelectClimateEntry(climate)?.material;
+
+    public static string GetClimateSkyboxId(PlanetClimate climate)
+    {
+        return climate switch
+        {
+            PlanetClimate.Barren =>
+                "Desert/Day Sun Low ClearHazy",
+            PlanetClimate.TemperateForest =>
+                "TemperateOcean/Day Sun High SummerSky",
+            PlanetClimate.Desert =>
+                "Desert/Golden Sunset",
+            PlanetClimate.Tropical =>
+                "TemperateOcean/Sunless_BlueSky_02",
+            PlanetClimate.Tundra =>
+                "Frozen/Cold Clouds",
+            PlanetClimate.Volcanic =>
+                "CrimsonOcean/FantasySky_Fire",
+            PlanetClimate.Crystal =>
+                "Crystal/Space_Nebula_BlueRed",
+            _ => string.Empty
+        };
+    }
+
     static int StableHash(int seed, int salt)
     {
         unchecked

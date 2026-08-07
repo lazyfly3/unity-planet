@@ -586,6 +586,8 @@ public sealed class GalaxyTravelManager : MonoBehaviour
                 orbitalVelocity + direction * speed);
         }
         SaveActiveSlotMetadata();
+        if (planar != null && planar.IsFiniteCombatArea)
+            PlanetOrbitChapterSelectionContext.Clear();
         transitionInProgress = true;
         SceneManager.LoadScene(
             interstellarSceneName,
@@ -1093,6 +1095,7 @@ if (transitionInProgress)
             SavePlanet(world);
         CaptureInventory();
         SaveActiveSlotMetadata();
+        PlanetOrbitChapterSelectionContext.Clear();
 
         transitionInProgress = true;
         SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -1123,9 +1126,20 @@ if (transitionInProgress)
             }
         }
 
-        if (UsesInfinitePlanarSurface)
+        bool finiteChapterCombat =
+            PlanetOrbitChapterSelectionContext.HasSelection
+            && string.Equals(
+                PlanetOrbitChapterSelectionContext.PlanetId,
+                planet.planetId,
+                System.StringComparison.Ordinal);
+        // A chapter mission is a temporary ship-only combat instance. Its
+        // routing must not inherit the slot's legacy/open-world topology:
+        // pre-v9 saves deliberately retain LegacySphere for compatibility.
+        if (finiteChapterCombat || UsesInfinitePlanarSurface)
         {
-            ConfigureInfinitePlanarSurfaceScene(planet);
+            ConfigureInfinitePlanarSurfaceScene(
+                planet,
+                finiteChapterCombat);
             return;
         }
 
@@ -1191,7 +1205,8 @@ if (transitionInProgress)
     }
 
     void ConfigureInfinitePlanarSurfaceScene(
-        GalaxyPlanetDefinition planet)
+        GalaxyPlanetDefinition planet,
+        bool finiteChapterCombat)
     {
         if (FindObjectOfType<InfinitePlanarSurfaceWorld>() != null)
             return;
@@ -1251,9 +1266,14 @@ if (transitionInProgress)
             return;
         }
 
-        var root = new GameObject("InfinitePlanarSurfaceWorld");
+        var root = new GameObject(
+            finiteChapterCombat
+                ? "FinitePlanetCombatWorld"
+                : "InfinitePlanarSurfaceWorld");
         InfinitePlanarSurfaceWorld planar =
             root.AddComponent<InfinitePlanarSurfaceWorld>();
+        if (finiteChapterCombat)
+            planar.ConfigureFiniteCombatMode();
         // Infinite planar saves deliberately do not run the random tree,
         // vegetation, landmark, or ground-cover generator. Dedicated
         // harvestable resource settings remain enabled.
@@ -1265,6 +1285,36 @@ if (transitionInProgress)
             landing,
             player,
             surfacePropPlan);
+        if (finiteChapterCombat &&
+            PlanetOrbitChapterSelectionContext.EnvironmentKind ==
+            PlanetMissionEnvironmentKind.Urban)
+        {
+            FinitePlanetUrbanCombatRuntime urbanCombat =
+                root.AddComponent<FinitePlanetUrbanCombatRuntime>();
+            if (!urbanCombat.Configure(planar))
+            {
+                Debug.LogWarning(
+                    "GalaxyTravelManager: city battlefield preparation " +
+                    "failed; the mission keeps its original natural map. " +
+                    urbanCombat.PreparationError,
+                    urbanCombat);
+                PlanetOrbitChapterSelectionContext.Set(
+                    PlanetOrbitChapterSelectionContext.PlanetId,
+                    PlanetOrbitChapterSelectionContext.MissionId,
+                    PlanetOrbitChapterSelectionContext.MissionName,
+                    PlanetOrbitChapterSelectionContext.LandingDirection,
+                    PlanetOrbitChapterSelectionContext.MissionSeed,
+                    PlanetMissionEnvironmentKind.Natural,
+                    PlanetOrbitChapterSelectionContext
+                        .PlanetDifficultyIndex);
+            }
+        }
+        if (finiteChapterCombat)
+        {
+            FinitePlanetCombatBoundary boundary =
+                root.AddComponent<FinitePlanetCombatBoundary>();
+            boundary.Configure(planar);
+        }
         InfinitePlanarSurfaceEntryCoordinator coordinator =
             root.AddComponent<InfinitePlanarSurfaceEntryCoordinator>();
         PlanarSurfaceLandedSpacecraftRestorer restorer = null;
@@ -1279,7 +1329,8 @@ if (transitionInProgress)
             FindObjectOfType<PlanetLoadingUI>(true));
         if (restorer != null)
             coordinator.BindRestorer(restorer);
-        RestorePlanarBuildings(planar, save);
+        if (!finiteChapterCombat)
+            RestorePlanarBuildings(planar, save);
         RestoreInventory();
     }
 
@@ -1343,6 +1394,11 @@ if (transitionInProgress)
 
     void SavePlanet(InfinitePlanarSurfaceWorld world)
     {
+        // Chapter combat arenas are temporary mission instances. Saving one
+        // would overwrite the player's separate open-world surface position,
+        // dropped objects and buildings.
+        if (world != null && world.IsFiniteCombatArea)
+            return;
         if (world == null || !world.IsCenterCollisionReady)
         {
             Debug.LogWarning(
@@ -3253,6 +3309,7 @@ if (transitionInProgress)
         planets.Add(CreatePlanet("crimson", "Cinder", 9, 1, 97531, new Color(0.9f, 0.3f, 0.2f), "Galaxy/planet_red"));
         planets.Add(CreatePlanet("azure", "Pelagos", 9, 6, 48127, new Color(0.25f, 0.65f, 0.95f), "Galaxy/planet_blue"));
         planets.Add(CreatePlanet("violet", "Nyx", 3, 6, 86420, new Color(0.65f, 0.35f, 0.9f), "Galaxy/planet_violet"));
+        planets.Add(CreatePlanet("glacial", "Borealis", 7, 8, 53142, new Color(0.42f, 0.78f, 0.95f), "Galaxy/planet_blue"));
         shipGridPosition = planets[0].gridPosition;
     }
 
@@ -3364,6 +3421,14 @@ if (transitionInProgress)
                     detailScale = 0.11f, detailHeight = 5.5f, ridgeHeight = 6f,
                     surfaceLayerDepth = 0.7f, stoneDepth = 3f,
                     caveScale = 0.095f, caveThreshold = 0.57f, caveSurfaceClearance = 1.5f
+                };
+            case "glacial":
+                return new PlanetTerrainSettings
+                {
+                    continentScale = 0.016f, continentHeight = 8f,
+                    detailScale = 0.052f, detailHeight = 2.2f, ridgeHeight = 3.5f,
+                    surfaceLayerDepth = 1.2f, stoneDepth = 4.5f,
+                    caveScale = 0.05f, caveThreshold = 0.7f, caveSurfaceClearance = 3.5f
                 };
             default:
                 return new PlanetTerrainSettings

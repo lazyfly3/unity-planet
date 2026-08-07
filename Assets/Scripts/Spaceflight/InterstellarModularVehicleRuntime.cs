@@ -96,6 +96,12 @@ public sealed class ModularInterstellarControlAdapter :
     IRobocraftPilotAimSource
 {
     const int PointerWarmupFrames = 2;
+    const float StandardYawSensitivity = 2.2f;
+    const float StandardPitchSensitivity = 1.8f;
+    const float StandardPitchLimit = 55f;
+    const float ArcadeYawSensitivity = 2.35f;
+    const float ArcadePitchSensitivity = 2.05f;
+    const float ArcadePitchLimit = 80f;
 
     Rigidbody body;
     RobocraftMotionCoordinator motion;
@@ -158,6 +164,9 @@ public sealed class ModularInterstellarControlAdapter :
     }
 
     public Vector3 VelocityReferenceWorld => velocityReferenceWorld;
+    public bool ArcadeAssistActive =>
+        motion != null &&
+        motion.CoreAssistMode == VehicleCoreAssistMode.Training;
     public bool FreeLookHeld => Input.GetKey(KeyCode.LeftAlt) ||
                                 Input.GetKey(KeyCode.RightAlt);
 
@@ -166,11 +175,10 @@ public sealed class ModularInterstellarControlAdapter :
         {
             translation = new Vector3(
                 Axis(KeyCode.D, KeyCode.A),
-                Mathf.Clamp(
-                    Axis(KeyCode.Space, KeyCode.LeftControl) -
-                    (Input.GetKey(KeyCode.RightControl) ? 1f : 0f),
-                    -1f,
-                    1f),
+                KeyboardMouseFlightInput.ResolveVerticalAxis(
+                    Input.GetKey(KeyCode.Space),
+                    Input.GetKey(KeyCode.LeftControl),
+                    Input.GetKey(KeyCode.RightControl)),
                 Axis(KeyCode.W, KeyCode.S)),
             roll = Axis(KeyCode.E, KeyCode.Q),
             brake = Input.GetKey(KeyCode.X),
@@ -379,11 +387,20 @@ public sealed class ModularInterstellarControlAdapter :
         if (FreeLookHeld)
             return;
 
-        pilotAimYaw += Input.GetAxisRaw("Mouse X") * 2.2f;
+        float yawSensitivity = ArcadeAssistActive
+            ? ArcadeYawSensitivity
+            : StandardYawSensitivity;
+        float pitchSensitivity = ArcadeAssistActive
+            ? ArcadePitchSensitivity
+            : StandardPitchSensitivity;
+        float pitchLimit = ArcadeAssistActive
+            ? ArcadePitchLimit
+            : StandardPitchLimit;
+        pilotAimYaw += Input.GetAxisRaw("Mouse X") * yawSensitivity;
         pilotAimPitch = Mathf.Clamp(
-            pilotAimPitch - Input.GetAxisRaw("Mouse Y") * 1.8f,
-            -55f,
-            55f);
+            pilotAimPitch - Input.GetAxisRaw("Mouse Y") * pitchSensitivity,
+            -pitchLimit,
+            pitchLimit);
         pilotAimYaw = Mathf.Repeat(pilotAimYaw + 180f, 360f) - 180f;
     }
 
@@ -404,11 +421,14 @@ public sealed class ModularInterstellarControlAdapter :
             forward = Vector3.forward;
         forward.Normalize();
         pilotAimYaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
+        float pitchLimit = ArcadeAssistActive
+            ? ArcadePitchLimit
+            : StandardPitchLimit;
         pilotAimPitch = Mathf.Clamp(
             -Mathf.Asin(Mathf.Clamp(forward.y, -1f, 1f)) *
             Mathf.Rad2Deg,
-            -55f,
-            55f);
+            -pitchLimit,
+            pitchLimit);
         pilotAimInitialized = true;
     }
 

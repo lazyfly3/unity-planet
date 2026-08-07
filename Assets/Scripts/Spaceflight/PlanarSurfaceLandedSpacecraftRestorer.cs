@@ -5,6 +5,7 @@ using ModularAssembly;
 using SpacecraftEditor;
 using UnityEngine;
 using UnityPlanet.ModularAssembly;
+using UnityPlanet.SpaceStation;
 
 [DisallowMultipleComponent]
 public sealed class PlanarSurfaceLandedSpacecraftRestorer : MonoBehaviour
@@ -254,7 +255,8 @@ public sealed class PlanarSurfaceModularFlightController : MonoBehaviour
             Vector3.up).normalized;
         if (forward.sqrMagnitude < 0.001f)
             forward = Vector3.forward;
-        SaveSurfaceState(manager, forward, true);
+        if (!world.IsFiniteCombatArea)
+            SaveSurfaceState(manager, forward, true);
         SetGameplayReady(false);
         session?.ExitFlight();
         manager.OpenInterstellarFlightFromSurface(
@@ -308,6 +310,7 @@ public sealed class PlanarSurfaceModularVehicleLoader : MonoBehaviour
     WeaponSystemCoordinator weapons;
     GridLabCameraController cameraController;
     PlanarSurfaceModularFlightController flightController;
+    FinitePlanetHordeCombatController hordeCombat;
     VoxelPlanetPlayerController walkingPlayer;
 
     public Rigidbody Body { get; private set; }
@@ -382,9 +385,13 @@ public sealed class PlanarSurfaceModularVehicleLoader : MonoBehaviour
                 model,
                 contentService.Catalog);
         var store = new ModularBlueprintStore();
-        if (!store.TryLoad(
-                out ModularBlueprintData blueprint,
-                out string loadError))
+        ModularBlueprintData blueprint;
+        string loadError = string.Empty;
+        bool hasExpeditionBlueprint =
+            SpaceStationFlowContext.TryGetActiveExpeditionBlueprint(
+                out blueprint);
+        if (!hasExpeditionBlueprint &&
+            !store.TryLoad(out blueprint, out loadError))
         {
             completed?.Invoke(
                 false,
@@ -494,6 +501,32 @@ public sealed class PlanarSurfaceModularVehicleLoader : MonoBehaviour
             aimSource,
             weapons,
             cameraController);
+        if (world.IsFiniteCombatArea)
+        {
+            GameObject combatRoot = new GameObject(
+                "FinitePlanetHordeCombat");
+            combatRoot.transform.SetParent(world.transform, false);
+            hordeCombat = combatRoot.AddComponent<
+                FinitePlanetHordeCombatController>();
+            yield return hordeCombat.Prepare(
+                world,
+                flightController,
+                Body,
+                weapons,
+                graph,
+                model,
+                contentService,
+                records);
+            if (!hordeCombat.IsPrepared)
+            {
+                completed?.Invoke(
+                    false,
+                    string.IsNullOrWhiteSpace(hordeCombat.PreparationError)
+                        ? "Finite planet enemy combat preparation failed."
+                        : hordeCombat.PreparationError);
+                yield break;
+            }
+        }
         IsBuilt = true;
         completed?.Invoke(true, physicsMessage);
     }
@@ -503,10 +536,14 @@ public sealed class PlanarSurfaceModularVehicleLoader : MonoBehaviour
         if (!IsBuilt)
             return;
         flightController?.SetGameplayReady(ready);
+        hordeCombat?.SetGameplayReady(ready);
     }
 
     public void Abort()
     {
+        hordeCombat?.SetGameplayReady(false);
+        if (hordeCombat != null)
+            Destroy(hordeCombat.gameObject);
         if (modularRoot != null)
             Destroy(modularRoot);
         if (cameraController != null)
@@ -524,7 +561,8 @@ public sealed class PlanarSurfaceModularVehicleLoader : MonoBehaviour
             manager != null && planet != null
                 ? manager.GetSurfaceSpacecraftState(planet.planetId)
                 : null;
-        bool useRestored = restored != null
+        bool useRestored = !world.IsFiniteCombatArea
+                           && restored != null
                            && restored.valid
                            && restored.surfaceTopology
                            == PlanetSurfaceTopology.InfinitePlanar;
@@ -532,7 +570,19 @@ public sealed class PlanarSurfaceModularVehicleLoader : MonoBehaviour
         Vector3 near = walkingPlayer != null
             ? walkingPlayer.transform.position
             : Vector3.zero;
-        if (useRestored)
+        FinitePlanetDefenseLayoutPlan defence =
+            world.IsFiniteCombatArea
+                ? world.FiniteCombatTerrainPlan?.DefenseLayout
+                : null;
+        if (defence != null && defence.IsValid)
+        {
+            near = world.FromPersistentAddress(
+                new PlanarSurfaceAddress(
+                    defence.playerSpawn.x,
+                    defence.playerSpawn.z,
+                    0f));
+        }
+        else if (useRestored)
         {
             near = world.FromPersistentAddress(
                 new PlanarSurfaceAddress(
@@ -543,11 +593,30 @@ public sealed class PlanarSurfaceModularVehicleLoader : MonoBehaviour
 
         float footprint =
             Mathf.Max(bounds.extents.x, bounds.extents.z) + 2f;
-        bool terrainSpawn = world.TryFindLandingPoint(
-            near,
-            footprint,
-            18f,
-            out PlanetSurfaceSample surface);
+        FinitePlanetUrbanCombatRuntime urbanCombat =
+            world.GetComponent<FinitePlanetUrbanCombatRuntime>();
+        PlanetSurfaceSample surface;
+        bool terrainSpawn;
+        if (urbanCombat != null && urbanCombat.IsReady)
+        {
+            Vector3 urbanGround = urbanCombat.ProjectToGround(near);
+            surface = new PlanetSurfaceSample
+            {
+                point = urbanGround,
+                normal = Vector3.up,
+                height = urbanCombat.GroundHeight,
+                isWater = false
+            };
+            terrainSpawn = true;
+        }
+        else
+        {
+            terrainSpawn = world.TryFindLandingPoint(
+                near,
+                footprint,
+                18f,
+                out surface);
+        }
         Vector3 groundPoint;
         if (terrainSpawn)
         {

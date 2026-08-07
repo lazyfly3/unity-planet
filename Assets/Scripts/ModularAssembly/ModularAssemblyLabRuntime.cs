@@ -183,7 +183,7 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
             if (assembly != null && part != null)
                 removedParts.Add(part);
             else
-                Destroy(view.gameObject);
+                DestroyRuntimeObject(view.gameObject);
         }
         assembly?.RemoveParts(removedParts, false);
     }
@@ -213,7 +213,7 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
             for (int index = coreRoot.childCount - 1; index >= 0; index--)
             {
                 coreRoot.GetChild(index).gameObject.SetActive(false);
-                Destroy(coreRoot.GetChild(index).gameObject);
+                DestroyRuntimeObject(coreRoot.GetChild(index).gameObject);
             }
         }
 
@@ -222,6 +222,16 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
         ApplyValidationTint(validation);
         assembly?.Recalculate();
         Rebuilt?.Invoke();
+    }
+
+    static void DestroyRuntimeObject(UnityEngine.Object value)
+    {
+        if (value == null)
+            return;
+        if (Application.isPlaying)
+            Destroy(value);
+        else
+            DestroyImmediate(value);
     }
 
     GridModuleView CreateView(GridModuleRecord record)

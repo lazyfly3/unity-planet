@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3fbc3a1625535a54f88b1da7784a38ea, type: 3}
+  m_Name: NewGenUrbanBuildingCatalog
+  m_EditorClassIdentifier: 
+  low:
+  - {fileID: 8086698360814925727, guid: 99989f23831d8164a847e43dac07e66e, type: 3}
+  - {fileID: 2266606352219095185, guid: 0e4a08790306c2b40ab4ffb992ea7952, type: 3}
+  - {fileID: 2082962588759588165, guid: 8be69df10ff9b3745b89449f3a473651, type: 3}
+  - {fileID: 7904691469785849029, guid: 695a4bb4e44d8ee47a5e63d370220710, type: 3}
+  - {fileID: 1414062738946366253, guid: 40438addd540aaf40bf4027ff3515b3c, type: 3}
+  medium:
+  - {fileID: 528716091894369222, guid: 0e1123de23ed6ed418695b8009078729, type: 3}
+  - {fileID: 8911902815446729475, guid: c673776ace41b1040b13f93fb693600c, type: 3}
+  - {fileID: 774513315608721465, guid: b6779ed34d939c34ea55c11e9ca5c962, type: 3}
+  - {fileID: 8993573894933912245, guid: aefc23ba19b20204fba7c3db43c2a4aa, type: 3}
+  - {fileID: 3069634517206368335, guid: 6dd87697b1877cb4fa71e07c6fb7f758, type: 3}
+  - {fileID: 6033969553240691148, guid: a03a8a614a9e8f94eb574a0b3ca4c34f, type: 3}
+  - {fileID: 7954329751552526708, guid: d33ce404e0a586947b94dffe982f00a9, type: 3}
+  high:
+  - {fileID: 7779323572587705692, guid: 13dc9329a2098d94c93cf3e476a225a5, type: 3}
+  - {fileID: 4513365150654234001, guid: 5e8b7fe6c21edde41b92b89fa222e9ed, type: 3}
+  - {fileID: 7254382331317196527, guid: 228bdc27b7f9d6d489b7e65d569875a9, type: 3}
+  - {fileID: 8305515379656340596, guid: 1d6422cedc693b84684a44a6f2fd4606, type: 3}
+  - {fileID: 459821779720780286, guid: a7f3a2bd5375a09408d867bd04761db8, type: 3}
+  - {fileID: 6079181897780659166, guid: 432c65aabdbd42e4293c8c281fc151b0, type: 3}
+  - {fileID: 2541191749051676434, guid: e65bafa1717f3b24586282d58f135dc0, type: 3}
+  facility:
+  - {fileID: 1784619896338051146, guid: 72561412465451f4eb30840dc9088f32, type: 3}
+  - {fileID: 7085485040022500124, guid: 2d452333c4ba1cc4ca45aa2df29d38be, type: 3}
+  - {fileID: 8924897933478677931, guid: 80670b7e598ebeb409dd96a212fc985a, type: 3}

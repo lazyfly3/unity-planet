@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Cold Night
-  m_Shader: {fileID: 10700, guid: 0000000000000000f000000000000000, type: 0}
+  m_Shader: {fileID: 104, guid: 0000000000000000f000000000000000, type: 0}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -24,30 +24,33 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BackTex:
-        m_Texture: {fileID: 2800000, guid: 36b8ed0392991482b90bf6d44f5665ae, type: 3}
+        m_Texture: {fileID: 2800000, guid: 218e7f9e906b2494e88ae8a91570e838, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DownTex:
-        m_Texture: {fileID: 2800000, guid: cabcd17622a5e47de8094c205b29919a, type: 3}
+        m_Texture: {fileID: 2800000, guid: 58a82215277272043b4059d32abad0fc, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _FrontTex:
-        m_Texture: {fileID: 2800000, guid: be1820efcc3464e6da9215c852adf5ef, type: 3}
+        m_Texture: {fileID: 2800000, guid: dd5e9205bea6df248be89e93eab010eb, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _LeftTex:
-        m_Texture: {fileID: 2800000, guid: febae18beb13c4b3f889fea337b68d3f, type: 3}
+        m_Texture: {fileID: 2800000, guid: bff074c19a600434a989a83f12cf9b79, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _RightTex:
-        m_Texture: {fileID: 2800000, guid: 58cc272b98248446eaba26910015d6dd, type: 3}
+        m_Texture: {fileID: 2800000, guid: da214d22c8e7e3540affc4827a5ac9cb, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _UpTex:
-        m_Texture: {fileID: 2800000, guid: 90c78346f860d44419995765f30d6128, type: 3}
+        m_Texture: {fileID: 2800000, guid: d4033d44e5ff58e49924808f91c5ed78, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
-    m_Colors: []
+    m_Floats:
+    - _Exposure: 1
+    - _Rotation: 0
+    m_Colors:
+    - _Tint: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
   m_BuildTextureStacks: []

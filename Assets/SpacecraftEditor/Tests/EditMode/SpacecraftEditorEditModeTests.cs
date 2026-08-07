@@ -514,6 +514,29 @@ namespace SpacecraftEditor.Tests
         }
 
         [Test]
+        public void FlightVerticalAxis_EitherControlKeyRequestsDescent()
+        {
+            Assert.That(
+                KeyboardMouseFlightInput.ResolveVerticalAxis(
+                    false,
+                    true,
+                    false),
+                Is.EqualTo(-1f));
+            Assert.That(
+                KeyboardMouseFlightInput.ResolveVerticalAxis(
+                    false,
+                    false,
+                    true),
+                Is.EqualTo(-1f));
+            Assert.That(
+                KeyboardMouseFlightInput.ResolveVerticalAxis(
+                    true,
+                    true,
+                    false),
+                Is.Zero);
+        }
+
+        [Test]
         public void SpacecraftBlueprint_JsonRoundTripsEveryPlacedPartField()
         {
             var original = new SpacecraftBlueprintData
