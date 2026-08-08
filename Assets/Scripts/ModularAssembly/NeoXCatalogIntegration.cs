@@ -731,6 +731,10 @@ namespace UnityPlanet.ModularAssembly
         private void Update()
         {
             Repair();
+            if (ArcadeFlightRuntimeTuningOverlay.IsInputCaptured)
+            {
+                return;
+            }
             ApplyMelee();
             if (Input.GetMouseButtonDown(1) && Time.time >= nextUtility)
             {

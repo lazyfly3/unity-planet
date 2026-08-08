@@ -24,7 +24,10 @@ public sealed class ModularAssemblyLabBootstrap : MonoBehaviour
         }
         if (sceneCamera == null)
             sceneCamera = Camera.main;
-        BuildEnvironment();
+        bool useAirBuildExperience =
+            UnityPlanet.ModularAssembly.ModularLabSceneProfile
+                .AllowsBuildExperience(gameObject.scene);
+        BuildEnvironment(!useAirBuildExperience);
         if (EventSystem.current == null)
         {
             new GameObject(
@@ -75,18 +78,28 @@ public sealed class ModularAssemblyLabBootstrap : MonoBehaviour
         ModularAssemblyLabController controller = gameObject.AddComponent<ModularAssemblyLabController>();
         controller.Initialize(model, presenter, flight, cameraController, target, sceneCamera, ship.transform);
 
+        // The current air-build experience supplies its own hangar and UI.
+        // Creating the legacy view first lets it flash on screen whenever the
+        // catalog or saved ship takes more than one frame to initialize.
+        if (useAirBuildExperience)
+            return;
+
         GameObject uiObject = new GameObject("ModularAssemblyUI", typeof(RectTransform));
         ModularAssemblyLabUI ui = uiObject.AddComponent<ModularAssemblyLabUI>();
         ui.Initialize(controller, definitions);
         controller.SetUI(ui);
     }
 
-    void BuildEnvironment()
+    void BuildEnvironment(bool createLegacyGeometry)
     {
         RenderSettings.ambientLight = new Color(0.08f, 0.12f, 0.18f);
         RenderSettings.ambientIntensity = 1.1f;
         sceneCamera.clearFlags = CameraClearFlags.SolidColor;
         sceneCamera.backgroundColor = new Color(0.003f, 0.008f, 0.018f);
+
+        if (!createLegacyGeometry)
+            return;
+
         CreatePlatform(new Vector3(0f, -3.6f, 0f), new Vector3(22f, 0.5f, 22f), new Color(0.045f, 0.08f, 0.10f));
         CreatePlatform(new Vector3(0f, -3.25f, 0f), new Vector3(9f, 0.18f, 9f), new Color(0.08f, 0.28f, 0.35f));
         for (int index = 0; index < 12; index++)

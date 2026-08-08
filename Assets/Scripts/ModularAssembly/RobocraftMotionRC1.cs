@@ -148,6 +148,10 @@ namespace UnityPlanet.ModularAssembly
     {
         public Vector3 holdPosition;
         public Vector3 controlAccelerationWorld;
+        public Vector3 intentAccelerationWorld;
+        public Vector3 driftCancellationAccelerationWorld;
+        public Vector3 stopAccelerationWorld;
+        public Vector3 positionHoldAccelerationWorld;
         public Vector3 targetVelocityWorld;
         public float targetSpeed;
     }
@@ -162,11 +166,23 @@ namespace UnityPlanet.ModularAssembly
     public static class TrainingFlightAssist
     {
         public const float VelocityResponseSeconds = 0.16f;
+        public const float IntentAuthorityFraction = 0.75f;
+        public const float StopVelocityGain = 10f;
         public const float BasePlanarAssistForce = 2500f;
         public const float DriveVectoringFraction = 0.72f;
         public const float MaximumVectoringAcceleration = 14f;
         const float HoldPositionGain = 5.00f;
         const float HoldVelocityGain = 4.60f;
+
+        public static bool ShouldPrioritizePlayerIntent(
+            VehicleCoreAssistMode assistMode,
+            bool controlsEnabled,
+            bool injectedControlActive)
+        {
+            return assistMode == VehicleCoreAssistMode.Training &&
+                   controlsEnabled &&
+                   !injectedControlActive;
+        }
 
         /// <summary>
         /// Arcade mode treats part of the installed planar drive as bounded
@@ -227,13 +243,42 @@ namespace UnityPlanet.ModularAssembly
 
         public static float CalculateTargetSpeed(
             float availableAcceleration,
-            bool boost)
+            bool boost,
+            ArcadeFlightTuningProfile tuning = null)
         {
+            float baseSpeed = tuning != null
+                ? tuning.baseTargetSpeed
+                : 12f;
+            float minimumSpeed = tuning != null
+                ? tuning.minimumTargetSpeed
+                : 12f;
+            float maximumSpeed = tuning != null
+                ? tuning.maximumTargetSpeed
+                : 65f;
+            float accelerationToSpeed = tuning != null
+                ? tuning.accelerationToSpeed
+                : 3.5f;
+            float boostMultiplier = tuning != null
+                ? tuning.boostSpeedMultiplier
+                : 1.60f;
             float speed = Mathf.Clamp(
-                12f + Mathf.Max(0f, availableAcceleration) * 3.5f,
-                12f,
-                65f);
-            return speed * (boost ? 1.60f : 1f);
+                baseSpeed +
+                Mathf.Max(0f, availableAcceleration) *
+                accelerationToSpeed,
+                minimumSpeed,
+                maximumSpeed);
+            return speed * (boost ? boostMultiplier : 1f);
+        }
+
+        public static bool HasMovementIntent(
+            Vector3 movementInputWorld,
+            ArcadeFlightTuningProfile tuning = null)
+        {
+            float deadzone = tuning != null
+                ? tuning.movementDeadzone
+                : 0.01f;
+            return movementInputWorld.sqrMagnitude >
+                   deadzone * deadzone;
         }
 
         public static TrainingFlightAssistDemand CalculateDemand(
@@ -242,7 +287,8 @@ namespace UnityPlanet.ModularAssembly
             Vector3 holdPosition,
             bool holdInitialized,
             Vector3 movementInputWorld,
-            float targetSpeed)
+            float targetSpeed,
+            ArcadeFlightTuningProfile tuning = null)
         {
             if (!holdInitialized)
                 holdPosition = position;
@@ -250,21 +296,63 @@ namespace UnityPlanet.ModularAssembly
             Vector3 movementInput = Vector3.ClampMagnitude(
                 movementInputWorld,
                 1f);
+            if (!HasMovementIntent(movementInput, tuning))
+                movementInput = Vector3.zero;
             Vector3 targetVelocity = Vector3.zero;
+            Vector3 intentAcceleration = Vector3.zero;
+            Vector3 driftCancellationAcceleration = Vector3.zero;
+            Vector3 stopAcceleration = Vector3.zero;
+            Vector3 positionHoldAcceleration = Vector3.zero;
             Vector3 controlAcceleration;
-            if (movementInput.sqrMagnitude > 0.0001f)
+            if (movementInput.sqrMagnitude > 0f)
             {
                 holdPosition = position;
-                targetVelocity = movementInput.normalized *
+                Vector3 intentDirection = movementInput.normalized;
+                float inputExponent = tuning != null
+                    ? tuning.inputResponseExponent
+                    : 1f;
+                float targetSpeedAlongIntent =
                     Mathf.Max(0f, targetSpeed) *
-                    movementInput.magnitude;
-                controlAcceleration =
-                    (targetVelocity - velocity) /
-                    VelocityResponseSeconds;
+                    Mathf.Pow(
+                        movementInput.magnitude,
+                        inputExponent);
+                float currentSpeedAlongIntent = Vector3.Dot(
+                    velocity,
+                    intentDirection);
+                Vector3 perpendicularDrift = velocity -
+                    intentDirection * currentSpeedAlongIntent;
+                targetVelocity = intentDirection *
+                    targetSpeedAlongIntent;
+                float intentResponse = tuning != null
+                    ? tuning.intentResponseSeconds
+                    : VelocityResponseSeconds;
+                float driftResponse = tuning != null
+                    ? tuning.driftResponseSeconds
+                    : VelocityResponseSeconds;
+                intentAcceleration = intentDirection *
+                    ((targetSpeedAlongIntent - currentSpeedAlongIntent) /
+                     Mathf.Max(0.01f, intentResponse));
+                driftCancellationAcceleration =
+                    -perpendicularDrift /
+                    Mathf.Max(0.01f, driftResponse);
+                controlAcceleration = intentAcceleration +
+                    driftCancellationAcceleration;
             }
             else
             {
                 Vector3 positionError = holdPosition - position;
+                float stopGain = tuning != null
+                    ? tuning.stopVelocityGain
+                    : StopVelocityGain;
+                float positionGain = tuning != null
+                    ? tuning.positionHoldGain
+                    : HoldPositionGain;
+                stopAcceleration = -velocity * stopGain;
+                positionHoldAcceleration =
+                    positionError * positionGain;
+                // Keep the legacy combined request unchanged for injected
+                // AI/autopilot callers. Direct player arcade control consumes
+                // the stronger stop and hold requests separately.
                 controlAcceleration =
                     positionError * HoldPositionGain -
                     velocity * HoldVelocityGain;
@@ -274,6 +362,12 @@ namespace UnityPlanet.ModularAssembly
             {
                 holdPosition = holdPosition,
                 controlAccelerationWorld = controlAcceleration,
+                intentAccelerationWorld = intentAcceleration,
+                driftCancellationAccelerationWorld =
+                    driftCancellationAcceleration,
+                stopAccelerationWorld = stopAcceleration,
+                positionHoldAccelerationWorld =
+                    positionHoldAcceleration,
                 targetVelocityWorld = targetVelocity,
                 targetSpeed = targetVelocity.magnitude
             };
@@ -344,6 +438,8 @@ namespace UnityPlanet.ModularAssembly
         VehicleStructureGraph structureGraph;
         IPlanetEnvironmentProvider environmentProvider;
         IRobocraftPilotAimSource pilotAimSource;
+        ArcadeFlightTuningProfile arcadeFlightTuning;
+        bool arcadeFlightTuningResolved;
         PlanetEnvironmentSample environmentSample =
             PlanetEnvironmentSample.EarthLike(
                 Vector3.down * 9.81f,
@@ -427,6 +523,8 @@ namespace UnityPlanet.ModularAssembly
             }
         }
         public VehicleCoreAssistMode CoreAssistMode => coreAssistMode;
+        public ArcadeFlightTuningProfile RuntimeArcadeFlightTuning =>
+            PlayerArcadeTuning;
         public float ActuatorForceMultiplier => actuatorForceMultiplier;
         public float MassGeometryScale => massGeometryScale;
         public float TrainingPlanarAssistForce =>
@@ -747,6 +845,25 @@ public void ConfigureExplicit(
             environmentProvider = provider;
         }
 
+        public void ReloadArcadeFlightTuning()
+        {
+            ReloadArcadeFlightTuning(true);
+        }
+
+        public void ReloadArcadeFlightTuning(
+            bool applyRuntimeOverrides)
+        {
+            if (arcadeFlightTuning != null &&
+                (arcadeFlightTuning.hideFlags & HideFlags.DontSave) != 0)
+            {
+                Destroy(arcadeFlightTuning);
+            }
+            arcadeFlightTuning =
+                ArcadeFlightTuningProfile.CreateRuntimeCopy(
+                    applyRuntimeOverrides);
+            arcadeFlightTuningResolved = true;
+        }
+
         public void SetInjectedControl(RobocraftControlFrame control)
         {
             injectedControlFrame = control;
@@ -757,6 +874,16 @@ public void ConfigureExplicit(
         {
             injectedControlFrame = default;
             injectedControlActive = false;
+        }
+
+        ArcadeFlightTuningProfile PlayerArcadeTuning
+        {
+            get
+            {
+                if (!arcadeFlightTuningResolved)
+                    ReloadArcadeFlightTuning();
+                return arcadeFlightTuning;
+            }
         }
 
         public void ClearPlanetEnvironment()
@@ -945,14 +1072,23 @@ public void ConfigureExplicit(
             pendingEvasionRequest = false;
             pendingEvasionDirection = Vector2.zero;
             bool injected = !controlsEnabled || injectedControlActive;
+            bool tuningInputCaptured =
+                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured &&
+                controlsEnabled &&
+                !injectedControlActive;
             RobocraftControlFrame control = !controlsEnabled
                 ? default
                 : injectedControlActive
                     ? injectedControlFrame
-                    : ReadPilotControl(evadeRequested, evadeDirection);
+                    : tuningInputCaptured
+                        ? default
+                        : ReadPilotControl(
+                            evadeRequested,
+                            evadeDirection);
             bool allowAimOverride = injected;
             if (controlsEnabled &&
                 !injectedControlActive &&
+                !tuningInputCaptured &&
                 pilotAimSource != null &&
                 pilotAimSource.TryGetPilotAim(out Vector3 pilotAim) &&
                 pilotAim.sqrMagnitude > 0.0001f)
@@ -1630,11 +1766,27 @@ void ApplyAirMovement(
             Vector3 cameraRight =
                 Vector3.Cross(up, cameraForward).normalized;
             rcs24.BeginStep(moverForceScales);
+            bool prioritizePlayerArcadeIntent =
+                !braking &&
+                TrainingFlightAssist.ShouldPrioritizePlayerIntent(
+                    coreAssistMode,
+                    controlsEnabled,
+                    injectedControlActive);
+            ArcadeFlightTuningProfile playerArcadeTuning =
+                prioritizePlayerArcadeIntent
+                    ? PlayerArcadeTuning
+                    : null;
 
             float resolvedRoll = coreAssistMode ==
                                  VehicleCoreAssistMode.Training &&
                                  !freeLook
-                ? Mathf.Clamp(roll + move.x * 0.22f, -1f, 1f)
+                ? Mathf.Clamp(
+                    roll + move.x *
+                    (playerArcadeTuning != null
+                        ? playerArcadeTuning.strafeRollCoupling
+                        : 0.22f),
+                    -1f,
+                    1f)
                 : roll;
             Vector3 requestedWorldTorque = ResolveOrientationTorque(
                 up,
@@ -1651,6 +1803,11 @@ void ApplyAirMovement(
                 AngularAuthority() + rc3Physics.ControlTorqueAuthority;
             UpdateTrimTorque(totalAuthority);
             requestedLocalTorque += trimTorqueLocal;
+            if (playerArcadeTuning != null)
+            {
+                requestedLocalTorque *=
+                    playerArcadeTuning.aimTorqueMultiplier;
+            }
             requestedLocalTorque *= airControlScale;
             plannedAeroTorqueLocal =
                 rc3Physics.AllocateControlSurfaceTorque(
@@ -1658,12 +1815,15 @@ void ApplyAirMovement(
                     Time.fixedDeltaTime);
             Vector3 remainingLocalTorque =
                 requestedLocalTorque - plannedAeroTorqueLocal;
-            rcs24.SolveRotation(new Rcs24SolveRequest
+            if (!prioritizePlayerArcadeIntent)
             {
-                desired = remainingLocalTorque,
-                strictDirection = true,
-                group = "rotation"
-            });
+                rcs24.SolveRotation(new Rcs24SolveRequest
+                {
+                    desired = remainingLocalTorque,
+                    strictDirection = true,
+                    group = "rotation"
+                });
+            }
             Vector3 desiredLocalForce = Vector3.zero;
 
             if (braking &&
@@ -1759,27 +1919,43 @@ void ApplyAirMovement(
                 float commandAcceleration =
                     CalculateArcadeCommandAcceleration(
                         new Vector3(move.x, vertical, move.y));
-                desiredLocalForce = CalculateArcadeDesiredLocalForce(
-                    up,
-                    arcadeMovementInput,
-                    commandAcceleration,
-                    boost,
-                    airControlScale,
-                    hoverControlScale);
-                if (desiredLocalForce.sqrMagnitude > 0.01f)
+                if (prioritizePlayerArcadeIntent)
                 {
-                    Rcs24SolveResult translationResult =
-                        rcs24.SolveTranslation(
-                            new Rcs24SolveRequest
-                            {
-                                desired = desiredLocalForce,
-                                strictDirection = true,
-                                group = "arcade_velocity_hold"
-                            });
-                    if (translationResult.commonScale <= 0f ||
-                        translationResult.missingAxisMask != 0)
+                    desiredLocalForce =
+                        AllocatePlayerArcadeIntentPriority(
+                            up,
+                            arcadeMovementInput,
+                            commandAcceleration,
+                            boost,
+                            airControlScale,
+                            hoverControlScale,
+                            remainingLocalTorque,
+                            playerArcadeTuning);
+                }
+                else
+                {
+                    desiredLocalForce = CalculateArcadeDesiredLocalForce(
+                        up,
+                        arcadeMovementInput,
+                        commandAcceleration,
+                        boost,
+                        airControlScale,
+                        hoverControlScale);
+                    if (desiredLocalForce.sqrMagnitude > 0.01f)
                     {
-                        desiredLocalForce = Vector3.zero;
+                        Rcs24SolveResult translationResult =
+                            rcs24.SolveTranslation(
+                                new Rcs24SolveRequest
+                                {
+                                    desired = desiredLocalForce,
+                                    strictDirection = true,
+                                    group = "arcade_velocity_hold"
+                                });
+                        if (translationResult.commonScale <= 0f ||
+                            translationResult.missingAxisMask != 0)
+                        {
+                            desiredLocalForce = Vector3.zero;
+                        }
                     }
                 }
             }
@@ -1867,6 +2043,154 @@ void ApplyAirMovement(
             UpdateAirMoverOutputs(output.thrusterThrottles);
         }
 
+        Vector3 AllocatePlayerArcadeIntentPriority(
+            Vector3 up,
+            Vector3 movementInputWorld,
+            float commandAcceleration,
+            bool boost,
+            float airControlScale,
+            float hoverControlScale,
+            Vector3 remainingLocalTorque,
+            ArcadeFlightTuningProfile tuning)
+        {
+            float mass = Mathf.Max(1f, body.mass);
+            float gravityMagnitude = Mathf.Max(0f, gravity.magnitude);
+            Vector3 movementInput = Vector3.ClampMagnitude(
+                movementInputWorld,
+                1f);
+            TrainingFlightAssistDemand demand = CalculateArcadeDemand(
+                movementInput,
+                commandAcceleration,
+                boost,
+                airControlScale,
+                tuning);
+            bool hasMovementIntent =
+                TrainingFlightAssist.HasMovementIntent(
+                    movementInput,
+                    tuning);
+            float gravitySupport = tuning != null
+                ? hasMovementIntent
+                    ? tuning.movingGravitySupport
+                    : tuning.idleGravitySupport
+                : 1f;
+
+            Vector3 cumulativeForceWorld =
+                up * gravityMagnitude * hoverControlScale *
+                gravitySupport * mass;
+            Vector3 cumulativeLocalForce =
+                transform.InverseTransformDirection(
+                    cumulativeForceWorld);
+            SolvePlayerArcadeTranslation(
+                cumulativeLocalForce,
+                "arcade_gravity_support");
+
+            if (hasMovementIntent)
+            {
+                Vector3 intentForceWorld = LimitArcadeForceToAuthority(
+                    demand.intentAccelerationWorld *
+                    airControlScale * mass,
+                    tuning != null
+                        ? tuning.intentAuthorityFraction
+                        : TrainingFlightAssist.IntentAuthorityFraction);
+                cumulativeForceWorld += intentForceWorld;
+                cumulativeLocalForce =
+                    transform.InverseTransformDirection(
+                        cumulativeForceWorld);
+                SolvePlayerArcadeTranslation(
+                    cumulativeLocalForce,
+                    "arcade_player_intent");
+
+                rcs24.SolveRotation(new Rcs24SolveRequest
+                {
+                    desired = remainingLocalTorque,
+                    strictDirection = true,
+                    group = "arcade_rotation_after_intent"
+                });
+
+                Vector3 driftForceWorld = LimitArcadeForceToAuthority(
+                    demand.driftCancellationAccelerationWorld *
+                    airControlScale * mass,
+                    tuning != null
+                        ? tuning.driftAuthorityFraction
+                        : 1f);
+                cumulativeForceWorld += driftForceWorld;
+                cumulativeLocalForce =
+                    transform.InverseTransformDirection(
+                        cumulativeForceWorld);
+                SolvePlayerArcadeTranslation(
+                    cumulativeLocalForce,
+                    "arcade_drift_cancellation");
+            }
+            else
+            {
+                Vector3 stopForceWorld = LimitArcadeForceToAuthority(
+                    demand.stopAccelerationWorld *
+                    airControlScale * mass,
+                    tuning != null
+                        ? tuning.stopAuthorityFraction
+                        : 1f);
+                cumulativeForceWorld += stopForceWorld;
+                cumulativeLocalForce =
+                    transform.InverseTransformDirection(
+                        cumulativeForceWorld);
+                SolvePlayerArcadeTranslation(
+                    cumulativeLocalForce,
+                    "arcade_release_stop");
+
+                rcs24.SolveRotation(new Rcs24SolveRequest
+                {
+                    desired = remainingLocalTorque,
+                    strictDirection = true,
+                    group = "arcade_rotation_after_stop"
+                });
+
+                Vector3 positionHoldForceWorld =
+                    LimitArcadeForceToAuthority(
+                        demand.positionHoldAccelerationWorld *
+                        airControlScale * mass,
+                        tuning != null
+                            ? tuning.positionHoldAuthorityFraction
+                            : 1f);
+                cumulativeForceWorld += positionHoldForceWorld;
+                cumulativeLocalForce =
+                    transform.InverseTransformDirection(
+                        cumulativeForceWorld);
+                SolvePlayerArcadeTranslation(
+                    cumulativeLocalForce,
+                    "arcade_position_hold");
+            }
+
+            return cumulativeLocalForce;
+        }
+
+        void SolvePlayerArcadeTranslation(
+            Vector3 cumulativeLocalForce,
+            string group)
+        {
+            if (cumulativeLocalForce.sqrMagnitude <= 0.01f)
+                return;
+            rcs24.SolveTranslation(new Rcs24SolveRequest
+            {
+                desired = cumulativeLocalForce,
+                strictDirection = false,
+                group = group
+            });
+        }
+
+        Vector3 LimitArcadeForceToAuthority(
+            Vector3 requestedForceWorld,
+            float authorityFraction)
+        {
+            if (requestedForceWorld.sqrMagnitude <= 0.0001f)
+                return Vector3.zero;
+            float maximumForce = CalculateDirectionalForce(
+                requestedForceWorld.normalized) *
+                Mathf.Clamp01(authorityFraction);
+            return Vector3.ClampMagnitude(
+                requestedForceWorld,
+                maximumForce);
+        }
+
         Vector3 CalculateArcadeDesiredLocalForce(
             Vector3 up,
             Vector3 movementInputWorld,
@@ -1877,19 +2201,44 @@ void ApplyAirMovement(
         {
             float mass = Mathf.Max(1f, body.mass);
             float gravityMagnitude = Mathf.Max(0f, gravity.magnitude);
+            TrainingFlightAssistDemand demand = CalculateArcadeDemand(
+                movementInputWorld,
+                commandAcceleration,
+                boost,
+                airControlScale,
+                null);
+
+            Vector3 requestedAcceleration =
+                demand.controlAccelerationWorld * airControlScale +
+                up * gravityMagnitude * hoverControlScale;
+            return transform.InverseTransformDirection(
+                requestedAcceleration * mass);
+        }
+
+        TrainingFlightAssistDemand CalculateArcadeDemand(
+            Vector3 movementInputWorld,
+            float commandAcceleration,
+            bool boost,
+            float airControlScale,
+            ArcadeFlightTuningProfile tuning)
+        {
             Vector3 movementInput = Vector3.ClampMagnitude(
                 movementInputWorld,
                 1f);
+            bool hasMovementIntent =
+                TrainingFlightAssist.HasMovementIntent(
+                    movementInput,
+                    tuning);
 
             if (airControlScale < 0.5f &&
-                movementInput.sqrMagnitude < 0.0001f)
+                !hasMovementIntent)
             {
                 trainingHoldPosition = body.position;
                 trainingHoldInitialized = true;
             }
 
             float targetSpeed = 0f;
-            if (movementInput.sqrMagnitude > 0.0001f)
+            if (hasMovementIntent)
             {
                 float netAcceleration = Mathf.Max(
                     0f,
@@ -1899,7 +2248,8 @@ void ApplyAirMovement(
                 targetSpeed =
                     TrainingFlightAssist.CalculateTargetSpeed(
                         netAcceleration,
-                        boost);
+                        boost,
+                        tuning);
             }
 
             TrainingFlightAssistDemand demand =
@@ -1909,15 +2259,11 @@ void ApplyAirMovement(
                     trainingHoldPosition,
                     trainingHoldInitialized,
                     movementInput,
-                    targetSpeed);
+                    targetSpeed,
+                    tuning);
             trainingHoldPosition = demand.holdPosition;
             trainingHoldInitialized = true;
-
-            Vector3 requestedAcceleration =
-                demand.controlAccelerationWorld * airControlScale +
-                up * gravityMagnitude * hoverControlScale;
-            return transform.InverseTransformDirection(
-                requestedAcceleration * mass);
+            return demand;
         }
 
         float CalculateArcadeCommandAcceleration(

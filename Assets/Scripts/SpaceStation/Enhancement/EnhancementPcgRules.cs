@@ -16,7 +16,6 @@ namespace UnityPlanet.SpaceStation.Enhancement
         public EnhancementRarity rarity;
         public float magnitude;
         public int cost;
-        public string generationReason;
     }
 
     public sealed class ShipEnhancementProfile
@@ -71,24 +70,6 @@ namespace UnityPlanet.SpaceStation.Enhancement
             return 1f + Mathf.Min(2.2f, targetCount * 0.18f);
         }
 
-        public string ReasonFor(EnhancementTarget target)
-        {
-            if (target == EnhancementTarget.ShipWide)
-            {
-                return "构筑响应：依据全船 " +
-                       Mathf.Max(1, ModuleCount) + " 个模块生成";
-            }
-
-            int count = Count(target);
-            if (count <= 0)
-            {
-                return "弱项补偿：为当前缺少的系统预留成长方向";
-            }
-
-            return "构筑响应：检测到 " + count + " 个" +
-                   TargetName(target) + "相关模块";
-        }
-
         void Increment(EnhancementTarget target)
         {
             counts[target] = Count(target) + 1;
@@ -135,22 +116,6 @@ namespace UnityPlanet.SpaceStation.Enhancement
             return false;
         }
 
-        static string TargetName(EnhancementTarget target)
-        {
-            switch (target)
-            {
-                case EnhancementTarget.Propulsion:
-                    return "推进";
-                case EnhancementTarget.Weapon:
-                    return "武器";
-                case EnhancementTarget.Defense:
-                    return "防御";
-                case EnhancementTarget.Energy:
-                    return "能源";
-                default:
-                    return "结构";
-            }
-        }
     }
 
     public sealed class EnhancementGenerationContext
@@ -223,9 +188,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
                         skillId = skill.Id,
                         rarity = EnhancementRarity.Gold,
                         magnitude = 1f,
-                        cost = 0,
-                        generationReason =
-                            "金卡规则：只产出技能；重复技能数据会提升技能等级"
+                        cost = 0
                     };
                     continue;
                 }
@@ -254,8 +217,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
                     skillId = string.Empty,
                     rarity = rarity,
                     magnitude = magnitude,
-                    cost = 0,
-                    generationReason = profile.ReasonFor(definition.Target)
+                    cost = 0
                 };
             }
             return offers;

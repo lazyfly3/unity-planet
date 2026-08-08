@@ -253,7 +253,7 @@ namespace UnityPlanet.CityPcg.Editor
             Material rightAxis)
         {
             var guide = new GameObject(
-                "00_生成顺序_飞机包线→三维空域→道路→建筑遮挡→敌机入口→约束验证");
+                "00_生成顺序_飞机包线→三维空域→道路→建筑遮挡→任务结构→约束验证");
             SceneManager.MoveGameObjectToScene(guide, scene);
 
             var labObject = new GameObject(

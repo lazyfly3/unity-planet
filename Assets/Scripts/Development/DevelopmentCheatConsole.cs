@@ -9,6 +9,7 @@ namespace UnityPlanet.Development
     public sealed class DevelopmentCheatConsole : MonoBehaviour
     {
         const string InputControlName = "DevelopmentCheatCodeInput";
+        const string AllCheatsCode = "kg";
         const int GalaxyCoinCheatBalance = 9999;
 
         static DevelopmentCheatConsole instance;
@@ -77,7 +78,7 @@ namespace UnityPlanet.Development
             open = value;
             input = string.Empty;
             feedback = value
-                ? "可用作弊码：jn 解锁全部技能，jb 获得 9999 银河币，lq 技能无冷却"
+                ? "唯一作弊码：kg（解锁全部技能、9,999 银河币、技能无冷却）"
                 : string.Empty;
             feedbackColor = new Color(0.45f, 0.9f, 1f);
             if (open)
@@ -125,7 +126,7 @@ namespace UnityPlanet.Development
                 titleStyle);
             GUI.Label(
                 new Rect(panel.x + 24f, panel.y + 51f, panel.width - 48f, 24f),
-                "输入代码后按 Enter 执行；按 ` 或 Esc 关闭",
+                "按 · 打开，输入 kg 后按 Enter；Esc 关闭",
                 hintStyle);
             GUI.SetNextControlName(InputControlName);
             input = GUI.TextField(
@@ -134,7 +135,8 @@ namespace UnityPlanet.Development
                 24,
                 inputStyle);
             input = input.Replace("`", string.Empty)
-                         .Replace("~", string.Empty);
+                         .Replace("~", string.Empty)
+                         .Replace("·", string.Empty);
             feedbackStyle.normal.textColor = feedbackColor;
             GUI.Label(
                 new Rect(panel.x + 24f, panel.y + 136f, panel.width - 48f, 28f),
@@ -173,25 +175,19 @@ namespace UnityPlanet.Development
             {
                 switch (code)
                 {
-                    case "jn":
+                    case AllCheatsCode:
                         int unlocked =
                             PlayerSkillProgressService.UnlockAllForTesting();
-                        feedback = unlocked > 0
-                            ? "已解锁全部技能，新解锁 " + unlocked + " 个。"
-                            : "全部技能已经处于解锁状态。";
-                        feedbackColor = new Color(0.25f, 1f, 0.62f);
-                        break;
-                    case "jb":
                         GalaxyEnhancementProgressData currency =
                             GalaxyCurrencyService.LoadOrCreate();
                         currency.galaxyCoins = GalaxyCoinCheatBalance;
                         GalaxyCurrencyService.Save(currency);
-                        feedback = "银河币已设置为 9,999。";
-                        feedbackColor = new Color(1f, 0.78f, 0.22f);
-                        break;
-                    case "lq":
                         PlayerSkillCombatEffects.SetNoCooldownForTesting(true);
-                        feedback = "技能无冷却已开启，本次运行期间持续生效。";
+                        feedback = "KG 已启用：全部技能已解锁" +
+                                   (unlocked > 0
+                                       ? "（新增 " + unlocked + " 个）"
+                                       : string.Empty) +
+                                   "、银河币 9,999、技能无冷却。";
                         feedbackColor = new Color(0.3f, 1f, 0.72f);
                         break;
                     case "":

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ModularAssembly;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityPlanet.EDPCG;
 using UnityPlanet.ModularAssembly;
 using UnityPlanet.SpaceStation;
 using UnityPlanet.SpaceStation.Enhancement;
@@ -22,6 +23,7 @@ public sealed class FinitePlanetMissionRules
     public bool RequiresUrbanEnvironment =>
         Kind == FinitePlanetMissionObjectiveKind.Boss;
     public int RequiredKills { get; private set; }
+    public int RosterCount { get; private set; }
     public int ObjectiveCount { get; private set; }
     public float ScanSeconds { get; private set; }
     public float ExtractionSeconds { get; private set; }
@@ -70,6 +72,7 @@ public sealed class FinitePlanetMissionRules
             return new FinitePlanetMissionRules
             {
                 Kind = FinitePlanetMissionObjectiveKind.Survey,
+                RosterCount = RosterForTier(tier),
                 ObjectiveCount = 3,
                 ScanSeconds = 2.5f,
                 ExtractionSeconds = 3f,
@@ -88,25 +91,34 @@ public sealed class FinitePlanetMissionRules
             {
                 Kind = FinitePlanetMissionObjectiveKind.Assault,
                 RequiredKills = 12 + tier * 2,
+                RosterCount = RosterForTier(tier),
                 ObjectiveCount = 3,
                 CoreIntegrity = 350f,
                 PlanetDifficultyIndex = tier,
                 GalaxyCoinReward = 140 + tier * 30,
                 DifficultyLabel = difficulty + " · 突袭",
                 ObjectiveDescription =
-                    $"摧毁三座能源核心，并击落 {12 + tier * 2} 架敌机"
+                    $"摧毁三座能源核心；处理 {RosterForTier(tier)} 架敌机" +
+                    $"（有效击落目标 {12 + tier * 2}）"
             };
         }
         return new FinitePlanetMissionRules
         {
             Kind = FinitePlanetMissionObjectiveKind.Clearance,
             RequiredKills = 10 + tier * 2,
+            RosterCount = RosterForTier(tier),
             PlanetDifficultyIndex = tier,
             GalaxyCoinReward = 100 + tier * 25,
             DifficultyLabel = difficulty,
             ObjectiveDescription =
-                $"击落 {10 + tier * 2} 架敌机并清理战场"
+                $"处理 {RosterForTier(tier)} 架敌机并清理战场" +
+                $"（有效击落目标 {10 + tier * 2}）"
         };
+    }
+
+    static int RosterForTier(int tier)
+    {
+        return EdpcgTierSettings.DefaultRosterCountForTier(tier);
     }
 
     static string DifficultyForTier(int tier)
@@ -161,6 +173,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
     ModularContentService contentService;
     IReadOnlyDictionary<string, ModularContentRecord> contentRecords;
     HordeCombatDirector director;
+    EdpcgEncounterRuntime edpcg;
     ModularBossCombatRuntime boss;
     Coroutine returnRoutine;
     Vector3 battleCenter;
@@ -185,6 +198,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
     public bool IsPrepared { get; private set; }
     public string PreparationError { get; private set; } = string.Empty;
     public HordeCombatDirector Director => director;
+    public EdpcgEncounterRuntime EdpcgRuntime => edpcg;
     public int IngressCount => ingressWorldPositions.Count;
     public FinitePlanetMissionRules MissionRules => missionRules;
     public string ObjectiveStatus { get; private set; } = string.Empty;
@@ -295,6 +309,24 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
                    gameObject.AddComponent<HordeCombatDirector>();
         director.ConfigureObjectiveDrivenSession(true);
         director.ConfigurePlannedIngresses(ingressWorldPositions);
+        int edpcgSeed = world.FiniteCombatTerrainPlan != null
+            ? world.FiniteCombatTerrainPlan.Seed
+            : PlanetOrbitChapterSelectionContext.MissionSeed;
+        FinitePlanetUrbanCombatRuntime urbanRuntime =
+            world.GetComponent<FinitePlanetUrbanCombatRuntime>();
+        edpcg = GetComponent<EdpcgEncounterRuntime>() ??
+                gameObject.AddComponent<EdpcgEncounterRuntime>();
+        edpcg.Configure(
+            director,
+            playerBody,
+            playerGraph,
+            urbanRuntime != null && urbanRuntime.IsReady
+                ? urbanRuntime
+                : null,
+            missionId,
+            missionRules.PlanetDifficultyIndex,
+            edpcgSeed);
+        director.ConfigureEdpcgRuntime(edpcg);
         WeaponVisualPool visuals =
             weapons.GetComponent<WeaponVisualPool>();
         WeaponProjectilePool projectiles =
@@ -597,7 +629,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
                 break;
             case FinitePlanetMissionObjectiveKind.Assault:
                 if (destroyedCoreCount >= missionRules.ObjectiveCount &&
-                    director.Kills >= missionRules.RequiredKills)
+                    IsNonBossRosterResolved())
                 {
                     BeginFinalClear();
                     if (director.AliveCount == 0)
@@ -605,7 +637,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
                 }
                 break;
             default:
-                if (director.Kills >= missionRules.RequiredKills)
+                if (IsNonBossRosterResolved())
                 {
                     BeginFinalClear();
                     if (director.AliveCount == 0)
@@ -618,6 +650,14 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             nextStatusRefreshAt = Time.unscaledTime + 0.2f;
             RefreshObjectiveStatus();
         }
+    }
+
+    bool IsNonBossRosterResolved()
+    {
+        return edpcg != null
+            ? edpcg.IsEncounterResolved
+            : director != null &&
+              director.Kills >= missionRules.RequiredKills;
     }
 
     void UpdateSurveyObjective()
@@ -668,7 +708,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
         destroyedCoreCount++;
         RefreshObjectiveStatus();
         if (destroyedCoreCount >= missionRules.ObjectiveCount &&
-            director.Kills >= missionRules.RequiredKills)
+            IsNonBossRosterResolved())
             BeginFinalClear();
     }
 
@@ -709,6 +749,25 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             this);
         if (returnRoutine == null)
             returnRoutine = StartCoroutine(ReturnToOrbitAfterVictory());
+    }
+
+    public void AbandonForStationReturn()
+    {
+        if (missionCompleted || transitionStarted)
+            return;
+
+        transitionStarted = true;
+        sessionRunning = false;
+        ObjectiveStatus = "任务已放弃，正在返回空间站";
+        UpdateHudText();
+        director?.EndSession();
+        boss?.SetCombatActive(false);
+        flightController?.SetGameplayReady(false);
+        if (playerBody != null && !playerBody.isKinematic)
+        {
+            playerBody.velocity = Vector3.zero;
+            playerBody.angularVelocity = Vector3.zero;
+        }
     }
 
     IEnumerator ReturnToOrbitAfterVictory()
@@ -822,6 +881,15 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             : boss != null
                 ? "右键瞄准  ·  左键射击  ·  自动瞄准已禁用"
                 : string.Empty;
+        if (director != null && edpcg != null && edpcg.IsRunning)
+        {
+            combat =
+                $"敌机 活跃 {director.AliveCount}  名单 " +
+                $"{edpcg.ResolvedCount}/{edpcg.RosterCount}  " +
+                $"有效击落 {edpcg.CreditedKills}/" +
+                $"{edpcg.Settings.requiredCreditedKills}  " +
+                $"压力 {edpcg.CurrentSample.actualPressure:P0}";
+        }
         hudText = title + "\n" + ObjectiveStatus + "\n" + combat;
         if (!string.IsNullOrEmpty(bossBridgeHint) &&
             Time.unscaledTime < bossBridgeHintEndsAt)

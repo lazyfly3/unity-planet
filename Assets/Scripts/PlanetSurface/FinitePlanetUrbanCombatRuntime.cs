@@ -23,6 +23,7 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
     public float GroundHeight { get; private set; }
     public int CityBuildingCount { get; private set; }
     public int SyncedEnemyIngressCount { get; private set; }
+    public AirCombatCityPlan Plan => cityLab != null ? cityLab.Plan : null;
 
     public bool Configure(InfinitePlanarSurfaceWorld targetWorld)
     {

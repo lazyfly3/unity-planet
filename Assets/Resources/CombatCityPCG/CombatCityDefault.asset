@@ -1,0 +1,249 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7dbdb49f0c7c844db0c84672c35f703, type: 3}
+  m_Name: CombatCityDefault
+  m_EditorClassIdentifier: 
+  schemaVersion: 1
+  profileId: combat-city-default
+  displayName: "\u6218\u6597\u57CE\u5E02\u9ED8\u8BA4\u914D\u7F6E"
+  useVisualDistrictThemes: 1
+  clearance:
+    difficultyTiers:
+    - navigationChallenge: 0.2
+      combatPressure: 0.25
+      exposurePressure: 0.2
+      recoveryGenerosity: 0.9
+      tacticalOpportunityDensity: 0.86
+      routeLegibility: 0.94
+      bossPursuitPressure: 0.24
+      destructionUtility: 0.86
+      decisionComplexity: 0.3
+      roadWidthScale: 1.14
+      blockMergeStrength: 0.46
+    - navigationChallenge: 0.324
+      combatPressure: 0.38
+      exposurePressure: 0.328
+      recoveryGenerosity: 0.792
+      tacticalOpportunityDensity: 0.8
+      routeLegibility: 0.868
+      bossPursuitPressure: 0.368
+      destructionUtility: 0.804
+      decisionComplexity: 0.404
+      roadWidthScale: 1.092
+      blockMergeStrength: 0.504
+    - navigationChallenge: 0.448
+      combatPressure: 0.51
+      exposurePressure: 0.456
+      recoveryGenerosity: 0.684
+      tacticalOpportunityDensity: 0.74
+      routeLegibility: 0.796
+      bossPursuitPressure: 0.496
+      destructionUtility: 0.748
+      decisionComplexity: 0.508
+      roadWidthScale: 1.044
+      blockMergeStrength: 0.548
+    - navigationChallenge: 0.572
+      combatPressure: 0.64
+      exposurePressure: 0.584
+      recoveryGenerosity: 0.576
+      tacticalOpportunityDensity: 0.68
+      routeLegibility: 0.724
+      bossPursuitPressure: 0.624
+      destructionUtility: 0.692
+      decisionComplexity: 0.612
+      roadWidthScale: 0.996
+      blockMergeStrength: 0.592
+    - navigationChallenge: 0.696
+      combatPressure: 0.77
+      exposurePressure: 0.712
+      recoveryGenerosity: 0.468
+      tacticalOpportunityDensity: 0.62
+      routeLegibility: 0.652
+      bossPursuitPressure: 0.752
+      destructionUtility: 0.636
+      decisionComplexity: 0.716
+      roadWidthScale: 0.948
+      blockMergeStrength: 0.636
+    - navigationChallenge: 0.82
+      combatPressure: 0.9
+      exposurePressure: 0.84
+      recoveryGenerosity: 0.36
+      tacticalOpportunityDensity: 0.56
+      routeLegibility: 0.58
+      bossPursuitPressure: 0.88
+      destructionUtility: 0.58
+      decisionComplexity: 0.82
+      roadWidthScale: 0.9
+      blockMergeStrength: 0.68
+  assault:
+    difficultyTiers:
+    - navigationChallenge: 0.2
+      combatPressure: 0.25
+      exposurePressure: 0.2
+      recoveryGenerosity: 0.9
+      tacticalOpportunityDensity: 0.86
+      routeLegibility: 0.94
+      bossPursuitPressure: 0.24
+      destructionUtility: 0.86
+      decisionComplexity: 0.3
+      roadWidthScale: 1.14
+      blockMergeStrength: 0.46
+    - navigationChallenge: 0.324
+      combatPressure: 0.38
+      exposurePressure: 0.328
+      recoveryGenerosity: 0.792
+      tacticalOpportunityDensity: 0.8
+      routeLegibility: 0.868
+      bossPursuitPressure: 0.368
+      destructionUtility: 0.804
+      decisionComplexity: 0.404
+      roadWidthScale: 1.092
+      blockMergeStrength: 0.504
+    - navigationChallenge: 0.448
+      combatPressure: 0.51
+      exposurePressure: 0.456
+      recoveryGenerosity: 0.684
+      tacticalOpportunityDensity: 0.74
+      routeLegibility: 0.796
+      bossPursuitPressure: 0.496
+      destructionUtility: 0.748
+      decisionComplexity: 0.508
+      roadWidthScale: 1.044
+      blockMergeStrength: 0.548
+    - navigationChallenge: 0.572
+      combatPressure: 0.64
+      exposurePressure: 0.584
+      recoveryGenerosity: 0.576
+      tacticalOpportunityDensity: 0.68
+      routeLegibility: 0.724
+      bossPursuitPressure: 0.624
+      destructionUtility: 0.692
+      decisionComplexity: 0.612
+      roadWidthScale: 0.996
+      blockMergeStrength: 0.592
+    - navigationChallenge: 0.696
+      combatPressure: 0.77
+      exposurePressure: 0.712
+      recoveryGenerosity: 0.468
+      tacticalOpportunityDensity: 0.62
+      routeLegibility: 0.652
+      bossPursuitPressure: 0.752
+      destructionUtility: 0.636
+      decisionComplexity: 0.716
+      roadWidthScale: 0.948
+      blockMergeStrength: 0.636
+    - navigationChallenge: 0.82
+      combatPressure: 0.9
+      exposurePressure: 0.84
+      recoveryGenerosity: 0.36
+      tacticalOpportunityDensity: 0.56
+      routeLegibility: 0.58
+      bossPursuitPressure: 0.88
+      destructionUtility: 0.58
+      decisionComplexity: 0.82
+      roadWidthScale: 0.9
+      blockMergeStrength: 0.68
+  boss:
+    difficultyTiers:
+    - navigationChallenge: 0.2
+      combatPressure: 0.25
+      exposurePressure: 0.2
+      recoveryGenerosity: 0.9
+      tacticalOpportunityDensity: 0.86
+      routeLegibility: 0.94
+      bossPursuitPressure: 0.32
+      destructionUtility: 0.94
+      decisionComplexity: 0.3
+      roadWidthScale: 1.14
+      blockMergeStrength: 0.46
+    - navigationChallenge: 0.324
+      combatPressure: 0.38
+      exposurePressure: 0.328
+      recoveryGenerosity: 0.792
+      tacticalOpportunityDensity: 0.8
+      routeLegibility: 0.868
+      bossPursuitPressure: 0.448
+      destructionUtility: 0.884
+      decisionComplexity: 0.404
+      roadWidthScale: 1.092
+      blockMergeStrength: 0.504
+    - navigationChallenge: 0.448
+      combatPressure: 0.51
+      exposurePressure: 0.456
+      recoveryGenerosity: 0.684
+      tacticalOpportunityDensity: 0.74
+      routeLegibility: 0.796
+      bossPursuitPressure: 0.576
+      destructionUtility: 0.828
+      decisionComplexity: 0.508
+      roadWidthScale: 1.044
+      blockMergeStrength: 0.548
+    - navigationChallenge: 0.572
+      combatPressure: 0.64
+      exposurePressure: 0.584
+      recoveryGenerosity: 0.576
+      tacticalOpportunityDensity: 0.68
+      routeLegibility: 0.724
+      bossPursuitPressure: 0.704
+      destructionUtility: 0.77199996
+      decisionComplexity: 0.612
+      roadWidthScale: 0.996
+      blockMergeStrength: 0.592
+    - navigationChallenge: 0.696
+      combatPressure: 0.77
+      exposurePressure: 0.712
+      recoveryGenerosity: 0.468
+      tacticalOpportunityDensity: 0.62
+      routeLegibility: 0.652
+      bossPursuitPressure: 0.83199996
+      destructionUtility: 0.71599996
+      decisionComplexity: 0.716
+      roadWidthScale: 0.948
+      blockMergeStrength: 0.636
+    - navigationChallenge: 0.82
+      combatPressure: 0.9
+      exposurePressure: 0.84
+      recoveryGenerosity: 0.36
+      tacticalOpportunityDensity: 0.56
+      routeLegibility: 0.58
+      bossPursuitPressure: 0.96
+      destructionUtility: 0.65999997
+      decisionComplexity: 0.82
+      roadWidthScale: 0.9
+      blockMergeStrength: 0.68
+  planetBindings:
+  - planetIndex: 1
+    difficultyMultiplier: 0
+    lockedSeed: 0
+    lockedChecksum: 0
+  - planetIndex: 2
+    difficultyMultiplier: 0.2
+    lockedSeed: 0
+    lockedChecksum: 0
+  - planetIndex: 3
+    difficultyMultiplier: 0.4
+    lockedSeed: 0
+    lockedChecksum: 0
+  - planetIndex: 4
+    difficultyMultiplier: 0.6
+    lockedSeed: 0
+    lockedChecksum: 0
+  - planetIndex: 5
+    difficultyMultiplier: 0.8
+    lockedSeed: 0
+    lockedChecksum: 0
+  - planetIndex: 6
+    difficultyMultiplier: 1
+    lockedSeed: 0
+    lockedChecksum: 0
+  lockedSeed: 0
+  lockedChecksum: 0

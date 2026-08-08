@@ -27,7 +27,6 @@ namespace UnityPlanet.SpaceStation.Enhancement
             public Text Rarity;
             public Text Title;
             public Text Description;
-            public Text Reason;
             public Text Owned;
             public Text Price;
         }
@@ -40,6 +39,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
         Sprite normalCardSprite;
         Sprite goldCardSprite;
         Sprite coinSprite;
+        Texture2D celestePortraitSheet;
 
         GameObject canvasRoot;
         GameObject promptRoot;
@@ -49,6 +49,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
         Text enhancementWalletText;
         Text scanText;
         Text statusText;
+        RawImage dialoguePortrait;
         readonly CardView[] cards = new CardView[
             EnhancementPcgRules.CardsPerDraw];
         bool interfaceOpen;
@@ -126,6 +127,8 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 "UI/Enhancement/EnhancementCardGold");
             coinSprite = Resources.Load<Sprite>(
                 "UI/Enhancement/GalacticCoin");
+            celestePortraitSheet = Resources.Load<Texture2D>(
+                "UI/Characters/CelesteExpressions");
 
             progress = GalaxyCurrencyService.LoadOrCreate();
             EnsureOffers();
@@ -197,6 +200,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
             interfaceOpen = true;
             enhancementOpen = false;
             transitionBusy = false;
+            SetDialoguePortrait(new Rect(0f, 0.5f, 0.5f, 0.5f));
             dialogueRoot.SetActive(true);
             enhancementRoot.SetActive(false);
             SetPlayerInputEnabled(false);
@@ -630,9 +634,6 @@ namespace UnityPlanet.SpaceStation.Enhancement
                           skillDefinition.Description
                         : definition.FormatDescription(offer.magnitude)
                     : string.Empty;
-                card.Reason.text = revealed
-                    ? offer.generationReason
-                    : string.Empty;
                 int stacks = skillOffer
                     ? 0
                     : FindOwnedStacks(definition.Id);
@@ -878,6 +879,26 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 Vector2.zero,
                 new Vector2(0f, 4f));
 
+            GameObject portraitObject = new GameObject(
+                "CelesteExpressionPortrait",
+                typeof(RectTransform),
+                typeof(RawImage));
+            portraitObject.transform.SetParent(panel.transform, false);
+            dialoguePortrait = portraitObject.GetComponent<RawImage>();
+            dialoguePortrait.texture = celestePortraitSheet;
+            dialoguePortrait.color = celestePortraitSheet != null
+                ? Color.white
+                : Color.clear;
+            dialoguePortrait.raycastTarget = false;
+            SetAnchoredRect(
+                dialoguePortrait.rectTransform,
+                new Vector2(0f, 0f),
+                new Vector2(0f, 0f),
+                new Vector2(0f, 0f),
+                new Vector2(12f, 0f),
+                new Vector2(280f, 280f));
+            SetDialoguePortrait(new Rect(0f, 0.5f, 0.5f, 0.5f));
+
             Text name = CreateText(
                 panel.transform,
                 "SpeakerName",
@@ -890,8 +911,8 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 new Vector2(0f, 1f),
                 new Vector2(0f, 1f),
                 new Vector2(0f, 1f),
-                new Vector2(34f, -20f),
-                new Vector2(760f, 42f));
+                new Vector2(300f, -20f),
+                new Vector2(520f, 42f));
 
             Text body = CreateText(
                 panel.transform,
@@ -901,14 +922,17 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 TextAnchor.UpperLeft,
                 new Color(0.88f, 0.94f, 0.97f));
             body.horizontalOverflow = HorizontalWrapMode.Wrap;
-            body.verticalOverflow = VerticalWrapMode.Overflow;
+            body.verticalOverflow = VerticalWrapMode.Truncate;
+            body.resizeTextForBestFit = true;
+            body.resizeTextMinSize = 17;
+            body.resizeTextMaxSize = 21;
             SetAnchoredRect(
                 body.rectTransform,
                 new Vector2(0f, 1f),
                 new Vector2(0f, 1f),
                 new Vector2(0f, 1f),
-                new Vector2(34f, -72f),
-                new Vector2(820f, 124f));
+                new Vector2(300f, -72f),
+                new Vector2(520f, 140f));
 
             Button enhance = CreateButton(
                 panel.transform,
@@ -923,6 +947,10 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 new Vector2(-34f, 38f),
                 new Vector2(220f, 58f));
             enhance.onClick.AddListener(OpenEnhancement);
+            AddPortraitInteraction(
+                enhance,
+                new Rect(0.5f, 0.5f, 0.5f, 0.5f),
+                new Rect(0.5f, 0f, 0.5f, 0.5f));
 
             Button leave = CreateButton(
                 panel.transform,
@@ -937,6 +965,47 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 new Vector2(-34f, -38f),
                 new Vector2(220f, 58f));
             leave.onClick.AddListener(CloseInterface);
+            AddPortraitInteraction(
+                leave,
+                new Rect(0f, 0f, 0.5f, 0.5f),
+                new Rect(0f, 0f, 0.5f, 0.5f));
+        }
+
+        void AddPortraitInteraction(
+            Button button,
+            Rect hoverUv,
+            Rect pressedUv)
+        {
+            EventTrigger trigger = button.gameObject.AddComponent<EventTrigger>();
+            trigger.triggers = new List<EventTrigger.Entry>();
+
+            var enter = new EventTrigger.Entry
+            {
+                eventID = EventTriggerType.PointerEnter
+            };
+            enter.callback.AddListener(_ => SetDialoguePortrait(hoverUv));
+            trigger.triggers.Add(enter);
+
+            var exit = new EventTrigger.Entry
+            {
+                eventID = EventTriggerType.PointerExit
+            };
+            exit.callback.AddListener(_ => SetDialoguePortrait(
+                new Rect(0f, 0.5f, 0.5f, 0.5f)));
+            trigger.triggers.Add(exit);
+
+            var down = new EventTrigger.Entry
+            {
+                eventID = EventTriggerType.PointerDown
+            };
+            down.callback.AddListener(_ => SetDialoguePortrait(pressedUv));
+            trigger.triggers.Add(down);
+        }
+
+        void SetDialoguePortrait(Rect uvRect)
+        {
+            if (dialoguePortrait != null)
+                dialoguePortrait.uvRect = uvRect;
         }
 
         void BuildEnhancementScreen(Transform parent)
@@ -1135,24 +1204,8 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 new Vector2(0.5f, 0.5f),
                 new Vector2(0.5f, 0.5f),
                 new Vector2(0.5f, 0.5f),
-                new Vector2(0f, 74f),
-                new Vector2(232f, 120f));
-
-            Text reason = CreateText(
-                root,
-                "PcgReason",
-                string.Empty,
-                15,
-                TextAnchor.UpperCenter,
-                new Color(0.42f, 0.79f, 0.85f));
-            reason.horizontalOverflow = HorizontalWrapMode.Wrap;
-            SetAnchoredRect(
-                reason.rectTransform,
-                new Vector2(0.5f, 0.5f),
-                new Vector2(0.5f, 0.5f),
-                new Vector2(0.5f, 0.5f),
-                new Vector2(0f, -54f),
-                new Vector2(238f, 76f));
+                new Vector2(0f, 34f),
+                new Vector2(236f, 196f));
 
             Text owned = CreateText(
                 root,
@@ -1195,7 +1248,6 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 Rarity = rarity,
                 Title = title,
                 Description = description,
-                Reason = reason,
                 Owned = owned,
                 Price = price
             };

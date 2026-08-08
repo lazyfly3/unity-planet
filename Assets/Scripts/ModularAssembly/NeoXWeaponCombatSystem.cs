@@ -7,6 +7,7 @@ using SpacecraftEditor;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityPlanet.CityPcg;
+using UnityPlanet.SpaceStation.Enhancement;
 using UnityPlanet.SpaceStation.Skills;
 
 namespace UnityPlanet.ModularAssembly
@@ -463,6 +464,8 @@ namespace UnityPlanet.ModularAssembly
         float nextAutoAimScanAt;
         bool muzzleBlocked;
         bool controlsEnabled = true;
+        EnhancementRuntimeModifiers enhancementModifiers =
+            EnhancementRuntimeModifiers.None;
         bool drawHud = true;
         bool autoAimEnabled;
         bool autoAimAllowed = true;
@@ -542,6 +545,9 @@ namespace UnityPlanet.ModularAssembly
             structureGraph = GetComponent<VehicleStructureGraph>() ??
                              gameObject.AddComponent<VehicleStructureGraph>();
             structureGraph.Initialize(model, presenter, flight);
+            enhancementModifiers =
+                EnhancementRuntimeModifiers.LoadCurrent();
+            enhancementModifiers.ApplyToStructureGraph(structureGraph);
             VehicleDamageFeedbackPresenter damageFeedback =
                 GetComponent<VehicleDamageFeedbackPresenter>() ??
                 gameObject.AddComponent<VehicleDamageFeedbackPresenter>();
@@ -604,6 +610,7 @@ namespace UnityPlanet.ModularAssembly
                 NeoXBehaviorModule semantics =
                     view.GetComponentInChildren<NeoXBehaviorModule>(true);
                 WeaponProfile profile = WeaponProfileLibrary.Resolve(view);
+                enhancementModifiers.ApplyToWeapon(profile);
                 WeaponRuntime runtime =
                     new WeaponRuntime(view, semantics, profile);
                 if (view.Record != null &&
@@ -637,7 +644,10 @@ namespace UnityPlanet.ModularAssembly
 
         void Update()
         {
-            if (flight == null || !flight.IsFlying || !controlsEnabled)
+            if (flight == null ||
+                !flight.IsFlying ||
+                !controlsEnabled ||
+                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured)
             {
                 RestoreFov();
                 return;

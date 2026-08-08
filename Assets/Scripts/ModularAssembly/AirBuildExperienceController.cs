@@ -17,9 +17,7 @@ namespace UnityPlanet.ModularAssembly
         private const int CardsPerPage = 8;
         private const int PreviewLayer = 31;
         private static readonly string[] Categories =
-        {
-            "全部", "结构", "机翼", "推进", "移动", "武器", "防御", "能源/辅助"
-        };
+            AirBuildCatalog.PaletteCategories.ToArray();
 
         private readonly List<Button> categoryButtons = new List<Button>();
         private readonly List<Button> cardButtons = new List<Button>();
@@ -84,7 +82,7 @@ namespace UnityPlanet.ModularAssembly
         private ModularContentRecord activeRecord;
         private GridModuleDefinition activeDefinition;
         private GridPlacementCandidate candidate;
-        private string activeCategory = "全部";
+        private string activeCategory = "结构";
         private int page;
         private int roll;
         private int ghostGeneration;
@@ -1088,12 +1086,26 @@ namespace UnityPlanet.ModularAssembly
             {
                 string category = Categories[index];
                 Button button = CreateButton(categoryRoot.transform, category);
-                int column = index % 4;
-                int row = index / 4;
+                const int categoryColumns = 3;
+                const float categoryWidth = 111f;
+                const float categoryGap = 8f;
+                const float categoryAreaWidth = 354f;
+                int column = index % categoryColumns;
+                int row = index / categoryColumns;
+                int rowStart = row * categoryColumns;
+                int itemsInRow = Mathf.Min(
+                    categoryColumns,
+                    Categories.Length - rowStart);
+                float rowWidth = itemsInRow * categoryWidth +
+                                 (itemsInRow - 1) * categoryGap;
+                float rowOffset = (categoryAreaWidth - rowWidth) * 0.5f;
                 SetRect(
                     button.GetComponent<RectTransform>(),
-                    new Vector2(column * 88f, -row * 44f),
-                    new Vector2(82f, 38f));
+                    new Vector2(
+                        rowOffset + column *
+                        (categoryWidth + categoryGap),
+                        -row * 44f),
+                    new Vector2(categoryWidth, 38f));
                 button.GetComponentInChildren<Text>().fontSize = 15;
                 button.onClick.AddListener(() =>
                 {
@@ -1638,13 +1650,13 @@ battleTestButton.onClick.AddListener(
             List<ModularContentRecord> records = AirBuildCatalog.OrderedIds
                 .Select(id => contentService.Catalog.Items.FirstOrDefault(item =>
                     item != null && string.Equals(item.neoXId, id, StringComparison.OrdinalIgnoreCase)))
-                .Where(item => item != null && AirBuildCatalog.IsPolished(item))
+                .Where(AirBuildCatalog.IsVisibleInPalette)
                 .ToList();
             string term = search != null ? search.text.Trim() : string.Empty;
-            if (activeCategory != "全部")
-            {
-                records = records.Where(item => AirBuildCatalog.Category(item) == activeCategory).ToList();
-            }
+            records = records
+                .Where(item => AirBuildCatalog.Category(item) ==
+                               activeCategory)
+                .ToList();
             if (!string.IsNullOrEmpty(term))
             {
                 records = records.Where(item =>
@@ -1697,7 +1709,9 @@ battleTestButton.onClick.AddListener(
             {
                 ModularContentRecord record = contentService.Catalog.Items.FirstOrDefault(item =>
                     item != null && string.Equals(item.neoXId, id, StringComparison.OrdinalIgnoreCase));
-                if (record == null || thumbnails.ContainsKey(record.sourceId))
+                if (record == null ||
+                    !AirBuildCatalog.IsVisibleInPalette(record) ||
+                    thumbnails.ContainsKey(record.sourceId))
                 {
                     continue;
                 }

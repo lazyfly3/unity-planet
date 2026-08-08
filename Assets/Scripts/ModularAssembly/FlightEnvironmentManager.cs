@@ -1,19 +1,22 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.IO;
+using ModularAssembly;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using ModularAssembly;
 
 namespace UnityPlanet.ModularAssembly
 {
     public enum FlightEnvironmentKind
     {
-        PlanetLab = 0,
-        CombatMapLab = 1
+        Natural = 0,
+        City = 1,
+
+        // Source-compatible names for older code and persisted version-1 data.
+        PlanetLab = Natural,
+        CombatMapLab = City
     }
 
     public enum CombatPreparationState
@@ -44,126 +47,96 @@ namespace UnityPlanet.ModularAssembly
     [Serializable]
     internal sealed class ModularLabSettingsData
     {
-        public int version = 1;
-        public FlightEnvironmentKind environment = FlightEnvironmentKind.PlanetLab;
+        public int version = 2;
+        public FlightEnvironmentKind environment = FlightEnvironmentKind.Natural;
     }
 
     /// <summary>
-    /// The only environment selected by GridFlightBridge. It delegates to one
-    /// concrete provider and never applies vehicle forces itself.
+    /// Single scene-scoped entry point used by the flight bridge.  Designers
+    /// select either the infinite natural PlanetLab or the combat-city PCG;
+    /// the manager delegates lifecycle calls without changing ship physics.
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class FlightEnvironmentManager : MonoBehaviour, IGridFlightEnvironment, IGridFlightEnvironmentWarmup
+    public sealed class FlightEnvironmentManager :
+        MonoBehaviour,
+        IGridFlightEnvironment,
+        IGridFlightEnvironmentWarmup
     {
-        public const string CombatRuntimeSceneName = "CombatMapRuntime";
+        IGridFlightEnvironment naturalEnvironment;
+        IGridFlightEnvironment cityEnvironment;
+        FlightEnvironmentKind selectedKind;
+        CombatPreparationState preparationState;
+        float preparationProgress;
+        string preparationMessage = string.Empty;
+        bool preparing;
+        bool inFlight;
+        CombatTestMode combatMode = CombatTestMode.Duel;
 
-        private IGridFlightEnvironment planetEnvironment;
-        private IGridFlightEnvironment combatEnvironment;
-        private AsyncOperation combatSceneLoad;
-        private Scene combatScene;
-        private FlightEnvironmentKind selectedKind;
-        private CombatPreparationState preparationState;
-        private float preparationProgress;
-        private string preparationMessage = string.Empty;
-        private bool preparing;
-        private bool inFlight;
-        private CombatTestMode combatMode = CombatTestMode.Duel;
+        public int Priority => 100000;
+        public Quaternion PreparedRotation =>
+            ActiveProvider != null
+                ? ActiveProvider.PreparedRotation
+                : Quaternion.identity;
+        public FlightEnvironmentKind SelectedKind => selectedKind;
+        public CombatPreparationState PreparationState => preparationState;
+        public float PreparationProgress => preparationProgress;
+        public string PreparationMessage => preparationMessage;
+        public ICombatArenaProvider ActiveArena =>
+            ActiveProvider as ICombatArenaProvider;
+        public CombatTestMode CombatMode => combatMode;
 
-        public int Priority
-        {
-            get { return 100000; }
-        }
+        IGridFlightEnvironment ActiveProvider =>
+            selectedKind == FlightEnvironmentKind.City
+                ? cityEnvironment
+                : naturalEnvironment;
 
-        public Quaternion PreparedRotation
-        {
-            get
-            {
-                IGridFlightEnvironment provider = ActiveProvider;
-                return provider != null ? provider.PreparedRotation : Quaternion.identity;
-            }
-        }
-
-        public FlightEnvironmentKind SelectedKind
-        {
-            get { return selectedKind; }
-        }
-
-        public CombatPreparationState PreparationState
-        {
-            get { return preparationState; }
-        }
-
-        public float PreparationProgress
-        {
-            get { return preparationProgress; }
-        }
-
-        public string PreparationMessage
-        {
-            get { return preparationMessage; }
-        }
-
-        public ICombatArenaProvider ActiveArena
-        {
-            get { return ActiveProvider as ICombatArenaProvider; }
-        }
-
-        public CombatTestMode CombatMode
-        {
-            get { return combatMode; }
-        }
-
-        private IGridFlightEnvironment ActiveProvider
-        {
-            get
-            {
-                if (selectedKind == FlightEnvironmentKind.CombatMapLab && combatEnvironment != null)
-                {
-                    return combatEnvironment;
-                }
-
-                return planetEnvironment;
-            }
-        }
-
-        private void Awake()
+        void Awake()
         {
             LoadSettings();
+            EnsureCityProvider();
             RefreshProviders();
         }
 
-        private void Start()
+        void Start()
         {
-            StartCoroutine(Warmup(null));
             EnsureSelectorUi();
+            StartCoroutine(Warmup(null));
         }
 
         public void SetSelectedKind(FlightEnvironmentKind kind)
         {
+            kind = kind == FlightEnvironmentKind.City
+                ? FlightEnvironmentKind.City
+                : FlightEnvironmentKind.Natural;
             if (selectedKind == kind || inFlight)
-            {
                 return;
-            }
 
+            ActiveProvider?.ExitFlight();
             selectedKind = kind;
             preparationState = CombatPreparationState.Idle;
             preparationProgress = 0f;
             preparationMessage = string.Empty;
             SaveSettings();
             StartCoroutine(Warmup(null));
-            FlightEnvironmentSelectorOverlay overlay = GetComponent<FlightEnvironmentSelectorOverlay>();
-            if (overlay != null)
-            {
-                overlay.Refresh();
-            }
+            GetComponent<FlightEnvironmentSelectorOverlay>()?.Refresh();
+        }
+
+        public void SelectNatural()
+        {
+            SetSelectedKind(FlightEnvironmentKind.Natural);
+        }
+
+        public void SelectCity()
+        {
+            SetSelectedKind(FlightEnvironmentKind.City);
         }
 
         public void ToggleSelectedKind()
         {
             SetSelectedKind(
-                selectedKind == FlightEnvironmentKind.PlanetLab
-                    ? FlightEnvironmentKind.CombatMapLab
-                    : FlightEnvironmentKind.PlanetLab);
+                selectedKind == FlightEnvironmentKind.Natural
+                    ? FlightEnvironmentKind.City
+                    : FlightEnvironmentKind.Natural);
         }
 
         public void SetCombatMode(CombatTestMode mode)
@@ -171,17 +144,7 @@ namespace UnityPlanet.ModularAssembly
             if (inFlight || combatMode == mode)
                 return;
             combatMode = mode;
-            ICombatArenaProvider arena = ActiveArena;
-            if (arena != null)
-                arena.SetMode(mode);
-            if (selectedKind == FlightEnvironmentKind.CombatMapLab)
-            {
-                preparationState = CombatPreparationState.Idle;
-                preparationProgress = 0f;
-                preparationMessage = mode == CombatTestMode.Horde
-                    ? "正在准备割草战区"
-                    : "正在准备1v1战区";
-            }
+            ActiveArena?.SetMode(mode);
         }
 
         public IEnumerator Warmup(Action<bool, string> completed)
@@ -189,81 +152,65 @@ namespace UnityPlanet.ModularAssembly
             if (preparing)
             {
                 while (preparing)
-                {
                     yield return null;
-                }
-
-                bool alreadyReady = preparationState == CombatPreparationState.Ready;
-                if (completed != null)
-                {
-                    completed(alreadyReady, preparationMessage);
-                }
-
+                bool ready = preparationState == CombatPreparationState.Ready;
+                completed?.Invoke(ready, preparationMessage);
                 yield break;
             }
 
             preparing = true;
             preparationState = CombatPreparationState.Warming;
             preparationProgress = 0.05f;
-            preparationMessage = selectedKind == FlightEnvironmentKind.CombatMapLab
-                ? "正在预热 CombatMapLab"
-                : "正在预热 PlanetLab";
+            preparationMessage = selectedKind == FlightEnvironmentKind.City
+                ? "正在生成城市试飞场……"
+                : "正在准备自然试飞场……";
 
-            if (selectedKind == FlightEnvironmentKind.CombatMapLab)
-            {
-                yield return EnsureCombatSceneLoaded();
-                preparationProgress = 0.65f;
-            }
-
+            // Other AfterSceneLoad bootstraps create the natural provider in
+            // the same frame.  One yield makes bootstrap ordering irrelevant.
+            yield return null;
+            EnsureCityProvider();
             RefreshProviders();
             IGridFlightEnvironment provider = ActiveProvider;
             if (provider == null)
             {
                 preparationState = CombatPreparationState.Failed;
-                preparationMessage = selectedKind == FlightEnvironmentKind.CombatMapLab
-                    ? "CombatMapLab 运行时场景未烘焙或未加入 Build Settings"
-                    : "PlanetLab 环境不可用";
+                preparationMessage = selectedKind == FlightEnvironmentKind.City
+                    ? "城市试飞场组件未初始化。"
+                    : "自然试飞场组件未初始化。";
                 preparing = false;
-                if (completed != null)
-                {
-                    completed(false, preparationMessage);
-                }
-
+                completed?.Invoke(false, preparationMessage);
                 yield break;
             }
 
+            preparationProgress = 0.25f;
             bool providerReady = true;
             string providerMessage = string.Empty;
-            ICombatArenaProvider combatArena =
-                provider as ICombatArenaProvider;
-            if (combatArena != null)
-                combatArena.SetMode(combatMode);
-            IGridFlightEnvironmentWarmup warmup = provider as IGridFlightEnvironmentWarmup;
-            if (warmup != null)
+            if (provider is ICombatArenaProvider arena)
+                arena.SetMode(combatMode);
+            if (provider is IGridFlightEnvironmentWarmup warmup)
             {
-                yield return warmup.Warmup(
-                    (success, message) =>
-                    {
-                        providerReady = success;
-                        providerMessage = message;
-                    });
+                yield return warmup.Warmup((success, message) =>
+                {
+                    providerReady = success;
+                    providerMessage = message;
+                });
             }
 
             if (providerReady && !inFlight)
-            {
                 provider.ExitFlight();
-            }
-
             preparationProgress = providerReady ? 1f : preparationProgress;
-            preparationState = providerReady ? CombatPreparationState.Ready : CombatPreparationState.Failed;
+            preparationState = providerReady
+                ? CombatPreparationState.Ready
+                : CombatPreparationState.Failed;
             preparationMessage = string.IsNullOrWhiteSpace(providerMessage)
-                ? providerReady ? "测试场已就绪" : "测试场预热失败"
+                ? providerReady
+                    ? selectedKind == FlightEnvironmentKind.City
+                        ? "城市试飞场已就绪。"
+                        : "自然试飞场已就绪。"
+                    : "试飞场准备失败。"
                 : providerMessage;
             preparing = false;
-            if (completed != null)
-            {
-                completed(providerReady, preparationMessage);
-            }
+            completed?.Invoke(providerReady, preparationMessage);
         }
 
         public IEnumerator PrepareFlight(
@@ -274,17 +221,18 @@ namespace UnityPlanet.ModularAssembly
             string message = preparationMessage;
             if (!ready)
             {
-                yield return Warmup(
-                    (success, resultMessage) =>
-                    {
-                        ready = success;
-                        message = resultMessage;
-                    });
+                yield return Warmup((success, resultMessage) =>
+                {
+                    ready = success;
+                    message = resultMessage;
+                });
             }
-
             if (!ready || ActiveProvider == null)
             {
-                completed(false, target != null ? target.position : Vector3.zero, message);
+                completed?.Invoke(
+                    false,
+                    target != null ? target.position : Vector3.zero,
+                    message);
                 yield break;
             }
 
@@ -298,165 +246,121 @@ namespace UnityPlanet.ModularAssembly
         {
             if (ActiveProvider == null)
             {
-                completed(
-                    false,
-                    target != null
-                        ? target.position
-                        : Vector3.zero);
+                completed?.Invoke(false,
+                    target != null ? target.position : Vector3.zero);
                 yield break;
             }
-
             yield return ActiveProvider.ResetFlight(target, completed);
         }
 
         public void ExitFlight()
         {
             inFlight = false;
-            if (ActiveProvider != null)
-            {
-                ActiveProvider.ExitFlight();
-            }
+            ActiveProvider?.ExitFlight();
         }
 
-        private IEnumerator EnsureCombatSceneLoaded()
+        void EnsureCityProvider()
         {
-            if (combatScene.IsValid() && combatScene.isLoaded)
-            {
-                yield break;
-            }
-
-            Scene existing = SceneManager.GetSceneByName(CombatRuntimeSceneName);
-            if (existing.IsValid() && existing.isLoaded)
-            {
-                combatScene = existing;
-                yield break;
-            }
-
-            combatSceneLoad = SceneManager.LoadSceneAsync(CombatRuntimeSceneName, LoadSceneMode.Additive);
-            if (combatSceneLoad == null)
-            {
-                yield break;
-            }
-
-            combatSceneLoad.allowSceneActivation = true;
-            while (!combatSceneLoad.isDone)
-            {
-                preparationProgress = Mathf.Lerp(0.1f, 0.6f, combatSceneLoad.progress / 0.9f);
-                yield return null;
-            }
-
-            combatScene = SceneManager.GetSceneByName(CombatRuntimeSceneName);
+            if (GetComponent<CityTestFlightEnvironmentController>() == null)
+                gameObject.AddComponent<CityTestFlightEnvironmentController>();
         }
 
-        private void RefreshProviders()
+        void RefreshProviders()
         {
-            planetEnvironment = null;
-            combatEnvironment = null;
+            naturalEnvironment = null;
+            cityEnvironment = null;
             MonoBehaviour[] behaviours = FindObjectsOfType<MonoBehaviour>(true);
             for (int i = 0; i < behaviours.Length; i++)
             {
                 MonoBehaviour behaviour = behaviours[i];
-                if (behaviour == null || behaviour == this)
+                if (behaviour == null || behaviour == this ||
+                    !(behaviour is IGridFlightEnvironment candidate))
                 {
                     continue;
                 }
-
-                IGridFlightEnvironment candidate = behaviour as IGridFlightEnvironment;
-                if (candidate == null)
-                {
-                    continue;
-                }
-
-                string typeName = behaviour.GetType().Name;
-                if (typeName.IndexOf("BakedCombatMap", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    typeName.IndexOf("CombatMapFlight", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    combatEnvironment = candidate;
-                }
-                else if (typeName.IndexOf("PlanetLab", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    planetEnvironment = candidate;
-                }
+                if (behaviour is CityTestFlightEnvironmentController)
+                    cityEnvironment = candidate;
+                else if (behaviour is PlanetLabFlightEnvironmentController)
+                    naturalEnvironment = candidate;
             }
-            ICombatArenaProvider arena =
-                combatEnvironment as ICombatArenaProvider;
-            if (arena != null)
-                arena.SetMode(combatMode);
+            ActiveArena?.SetMode(combatMode);
         }
 
-        private void EnsureSelectorUi()
+        void EnsureSelectorUi()
         {
             if (GetComponent<FlightEnvironmentSelectorOverlay>() == null)
-            {
                 gameObject.AddComponent<FlightEnvironmentSelectorOverlay>();
-            }
         }
 
-        private string GetSettingsPath()
+        string GetSettingsPath()
         {
             try
             {
-                ModularBlueprintStore store = new ModularBlueprintStore();
-                string slotId = store.ActiveSlotId;
-                string directory = GalaxySaveSlotService.GetSpacecraftDirectory(slotId);
+                var store = new ModularBlueprintStore();
+                string directory = GalaxySaveSlotService.GetSpacecraftDirectory(
+                    store.ActiveSlotId);
                 Directory.CreateDirectory(directory);
                 return Path.Combine(directory, "lab_settings.json");
             }
             catch (Exception)
             {
-                string directory = Path.Combine(Application.persistentDataPath, "spacecraft");
+                string directory = Path.Combine(
+                    Application.persistentDataPath,
+                    "spacecraft");
                 Directory.CreateDirectory(directory);
                 return Path.Combine(directory, "lab_settings.json");
             }
         }
 
-        private void LoadSettings()
+        void LoadSettings()
         {
-            selectedKind = FlightEnvironmentKind.PlanetLab;
+            selectedKind = FlightEnvironmentKind.Natural;
             string path = GetSettingsPath();
             if (!File.Exists(path))
-            {
                 return;
-            }
-
             try
             {
-                ModularLabSettingsData data = JsonUtility.FromJson<ModularLabSettingsData>(File.ReadAllText(path));
+                ModularLabSettingsData data = JsonUtility.FromJson<
+                    ModularLabSettingsData>(File.ReadAllText(path));
                 if (data != null)
                 {
-                    selectedKind = data.environment;
+                    selectedKind = data.environment == FlightEnvironmentKind.City
+                        ? FlightEnvironmentKind.City
+                        : FlightEnvironmentKind.Natural;
                 }
             }
             catch (Exception exception)
             {
-                Debug.LogWarning("[FlightEnvironment] 无法读取测试场设置：" + exception.Message);
+                Debug.LogWarning(
+                    "[FlightEnvironment] 无法读取试飞场设置：" +
+                    exception.Message);
             }
         }
 
-        private void SaveSettings()
+        void SaveSettings()
         {
             string path = GetSettingsPath();
             string temporary = path + ".tmp";
             try
             {
-                ModularLabSettingsData data = new ModularLabSettingsData { environment = selectedKind };
+                var data = new ModularLabSettingsData
+                {
+                    version = 2,
+                    environment = selectedKind
+                };
                 File.WriteAllText(temporary, JsonUtility.ToJson(data, true));
                 if (File.Exists(path))
-                {
                     File.Replace(temporary, path, null);
-                }
                 else
-                {
                     File.Move(temporary, path);
-                }
             }
             catch (Exception exception)
             {
-                Debug.LogWarning("[FlightEnvironment] 无法保存测试场设置：" + exception.Message);
+                Debug.LogWarning(
+                    "[FlightEnvironment] 无法保存试飞场设置：" +
+                    exception.Message);
                 if (File.Exists(temporary))
-                {
                     File.Delete(temporary);
-                }
             }
         }
     }
@@ -464,51 +368,52 @@ namespace UnityPlanet.ModularAssembly
     [DisallowMultipleComponent]
     public sealed class FlightEnvironmentSelectorOverlay : MonoBehaviour
     {
-        private FlightEnvironmentManager manager;
-        private Canvas canvas;
-        private Button button;
-        private Text label;
-        private Text stateLabel;
-        private GridFlightBridge flight;
+        FlightEnvironmentManager manager;
+        Canvas canvas;
+        Button naturalButton;
+        Button cityButton;
+        Text naturalLabel;
+        Text cityLabel;
+        Text stateLabel;
+        global::GridFlightBridge flight;
 
-        private void Awake()
+        void Awake()
         {
             manager = GetComponent<FlightEnvironmentManager>();
-            flight = FindObjectOfType<GridFlightBridge>(true);
+            flight = FindObjectOfType<global::GridFlightBridge>(true);
             BuildUi();
             Refresh();
         }
 
-        private void Update()
+        void Update()
         {
             if (manager == null || stateLabel == null)
-            {
                 return;
-            }
-
             if (flight == null)
-                flight = FindObjectOfType<GridFlightBridge>(true);
+                flight = FindObjectOfType<global::GridFlightBridge>(true);
             if (canvas != null)
                 canvas.enabled = flight == null || !flight.IsFlying;
-
-            stateLabel.text = manager.PreparationState == CombatPreparationState.Warming
-                ? "预热 " + Mathf.RoundToInt(manager.PreparationProgress * 100f) + "%"
+            stateLabel.text = manager.PreparationState ==
+                              CombatPreparationState.Warming
+                ? manager.PreparationMessage + " " +
+                  Mathf.RoundToInt(manager.PreparationProgress * 100f) + "%"
                 : manager.PreparationState == CombatPreparationState.Failed
-                    ? "测试场不可用"
-                    : string.Empty;
+                    ? manager.PreparationMessage
+                    : manager.PreparationState == CombatPreparationState.Ready
+                        ? "已就绪"
+                        : string.Empty;
         }
 
         public void Refresh()
         {
-            if (manager != null && label != null)
-            {
-                label.text = manager.SelectedKind == FlightEnvironmentKind.PlanetLab
-                    ? "测试场：PlanetLab"
-                    : "测试场：CombatMap";
-            }
+            if (manager == null || naturalButton == null || cityButton == null)
+                return;
+            bool natural = manager.SelectedKind == FlightEnvironmentKind.Natural;
+            SetButtonState(naturalButton, naturalLabel, natural);
+            SetButtonState(cityButton, cityLabel, !natural);
         }
 
-        private void BuildUi()
+        void BuildUi()
         {
             GameObject canvasObject = new GameObject(
                 "FlightEnvironmentSelectorCanvas",
@@ -525,42 +430,83 @@ namespace UnityPlanet.ModularAssembly
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = 0.5f;
 
-            GameObject buttonObject = new GameObject("EnvironmentButton", typeof(RectTransform), typeof(Image), typeof(Button));
-            buttonObject.transform.SetParent(canvasObject.transform, false);
-            RectTransform rect = buttonObject.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(1f, 1f);
-            rect.anchorMax = new Vector2(1f, 1f);
-            rect.pivot = new Vector2(1f, 1f);
-            rect.anchoredPosition = new Vector2(-24f, -164f);
-            rect.sizeDelta = new Vector2(210f, 42f);
-            buttonObject.GetComponent<Image>().color = new Color(0.04f, 0.33f, 0.43f, 0.96f);
-            button = buttonObject.GetComponent<Button>();
-            button.onClick.AddListener(manager.ToggleSelectedKind);
+            GameObject panel = new GameObject(
+                "MapSelectionPanel",
+                typeof(RectTransform),
+                typeof(Image));
+            panel.transform.SetParent(canvasObject.transform, false);
+            RectTransform panelRect = panel.GetComponent<RectTransform>();
+            panelRect.anchorMin = panelRect.anchorMax = new Vector2(1f, 1f);
+            panelRect.pivot = new Vector2(1f, 1f);
+            panelRect.anchoredPosition = new Vector2(-24f, -154f);
+            panelRect.sizeDelta = new Vector2(370f, 112f);
+            panel.GetComponent<Image>().color = new Color(0.015f, 0.09f, 0.13f, 0.94f);
 
-            label = CreateText(buttonObject.transform, string.Empty, 17, TextAnchor.MiddleCenter);
-            RectTransform labelRect = label.rectTransform;
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = Vector2.zero;
-            labelRect.offsetMax = Vector2.zero;
-
-            stateLabel = CreateText(canvasObject.transform, string.Empty, 14, TextAnchor.MiddleRight);
-            RectTransform stateRect = stateLabel.rectTransform;
-            stateRect.anchorMin = new Vector2(1f, 1f);
-            stateRect.anchorMax = new Vector2(1f, 1f);
-            stateRect.pivot = new Vector2(1f, 1f);
-            stateRect.anchoredPosition = new Vector2(-244f, -164f);
-            stateRect.sizeDelta = new Vector2(180f, 42f);
+            Text title = CreateText(panel.transform, "试飞地图", 18,
+                TextAnchor.MiddleLeft);
+            SetRect(title.rectTransform, new Vector2(14f, -8f),
+                new Vector2(180f, 28f));
+            naturalButton = CreateButton(panel.transform, "自然场景",
+                new Vector2(14f, -42f), manager.SelectNatural, out naturalLabel);
+            cityButton = CreateButton(panel.transform, "城市场景",
+                new Vector2(190f, -42f), manager.SelectCity, out cityLabel);
+            stateLabel = CreateText(panel.transform, string.Empty, 13,
+                TextAnchor.MiddleLeft);
+            stateLabel.color = new Color(0.55f, 0.9f, 1f, 1f);
+            SetRect(stateLabel.rectTransform, new Vector2(14f, -82f),
+                new Vector2(342f, 22f));
 
             if (EventSystem.current == null)
-            {
-                new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
-            }
+                new GameObject("EventSystem", typeof(EventSystem),
+                    typeof(StandaloneInputModule));
         }
 
-        private static Text CreateText(Transform parent, string value, int size, TextAnchor alignment)
+        static Button CreateButton(
+            Transform parent,
+            string value,
+            Vector2 position,
+            UnityEngine.Events.UnityAction clicked,
+            out Text label)
         {
-            GameObject textObject = new GameObject("Text", typeof(RectTransform), typeof(Text));
+            GameObject root = new GameObject(
+                value,
+                typeof(RectTransform),
+                typeof(Image),
+                typeof(Button));
+            root.transform.SetParent(parent, false);
+            RectTransform rect = root.GetComponent<RectTransform>();
+            SetRect(rect, position, new Vector2(166f, 34f));
+            Button button = root.GetComponent<Button>();
+            button.onClick.AddListener(clicked);
+            label = CreateText(root.transform, value, 16,
+                TextAnchor.MiddleCenter);
+            label.rectTransform.anchorMin = Vector2.zero;
+            label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = Vector2.zero;
+            label.rectTransform.offsetMax = Vector2.zero;
+            return button;
+        }
+
+        static void SetButtonState(Button button, Text label, bool selected)
+        {
+            button.GetComponent<Image>().color = selected
+                ? new Color(0.02f, 0.58f, 0.72f, 1f)
+                : new Color(0.05f, 0.24f, 0.31f, 0.96f);
+            label.text = (selected ? "✓ " : string.Empty) +
+                         (label == null ? string.Empty :
+                             label.gameObject.transform.parent.name);
+        }
+
+        static Text CreateText(
+            Transform parent,
+            string value,
+            int size,
+            TextAnchor alignment)
+        {
+            GameObject textObject = new GameObject(
+                "Text",
+                typeof(RectTransform),
+                typeof(Text));
             textObject.transform.SetParent(parent, false);
             Text text = textObject.GetComponent<Text>();
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -570,28 +516,38 @@ namespace UnityPlanet.ModularAssembly
             text.color = Color.white;
             return text;
         }
+
+        static void SetRect(RectTransform rect, Vector2 position, Vector2 size)
+        {
+            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+        }
     }
 
     internal static class FlightEnvironmentRuntimeBootstrap
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void Install()
+        static void Install()
         {
             SceneManager.sceneLoaded -= HandleSceneLoaded;
             SceneManager.sceneLoaded += HandleSceneLoaded;
             HandleSceneLoaded(SceneManager.GetActiveScene(), LoadSceneMode.Single);
         }
 
-        private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+        static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             if (!scene.IsValid() ||
-                scene.name.IndexOf("ModularAssemblyLab", StringComparison.OrdinalIgnoreCase) < 0 ||
-                UnityEngine.Object.FindObjectOfType<FlightEnvironmentManager>(true) != null)
+                scene.name.IndexOf(
+                    "ModularAssemblyLab",
+                    StringComparison.OrdinalIgnoreCase) < 0 ||
+                UnityEngine.Object.FindObjectOfType<
+                    FlightEnvironmentManager>(true) != null)
             {
                 return;
             }
-
-            GameObject host = new GameObject("FlightEnvironmentManager");
+            var host = new GameObject("FlightEnvironmentManager");
             SceneManager.MoveGameObjectToScene(host, scene);
             host.AddComponent<FlightEnvironmentManager>();
         }

@@ -8,6 +8,17 @@ namespace UnityPlanet.ModularAssembly
 {
     public static class AirBuildCatalog
     {
+        private static readonly string[] PaletteCategoryNames =
+        {
+            "结构", "机翼", "推进", "能源", "武器"
+        };
+
+        private static readonly HashSet<string> PaletteStructureIds =
+            new HashSet<string>(new[]
+            {
+                "core_heavy_222", "block_111", "block_1_2_111"
+            }, StringComparer.OrdinalIgnoreCase);
+
         private static readonly string[] PolishedIds =
         {
             "core_heavy_222",
@@ -76,11 +87,39 @@ namespace UnityPlanet.ModularAssembly
             }, StringComparer.OrdinalIgnoreCase);
 
         public static IReadOnlyList<string> OrderedIds => PolishedIds;
+        public static IReadOnlyList<string> PaletteCategories =>
+            PaletteCategoryNames;
 
         public static bool IsPolished(ModularContentRecord record)
         {
             return record != null &&
                    (record.selectableForAirBuild || Polished.Contains(record.neoXId ?? string.Empty));
+        }
+
+        public static bool IsVisibleInPalette(ModularContentRecord record)
+        {
+            if (!IsPolished(record))
+            {
+                return false;
+            }
+
+            string id = record.neoXId ?? string.Empty;
+            if (PaletteStructureIds.Contains(id))
+            {
+                return true;
+            }
+            if (string.Equals(
+                    id,
+                    "core_energy_111",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            string category = Category(record);
+            return category == "机翼" ||
+                   category == "推进" ||
+                   category == "武器";
         }
 
         public static void ApplyDefaults(ModularContentRecord record)
@@ -370,12 +409,13 @@ namespace UnityPlanet.ModularAssembly
             if (behavior == "wheel") return "移动";
             if (behavior == "wing") return "机翼";
             if (behavior.Contains("thruster")) return "推进";
-            if (behavior == "controlsurface" || behavior == "hover") return "姿态";
+            if (behavior == "controlsurface") return "机翼";
+            if (behavior == "hover") return "推进";
             if (behavior == "shield" || behavior.Contains("armor")) return "防御";
             if (behavior == "battery" || behavior == "energy" || behavior == "radar" ||
                 behavior == "drone" || behavior == "repair" || behavior == "emp")
             {
-                return "能源/辅助";
+                return "能源";
             }
 
             string[] weapons =

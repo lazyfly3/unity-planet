@@ -1,3 +1,5 @@
+using System.Linq;
+using System.Reflection;
 using NUnit.Framework;
 using UnityPlanet.SpaceStation.Skills;
 
@@ -18,7 +20,7 @@ public sealed class PlayerSkillSelfRepairTests
     }
 
     [Test]
-    public void SelfRepair_LevelsOnlyReduceCooldown()
+    public void SelfRepair_EffectPreviewShowsConcreteValuesAtEveryLevel()
     {
         PlayerSkillCatalog.TryGet(
             PlayerSkillCatalog.SelfRepairId,
@@ -36,6 +38,63 @@ public sealed class PlayerSkillSelfRepairTests
                     PlayerSkillCatalog.SelfRepairId,
                     level));
         }
+    }
+
+    [Test]
+    public void SkillDescriptions_DoNotUseOnlyCooldownUpgradeCopy()
+    {
+        foreach (PlayerSkillDefinition definition in PlayerSkillCatalog.All)
+        {
+            StringAssert.DoesNotContain(
+                "只降低",
+                definition.Description);
+        }
+    }
+
+    [Test]
+    public void EveryUpgradeableSkill_HasADifferentConcreteNextLevelPreview()
+    {
+        foreach (PlayerSkillDefinition definition in PlayerSkillCatalog.All)
+        {
+            string current = PlayerSkillCatalog.EffectForLevel(
+                definition.Id,
+                1);
+            string next = PlayerSkillCatalog.EffectForLevel(
+                definition.Id,
+                2);
+
+            Assert.That(current, Is.Not.Empty, definition.Id);
+            Assert.That(next, Is.Not.Empty, definition.Id);
+            Assert.That(next, Is.Not.EqualTo(current), definition.Id);
+        }
+    }
+
+    [Test]
+    public void Normalize_AllowsEveryLoadoutSlotToRemainEmpty()
+    {
+        var data = new PlayerSkillProgressData
+        {
+            skills = new[]
+            {
+                new PlayerSkillProgressEntry
+                {
+                    skillId = PlayerSkillCatalog.SelfRepairId,
+                    level = 1
+                }
+            },
+            equippedSkillIds = new string[
+                PlayerSkillProgressService.SlotCount]
+        };
+        MethodInfo normalize = typeof(PlayerSkillProgressService).GetMethod(
+            "Normalize",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.That(normalize, Is.Not.Null);
+        normalize.Invoke(null, new object[] { data });
+
+        Assert.That(
+            data.equippedSkillIds.All(string.IsNullOrWhiteSpace),
+            Is.True);
     }
 
     [TestCase(50f)]

@@ -2,6 +2,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityPlanet.CombatMap;
+using UnityPlanet.CityPcg;
 
 [InitializeOnLoad]
 public static class FinitePlanetCombatSceneOverlay
@@ -57,6 +58,13 @@ public static class FinitePlanetCombatSceneOverlay
     static void DuringSceneGui(SceneView sceneView)
     {
         if (!Enabled || !EditorApplication.isPlaying)
+            return;
+
+        // The finite-planet overlay describes terrain shaping (ridges, mesas
+        // and basins). A generated combat city owns a separate street-scale
+        // opportunity overlay, so drawing both would misdescribe city combat
+        // spaces as natural terrain.
+        if (Object.FindObjectOfType<AirCombatCityPcgLab>() != null)
             return;
 
         InfinitePlanarSurfaceWorld world =

@@ -86,7 +86,7 @@ namespace UnityPlanet.SpaceStation.Skills
             new PlayerSkillDefinition(
                 SelfRepairId,
                 "自我修复",
-                "启动纳米维修阵列，在10秒内重建本次战斗中损坏或脱落的舰体模块。升级只降低冷却时间。",
+                "启动纳米维修阵列，在10秒内重建本次战斗中损坏或脱落的舰体模块。",
                 "UI/Skills/SelfRepair",
                 5,
                 60f,
@@ -94,7 +94,7 @@ namespace UnityPlanet.SpaceStation.Skills
             new PlayerSkillDefinition(
                 ChronoExecutionId,
                 "零时处决",
-                "短暂冻结战场并进入慢动作，同时锁定视野内多架敌机。再次按技能键或鼠标左键可提前处决，锁定完成的目标将受到致命攻击。升级只降低冷却时间。",
+                "短暂冻结战场并进入慢动作，同时锁定视野内多架敌机。再次按技能键或鼠标左键可提前处决，锁定完成的目标将受到致命攻击。",
                 "UI/Skills/ChronoExecution",
                 5,
                 30f,
@@ -382,30 +382,11 @@ namespace UnityPlanet.SpaceStation.Skills
 
             entry.level++;
             Save(data);
-            if (definition.Id == PlayerSkillCatalog.ChronoExecutionId)
-            {
-                message = definition.DisplayName + " 已升级至 Lv." +
-                          entry.level + "，冷却时间降低至 " +
-                          definition.CooldownForLevel(entry.level)
-                              .ToString("0") + " 秒。";
-                return true;
-            }
-            if (definition.Id != PlayerSkillCatalog.SelfRepairId)
-            {
-                message = definition.DisplayName + " 已升级至 Lv." +
-                          entry.level + "，" +
-                          PlayerSkillCatalog.EffectForLevel(
-                              definition.Id,
-                              entry.level) + "。";
-                return true;
-            }
-            message = definition.DisplayName + " 已升级至 Lv." + entry.level +
-                      "，修复时间保持 " +
-                      PlayerSkillCatalog.SelfRepairDurationSeconds
-                          .ToString("0") +
-                      " 秒，冷却时间降低至 " +
-                      definition.CooldownForLevel(entry.level)
-                          .ToString("0") + " 秒。";
+            message = definition.DisplayName + " 已升级至 Lv." +
+                      entry.level + "：" +
+                      PlayerSkillCatalog.EffectForLevel(
+                          definition.Id,
+                          entry.level) + "。";
             return true;
         }
 
@@ -563,12 +544,6 @@ namespace UnityPlanet.SpaceStation.Skills
                     changed = true;
                 }
             }
-            if (data.equippedSkillIds.All(string.IsNullOrWhiteSpace))
-            {
-                data.equippedSkillIds[0] =
-                    PlayerSkillCatalog.SelfRepairId;
-                changed = true;
-            }
             return changed;
         }
 
@@ -720,12 +695,15 @@ namespace UnityPlanet.SpaceStation.Skills
                 return;
             }
 
-            if (Input.GetKeyDown(KeyCode.Alpha1))
-                TryActivate(0);
-            if (Input.GetKeyDown(KeyCode.Alpha2))
-                TryActivate(1);
-            if (Input.GetKeyDown(KeyCode.Alpha3))
-                TryActivate(2);
+            if (!ArcadeFlightRuntimeTuningOverlay.IsInputCaptured)
+            {
+                if (Input.GetKeyDown(KeyCode.Alpha1))
+                    TryActivate(0);
+                if (Input.GetKeyDown(KeyCode.Alpha2))
+                    TryActivate(1);
+                if (Input.GetKeyDown(KeyCode.Alpha3))
+                    TryActivate(2);
+            }
 
             TickRepair();
             RefreshHud();

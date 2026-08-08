@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityPlanet.SpaceStation;
 
 public sealed class PauseMenuController : MonoBehaviour
 {
@@ -11,17 +12,22 @@ public sealed class PauseMenuController : MonoBehaviour
     [SerializeField] Slider sensitivitySlider;
     [SerializeField] Toggle fullscreenToggle;
     [SerializeField] string startMenuSceneName = "StartMenu";
+    [SerializeField] string spaceStationSceneName =
+        "SpaceStationUpgradeTest";
 
     VoxelPlanetPlayerController playerController;
+    Button returnToStationButton;
     bool playerControllerWasEnabled;
     float previousTimeScale = 1f;
     bool paused;
+    bool transitionStarted;
 
     public static bool IsPaused { get; private set; }
 
     void Awake()
     {
         playerController = FindObjectOfType<VoxelPlanetPlayerController>();
+        BuildMainPanelActions();
         volumeSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("MasterVolume", AudioListener.volume));
         sensitivitySlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("MouseSensitivity", playerController != null ? playerController.LookSpeed : 2f));
         fullscreenToggle.SetIsOnWithoutNotify(Screen.fullScreen);
@@ -99,14 +105,138 @@ Screen.fullScreen = fullscreen;
 
     public void ExitToMainMenu()
     {
-RestoreGameState();
+        if (transitionStarted)
+            return;
+        transitionStarted = true;
+        RestoreGameState();
         GalaxyTravelManager manager = GalaxyTravelManager.Instance;
         if (manager != null)
             manager.ReturnToMainMenu(startMenuSceneName);
         else
             SceneManager.LoadScene(startMenuSceneName, LoadSceneMode.Single);
-    
-}
+    }
+
+    public void ReturnToSpaceStation()
+    {
+        if (transitionStarted)
+            return;
+
+        transitionStarted = true;
+        if (returnToStationButton != null)
+            returnToStationButton.interactable = false;
+
+        FinitePlanetHordeCombatController combat =
+            FindObjectOfType<FinitePlanetHordeCombatController>();
+        combat?.AbandonForStationReturn();
+
+        RestoreGameState();
+        PlanetOrbitChapterSelectionContext.Clear();
+        SpaceStationFlowContext.PrepareOrbitalReturnToStation();
+        SceneManager.LoadScene(
+            string.IsNullOrWhiteSpace(spaceStationSceneName)
+                ? "SpaceStationUpgradeTest"
+                : spaceStationSceneName,
+            LoadSceneMode.Single);
+    }
+
+    void BuildMainPanelActions()
+    {
+        if (mainPanel == null)
+            return;
+
+        RectTransform continueAction = FindMainAction(
+            "ContinueButton");
+        RectTransform settingsAction = FindMainAction(
+            "SettingsButton");
+        RectTransform exitAction = FindMainAction(
+            "MainMenuButton");
+        if (continueAction == null || settingsAction == null ||
+            exitAction == null)
+        {
+            Debug.LogWarning(
+                "Pause menu actions are incomplete; " +
+                "the station return button was not created.",
+                this);
+            return;
+        }
+
+        Transform existing = mainPanel.transform.Find(
+            "ReturnToStationButton");
+        RectTransform returnAction;
+        if (existing == null)
+        {
+            GameObject instance = Instantiate(
+                settingsAction.gameObject,
+                mainPanel.transform,
+                false);
+            instance.name = "ReturnToStationButton";
+            returnAction = instance.GetComponent<RectTransform>();
+        }
+        else
+        {
+            returnAction = existing as RectTransform;
+        }
+
+        if (returnAction == null)
+            return;
+
+        returnAction.SetSiblingIndex(
+            settingsAction.GetSiblingIndex() + 1);
+        returnToStationButton =
+            returnAction.GetComponent<Button>();
+        if (returnToStationButton == null)
+            return;
+
+        returnToStationButton.onClick =
+            new Button.ButtonClickedEvent();
+        returnToStationButton.onClick.AddListener(
+            ReturnToSpaceStation);
+        Text returnLabel =
+            returnAction.GetComponentInChildren<Text>(true);
+        if (returnLabel != null)
+            returnLabel.text = "返回空间站";
+
+        LayoutMainAction(continueAction, 82f);
+        LayoutMainAction(settingsAction, -12f);
+        LayoutMainAction(returnAction, -106f);
+        LayoutMainAction(exitAction, -200f);
+    }
+
+    RectTransform FindMainAction(string objectName)
+    {
+        Transform child = mainPanel.transform.Find(objectName);
+        return child as RectTransform;
+    }
+
+    static void LayoutMainAction(
+        RectTransform action,
+        float anchoredY)
+    {
+        if (action == null)
+            return;
+
+        action.anchorMin = new Vector2(0.5f, 0.5f);
+        action.anchorMax = new Vector2(0.5f, 0.5f);
+        action.pivot = new Vector2(0.5f, 0.5f);
+        action.anchoredPosition = new Vector2(0f, anchoredY);
+        action.sizeDelta = new Vector2(430f, 76f);
+
+        Text label = action.GetComponentInChildren<Text>(true);
+        if (label == null)
+            return;
+
+        RectTransform labelRect = label.rectTransform;
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = new Vector2(18f, 8f);
+        labelRect.offsetMax = new Vector2(-18f, -8f);
+        label.alignment = TextAnchor.MiddleCenter;
+        label.resizeTextForBestFit = true;
+        label.resizeTextMinSize = 18;
+        label.resizeTextMaxSize = Mathf.Max(18, label.fontSize);
+        label.horizontalOverflow = HorizontalWrapMode.Wrap;
+        label.verticalOverflow = VerticalWrapMode.Truncate;
+    }
 
     void SetPaused(bool shouldPause)
     {

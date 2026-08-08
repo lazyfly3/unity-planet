@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c54c145dbfa44c1a9f593225cf8d2dc8, type: 3}
+  m_Name: ArcadeFlightTuning
+  m_EditorClassIdentifier: 
+  movementDeadzone: 0.01
+  inputResponseExponent: 1
+  baseTargetSpeed: 12
+  minimumTargetSpeed: 12
+  maximumTargetSpeed: 65
+  accelerationToSpeed: 3.5
+  boostSpeedMultiplier: 1.6
+  intentResponseSeconds: 0.16
+  driftResponseSeconds: 0.16
+  intentAuthorityFraction: 0.75
+  driftAuthorityFraction: 1
+  stopVelocityGain: 10
+  stopAuthorityFraction: 1
+  positionHoldGain: 5
+  positionHoldAuthorityFraction: 1
+  movingGravitySupport: 1
+  idleGravitySupport: 1
+  aimTorqueMultiplier: 1
+  strafeRollCoupling: 0.22

@@ -8,6 +8,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityPlanet.CityPcg;
 using UnityPlanet.ModularAssembly;
+using UnityPlanet.SpaceStation.Enhancement;
 using Object = UnityEngine.Object;
 
 public sealed class CombatTestModeTests
@@ -74,6 +75,190 @@ public sealed class CombatTestModeTests
         coordinator.SetAutoAimEnabled(false);
         Assert.That(coordinator.AutoAimEnabled, Is.False);
         Assert.That(coordinator.LockProgress, Is.Zero);
+    }
+
+    [Test]
+    public void BlueCardCatalogOnlyContainsImplementedCombatStats()
+    {
+        EnhancementStat[] stats = EnhancementTypeCatalog.All
+            .Select(item => item.Stat)
+            .ToArray();
+
+        Assert.That(stats.Length, Is.EqualTo(3));
+        CollectionAssert.AreEquivalent(
+            new[]
+            {
+                EnhancementStat.ModuleIntegrity,
+                EnhancementStat.WeaponDamage,
+                EnhancementStat.FireRate
+            },
+            stats);
+    }
+
+    [Test]
+    public void BlueCardModifiersApplyToWeaponAndEveryModuleCategory()
+    {
+        var progress = new GalaxyEnhancementProgressData
+        {
+            acquiredEnhancements = new[]
+            {
+                new AcquiredEnhancementData
+                {
+                    definitionId = "reinforced_hull_lattice",
+                    stacks = 2,
+                    totalMagnitude = 25f
+                },
+                new AcquiredEnhancementData
+                {
+                    definitionId = "structure_nanobond",
+                    stacks = 1,
+                    totalMagnitude = 5f
+                },
+                new AcquiredEnhancementData
+                {
+                    definitionId = "weapon_capacitor_overdrive",
+                    stacks = 2,
+                    totalMagnitude = 18f
+                },
+                new AcquiredEnhancementData
+                {
+                    definitionId = "adaptive_feed_cycle",
+                    stacks = 2,
+                    totalMagnitude = 12f
+                }
+            }
+        };
+        EnhancementRuntimeModifiers modifiers =
+            EnhancementRuntimeModifiers.FromProgress(progress);
+        var profile = new WeaponProfile
+        {
+            damage = 100f,
+            shotsPerSecond = 5f
+        };
+
+        modifiers.ApplyToWeapon(profile);
+
+        Assert.That(modifiers.ModuleIntegrityMultiplier,
+            Is.EqualTo(1.3f).Within(0.0001f));
+        Assert.That(profile.damage,
+            Is.EqualTo(118f).Within(0.0001f));
+        Assert.That(profile.shotsPerSecond,
+            Is.EqualTo(5.6f).Within(0.0001f));
+
+        GridModuleDefinition[] definitions =
+        {
+            ScriptableObject.CreateInstance<GridModuleDefinition>(),
+            ScriptableObject.CreateInstance<GridModuleDefinition>(),
+            ScriptableObject.CreateInstance<GridModuleDefinition>()
+        };
+        GameObject prefab = CreateRoot(
+            "BlueCardIntegrityPrefab",
+            Vector3.zero);
+        prefab.AddComponent<BoxCollider>();
+        definitions[0].Configure(
+            "core",
+            "core",
+            GridModuleCategory.Core,
+            prefab,
+            new Vector3Int(2, 2, 2),
+            100f,
+            100f,
+            0f,
+            100f,
+            0f,
+            null);
+        definitions[1].Configure(
+            "blue-card-structure",
+            "structure",
+            GridModuleCategory.Structure,
+            prefab,
+            Vector3Int.one,
+            10f,
+            0f,
+            0f,
+            80f,
+            0f,
+            null);
+        definitions[2].Configure(
+            "blue-card-weapon",
+            "weapon",
+            GridModuleCategory.KineticWeapon,
+            prefab,
+            Vector3Int.one,
+            10f,
+            0f,
+            0f,
+            60f,
+            0f,
+            null);
+        try
+        {
+            var model = new GridAssemblyModel(definitions);
+            Assert.That(model.TryPlace(
+                    definitions[1].ModuleId,
+                    new GridModulePose(new Vector3Int(1, 0, 0), 0),
+                    false,
+                    out string structureId,
+                    out string structureError),
+                Is.True,
+                structureError);
+            Assert.That(model.TryPlace(
+                    definitions[2].ModuleId,
+                    new GridModulePose(new Vector3Int(-2, 0, 0), 0),
+                    false,
+                    out string weaponId,
+                    out string weaponError),
+                Is.True,
+                weaponError);
+            GameObject ship = CreateRoot(
+                "BlueCardIntegrityShip",
+                Vector3.zero);
+            Rigidbody body = ship.AddComponent<Rigidbody>();
+            body.isKinematic = true;
+            Transform parts = CreateRoot(
+                "BlueCardIntegrityParts",
+                Vector3.zero).transform;
+            parts.SetParent(ship.transform, false);
+            Transform coreVisual = CreateRoot(
+                "BlueCardIntegrityCore",
+                Vector3.zero).transform;
+            coreVisual.SetParent(ship.transform, false);
+            var assembly = ship.AddComponent<
+                SpacecraftEditor.ShipAssembly>();
+            assembly.Configure(body, parts, null, 1f);
+            GridAssemblyPresenter presenter =
+                ship.AddComponent<GridAssemblyPresenter>();
+            presenter.Initialize(
+                model,
+                assembly,
+                coreVisual);
+            ModularBossGridFlightSession flight =
+                ship.AddComponent<ModularBossGridFlightSession>();
+            VehicleStructureGraph graph =
+                ship.AddComponent<VehicleStructureGraph>();
+            graph.Initialize(model, presenter, flight);
+
+            modifiers.ApplyToStructureGraph(graph);
+
+            GridModuleRecord coreRecord = model.Records.Single(item =>
+                item.Definition.Category == GridModuleCategory.Core);
+            Assert.That(
+                graph.MaximumIntegrity(coreRecord.RuntimeId),
+                Is.EqualTo(130f).Within(0.0001f));
+            Assert.That(
+                graph.MaximumIntegrity(structureId),
+                Is.EqualTo(104f).Within(0.0001f));
+            Assert.That(
+                graph.MaximumIntegrity(weaponId),
+                Is.EqualTo(78f).Within(0.0001f));
+        }
+        finally
+        {
+            foreach (GridModuleDefinition definition in definitions)
+            {
+                Object.DestroyImmediate(definition);
+            }
+        }
     }
 
     [Test]

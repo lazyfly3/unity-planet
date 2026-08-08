@@ -26,6 +26,7 @@ namespace UnityPlanet.SpaceStation.Skills
         Text detailDescription;
         Text detailLevel;
         Text detailRate;
+        Text detailNextEffect;
         Text detailCost;
         Text statusText;
         RawImage detailIcon;
@@ -43,6 +44,13 @@ namespace UnityPlanet.SpaceStation.Skills
             PlayerSkillProgressService.SlotCount];
         readonly Text[] slotActions = new Text[
             PlayerSkillProgressService.SlotCount];
+        Transform idleChest;
+        Transform idleLeftUpperArm;
+        Transform idleRightUpperArm;
+        Quaternion idleChestRotation;
+        Quaternion idleLeftUpperArmRotation;
+        Quaternion idleRightUpperArmRotation;
+        bool idlePoseReady;
         bool interfaceOpen;
         string selectedSkillId = PlayerSkillCatalog.SelfRepairId;
 
@@ -92,6 +100,7 @@ namespace UnityPlanet.SpaceStation.Skills
                 ? firstPersonController.transform
                 : null;
             font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            ConfigureNaturalIdlePose();
             BuildInterface();
             PlayerSkillProgressService.LoadOrCreate();
             RefreshAll();
@@ -115,6 +124,99 @@ namespace UnityPlanet.SpaceStation.Skills
             promptRoot.SetActive(false);
             if (Input.GetKeyDown(KeyCode.Escape))
                 CloseInterface();
+        }
+
+        void LateUpdate()
+        {
+            if (!idlePoseReady)
+                return;
+            float time = Time.unscaledTime;
+            float breath = Mathf.Sin(time * 1.15f);
+            idleChest.localRotation = idleChestRotation *
+                                      Quaternion.Euler(
+                                          breath * 0.45f,
+                                          Mathf.Sin(time * 0.53f) * 0.65f,
+                                          0f);
+            idleLeftUpperArm.localRotation = idleLeftUpperArmRotation *
+                                             Quaternion.Euler(
+                                                 0f,
+                                                 0f,
+                                                 breath * 0.28f);
+            idleRightUpperArm.localRotation = idleRightUpperArmRotation *
+                                              Quaternion.Euler(
+                                                  0f,
+                                                  0f,
+                                                  -breath * 0.22f);
+        }
+
+        void ConfigureNaturalIdlePose()
+        {
+            Animator animator = GetComponent<Animator>();
+            if (animator == null ||
+                !animator.isHuman ||
+                animator.runtimeAnimatorController != null)
+                return;
+
+            idleChest = animator.GetBoneTransform(HumanBodyBones.Chest);
+            idleLeftUpperArm = animator.GetBoneTransform(
+                HumanBodyBones.LeftUpperArm);
+            Transform leftLowerArm = animator.GetBoneTransform(
+                HumanBodyBones.LeftLowerArm);
+            Transform leftHand = animator.GetBoneTransform(
+                HumanBodyBones.LeftHand);
+            idleRightUpperArm = animator.GetBoneTransform(
+                HumanBodyBones.RightUpperArm);
+            Transform rightLowerArm = animator.GetBoneTransform(
+                HumanBodyBones.RightLowerArm);
+            Transform rightHand = animator.GetBoneTransform(
+                HumanBodyBones.RightHand);
+            if (idleChest == null ||
+                idleLeftUpperArm == null ||
+                leftLowerArm == null ||
+                leftHand == null ||
+                idleRightUpperArm == null ||
+                rightLowerArm == null ||
+                rightHand == null)
+                return;
+
+            Vector3 right = transform.right;
+            Vector3 forward = transform.forward;
+            AimBoneToward(
+                idleLeftUpperArm,
+                leftLowerArm,
+                -right * 0.12f + Vector3.down * 0.99f + forward * 0.05f);
+            AimBoneToward(
+                leftLowerArm,
+                leftHand,
+                right * 0.03f + Vector3.down * 0.98f + forward * 0.18f);
+            AimBoneToward(
+                idleRightUpperArm,
+                rightLowerArm,
+                right * 0.15f + Vector3.down * 0.98f - forward * 0.08f);
+            AimBoneToward(
+                rightLowerArm,
+                rightHand,
+                -right * 0.42f + Vector3.down * 0.8f + forward * 0.42f);
+
+            idleChestRotation = idleChest.localRotation;
+            idleLeftUpperArmRotation = idleLeftUpperArm.localRotation;
+            idleRightUpperArmRotation = idleRightUpperArm.localRotation;
+            idlePoseReady = true;
+        }
+
+        static void AimBoneToward(
+            Transform bone,
+            Transform child,
+            Vector3 worldDirection)
+        {
+            Vector3 currentDirection = child.position - bone.position;
+            if (currentDirection.sqrMagnitude < 0.000001f ||
+                worldDirection.sqrMagnitude < 0.000001f)
+                return;
+            bone.rotation = Quaternion.FromToRotation(
+                                currentDirection.normalized,
+                                worldDirection.normalized) *
+                            bone.rotation;
         }
 
         void OnDestroy()
@@ -274,13 +376,15 @@ namespace UnityPlanet.SpaceStation.Skills
             detailLevel.text = "技能等级  " + LevelPips(
                 level,
                 definition.MaximumLevel) + "  Lv." + level;
-            detailRate.text = PlayerSkillCatalog.EffectForLevel(
-                definition.Id,
-                level);
+            detailRate.text = "当前效果  " +
+                              PlayerSkillCatalog.EffectForLevel(
+                                  definition.Id,
+                                  level);
             detailIcon.texture = Resources.Load<Texture2D>(
                 definition.IconResourcePath);
             if (level >= definition.MaximumLevel)
             {
+                detailNextEffect.text = "下一级  已达到最高等级";
                 detailCost.text = "技能已达到最高等级";
                 upgradeButtonText.text = "已满级";
                 upgradeButton.interactable = false;
@@ -288,6 +392,10 @@ namespace UnityPlanet.SpaceStation.Skills
             else
             {
                 int cost = definition.UpgradeCostFromLevel(level);
+                detailNextEffect.text = "下一级 Lv." + (level + 1) + "  " +
+                                        PlayerSkillCatalog.EffectForLevel(
+                                            definition.Id,
+                                            level + 1);
                 detailCost.text = "升级消耗  " + cost.ToString("N0") +
                                   " 银河币";
                 upgradeButtonText.text = "升级到 Lv." + (level + 1);
@@ -355,6 +463,18 @@ namespace UnityPlanet.SpaceStation.Skills
                 new Color(0.008f, 0.04f, 0.075f, 0.98f),
                 new Color(0.04f, 0.74f, 0.9f, 0.95f));
 
+            RawImage generatedBackdrop = CreateRawImage(
+                "GeneratedBackdrop",
+                main,
+                Vector2.zero,
+                new Vector2(1540f, 850f));
+            generatedBackdrop.texture = Resources.Load<Texture2D>(
+                "UI/Skills/SkillLoadoutBackdrop");
+            generatedBackdrop.color = generatedBackdrop.texture != null
+                ? Color.white
+                : Color.clear;
+            generatedBackdrop.transform.SetAsFirstSibling();
+
             Text title = CreateText(
                 "Title",
                 main,
@@ -385,8 +505,8 @@ namespace UnityPlanet.SpaceStation.Skills
                 22,
                 TextAnchor.MiddleLeft,
                 new Color(0.46f, 0.91f, 1f));
-            SetRect(statusText.rectTransform, new Vector2(52f, 26f),
-                new Vector2(1230f, 48f));
+            SetRect(statusText.rectTransform, new Vector2(52f, 54f),
+                new Vector2(1230f, 38f));
             Text closeHint = CreateText(
                 "CloseHint",
                 main,
@@ -394,8 +514,8 @@ namespace UnityPlanet.SpaceStation.Skills
                 21,
                 TextAnchor.MiddleRight,
                 new Color(0.72f, 0.84f, 0.9f));
-            SetRect(closeHint.rectTransform, new Vector2(1290f, 28f),
-                new Vector2(190f, 44f));
+            SetRect(closeHint.rectTransform, new Vector2(1290f, 54f),
+                new Vector2(190f, 38f));
 
             interfaceRoot.SetActive(false);
             promptRoot.SetActive(false);
@@ -410,8 +530,8 @@ namespace UnityPlanet.SpaceStation.Skills
                 Vector2.zero,
                 new Vector2(410f, 660f),
                 new Vector2(52f, 100f),
-                new Color(0.01f, 0.075f, 0.115f, 0.96f),
-                new Color(0.04f, 0.55f, 0.72f, 0.9f));
+                new Color(0.01f, 0.075f, 0.115f, 0.28f),
+                Color.clear);
             Text header = CreateText(
                 "Header",
                 panel,
@@ -523,8 +643,8 @@ namespace UnityPlanet.SpaceStation.Skills
                 Vector2.zero,
                 new Vector2(570f, 660f),
                 new Vector2(482f, 100f),
-                new Color(0.006f, 0.045f, 0.078f, 0.94f),
-                new Color(0.03f, 0.45f, 0.62f, 0.9f));
+                new Color(0.006f, 0.045f, 0.078f, 0.2f),
+                Color.clear);
             Text header = CreateText(
                 "Header",
                 panel,
@@ -592,33 +712,39 @@ namespace UnityPlanet.SpaceStation.Skills
                 Vector2.zero,
                 new Vector2(448f, 660f),
                 new Vector2(1072f, 100f),
-                new Color(0.01f, 0.065f, 0.102f, 0.98f),
-                new Color(0.75f, 0.52f, 0.12f, 0.95f));
+                new Color(0.01f, 0.065f, 0.102f, 0.22f),
+                Color.clear);
+
             detailTitle = CreateText(
                 "Title",
                 panel,
                 string.Empty,
-                34,
+                32,
                 TextAnchor.MiddleCenter,
                 Color.white);
-            SetRect(detailTitle.rectTransform, new Vector2(24f, 594f),
-                new Vector2(400f, 48f));
+            SetRect(detailTitle.rectTransform, new Vector2(29f, 600f),
+                new Vector2(390f, 44f));
+
             detailIcon = CreateRawImage(
                 "Icon",
                 panel,
-                new Vector2(144f, 382f),
-                new Vector2(160f, 160f));
+                new Vector2(160f, 442f),
+                new Vector2(128f, 128f));
             detailDescription = CreateText(
                 "Description",
                 panel,
                 string.Empty,
-                19,
+                18,
                 TextAnchor.UpperLeft,
                 new Color(0.78f, 0.9f, 0.95f));
             detailDescription.horizontalOverflow = HorizontalWrapMode.Wrap;
-            detailDescription.verticalOverflow = VerticalWrapMode.Overflow;
-            SetRect(detailDescription.rectTransform, new Vector2(35f, 304f),
-                new Vector2(378f, 66f));
+            detailDescription.verticalOverflow = VerticalWrapMode.Truncate;
+            detailDescription.resizeTextForBestFit = true;
+            detailDescription.resizeTextMinSize = 14;
+            detailDescription.resizeTextMaxSize = 18;
+            SetRect(detailDescription.rectTransform, new Vector2(35f, 346f),
+                new Vector2(378f, 88f));
+
             detailLevel = CreateText(
                 "Level",
                 panel,
@@ -626,33 +752,52 @@ namespace UnityPlanet.SpaceStation.Skills
                 21,
                 TextAnchor.MiddleLeft,
                 new Color(0.4f, 0.94f, 1f));
-            SetRect(detailLevel.rectTransform, new Vector2(35f, 246f),
+            SetRect(detailLevel.rectTransform, new Vector2(35f, 296f),
                 new Vector2(378f, 38f));
+
             detailRate = CreateText(
                 "Rate",
                 panel,
                 string.Empty,
-                22,
+                18,
                 TextAnchor.MiddleLeft,
                 Color.white);
-            SetRect(detailRate.rectTransform, new Vector2(35f, 196f),
-                new Vector2(378f, 38f));
+            detailRate.horizontalOverflow = HorizontalWrapMode.Wrap;
+            detailRate.verticalOverflow = VerticalWrapMode.Truncate;
+            SetRect(detailRate.rectTransform, new Vector2(35f, 244f),
+                new Vector2(378f, 42f));
+
+            detailNextEffect = CreateText(
+                "NextEffect",
+                panel,
+                string.Empty,
+                18,
+                TextAnchor.MiddleLeft,
+                new Color(1f, 0.82f, 0.3f));
+            detailNextEffect.horizontalOverflow = HorizontalWrapMode.Wrap;
+            detailNextEffect.verticalOverflow = VerticalWrapMode.Truncate;
+            detailNextEffect.resizeTextForBestFit = true;
+            detailNextEffect.resizeTextMinSize = 15;
+            detailNextEffect.resizeTextMaxSize = 18;
+            SetRect(detailNextEffect.rectTransform, new Vector2(35f, 184f),
+                new Vector2(378f, 52f));
+
             detailCost = CreateText(
                 "Cost",
                 panel,
                 string.Empty,
-                21,
+                19,
                 TextAnchor.MiddleLeft,
                 new Color(1f, 0.82f, 0.3f));
-            SetRect(detailCost.rectTransform, new Vector2(35f, 132f),
+            SetRect(detailCost.rectTransform, new Vector2(35f, 124f),
                 new Vector2(378f, 42f));
             upgradeButton = CreateButton(
                 "Upgrade",
                 panel,
-                new Vector2(35f, 36f),
-                new Vector2(378f, 74f),
-                new Color(0.5f, 0.3f, 0.045f, 1f),
-                new Color(1f, 0.75f, 0.16f),
+                new Vector2(29f, 34f),
+                new Vector2(390f, 76f),
+                new Color(0.24f, 0.15f, 0.035f, 0.28f),
+                Color.clear,
                 UpgradeSelected);
             upgradeButtonText = CreateText(
                 "Text",

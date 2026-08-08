@@ -81,18 +81,19 @@ namespace UnityPlanet.SpaceStation.Enhancement
         }
     }
 
-    // Add new enhancement families here. The PCG and UI consume this catalog
-    // without requiring new scene objects or changes to spacecraft physics.
+    // Blue cards are intentionally limited to effects that are connected to
+    // the live modular-combat runtime. Additions belong here only after their
+    // gameplay stat has a real consumer.
     public static class EnhancementTypeCatalog
     {
         static readonly EnhancementTypeDefinition[] Definitions =
         {
             new EnhancementTypeDefinition(
                 "reinforced_hull_lattice",
-                "强化舰体晶格",
-                "全船舰体完整度 +{0:0.#}%",
+                "模块耐久提升",
+                "全部模块耐久 +{0:0.#}%",
                 EnhancementTarget.ShipWide,
-                EnhancementStat.HullIntegrity,
+                EnhancementStat.ModuleIntegrity,
                 9f,
                 2.15f,
                 1f,
@@ -100,32 +101,8 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 280,
                 5),
             new EnhancementTypeDefinition(
-                "structure_nanobond",
-                "结构纳米键合",
-                "结构模块耐久 +{0:0.#}%",
-                EnhancementTarget.Structure,
-                EnhancementStat.ModuleIntegrity,
-                11f,
-                2.1f,
-                1f,
-                85,
-                270,
-                5),
-            new EnhancementTypeDefinition(
-                "thruster_vector_calibration",
-                "推进矢量校准",
-                "推进系统有效输出 +{0:0.#}%",
-                EnhancementTarget.Propulsion,
-                EnhancementStat.ThrustEfficiency,
-                7f,
-                2.25f,
-                1f,
-                100,
-                310,
-                5),
-            new EnhancementTypeDefinition(
                 "weapon_capacitor_overdrive",
-                "武器电容超频",
+                "武器伤害提升",
                 "武器伤害 +{0:0.#}%",
                 EnhancementTarget.Weapon,
                 EnhancementStat.WeaponDamage,
@@ -137,7 +114,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 5),
             new EnhancementTypeDefinition(
                 "adaptive_feed_cycle",
-                "自适应供弹循环",
+                "武器射速提升",
                 "武器射速 +{0:0.#}%",
                 EnhancementTarget.Weapon,
                 EnhancementStat.FireRate,
@@ -147,54 +124,6 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 105,
                 320,
                 5),
-            new EnhancementTypeDefinition(
-                "phase_shield_matrix",
-                "相位护盾矩阵",
-                "护盾容量 +{0:0.#}%",
-                EnhancementTarget.Defense,
-                EnhancementStat.ShieldCapacity,
-                10f,
-                2.2f,
-                1f,
-                105,
-                325,
-                5),
-            new EnhancementTypeDefinition(
-                "reactor_storage_loop",
-                "反应堆储能回路",
-                "能源容量 +{0:0.#}%",
-                EnhancementTarget.Energy,
-                EnhancementStat.EnergyCapacity,
-                12f,
-                2.05f,
-                1f,
-                95,
-                295,
-                5),
-            new EnhancementTypeDefinition(
-                "thermal_recirculation",
-                "热量回流系统",
-                "冷却效率 +{0:0.#}%",
-                EnhancementTarget.Energy,
-                EnhancementStat.CoolingEfficiency,
-                10f,
-                2.15f,
-                1f,
-                90,
-                285,
-                5),
-            new EnhancementTypeDefinition(
-                "power_bus_optimization",
-                "能源总线优化",
-                "能源使用效率 +{0:0.#}%",
-                EnhancementTarget.Energy,
-                EnhancementStat.EnergyEfficiency,
-                8f,
-                2.1f,
-                0.95f,
-                100,
-                300,
-                5)
         };
 
         static readonly Dictionary<string, EnhancementTypeDefinition> ById =
@@ -213,6 +142,128 @@ namespace UnityPlanet.SpaceStation.Enhancement
             return ById.TryGetValue(
                 id ?? string.Empty,
                 out definition);
+        }
+    }
+
+    /// <summary>
+    /// Immutable percentages from installed blue cards, converted into the
+    /// multipliers consumed by the player's live module and weapon systems.
+    /// </summary>
+    public sealed class EnhancementRuntimeModifiers
+    {
+        public static EnhancementRuntimeModifiers None { get; } =
+            new EnhancementRuntimeModifiers(1f, 1f, 1f);
+
+        public float ModuleIntegrityMultiplier { get; }
+        public float WeaponDamageMultiplier { get; }
+        public float FireRateMultiplier { get; }
+
+        EnhancementRuntimeModifiers(
+            float moduleIntegrityMultiplier,
+            float weaponDamageMultiplier,
+            float fireRateMultiplier)
+        {
+            ModuleIntegrityMultiplier = moduleIntegrityMultiplier;
+            WeaponDamageMultiplier = weaponDamageMultiplier;
+            FireRateMultiplier = fireRateMultiplier;
+        }
+
+        public static EnhancementRuntimeModifiers LoadCurrent()
+        {
+            return FromProgress(GalaxyCurrencyService.LoadOrCreate());
+        }
+
+        public static EnhancementRuntimeModifiers FromProgress(
+            GalaxyEnhancementProgressData progress)
+        {
+            float integrityPercent = 0f;
+            float damagePercent = 0f;
+            float fireRatePercent = 0f;
+
+            AcquiredEnhancementData[] acquired =
+                progress?.acquiredEnhancements;
+            if (acquired != null)
+            {
+                foreach (AcquiredEnhancementData entry in acquired)
+                {
+                    if (entry == null)
+                    {
+                        continue;
+                    }
+
+                    float magnitude = Math.Max(0f, entry.totalMagnitude);
+                    // Preserve durability already earned from the retired
+                    // structure-only card when upgrading old save slots.
+                    if (string.Equals(
+                            entry.definitionId,
+                            "structure_nanobond",
+                            StringComparison.Ordinal))
+                    {
+                        integrityPercent += magnitude;
+                        continue;
+                    }
+
+                    if (!EnhancementTypeCatalog.TryGet(
+                            entry.definitionId,
+                            out EnhancementTypeDefinition definition))
+                    {
+                        continue;
+                    }
+
+                    switch (definition.Stat)
+                    {
+                        case EnhancementStat.ModuleIntegrity:
+                            integrityPercent += magnitude;
+                            break;
+                        case EnhancementStat.WeaponDamage:
+                            damagePercent += magnitude;
+                            break;
+                        case EnhancementStat.FireRate:
+                            fireRatePercent += magnitude;
+                            break;
+                    }
+                }
+            }
+
+            return new EnhancementRuntimeModifiers(
+                PercentToMultiplier(integrityPercent),
+                PercentToMultiplier(damagePercent),
+                PercentToMultiplier(fireRatePercent));
+        }
+
+        public void ApplyToWeapon(
+            UnityPlanet.ModularAssembly.WeaponProfile profile)
+        {
+            if (profile == null)
+            {
+                return;
+            }
+
+            profile.damage = Math.Max(
+                0f,
+                profile.damage * WeaponDamageMultiplier);
+            profile.shotsPerSecond = Math.Max(
+                0.01f,
+                profile.shotsPerSecond * FireRateMultiplier);
+        }
+
+        public void ApplyToStructureGraph(
+            UnityPlanet.ModularAssembly.VehicleStructureGraph graph)
+        {
+            if (graph == null)
+            {
+                return;
+            }
+
+            graph.ConfigureIntegrityMultipliers(
+                ModuleIntegrityMultiplier,
+                ModuleIntegrityMultiplier,
+                ModuleIntegrityMultiplier);
+        }
+
+        static float PercentToMultiplier(float percent)
+        {
+            return 1f + Math.Max(0f, percent) * 0.01f;
         }
     }
 }

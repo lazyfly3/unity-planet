@@ -15,7 +15,8 @@ namespace UnityPlanet.CityPcg
     {
         Ordinary = 0,
         TacticalLower = 1,
-        TacticalUpper = 2
+        TacticalUpper = 2,
+        DestructionAmbush = 3
     }
 
     [DisallowMultipleComponent]
@@ -53,7 +54,9 @@ namespace UnityPlanet.CityPcg
         Main = 0,
         MaskedFlank = 1,
         LongRange = 2,
-        EnemyIngress = 3
+        EnemyIngress = 3,
+        KiteLoop = 4,
+        VerticalEscape = 5
     }
 
     public enum AirCombatVolumeKind
@@ -90,6 +93,20 @@ namespace UnityPlanet.CityPcg
         CombatTower = 2,
         Landmark = 3,
         Facility = 4
+    }
+
+    public enum CombatCityBlockRole
+    {
+        Maneuver = 0,
+        Occlusion = 1,
+        Exposure = 2,
+        Recovery = 3,
+        Kite = 4,
+        TacticalChoke = 5,
+        Vertical = 6,
+        Attack = 7,
+        Destruction = 8,
+        CombatBoundary = 9
     }
 
     [Serializable]
@@ -153,21 +170,43 @@ namespace UnityPlanet.CityPcg
         [Range(1, 24)]
         public int maximumAttempts = 10;
 
+        [Header("Combat-driven PCG")]
+        public bool useVisualDistrictThemes = true;
+        public CombatCityDifficultyProfile combatDifficulty =
+            new CombatCityDifficultyProfile();
+        public CombatCityDifficultyProfile Difficulty =>
+            combatDifficulty ?? (combatDifficulty =
+                new CombatCityDifficultyProfile());
+
         public float MainCorridorWidth => Mathf.Max(
             152f,
-            turnRadius * 1.52f + wingspan * 0.4f);
+            turnRadius * 1.52f + wingspan * 0.4f) *
+            Mathf.Lerp(1.10f, 0.92f, Difficulty.navigationChallenge);
 
         public float FlankCorridorWidth => Mathf.Max(
             118f,
-            turnRadius * 1.22f + wingspan * 0.25f);
+            turnRadius * 1.22f + wingspan * 0.25f) *
+            Mathf.Lerp(1.08f, 0.86f, Difficulty.navigationChallenge);
 
         public float LongRangeCorridorWidth => Mathf.Max(
             136f,
-            turnRadius * 1.38f + wingspan * 0.25f);
+            turnRadius * 1.38f + wingspan * 0.25f) *
+            Mathf.Lerp(1.12f, 0.88f, Difficulty.navigationChallenge);
 
-        public float ManeuverDiameter => Mathf.Max(350f, turnRadius * 3.55f);
+        public float ManeuverDiameter => Mathf.Max(350f, turnRadius * 3.55f) *
+            Mathf.Lerp(1.10f, 0.92f, Difficulty.navigationChallenge);
 
-        public float RecoveryDiameter => Mathf.Max(200f, turnRadius * 2.1f);
+        public float RecoveryDiameter => Mathf.Max(200f, turnRadius * 2.1f) *
+            Mathf.Lerp(0.92f, 1.16f, Difficulty.recoveryGenerosity);
+
+        // `wingspan` is the gameplay envelope used by the city planner rather
+        // than the bare renderer width.  A few metres of lateral allowance are
+        // still required because arcade steering yaws and drifts while the
+        // player lines up an alley.  Ordinary building gaps must therefore be
+        // wider than the reference hull instead of merely avoiding overlap.
+        public float MinimumDefaultPresetBuildingGap => Mathf.Max(
+            14f,
+            wingspan + 4f);
 
         public AirCombatCitySettings ValidatedCopy()
         {
@@ -186,7 +225,10 @@ namespace UnityPlanet.CityPcg
                 maximumAltitude = Mathf.Clamp(maximumAltitude, 180f, 400f),
                 buildingSpacing = Mathf.Clamp(buildingSpacing, 48f, 96f),
                 buildingDensity = Mathf.Clamp(buildingDensity, 0.5f, 0.95f),
-                maximumAttempts = Mathf.Clamp(maximumAttempts, 1, 24)
+                maximumAttempts = Mathf.Clamp(maximumAttempts, 1, 24),
+                useVisualDistrictThemes = useVisualDistrictThemes,
+                combatDifficulty = (combatDifficulty ??
+                    new CombatCityDifficultyProfile()).ValidatedCopy()
             };
             copy.mediumAltitude = Mathf.Max(
                 copy.lowAltitude + 30f,
@@ -222,6 +264,24 @@ namespace UnityPlanet.CityPcg
     }
 
     [Serializable]
+    public sealed class CombatCityBlockPlan
+    {
+        public string stableId = string.Empty;
+        public int gridX;
+        public int gridZ;
+        public Bounds bounds;
+        public CombatCityBlockRole role;
+        public string primaryOpportunityId = string.Empty;
+        public string tacticalRegionId = string.Empty;
+        public string mergedGroupId = string.Empty;
+        public float roadWidthScale = 1f;
+        public float buildingDensityScale = 1f;
+        public float buildingHeightScale = 1f;
+        public bool mergeEast;
+        public bool mergeNorth;
+    }
+
+    [Serializable]
     public sealed class AirCombatFlightRoute
     {
         public string stableId = string.Empty;
@@ -254,6 +314,14 @@ namespace UnityPlanet.CityPcg
     }
 
     [Serializable]
+    public sealed class AirCombatBoundaryWallPlan
+    {
+        public string stableId = string.Empty;
+        public Vector3 center;
+        public Vector3 size;
+    }
+
+    [Serializable]
     public sealed class AirCombatEnemyIngress
     {
         public string stableId = string.Empty;
@@ -279,10 +347,16 @@ namespace UnityPlanet.CityPcg
             new List<AirCombatTacticalVolume>(16);
         public readonly List<AirCombatBuildingLot> buildings =
             new List<AirCombatBuildingLot>(512);
+        public readonly List<AirCombatBoundaryWallPlan> boundaryWalls =
+            new List<AirCombatBoundaryWallPlan>(4);
         public readonly List<AirCombatEnemyIngress> ingresses =
             new List<AirCombatEnemyIngress>(8);
         public readonly List<Vector3> facilityCores =
             new List<Vector3>(3);
+        public readonly List<TacticalOpportunity> opportunities =
+            new List<TacticalOpportunity>(16);
+        public readonly List<CombatCityBlockPlan> tacticalBlocks =
+            new List<CombatCityBlockPlan>(64);
     }
 
     [Serializable]
@@ -324,6 +398,39 @@ namespace UnityPlanet.CityPcg
         public float minimumTacticalClearHeight;
         public float minimumTacticalClearWidth;
         public bool skybridgeNetworkValid;
+        public int tacticalOpportunityCount;
+        public int exposureShortcutCount;
+        public int recoveryOpportunityCount;
+        public int kiteLoopOpportunityCount;
+        public int minimumTacticalChoices;
+        public float longestExposureSeconds;
+        public float nearestRecoverySeconds;
+        public bool tacticalOpportunityNetworkValid;
+        public bool dominantRouteDetected;
+        public float exposureShortcutSavingRatio;
+        public int occlusionBreakCount;
+        public int kiteLoopObstructionCount;
+        public int destructionAmbushFeatureCount;
+        public int destructionAmbushBridgeCount;
+        public int physicalAttackPerchCount;
+        public int coveredAttackPerchCount;
+        public int occlusionBoundaryTowerCount;
+        public int combatBoundaryTowerCount;
+        public int combatBoundaryAirWallCount;
+        public int recoveryPocketOutputBlockedCount;
+        public int occlusionMergedRoadSegments;
+        public bool verticalEscapePhysical;
+        public bool combatRegionsPhysical;
+        public int boundTacticalChokeCount;
+        public int tacticalBlockCount;
+        public int tacticalRegionCount;
+        public int unassignedTacticalBlockCount;
+        public int mergedBlockGroupCount;
+        public int removedInternalRoadSegments;
+        public float minimumRoadWidth;
+        public float maximumRoadWidth;
+        public bool roadWidthsVaried;
+        public bool tacticalBlockCoverageValid;
         public string failureReason = string.Empty;
 
         public string Summary =>
@@ -332,7 +439,10 @@ namespace UnityPlanet.CityPcg
             + " | 建筑 " + buildingCount
             + " | 高遮挡 " + highBuildingCount
             + " | 航路 " + routeCount
-            + " | 敌机入口 " + ingressCount
+            + " | 战术街区 " + tacticalBlockCount
+            + " | 合并道路 " + removedInternalRoadSegments
+            + " | 路宽 " + minimumRoadWidth.ToString("0") + "-" +
+              maximumRoadWidth.ToString("0") + "m"
             + " | 最小转弯 " + minimumTurnRadius.ToString("0") + "m"
             + " | 校验码 " + checksum;
     }
@@ -428,19 +538,25 @@ namespace UnityPlanet.CityPcg
             };
 
             BuildTacticalSpace(settings, plan);
+            CombatDrivenCityPcgPlanner.Populate(settings, plan);
+            CombatDrivenCityPcgPlanner.BuildTacticalBlockLayout(settings, plan);
             BuildRoadNetwork(settings, plan);
             BuildEnemyIngresses(settings, plan, ref random);
             BuildBuildings(settings, plan, ref random);
+            CombatDrivenCityPcgPlanner.BuildPhysicalRegionFeatures(
+                settings,
+                plan);
             BuildLowUrbanIslands(settings, plan, ref random);
             BuildRecoveryDistricts(settings, plan, ref random);
             BuildTacticalPark(settings, plan);
             EnsureCentralTacticalCover(settings, plan);
             EnsureCentralLowCover(settings, plan);
             PromoteCentralMediumCover(settings, plan, ref random);
+            EnsureCentralCoverContinuity(settings, plan);
             PromoteSkylineAnchors(settings, plan);
             if (settings.mission == AirCombatCityMission.FacilityAssault)
                 BuildFacility(settings, plan);
-            BuildTacticalMarkers(settings, plan);
+            CombatDrivenCityPcgPlanner.BindGeneratedFeatures(settings, plan);
             return plan;
         }
 
@@ -457,24 +573,40 @@ namespace UnityPlanet.CityPcg
             float streetPitch = ResolveStreetPitch(settings);
             float sideX = streetPitch * 2f;
             float connectorZ = streetPitch * 3f;
-            const float RoadTileWidth = 22.26f;
-            const float SidewalkWidth = 6.2f;
-            float westRecoveryX = 0.5f * (
-                -sideX + RoadTileWidth + SidewalkWidth +
-                (-streetPitch - RoadTileWidth * 0.5f - SidewalkWidth));
-            float recoveryZ = 0.5f * (
-                RoadTileWidth * 1.5f + SidewalkWidth +
-                (streetPitch - RoadTileWidth * 0.5f - SidewalkWidth));
+            float upperCombatAltitude = Mathf.Lerp(
+                settings.mediumAltitude,
+                settings.highAltitude,
+                0.35f);
+            float maskedDetour = Mathf.Lerp(
+                1.45f,
+                1.85f,
+                settings.Difficulty.navigationChallenge);
+            float maskedX = -sideX * maskedDetour;
+            float exposureX = sideX * 0.20f;
+            Vector3 kiteCenter = new Vector3(
+                streetPitch * 1.50f,
+                settings.mediumAltitude,
+                streetPitch * 0.50f);
+            // Recovery pockets live in the outer parcels, not beside the kite
+            // loop.  The previous mirrored placement put the eastern pocket's
+            // tall back wall directly through the loop and its north wall into
+            // a 94 m avenue.  Because that relationship was seed-independent,
+            // retrying seeds could never produce a valid city.
+            float westRecoveryX = -streetPitch * 2.5f;
+            float eastRecoveryX = streetPitch * 3.5f;
+            float recoveryZ = streetPitch * 0.62f;
             Vector3 recoveryPocketSize = new Vector3(
-                streetPitch * 0.67f,
+                streetPitch * 0.67f * Mathf.Lerp(
+                    0.88f, 1.14f, settings.Difficulty.recoveryGenerosity),
                 settings.maximumAltitude * 0.72f,
-                streetPitch * 0.62f);
+                streetPitch * 0.62f * Mathf.Lerp(
+                    0.88f, 1.14f, settings.Difficulty.recoveryGenerosity));
             Vector3 westRecovery = new Vector3(
                 westRecoveryX,
                 settings.mediumAltitude,
                 recoveryZ);
             Vector3 eastRecovery = new Vector3(
-                -westRecoveryX,
+                eastRecoveryX,
                 settings.mediumAltitude,
                 -recoveryZ);
             bool clearanceStyle = settings.mission !=
@@ -520,11 +652,13 @@ namespace UnityPlanet.CityPcg
                 plan,
                 "volume.kite-loop.center",
                 AirCombatVolumeKind.KiteLoop,
-                new Vector3(0f, settings.mediumAltitude, 0f),
+                kiteCenter,
                 new Vector3(
-                    streetPitch * 2.05f,
+                    settings.turnRadius * Mathf.Lerp(
+                        3.30f, 2.72f, settings.Difficulty.navigationChallenge),
                     settings.maximumAltitude * 0.82f,
-                    streetPitch * 2.05f));
+                    settings.turnRadius * Mathf.Lerp(
+                        3.30f, 2.72f, settings.Difficulty.navigationChallenge)));
             AddVolume(
                 plan,
                 "volume.assault-breach.main",
@@ -538,7 +672,7 @@ namespace UnityPlanet.CityPcg
                 plan,
                 "volume.mask.gate.south",
                 AirCombatVolumeKind.OcclusionGate,
-                new Vector3(-sideX, settings.mediumAltitude, -connectorZ * 0.55f),
+                new Vector3(maskedX, settings.mediumAltitude, -connectorZ * 0.55f),
                 new Vector3(
                     settings.FlankCorridorWidth,
                     settings.maximumAltitude * 0.75f,
@@ -547,7 +681,7 @@ namespace UnityPlanet.CityPcg
                 plan,
                 "volume.mask.gate.north",
                 AirCombatVolumeKind.OcclusionGate,
-                new Vector3(-sideX, settings.mediumAltitude, connectorZ * 0.55f),
+                new Vector3(maskedX, settings.mediumAltitude, connectorZ * 0.55f),
                 new Vector3(
                     settings.FlankCorridorWidth,
                     settings.maximumAltitude * 0.75f,
@@ -556,11 +690,12 @@ namespace UnityPlanet.CityPcg
                 plan,
                 "volume.exposure.east",
                 AirCombatVolumeKind.ExposureLane,
-                new Vector3(sideX, settings.highAltitude, 0f),
+                new Vector3(exposureX, upperCombatAltitude, 0f),
                 new Vector3(
                     settings.LongRangeCorridorWidth,
                     settings.maximumAltitude,
-                    settings.combatSpeed * 9f));
+                    settings.combatSpeed * Mathf.Lerp(
+                        6.2f, 9f, settings.Difficulty.exposurePressure)));
 
             Vector3 south = new Vector3(0f, settings.lowAltitude, -half + 90f);
             Vector3 north = new Vector3(0f, settings.mediumAltitude, half - 90f);
@@ -580,10 +715,10 @@ namespace UnityPlanet.CityPcg
                 AirCombatRouteKind.MaskedFlank,
                 settings.FlankCorridorWidth,
                 south,
-                new Vector3(-sideX * 0.52f, settings.lowAltitude, -connectorZ),
-                new Vector3(-sideX, settings.mediumAltitude, -connectorZ * 0.55f),
-                new Vector3(-sideX, settings.mediumAltitude, connectorZ * 0.55f),
-                new Vector3(-sideX * 0.52f, settings.mediumAltitude, connectorZ),
+                new Vector3(maskedX * 0.52f, settings.lowAltitude, -connectorZ),
+                new Vector3(maskedX, settings.mediumAltitude, -connectorZ * 0.55f),
+                new Vector3(maskedX, settings.mediumAltitude, connectorZ * 0.55f),
+                new Vector3(maskedX * 0.52f, settings.mediumAltitude, connectorZ),
                 north);
             AddRoute(
                 plan,
@@ -591,11 +726,39 @@ namespace UnityPlanet.CityPcg
                 AirCombatRouteKind.LongRange,
                 settings.LongRangeCorridorWidth,
                 south,
-                new Vector3(sideX * 0.52f, settings.mediumAltitude, -connectorZ),
-                new Vector3(sideX, settings.highAltitude, -connectorZ * 0.55f),
-                new Vector3(sideX, settings.highAltitude, connectorZ * 0.55f),
-                new Vector3(sideX * 0.52f, settings.mediumAltitude, connectorZ),
+                new Vector3(exposureX * 0.52f, settings.mediumAltitude, -connectorZ),
+                new Vector3(exposureX, upperCombatAltitude, -connectorZ * 0.55f),
+                new Vector3(exposureX, upperCombatAltitude, connectorZ * 0.55f),
+                new Vector3(exposureX * 0.52f, settings.mediumAltitude, connectorZ),
                 north);
+
+            float loopRadius = settings.turnRadius * Mathf.Lerp(
+                1.55f,
+                1.22f,
+                settings.Difficulty.navigationChallenge);
+            var loopPoints = new Vector3[13];
+            for (int point = 0; point < loopPoints.Length; point++)
+            {
+                float angle = point / 12f * Mathf.PI * 2f;
+                loopPoints[point] = kiteCenter + new Vector3(
+                    Mathf.Cos(angle) * loopRadius,
+                    0f,
+                    Mathf.Sin(angle) * loopRadius);
+            }
+            AddRoute(
+                plan,
+                "route.kite-loop.city-block",
+                AirCombatRouteKind.KiteLoop,
+                Mathf.Max(58f, settings.wingspan * 2f + 14f),
+                loopPoints);
+            AddRoute(
+                plan,
+                "route.vertical-escape.central-avenue",
+                AirCombatRouteKind.VerticalEscape,
+                settings.MainCorridorWidth * 0.58f,
+                new Vector3(0f, settings.lowAltitude, -connectorZ * 0.35f),
+                new Vector3(0f, settings.mediumAltitude, 0f),
+                new Vector3(0f, upperCombatAltitude, connectorZ * 0.35f));
         }
 
         static void BuildRoadNetwork(
@@ -609,45 +772,108 @@ namespace UnityPlanet.CityPcg
             float cityHalf = Mathf.Min(
                 settings.mapSize * 0.5f - 5.2f,
                 settings.buildingSpacing * 13f);
-            for (int index = -3; index <= 3; index++)
+            float[] boundaries =
             {
-                float coordinate = index * pitch;
-                int northSouthLanes = index == 0
+                -cityHalf,
+                -pitch * 3f,
+                -pitch * 2f,
+                -pitch,
+                0f,
+                pitch,
+                pitch * 2f,
+                pitch * 3f,
+                cityHalf
+            };
+            for (int boundaryIndex = 1; boundaryIndex < boundaries.Length - 1;
+                 boundaryIndex++)
+            {
+                int roadIndex = boundaryIndex - 4;
+                float coordinate = boundaries[boundaryIndex];
+                int northSouthBaseLanes = roadIndex == 0
                     ? 3
-                    : Mathf.Abs(index) == 2 ? 2 : 1;
-                AirCombatRouteKind northSouthKind = index < 0
+                    : Mathf.Abs(roadIndex) == 2 ? 2 : 1;
+                AirCombatRouteKind northSouthKind = roadIndex < 0
                     ? AirCombatRouteKind.MaskedFlank
-                    : index > 0
+                    : roadIndex > 0
                         ? AirCombatRouteKind.LongRange
                         : AirCombatRouteKind.Main;
-                AddRoad(
-                    plan,
-                    "road.grid.ns." + (index + 3).ToString("D2"),
-                    northSouthKind,
-                    new Vector3(coordinate, 0f, -cityHalf),
-                    new Vector3(coordinate, 0f, cityHalf),
-                    RoadTileWidth * northSouthLanes,
-                    northSouthLanes,
-                    index == 2);
+                for (int row = 0; row < 8; row++)
+                {
+                    CombatCityBlockPlan west =
+                        CombatDrivenCityPcgPlanner.GetTacticalBlock(
+                            plan, boundaryIndex - 1, row);
+                    CombatCityBlockPlan east =
+                        CombatDrivenCityPcgPlanner.GetTacticalBlock(
+                            plan, boundaryIndex, row);
+                    if (west != null && west.mergeEast)
+                        continue;
+                    float width = ResolveSegmentRoadWidth(
+                        settings,
+                        RoadTileWidth * northSouthBaseLanes,
+                        west,
+                        east);
+                    AddRoad(
+                        plan,
+                        "road.grid.ns." + (roadIndex + 3).ToString("D2") +
+                        ".segment." + row.ToString("D2"),
+                        northSouthKind,
+                        new Vector3(coordinate, 0f, boundaries[row]),
+                        new Vector3(coordinate, 0f, boundaries[row + 1]),
+                        width,
+                        Mathf.Clamp(Mathf.RoundToInt(width / RoadTileWidth), 1, 4),
+                        roadIndex == 2);
+                }
 
-                int eastWestLanes = index == 0
+                int eastWestBaseLanes = roadIndex == 0
                     ? 3
-                    : Mathf.Abs(index) == 3 ? 2 : 1;
-                AirCombatRouteKind eastWestKind = index < 0
+                    : Mathf.Abs(roadIndex) == 3 ? 2 : 1;
+                AirCombatRouteKind eastWestKind = roadIndex < 0
                     ? AirCombatRouteKind.MaskedFlank
-                    : index > 0
+                    : roadIndex > 0
                         ? AirCombatRouteKind.LongRange
                         : AirCombatRouteKind.Main;
-                AddRoad(
-                    plan,
-                    "road.grid.ew." + (index + 3).ToString("D2"),
-                    eastWestKind,
-                    new Vector3(-cityHalf, 0f, coordinate),
-                    new Vector3(cityHalf, 0f, coordinate),
-                    RoadTileWidth * eastWestLanes,
-                    eastWestLanes,
-                    false);
+                for (int column = 0; column < 8; column++)
+                {
+                    CombatCityBlockPlan south =
+                        CombatDrivenCityPcgPlanner.GetTacticalBlock(
+                            plan, column, boundaryIndex - 1);
+                    CombatCityBlockPlan north =
+                        CombatDrivenCityPcgPlanner.GetTacticalBlock(
+                            plan, column, boundaryIndex);
+                    if (south != null && south.mergeNorth)
+                        continue;
+                    float width = ResolveSegmentRoadWidth(
+                        settings,
+                        RoadTileWidth * eastWestBaseLanes,
+                        south,
+                        north);
+                    AddRoad(
+                        plan,
+                        "road.grid.ew." + (roadIndex + 3).ToString("D2") +
+                        ".segment." + column.ToString("D2"),
+                        eastWestKind,
+                        new Vector3(boundaries[column], 0f, coordinate),
+                        new Vector3(boundaries[column + 1], 0f, coordinate),
+                        width,
+                        Mathf.Clamp(Mathf.RoundToInt(width / RoadTileWidth), 1, 4),
+                        false);
+                }
             }
+        }
+
+        static float ResolveSegmentRoadWidth(
+            AirCombatCitySettings settings,
+            float baseWidth,
+            CombatCityBlockPlan first,
+            CombatCityBlockPlan second)
+        {
+            float firstScale = first != null ? first.roadWidthScale : 1f;
+            float secondScale = second != null ? second.roadWidthScale : firstScale;
+            float localScale = (firstScale + secondScale) * 0.5f;
+            return Mathf.Clamp(
+                baseWidth * localScale * settings.Difficulty.roadWidthScale,
+                16f,
+                94f);
         }
 
         static void BuildEnemyIngresses(
@@ -655,18 +881,19 @@ namespace UnityPlanet.CityPcg
             AirCombatCityPlan plan,
             ref StableRandom random)
         {
-            // Formal horde spawning validates entrances against the finite
-            // combat warning radius. Keeping these entrances inside 500 m
-            // lets the existing spawn rules work in a city without changing
-            // wave timing, roles or counts.
+            // Kept only as non-visual compatibility samples for the current
+            // horde spawner. They do not author routes, regions, labels or
+            // encounter semantics; the spawning policy can replace them later.
             float radius = Mathf.Min(
                 settings.mapSize * 0.5f - 82f,
                 500f);
             float missionOffset = settings.mission ==
                 AirCombatCityMission.FacilityAssault ? 22.5f : 0f;
-            for (int i = 0; i < 8; i++)
+            int ingressDirectionCount = 6 + Mathf.RoundToInt(
+                settings.Difficulty.combatPressure * 2f);
+            for (int i = 0; i < ingressDirectionCount; i++)
             {
-                float angle = missionOffset + i * 45f +
+                float angle = missionOffset + i * (360f / ingressDirectionCount) +
                               random.Range(-4f, 4f);
                 float radians = angle * Mathf.Deg2Rad;
                 AirCombatEnemyLaneKind kind = i % 3 == 0
@@ -695,14 +922,6 @@ namespace UnityPlanet.CityPcg
                     kind = kind,
                     warningSeconds = warning
                 });
-                AddRoute(
-                    plan,
-                    "route.ingress." + i.ToString("D2"),
-                    AirCombatRouteKind.EnemyIngress,
-                    kind == AirCombatEnemyLaneKind.Suicide ? 92f : 126f,
-                    position,
-                    Vector3.Lerp(position, target, 0.52f),
-                    target);
             }
         }
 
@@ -750,6 +969,27 @@ namespace UnityPlanet.CityPcg
                     : normalizedRadius < 0.75f
                         ? Mathf.Min(0.98f, settings.buildingDensity + 0.14f)
                         : Mathf.Max(0.68f, settings.buildingDensity - 0.16f);
+                CombatCityBlockPlan tacticalBlock =
+                    CombatDrivenCityPcgPlanner.FindTacticalBlock(plan, point);
+                if (tacticalBlock != null)
+                {
+                    localDensity = Mathf.Clamp01(
+                        localDensity * tacticalBlock.buildingDensityScale);
+                    if (tacticalBlock.mergedGroupId != tacticalBlock.stableId)
+                    {
+                        footprint = Mathf.Min(
+                            spacing * 0.93f,
+                            footprint * 1.08f);
+                        depth = Mathf.Min(
+                            spacing * 0.93f,
+                            depth * 1.08f);
+                    }
+                }
+                float maximumFlyableParcelSpan = Mathf.Max(
+                    18f,
+                    spacing - settings.MinimumDefaultPresetBuildingGap);
+                footprint = Mathf.Min(footprint, maximumFlyableParcelSpan);
+                depth = Mathf.Min(depth, maximumFlyableParcelSpan);
                 if (Mathf.Abs(point.x) > half - 44f ||
                     Mathf.Abs(point.y) > half - 44f ||
                     random.Value() > localDensity)
@@ -800,6 +1040,10 @@ namespace UnityPlanet.CityPcg
                             : random.Range(36f, 84f);
                         break;
                 }
+                if (tacticalBlock != null)
+                    height *= tacticalBlock.buildingHeightScale;
+                if (!float.IsPositiveInfinity(protectedRoofLimit))
+                    height = Mathf.Min(height, protectedRoofLimit - 3f);
                 height = Mathf.Min(height, settings.maximumAltitude - 18f);
                 float yaw = ResolveFacadeYaw(plan, point);
                 if (IsReservedForFlight(
@@ -1050,19 +1294,26 @@ namespace UnityPlanet.CityPcg
                     }
                 }
 
-                // 两个维修庭院都朝向城市中心开口。后墙切断远程视线，
-                // 两翼只封侧向火力，玩家仍能一口气冲出，不会变成死胡同。
-                float openSign = center.x < 0f ? 1f : -1f;
-                float backHeight = random.Range(108f, 116f);
-                float nearHeight = random.Range(94f, 104f);
-                float farHeight = random.Range(101f, 112f);
+                // 维修庭院背向交战中心开口。玩家进入后能换取完整的
+                // 十秒维修窗口，但后墙也会切断其对中心战场的输出线；
+                // 想继续射击就必须离开庭院，避免安全掩体成为永久炮台。
+                float openSign = center.x < 0f ? -1f : 1f;
+                float backHeight = Mathf.Max(
+                    random.Range(108f, 116f),
+                    settings.mediumAltitude + 28f);
+                float nearHeight = Mathf.Max(
+                    random.Range(94f, 104f),
+                    settings.mediumAltitude + 16f);
+                float farHeight = Mathf.Max(
+                    random.Range(101f, 112f),
+                    settings.mediumAltitude + 20f);
                 AddRecoveryBuilding(
                     settings,
                     plan,
                     "building.recovery." + districtIndex + ".back." +
                     stableIndex++.ToString("D3"),
-                    center + new Vector2(-openSign * 58.5f, 0f),
-                    new Vector2(110f, 22f),
+                    center + new Vector2(-openSign * 44f, 0f),
+                    new Vector2(110f, 18f),
                     backHeight,
                     openSign > 0f ? 90f : -90f,
                     970 + districtIndex,
@@ -1072,8 +1323,8 @@ namespace UnityPlanet.CityPcg
                     plan,
                     "building.recovery." + districtIndex + ".south." +
                     stableIndex++.ToString("D3"),
-                    center + new Vector2(openSign * 4f, -51f),
-                    new Vector2(103f, 18f),
+                    center + new Vector2(-openSign * 12f, -42f),
+                    new Vector2(78f, 18f),
                     nearHeight,
                     0f,
                     970 + districtIndex,
@@ -1083,8 +1334,8 @@ namespace UnityPlanet.CityPcg
                     plan,
                     "building.recovery." + districtIndex + ".north." +
                     stableIndex++.ToString("D3"),
-                    center + new Vector2(openSign * 4f, 51f),
-                    new Vector2(103f, 18f),
+                    center + new Vector2(-openSign * 12f, 42f),
+                    new Vector2(78f, 18f),
                     farHeight,
                     180f,
                     970 + districtIndex,
@@ -1104,16 +1355,11 @@ namespace UnityPlanet.CityPcg
             int clusterId,
             int visualVariant)
         {
-            if (IsReservedForFlight(
-                    settings,
-                    plan,
-                    point,
-                    height,
-                    footprint,
-                    yaw))
-            {
-                return;
-            }
+            // These three walls are the physical definition of the recovery
+            // pocket, not ordinary filler buildings. Their authored opening
+            // faces away from the city centre and their footprints are validated later
+            // against both roads and flight corridors. Silently dropping a
+            // wall here turns a named recovery area into empty scenery.
             AirCombatBuildingBand band = height >= 68f
                 ? AirCombatBuildingBand.Medium
                 : AirCombatBuildingBand.Low;
@@ -1130,52 +1376,6 @@ namespace UnityPlanet.CityPcg
                 clusterId = clusterId,
                 visualVariant = PositiveModulo(visualVariant * 61, 97)
             });
-        }
-
-        static void BuildTacticalMarkers(
-            AirCombatCitySettings settings,
-            AirCombatCityPlan plan)
-        {
-            int[] selected = { -1, -1 };
-            float[] scores = { float.PositiveInfinity, float.PositiveInfinity };
-            Vector2[] targets =
-            {
-                new Vector2(-settings.mapSize * 0.28f, settings.mapSize * 0.18f),
-                new Vector2(settings.mapSize * 0.28f, -settings.mapSize * 0.18f)
-            };
-            for (int i = 0; i < plan.buildings.Count; i++)
-            {
-                AirCombatBuildingLot building = plan.buildings[i];
-                if (building.band != AirCombatBuildingBand.High)
-                    continue;
-                Vector2 position = new Vector2(
-                    building.center.x,
-                    building.center.z);
-                for (int t = 0; t < targets.Length; t++)
-                {
-                    float score = Vector2.SqrMagnitude(position - targets[t]);
-                    if (score >= scores[t])
-                        continue;
-                    scores[t] = score;
-                    selected[t] = i;
-                }
-            }
-            for (int i = 0; i < selected.Length; i++)
-            {
-                if (selected[i] < 0)
-                    continue;
-                AirCombatBuildingLot building = plan.buildings[selected[i]];
-                float roof = building.center.y + building.size.y * 0.5f;
-                AddVolume(
-                    plan,
-                    "volume.dominance-perch." + i,
-                    AirCombatVolumeKind.DominancePerch,
-                    new Vector3(building.center.x, roof + 12f, building.center.z),
-                    new Vector3(
-                        building.size.x * 1.15f,
-                        24f,
-                        building.size.z * 1.15f));
-            }
         }
 
         static void BuildTacticalPark(
@@ -1507,6 +1707,155 @@ namespace UnityPlanet.CityPcg
             }
         }
 
+        static void EnsureCentralCoverContinuity(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan)
+        {
+            // Continuity is a construction invariant, not a reason to throw
+            // away the player's seed. Fill only pathological holes that are
+            // larger than roughly two seconds of flight; authored exposure
+            // plazas, roads and flight corridors remain protected.
+            const int MaximumRepairs = 6;
+            const float Width = 22f;
+            const float Depth = 24f;
+            const float Height = 94f;
+            const float SearchStep = 10f;
+            const int SearchRings = 6;
+            const int DirectionsPerRing = 16;
+            float sampleRadius = settings.ManeuverDiameter * 0.74f;
+            float sampleStep = settings.buildingSpacing * 0.5f;
+            float maximumAllowedGap = Mathf.Max(
+                1f,
+                settings.combatSpeed * 2.4f - 1.5f);
+
+            for (int repair = 0; repair < MaximumRepairs; repair++)
+            {
+                Vector2 worstSample = Vector2.zero;
+                float worstGap = 0f;
+                for (float x = -sampleRadius;
+                     x <= sampleRadius;
+                     x += sampleStep)
+                for (float z = -sampleRadius;
+                     z <= sampleRadius;
+                     z += sampleStep)
+                {
+                    Vector2 sample = new Vector2(x, z);
+                    if (sample.sqrMagnitude > sampleRadius * sampleRadius)
+                        continue;
+                    float nearest = DistanceToNearestUsefulCover(
+                        settings,
+                        plan,
+                        sample);
+                    if (nearest <= worstGap)
+                        continue;
+                    worstGap = nearest;
+                    worstSample = sample;
+                }
+                if (worstGap <= maximumAllowedGap)
+                    return;
+
+                Vector2 bestPoint = Vector2.zero;
+                float bestYaw = 0f;
+                float bestGap = float.PositiveInfinity;
+                for (int ring = 0; ring <= SearchRings; ring++)
+                {
+                    int directionCount = ring == 0
+                        ? 1
+                        : DirectionsPerRing;
+                    for (int directionIndex = 0;
+                         directionIndex < directionCount;
+                         directionIndex++)
+                    {
+                        float angle = directionIndex /
+                                      (float)DirectionsPerRing *
+                                      Mathf.PI * 2f;
+                        Vector2 point = worstSample + new Vector2(
+                            Mathf.Cos(angle),
+                            Mathf.Sin(angle)) * ring * SearchStep;
+                        if (point.magnitude > sampleRadius + 24f)
+                            continue;
+                        float yaw = ResolveFacadeYaw(plan, point);
+                        if (IsInsideProtectedGroundVolume(
+                                plan,
+                                point,
+                                new Vector2(Width, Depth)) ||
+                            IsReservedForFlight(
+                                settings,
+                                plan,
+                                point,
+                                Height,
+                                new Vector2(Width, Depth),
+                                yaw) ||
+                            OverlapsBuilding(
+                                plan.buildings,
+                                point,
+                                Width,
+                                Depth))
+                        {
+                            continue;
+                        }
+
+                        var probe = new AirCombatBuildingLot
+                        {
+                            center = new Vector3(point.x, Height * 0.5f, point.y),
+                            size = new Vector3(Width, Height, Depth),
+                            yaw = yaw,
+                            band = AirCombatBuildingBand.Medium
+                        };
+                        float repairedGap = DistanceToBuildingFootprint(
+                            worstSample,
+                            probe);
+                        if (repairedGap >= bestGap)
+                            continue;
+                        bestGap = repairedGap;
+                        bestPoint = point;
+                        bestYaw = yaw;
+                    }
+                }
+                if (float.IsPositiveInfinity(bestGap) || bestGap >= worstGap)
+                    return;
+
+                plan.buildings.Add(new AirCombatBuildingLot
+                {
+                    stableId = "building.cover-continuity-repair." +
+                               repair.ToString("D2"),
+                    center = new Vector3(
+                        bestPoint.x,
+                        Height * 0.5f,
+                        bestPoint.y),
+                    size = new Vector3(Width, Height, Depth),
+                    yaw = bestYaw,
+                    band = AirCombatBuildingBand.Medium,
+                    archetype = AirCombatBuildingArchetype.MidSlab,
+                    clusterId = 980 + repair,
+                    visualVariant = PositiveModulo(
+                        settings.seed + repair * 83,
+                        97)
+                });
+            }
+        }
+
+        static float DistanceToNearestUsefulCover(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan,
+            Vector2 sample)
+        {
+            float nearest = float.PositiveInfinity;
+            for (int index = 0; index < plan.buildings.Count; index++)
+            {
+                AirCombatBuildingLot building = plan.buildings[index];
+                if (building.band == AirCombatBuildingBand.Facility ||
+                    building.size.y < settings.lowAltitude * 0.80f)
+                {
+                    continue;
+                }
+                nearest = Mathf.Min(
+                    nearest,
+                    DistanceToBuildingFootprint(sample, building));
+            }
+            return nearest;
+        }
+
         static int PositiveModulo(int value, int modulo)
         {
             int result = value % modulo;
@@ -1724,7 +2073,7 @@ namespace UnityPlanet.CityPcg
                     return true;
                 }
             }
-            // Planned entrances are spawn pads, not empty radial corridors.
+            // Compatibility samples are spawn pads, not empty radial corridors.
             // Reserve only a compact formation footprint around each pad so
             // enemies do not materialize inside a tower while the surrounding
             // district remains dense.
@@ -1745,7 +2094,7 @@ namespace UnityPlanet.CityPcg
             for (int i = 0; i < plan.routes.Count; i++)
             {
                 AirCombatFlightRoute route = plan.routes[i];
-                // 敌机入口是动态进场引导，不是永久无建筑走廊；AI 可按
+                // 内部刷新兼容采样点不是永久无建筑走廊；AI 可按
                 // 建筑高度改变末段航向。只有玩家三条战略航路雕刻硬净空。
                 if (route.kind == AirCombatRouteKind.EnemyIngress)
                     continue;
@@ -1789,7 +2138,7 @@ namespace UnityPlanet.CityPcg
             return false;
         }
 
-        static bool FootprintIntersectsCorridor(
+        internal static bool FootprintIntersectsCorridor(
             Vector2 center,
             Vector2 footprint,
             float yaw,
@@ -1960,6 +2309,7 @@ namespace UnityPlanet.CityPcg
             ValidateRoadGrid(settings, plan, report);
             ValidateCoverContinuity(settings, plan, report);
             ValidateTacticalRoles(plan, report);
+            CombatDrivenCityPcgPlanner.Validate(settings, plan, report);
             int[,] quadrantBands = new int[4, 3];
             int centerLow = 0;
             int centerMedium = 0;
@@ -2021,15 +2371,18 @@ namespace UnityPlanet.CityPcg
             report.heightMixDistributed = true;
             for (int quadrant = 0; quadrant < 4; quadrant++)
             {
-                if (quadrantBands[quadrant, 0] < 3 ||
-                    quadrantBands[quadrant, 1] < 3 ||
+                // Two low and two medium silhouettes already make the local
+                // layer choice readable. Requiring three of each rejected
+                // otherwise sound merged blocks without adding gameplay.
+                if (quadrantBands[quadrant, 0] < 2 ||
+                    quadrantBands[quadrant, 1] < 2 ||
                     quadrantBands[quadrant, 2] < 1)
                 {
                     report.heightMixDistributed = false;
                 }
             }
-            report.centralHeightMixValid = centerLow >= 4 &&
-                                           centerMedium >= 4;
+            report.centralHeightMixValid = centerLow >= 3 &&
+                                           centerMedium >= 3;
 
             float minimumRadius = float.PositiveInfinity;
             int strategicRoutes = 0;
@@ -2105,11 +2458,16 @@ namespace UnityPlanet.CityPcg
                 && report.highAltitudeBypassControlled
                 && report.facilityReachable
                 && report.roadGridAligned
-                && report.roadIntersectionCount == 49
+                && report.roadIntersectionCount >= 32
+                && report.roadWidthsVaried
+                && report.tacticalBlockCoverageValid
                 && report.buildingRoadOverlapCount == 0
                 && report.coverContinuityValid
                 && report.recoveryDistrictCount == 2
                 && report.tacticalRolesComplete
+                && report.tacticalOpportunityNetworkValid
+                && report.combatRegionsPhysical
+                && !report.dominantRouteDetected
                 && report.ingressCount >= 6
                 && contactValid;
 
@@ -2137,8 +2495,14 @@ namespace UnityPlanet.CityPcg
                 else if (!report.facilityReachable)
                     report.failureReason = "设施突袭目标不完整。";
                 else if (!report.roadGridAligned ||
-                         report.roadIntersectionCount != 49)
+                         report.roadIntersectionCount < 32)
                     report.failureReason = "城市道路没有严格对齐到道路模数。";
+                else if (!report.roadWidthsVaried)
+                    report.failureReason =
+                        "City roads do not express tactical width variation.";
+                else if (!report.tacticalBlockCoverageValid)
+                    report.failureReason =
+                        "Some city blocks have no tactical purpose or physical tuning.";
                 else if (report.buildingRoadOverlapCount != 0)
                     report.failureReason = "建筑侵入了道路或人行道。";
                 else if (!report.coverContinuityValid)
@@ -2146,11 +2510,20 @@ namespace UnityPlanet.CityPcg
                 else if (report.recoveryDistrictCount != 2)
                     report.failureReason = "维修庭院没有形成完整的三面掩护。";
                 else if (!report.tacticalRolesComplete)
-                    report.failureReason = "城市缺少拉扯、强攻或制空优势区。";
+                    report.failureReason = "城市缺少拉扯、强攻、掩体或危险区。";
+                else if (!report.tacticalOpportunityNetworkValid)
+                    report.failureReason =
+                        "Tactical opportunities do not form a valid multi-exit network.";
+                else if (!report.combatRegionsPhysical)
+                    report.failureReason =
+                        "Combat regions are missing measurable city geometry or route advantages.";
+                else if (report.dominantRouteDetected)
+                    report.failureReason =
+                        "One tactical route dominates all alternatives.";
                 else if (!contactValid)
                     report.failureReason = "敌机首次接触过早。";
                 else
-                    report.failureReason = "敌机入口数量不足。";
+                    report.failureReason = "内部刷新兼容采样点数量不足。";
             }
             return report;
         }
@@ -2160,15 +2533,21 @@ namespace UnityPlanet.CityPcg
             AirCombatCityPlan plan,
             AirCombatCityReport report)
         {
-            const float RoadTileWidth = 22.26f;
             const float SidewalkWidth = 6.2f;
             float pitch = ResolveStreetPitch(settings);
-            var northSouth = new List<AirCombatRoadStrip>(7);
-            var eastWest = new List<AirCombatRoadStrip>(7);
-            report.roadGridAligned = plan.roads.Count == 14;
+            var northSouth = new List<AirCombatRoadStrip>(64);
+            var eastWest = new List<AirCombatRoadStrip>(64);
+            report.roadGridAligned = plan.roads.Count > 0;
+            report.minimumRoadWidth = float.PositiveInfinity;
             for (int i = 0; i < plan.roads.Count; i++)
             {
                 AirCombatRoadStrip road = plan.roads[i];
+                report.minimumRoadWidth = Mathf.Min(
+                    report.minimumRoadWidth,
+                    road.width);
+                report.maximumRoadWidth = Mathf.Max(
+                    report.maximumRoadWidth,
+                    road.width);
                 bool vertical = Mathf.Abs(road.start.x - road.end.x) < 0.01f;
                 bool horizontal = Mathf.Abs(road.start.z - road.end.z) < 0.01f;
                 if (vertical == horizontal)
@@ -2178,9 +2557,8 @@ namespace UnityPlanet.CityPcg
                 }
                 float coordinate = vertical ? road.start.x : road.start.z;
                 float snapped = Mathf.Round(coordinate / pitch) * pitch;
-                float laneCount = road.width / RoadTileWidth;
                 if (Mathf.Abs(coordinate - snapped) > 0.02f ||
-                    Mathf.Abs(laneCount - Mathf.Round(laneCount)) > 0.01f)
+                    road.width < 16f)
                 {
                     report.roadGridAligned = false;
                 }
@@ -2189,6 +2567,7 @@ namespace UnityPlanet.CityPcg
                 else
                     eastWest.Add(road);
             }
+            var intersections = new HashSet<string>();
             for (int x = 0; x < northSouth.Count; x++)
             for (int z = 0; z < eastWest.Count; z++)
             {
@@ -2201,9 +2580,60 @@ namespace UnityPlanet.CityPcg
                     intersectionX >= Mathf.Min(horizontal.start.x, horizontal.end.x) &&
                     intersectionX <= Mathf.Max(horizontal.start.x, horizontal.end.x))
                 {
-                    report.roadIntersectionCount++;
+                    intersections.Add(
+                        Mathf.RoundToInt(intersectionX * 10f) + ":" +
+                        Mathf.RoundToInt(intersectionZ * 10f));
                 }
             }
+            report.roadIntersectionCount = intersections.Count;
+            if (float.IsPositiveInfinity(report.minimumRoadWidth))
+                report.minimumRoadWidth = 0f;
+            report.roadWidthsVaried = report.maximumRoadWidth -
+                                      report.minimumRoadWidth >= 4f;
+
+            report.tacticalBlockCount = plan.tacticalBlocks.Count;
+            var regions = new HashSet<string>();
+            var mergedGroups = new HashSet<string>();
+            for (int i = 0; i < plan.tacticalBlocks.Count; i++)
+            {
+                CombatCityBlockPlan block = plan.tacticalBlocks[i];
+                if (string.IsNullOrEmpty(block.primaryOpportunityId) ||
+                    string.IsNullOrEmpty(block.tacticalRegionId))
+                {
+                    report.unassignedTacticalBlockCount++;
+                }
+                else
+                {
+                    regions.Add(block.tacticalRegionId);
+                }
+                if (block.mergeEast)
+                {
+                    report.removedInternalRoadSegments++;
+                    if (block.role == CombatCityBlockRole.Occlusion)
+                        report.occlusionMergedRoadSegments++;
+                }
+                if (block.mergeNorth)
+                {
+                    report.removedInternalRoadSegments++;
+                    if (block.role == CombatCityBlockRole.Occlusion)
+                        report.occlusionMergedRoadSegments++;
+                }
+                if (!string.IsNullOrEmpty(block.mergedGroupId) &&
+                    block.mergedGroupId.StartsWith(
+                        "merged-block-group.",
+                        StringComparison.Ordinal))
+                {
+                    mergedGroups.Add(block.mergedGroupId);
+                }
+            }
+            report.tacticalRegionCount = regions.Count;
+            report.mergedBlockGroupCount = mergedGroups.Count;
+            report.tacticalBlockCoverageValid =
+                report.tacticalBlockCount == 64 &&
+                report.unassignedTacticalBlockCount == 0 &&
+                report.tacticalRegionCount >= 6 &&
+                report.removedInternalRoadSegments >= 8 &&
+                report.occlusionMergedRoadSegments >= 1;
 
             for (int b = 0; b < plan.buildings.Count; b++)
             {
@@ -2263,8 +2693,11 @@ namespace UnityPlanet.CityPcg
                     maximumGap = Mathf.Max(maximumGap, nearest);
             }
             report.maximumCentralCoverGap = maximumGap;
+            // The city is non-linear and the arcade ship needs room to turn.
+            // A 2.4 second worst-case cover transition is still tactically
+            // useful while avoiding seed churn over a few empty metres.
             report.coverContinuityValid =
-                maximumGap <= settings.combatSpeed * 2.2f;
+                maximumGap <= settings.combatSpeed * 2.4f;
         }
 
         static float DistanceToBuildingFootprint(
@@ -2291,7 +2724,7 @@ namespace UnityPlanet.CityPcg
         {
             bool kite = false;
             bool assault = false;
-            bool dominance = false;
+            bool occlusion = false;
             bool dangerPlaza = false;
             for (int i = 0; i < plan.volumes.Count; i++)
             {
@@ -2303,8 +2736,8 @@ namespace UnityPlanet.CityPcg
                     case AirCombatVolumeKind.AssaultBreach:
                         assault = true;
                         break;
-                    case AirCombatVolumeKind.DominancePerch:
-                        dominance = true;
+                    case AirCombatVolumeKind.OcclusionGate:
+                        occlusion = true;
                         break;
                     case AirCombatVolumeKind.DangerPlaza:
                         dangerPlaza = true;
@@ -2324,7 +2757,7 @@ namespace UnityPlanet.CityPcg
                     report.recoveryDistrictCount++;
             }
             report.tacticalRolesComplete =
-                kite && assault && dominance && dangerPlaza;
+                kite && assault && occlusion && dangerPlaza;
         }
 
         static bool RouteClearOfBuildings(
@@ -2509,6 +2942,15 @@ namespace UnityPlanet.CityPcg
                     hash = hash * 31 + Mathf.RoundToInt(value.position.x * 10f);
                     hash = hash * 31 + Mathf.RoundToInt(value.position.z * 10f);
                     hash = hash * 31 + (int)value.kind;
+                }
+                for (int i = 0; i < plan.boundaryWalls.Count; i++)
+                {
+                    AirCombatBoundaryWallPlan value = plan.boundaryWalls[i];
+                    hash = hash * 31 + Mathf.RoundToInt(value.center.x * 10f);
+                    hash = hash * 31 + Mathf.RoundToInt(value.center.z * 10f);
+                    hash = hash * 31 + Mathf.RoundToInt(value.size.x * 10f);
+                    hash = hash * 31 + Mathf.RoundToInt(value.size.y * 10f);
+                    hash = hash * 31 + Mathf.RoundToInt(value.size.z * 10f);
                 }
                 return hash;
             }

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using ModularAssembly;
 using UnityEngine;
+using UnityPlanet.EDPCG;
 using UnityPlanet.SpaceStation.Skills;
 
 namespace UnityPlanet.ModularAssembly
@@ -450,8 +451,18 @@ namespace UnityPlanet.ModularAssembly
             for (int index = count - 1; index >= 0; index--)
             {
                 Vector3 point = nodes[reversePath[index]].Position;
-                if ((point - start).sqrMagnitude > 16f)
+                if ((point - start).sqrMagnitude > 16f &&
+                    (result.Count > 0 ||
+                     HasStaticClearCorridor(start, point)))
                     result.Add(point);
+            }
+            Vector3 last = result.Count > 0
+                ? result[result.Count - 1]
+                : start;
+            if (!HasStaticClearCorridor(last, destination))
+            {
+                result.Clear();
+                return false;
             }
             result.Add(destination);
             return result.Count > 0;
@@ -600,10 +611,14 @@ namespace UnityPlanet.ModularAssembly
             public int MemberIndex;
             public int MemberCount;
             public int Attempts;
+            public int TotalAttempts;
             public float ReadyAt;
+            public string RosterMemberId;
+            public int RosterIndex;
         }
 
-        const int PoolSize = 10;
+        const int LegacyPoolSize = 10;
+        const int EdpcgMaximumPoolSize = 28;
         const int MaximumSpawnAttempts = 8;
         const int SectorCount = 7;
         const float SectorCooldownSeconds = 8f;
@@ -614,14 +629,18 @@ namespace UnityPlanet.ModularAssembly
         static readonly int[] WideSectors = { -2, -1, 0, 1, 2 };
         static readonly int[] FlankSectors = { -3, -2, 2, 3 };
         readonly List<HordeEnemyVehicle> pool =
-            new List<HordeEnemyVehicle>(PoolSize);
+            new List<HordeEnemyVehicle>(EdpcgMaximumPoolSize);
         readonly List<HordeEnemyVehicle> active =
-            new List<HordeEnemyVehicle>(PoolSize);
+            new List<HordeEnemyVehicle>(EdpcgMaximumPoolSize);
         readonly Queue<QueuedSpawn> spawnQueue =
             new Queue<QueuedSpawn>(24);
         readonly List<Vector3> plannedIngresses =
             new List<Vector3>(8);
         readonly List<Vector3> spawnPathProbe =
+            new List<Vector3>(24);
+        readonly List<Vector3> semanticRouteProbe =
+            new List<Vector3>(24);
+        readonly List<Vector3> semanticSegmentProbe =
             new List<Vector3>(24);
         readonly Collider[] spawnOverlaps = new Collider[32];
         readonly float[] sectorReadyAt = new float[SectorCount];
@@ -630,6 +649,7 @@ namespace UnityPlanet.ModularAssembly
         WeaponProjectilePool projectiles;
         Rigidbody playerBody;
         HordeAirNavigationService navigation;
+        EdpcgEncounterRuntime edpcg;
         System.Random random;
         Vector3 battleCenter;
         float warningRadius;
@@ -668,6 +688,8 @@ namespace UnityPlanet.ModularAssembly
         public HordeSpawnRuleKind CurrentSpawnRule => lastRule;
         public bool IsFinalClear => finalClear;
         public bool IsRunning => running;
+        public EdpcgEncounterRuntime EdpcgRuntime => edpcg;
+        public int AttackTokensUsed => attackTokens;
         public bool IsFinished =>
             running && !objectiveDrivenSession &&
             elapsed >= SessionDurationSeconds;
@@ -684,8 +706,27 @@ namespace UnityPlanet.ModularAssembly
             }
         }
 
-        public int CurrentPhase => PhaseAt(EncounterClock);
-        public int CurrentActiveCap => ActiveCapAt(EncounterClock);
+        public int CurrentPhase => edpcg != null
+            ? (int)edpcg.Phase + 1
+            : PhaseAt(EncounterClock);
+        public int CurrentActiveCap => edpcg != null
+            ? edpcg.PopulationCap
+            : ActiveCapAt(EncounterClock);
+        public int StrategyLevel => edpcg != null
+            ? edpcg.StrategyLevel
+            : Mathf.Clamp(CurrentPhase - 1, 0, 2);
+        public float SemanticReplanSeconds => edpcg != null
+            ? edpcg.Settings.semanticReplanSeconds
+            : 0.5f;
+        public float LocalRepairAfterSeconds => edpcg != null
+            ? edpcg.Settings.localRepairAfterSeconds
+            : 2f;
+        public float EvasiveAfterSeconds => edpcg != null
+            ? edpcg.Settings.evasiveAfterSeconds
+            : 5f;
+        public float NavigationRecoveryAfterSeconds => edpcg != null
+            ? edpcg.Settings.navigationRecoveryAfterSeconds
+            : 12f;
 
         /// <summary>
         /// Planet missions end when their authored objective is complete, not
@@ -696,6 +737,11 @@ namespace UnityPlanet.ModularAssembly
         public void ConfigureObjectiveDrivenSession(bool enabled)
         {
             objectiveDrivenSession = enabled;
+        }
+
+        public void ConfigureEdpcgRuntime(EdpcgEncounterRuntime runtime)
+        {
+            edpcg = runtime;
         }
 
         public static int PhaseAt(float seconds)
@@ -757,7 +803,13 @@ namespace UnityPlanet.ModularAssembly
                 yield break;
             }
 
-            for (int index = pool.Count; index < PoolSize; index++)
+            int targetPoolSize = edpcg != null && edpcg.Settings != null
+                ? Mathf.Clamp(
+                    edpcg.Settings.populationCap,
+                    LegacyPoolSize,
+                    EdpcgMaximumPoolSize)
+                : LegacyPoolSize;
+            for (int index = pool.Count; index < targetPoolSize; index++)
             {
                 GameObject root = new GameObject(
                     "HordeEnemy_Prewarmed_" + index);
@@ -774,8 +826,9 @@ namespace UnityPlanet.ModularAssembly
                 pool.Add(enemy);
                 enemy.DeactivateForPool();
                 progress?.Invoke(
-                    (index + 1f) / PoolSize,
-                    "正在预创建割草敌机 " + (index + 1) + "/" + PoolSize);
+                    (index + 1f) / targetPoolSize,
+                    "正在预创建割草敌机 " + (index + 1) + "/" +
+                    targetPoolSize);
                 yield return null;
             }
 
@@ -799,7 +852,7 @@ namespace UnityPlanet.ModularAssembly
 
             projectiles.Prewarm(64);
             navigation = navigation ?? new HordeAirNavigationService();
-            PreparationValid = pool.Count == PoolSize;
+            PreparationValid = pool.Count >= targetPoolSize;
             progress?.Invoke(1f, "割草战斗资源已就绪");
         }
 
@@ -914,6 +967,7 @@ namespace UnityPlanet.ModularAssembly
             PeakActive = 0;
             finalClear = false;
             running = true;
+            edpcg?.BeginSession();
         }
 
         public void Tick(float deltaTime)
@@ -936,6 +990,8 @@ namespace UnityPlanet.ModularAssembly
                 objectiveDrivenSession ? 86400f : SessionDurationSeconds,
                 elapsed + Mathf.Max(0f, deltaTime));
             float encounterClock = EncounterClock;
+            UpdateEdpcgSnapshot();
+            edpcg?.Tick(deltaTime);
             if (!objectiveDrivenSession &&
                 elapsed >= FinalClearStartSeconds)
             {
@@ -943,7 +999,9 @@ namespace UnityPlanet.ModularAssembly
                 spawnQueue.Clear();
             }
             else if (Time.time >= nextSpawnAt &&
-                     !InReliefWindow(encounterClock))
+                     (edpcg != null
+                         ? edpcg.ShouldSpawn
+                         : !InReliefWindow(encounterClock)))
             {
                 if (TryQueueSpawnRule())
                 {
@@ -951,7 +1009,9 @@ namespace UnityPlanet.ModularAssembly
                         ? 1f
                         : Mathf.Lerp(0.9f, 1.1f, (float)random.NextDouble());
                     nextSpawnAt = Time.time +
-                                  SpawnIntervalAt(encounterClock) * jitter;
+                                  (edpcg != null
+                                      ? edpcg.SpawnInterval
+                                      : SpawnIntervalAt(encounterClock)) * jitter;
                 }
                 else
                 {
@@ -959,7 +1019,7 @@ namespace UnityPlanet.ModularAssembly
                 }
             }
 
-            int cap = ActiveCapAt(encounterClock);
+            int cap = CurrentActiveCap;
             while (!finalClear && spawnQueue.Count > 0 && AliveCount < cap)
             {
                 if (!TrySpawnQueued())
@@ -981,6 +1041,7 @@ namespace UnityPlanet.ModularAssembly
                     active[index].DeactivateForPool();
             }
             active.Clear();
+            edpcg?.EndSession();
         }
 
         public void BeginFinalClear()
@@ -1007,10 +1068,21 @@ namespace UnityPlanet.ModularAssembly
 
         public Vector3 ResolveTacticalDestination(HordeEnemyVehicle enemy)
         {
+            return ResolveTacticalDestination(
+                enemy,
+                enemy != null ? enemy.PathIntent : EdpcgPathIntent.Probe);
+        }
+
+        public Vector3 ResolveTacticalDestination(
+            HordeEnemyVehicle enemy,
+            EdpcgPathIntent intent)
+        {
             if (enemy == null || playerBody == null)
                 return battleCenter;
             HordeEnemyProfile profile = enemy.Profile;
-            if (profile.attackKind == HordeEnemyAttackKind.Suicide)
+            if (profile.attackKind == HordeEnemyAttackKind.Suicide &&
+                (intent == EdpcgPathIntent.CommitAttackRun ||
+                 intent == EdpcgPathIntent.Intercept))
             {
                 float leadSeconds = Mathf.Clamp(
                     Vector3.Distance(
@@ -1021,6 +1093,28 @@ namespace UnityPlanet.ModularAssembly
                     0.65f);
                 return playerBody.worldCenterOfMass +
                        playerBody.velocity * leadSeconds;
+            }
+            if (edpcg != null &&
+                edpcg.TryResolveTacticalDestination(
+                    enemy,
+                    intent,
+                    out Vector3 semanticDestination,
+                    out _,
+                    out _,
+                    out _))
+            {
+                return semanticDestination;
+            }
+            if (profile.attackKind == HordeEnemyAttackKind.Suicide)
+            {
+                float suicideAngle = (enemy.SlotIndex * 137.5f +
+                                      (int)intent * 29f) * Mathf.Deg2Rad;
+                Vector3 offset = new Vector3(
+                    Mathf.Sin(suicideAngle),
+                    0f,
+                    Mathf.Cos(suicideAngle)) * 95f;
+                return playerBody.worldCenterOfMass + offset +
+                       Vector3.up * 20f;
             }
             float distance = (profile.preferredMinimumRange +
                               profile.preferredMaximumRange) * 0.5f;
@@ -1078,6 +1172,54 @@ namespace UnityPlanet.ModularAssembly
                    navigation.FindPath(start, destination, result);
         }
 
+        public bool TryFindPath(
+            HordeEnemyVehicle enemy,
+            Vector3 start,
+            Vector3 destination,
+            List<Vector3> result)
+        {
+            if (result == null)
+                throw new ArgumentNullException(nameof(result));
+            if (edpcg == null || enemy == null ||
+                !edpcg.TryGetReservedRouteWaypoints(
+                    enemy.RosterMemberId,
+                    start,
+                    semanticRouteProbe))
+            {
+                return TryFindPath(start, destination, result);
+            }
+            result.Clear();
+            Vector3 segmentStart = start;
+            for (int index = 0; index <= semanticRouteProbe.Count; index++)
+            {
+                Vector3 segmentEnd = index < semanticRouteProbe.Count
+                    ? semanticRouteProbe[index]
+                    : destination;
+                if (Vector3.Distance(segmentStart, segmentEnd) < 8f)
+                    continue;
+                if (navigation == null ||
+                    !navigation.FindPath(
+                        segmentStart,
+                        segmentEnd,
+                        semanticSegmentProbe))
+                {
+                    result.Clear();
+                    return false;
+                }
+                for (int point = 0; point < semanticSegmentProbe.Count; point++)
+                {
+                    Vector3 candidate = semanticSegmentProbe[point];
+                    if (result.Count == 0 ||
+                        Vector3.Distance(result[result.Count - 1], candidate) >= 2f)
+                    {
+                        result.Add(candidate);
+                    }
+                }
+                segmentStart = segmentEnd;
+            }
+            return result.Count > 0;
+        }
+
         public bool HasLineOfTravel(Vector3 start, Vector3 end)
         {
             return navigation != null &&
@@ -1122,12 +1264,20 @@ namespace UnityPlanet.ModularAssembly
         {
             if (!running || enemy == null || enemy.HasAttackToken)
                 return false;
-            int limit = CurrentPhase == 1 ? 1 : 2;
+            if (edpcg != null && !edpcg.CanGrantAttack(enemy))
+                return false;
+            if (edpcg != null && IsRoleAttackLimitReached(enemy))
+                return false;
+            int limit = edpcg != null
+                ? edpcg.AttackTokenCap
+                : CurrentPhase == 1 ? 1 : 2;
             int cost = enemy.Profile.attackTokenCost;
             if (attackTokens + cost > limit || Time.time < nextAttackAt)
                 return false;
             attackTokens += cost;
-            nextAttackAt = Time.time + SharedAttackCooldown;
+            nextAttackAt = Time.time + (edpcg != null
+                ? edpcg.Settings.sharedAttackCooldownSeconds
+                : SharedAttackCooldown);
             enemy.SetAttackToken(true);
             return true;
         }
@@ -1142,10 +1292,47 @@ namespace UnityPlanet.ModularAssembly
             enemy.SetAttackToken(false);
         }
 
-        public void NotifyEnemyDeath(HordeEnemyVehicle enemy, float damage)
+        bool IsRoleAttackLimitReached(HordeEnemyVehicle candidate)
+        {
+            int matching = 0;
+            for (int index = 0; index < active.Count; index++)
+            {
+                HordeEnemyVehicle enemy = active[index];
+                if (enemy == null || !enemy.IsCombatCapable ||
+                    !enemy.HasAttackToken ||
+                    enemy.IsSuicide != candidate.IsSuicide)
+                {
+                    continue;
+                }
+                matching++;
+            }
+            int limit = candidate.IsSuicide
+                ? edpcg.Settings.suicideCommitCap
+                : edpcg.Settings.rangedFireLaneCap;
+            return matching >= limit;
+        }
+
+        public void NotifyEnemyDeath(
+            HordeEnemyVehicle enemy,
+            float damage,
+            EdpcgEnemyResolutionReason reason =
+                EdpcgEnemyResolutionReason.KilledByPlayer)
         {
             ReleaseAttackToken(enemy);
-            Kills++;
+            bool credited = true;
+            if (edpcg != null && enemy != null)
+            {
+                if (!edpcg.ResolveMember(
+                        enemy.RosterMemberId,
+                        reason,
+                        enemy.BodyPosition,
+                        out credited))
+                {
+                    credited = false;
+                }
+            }
+            if (credited)
+                Kills++;
             owner?.RecordEnemyDamage(damage);
         }
 
@@ -1157,7 +1344,30 @@ namespace UnityPlanet.ModularAssembly
         public void NotifyEnemyEscaped(HordeEnemyVehicle enemy)
         {
             ReleaseAttackToken(enemy);
+            if (edpcg != null)
+            {
+                NotifyEnemyNavigationRecovery(
+                    enemy,
+                    "left-navigation-envelope");
+                return;
+            }
             Escaped++;
+        }
+
+        public void NotifyEnemyNavigationRecovery(
+            HordeEnemyVehicle enemy,
+            string reason)
+        {
+            ReleaseAttackToken(enemy);
+            if (edpcg == null || enemy == null ||
+                !edpcg.MarkNavigationRecovery(
+                    enemy.RosterMemberId,
+                    enemy.BodyPosition,
+                    reason))
+            {
+                return;
+            }
+            QueueRecoveredMember(enemy, 1.5f);
         }
 
         bool TryQueueSpawnRule()
@@ -1167,9 +1377,12 @@ namespace UnityPlanet.ModularAssembly
 
             int phase = CurrentPhase;
             float encounterClock = EncounterClock;
-            int availableSlots = ActiveCapAt(encounterClock) -
+            int availableSlots = CurrentActiveCap -
                                  AliveCount - spawnQueue.Count;
-            int threatRoom = ThreatCapAt(encounterClock) -
+            int threatCap = edpcg != null
+                ? edpcg.Settings.populationCap * 2
+                : ThreatCapAt(encounterClock);
+            int threatRoom = threatCap -
                              ActiveThreat() - QueuedThreat();
             if (availableSlots <= 0 || threatRoom <= 0)
                 return false;
@@ -1202,19 +1415,41 @@ namespace UnityPlanet.ModularAssembly
 
             HordeFormationKind formation = SelectFormation(rule, phase);
             float readyAt = Time.time + WarningSecondsFor(rule);
+            int queuedMembers = 0;
             for (int index = 0; index < count; index++)
             {
+                HordeEnemyRole role = roles[index];
+                string rosterMemberId = string.Empty;
+                int rosterIndex = -1;
+                if (edpcg != null)
+                {
+                    if (!edpcg.TryReserveNextRosterMember(
+                            role,
+                            out EdpcgRosterAssignment assignment))
+                    {
+                        break;
+                    }
+                    role = assignment.Role;
+                    rosterMemberId = assignment.RosterMemberId;
+                    rosterIndex = assignment.RosterIndex;
+                }
                 spawnQueue.Enqueue(new QueuedSpawn
                 {
-                    Role = roles[index],
+                    Role = role,
                     Formation = formation,
                     Sector = sector,
-                    MemberIndex = index,
+                    MemberIndex = queuedMembers,
                     MemberCount = count,
                     Attempts = 0,
-                    ReadyAt = readyAt
+                    TotalAttempts = 0,
+                    ReadyAt = readyAt,
+                    RosterMemberId = rosterMemberId,
+                    RosterIndex = rosterIndex
                 });
+                queuedMembers++;
             }
+            if (queuedMembers == 0)
+                return false;
 
             lastRule = rule;
             lastFormation = formation;
@@ -1397,7 +1632,7 @@ namespace UnityPlanet.ModularAssembly
                     : WideSectors;
             int maximumInSector = Mathf.Max(
                 2,
-                Mathf.CeilToInt(ActiveCapAt(EncounterClock) * 0.4f));
+                Mathf.CeilToInt(CurrentActiveCap * 0.4f));
             int start = random.Next(0, options.Length);
             for (int pass = 0; pass < 2; pass++)
             {
@@ -1410,7 +1645,8 @@ namespace UnityPlanet.ModularAssembly
                     if (sectorIndex < 0 || sectorIndex >= sectorReadyAt.Length ||
                         Time.time < sectorReadyAt[sectorIndex] ||
                         CountAssignedToSector(candidate) + memberCount >
-                        maximumInSector)
+                        maximumInSector ||
+                        WouldExceedPressureDirectionCap(candidate))
                     {
                         continue;
                     }
@@ -1419,6 +1655,69 @@ namespace UnityPlanet.ModularAssembly
                 }
             }
             return false;
+        }
+
+        bool WouldExceedPressureDirectionCap(int candidateSector)
+        {
+            if (edpcg == null || edpcg.Settings.pressureDirectionCap >= 3)
+                return false;
+            bool left = false;
+            bool center = false;
+            bool right = false;
+            foreach (QueuedSpawn queued in spawnQueue)
+                MarkDirection(queued.Sector, ref left, ref center, ref right);
+            if (playerBody != null)
+            {
+                Vector3 forward = Vector3.ProjectOnPlane(
+                    playerBody.transform.forward,
+                    Vector3.up);
+                if (forward.sqrMagnitude < 0.01f)
+                    forward = Vector3.forward;
+                for (int index = 0; index < active.Count; index++)
+                {
+                    HordeEnemyVehicle enemy = active[index];
+                    if (enemy == null || !enemy.IsCombatCapable)
+                        continue;
+                    Vector3 direction = Vector3.ProjectOnPlane(
+                        enemy.BodyPosition - playerBody.worldCenterOfMass,
+                        Vector3.up);
+                    if (direction.sqrMagnitude < 0.01f)
+                        continue;
+                    int sector = Mathf.RoundToInt(Vector3.SignedAngle(
+                        forward,
+                        direction,
+                        Vector3.up) / 45f);
+                    MarkDirection(sector, ref left, ref center, ref right);
+                }
+            }
+            int occupied = (left ? 1 : 0) + (center ? 1 : 0) +
+                           (right ? 1 : 0);
+            int bucket = DirectionBucket(candidateSector);
+            bool alreadyOccupied = bucket < 0
+                ? left
+                : bucket > 0 ? right : center;
+            return !alreadyOccupied &&
+                   occupied >= edpcg.Settings.pressureDirectionCap;
+        }
+
+        static void MarkDirection(
+            int sector,
+            ref bool left,
+            ref bool center,
+            ref bool right)
+        {
+            int bucket = DirectionBucket(sector);
+            if (bucket < 0)
+                left = true;
+            else if (bucket > 0)
+                right = true;
+            else
+                center = true;
+        }
+
+        static int DirectionBucket(int sector)
+        {
+            return sector < -1 ? -1 : sector > 1 ? 1 : 0;
         }
 
         int CountAssignedToSector(int sector)
@@ -1553,9 +1852,23 @@ namespace UnityPlanet.ModularAssembly
             }
             if (!TryResolveSpawnPosition(queued, out Vector3 position))
             {
-                queued.Attempts++;
-                if (queued.Attempts < MaximumSpawnAttempts)
+                queued.TotalAttempts++;
+                queued.Attempts = (queued.Attempts + 1) %
+                                  MaximumSpawnAttempts;
+                if (edpcg != null)
+                {
+                    queued.ReadyAt = Time.time + Mathf.Min(
+                        6f,
+                        0.5f + queued.TotalAttempts * 0.35f);
+                    edpcg.MarkSpawnRecovery(
+                        queued.RosterMemberId,
+                        queued.TotalAttempts);
                     spawnQueue.Enqueue(queued);
+                }
+                else if (queued.TotalAttempts < MaximumSpawnAttempts)
+                {
+                    spawnQueue.Enqueue(queued);
+                }
                 return false;
             }
             HordeEnemyVehicle enemy = FindAvailableEnemy();
@@ -1579,8 +1892,11 @@ namespace UnityPlanet.ModularAssembly
                 position,
                 rotation,
                 spawnSequence * 4 + queued.MemberIndex,
-                sessionId);
+                sessionId,
+                queued.RosterMemberId,
+                queued.RosterIndex);
             active.Add(enemy);
+            edpcg?.MarkSpawned(queued.RosterMemberId, position);
             return true;
         }
 
@@ -1828,6 +2144,73 @@ namespace UnityPlanet.ModularAssembly
             return false;
         }
 
+        void QueueRecoveredMember(
+            HordeEnemyVehicle enemy,
+            float delaySeconds)
+        {
+            if (enemy == null || edpcg == null ||
+                !edpcg.TryGetAssignment(
+                    enemy.RosterMemberId,
+                    out EdpcgRosterAssignment assignment))
+            {
+                return;
+            }
+            int sector = Mathf.Clamp(
+                assignment.RosterIndex % SectorCount - 3,
+                -3,
+                3);
+            spawnQueue.Enqueue(new QueuedSpawn
+            {
+                Role = assignment.Role,
+                Formation = HordeFormationKind.Echelon,
+                Sector = sector,
+                MemberIndex = 0,
+                MemberCount = 1,
+                Attempts = 0,
+                TotalAttempts = 0,
+                ReadyAt = Time.time + Mathf.Max(0.25f, delaySeconds),
+                RosterMemberId = assignment.RosterMemberId,
+                RosterIndex = assignment.RosterIndex
+            });
+        }
+
+        void UpdateEdpcgSnapshot()
+        {
+            if (edpcg == null)
+                return;
+            int engagements = 0;
+            int suicideCommits = 0;
+            int rangedFireLanes = 0;
+            int navigationRecoveries = 0;
+            int threat = 0;
+            for (int index = 0; index < active.Count; index++)
+            {
+                HordeEnemyVehicle enemy = active[index];
+                if (enemy == null || !enemy.IsCombatCapable)
+                    continue;
+                threat += Mathf.Max(1, enemy.Profile.threatCost);
+                if (enemy.IsThreatening)
+                    engagements++;
+                if (enemy.IsSuicideCommit)
+                    suicideCommits++;
+                if (enemy.IsRangedFiring)
+                    rangedFireLanes++;
+                if (enemy.TacticalState ==
+                    EdpcgEnemyTacticalState.NavigationRecovery)
+                {
+                    navigationRecoveries++;
+                }
+            }
+            edpcg.UpdateDirectorSnapshot(
+                AliveCount,
+                engagements,
+                attackTokens,
+                suicideCommits,
+                rangedFireLanes,
+                navigationRecoveries,
+                threat);
+        }
+
         static bool InReliefWindow(float seconds)
         {
             return seconds >= 26f && seconds < FinalClearStartSeconds &&
@@ -1869,17 +2252,26 @@ namespace UnityPlanet.ModularAssembly
         Vector3 desiredVelocity;
         Vector3 desiredAim;
         Vector3 lastProgressPosition;
+        Vector3 tacticalDestination;
+        Vector3 suicideCommitAim;
         float health;
         float spawnAt;
         float nextReplanAt;
         float progressCheckedAt;
+        float nextSemanticDecisionAt;
+        float nextPathRetryAt;
+        float stuckSince;
         float outsideSeconds;
         float attackStateUntil;
         float nextShotAt;
         float nextSuicideWarningAt;
+        float suicideCommitEndsAt;
+        float lineOfSightLostAt;
         float returnAt;
         int routeIndex;
         int sessionId;
+        int pathFailureCount;
+        int staticCollisionCount;
         bool activeForCombat;
         bool dead;
         bool hasAttackToken;
@@ -1901,6 +2293,18 @@ namespace UnityPlanet.ModularAssembly
         public bool IsSuicide =>
             profile != null &&
             profile.attackKind == HordeEnemyAttackKind.Suicide;
+        public bool IsSuicideCommit => IsSuicide &&
+                                       attackState == AttackState.Firing;
+        public bool IsRangedFiring => !IsSuicide &&
+                                      attackState == AttackState.Firing;
+        public string RosterMemberId { get; private set; } = string.Empty;
+        public int RosterIndex { get; private set; } = -1;
+        public EdpcgPathIntent PathIntent { get; private set; } =
+            EdpcgPathIntent.Ingress;
+        public EdpcgEnemyTacticalState TacticalState { get; private set; } =
+            EdpcgEnemyTacticalState.Ingress;
+        public EdpcgWeaponPermission WeaponPermission { get; private set; } =
+            EdpcgWeaponPermission.Safe;
 
         public bool Initialize(
             HordeCombatDirector source,
@@ -1957,13 +2361,17 @@ namespace UnityPlanet.ModularAssembly
             Vector3 position,
             Quaternion rotation,
             int slotIndex,
-            int newSessionId)
+            int newSessionId,
+            string rosterMemberId = "",
+            int rosterIndex = -1)
         {
             profile = selectedProfile ?? HordeEnemyProfile.ForRole(
                 HordeEnemyRole.Interceptor);
             playerBody = targetBody;
             SlotIndex = slotIndex;
             sessionId = newSessionId;
+            RosterMemberId = rosterMemberId ?? string.Empty;
+            RosterIndex = rosterIndex;
             health = profile.maximumHealth;
             activeForCombat = true;
             dead = false;
@@ -1974,12 +2382,23 @@ namespace UnityPlanet.ModularAssembly
             nextReplanAt = Time.time + (slotIndex % 5) * 0.1f;
             progressCheckedAt = Time.time;
             lastProgressPosition = position;
+            tacticalDestination = position;
+            nextSemanticDecisionAt = Time.time;
+            nextPathRetryAt = Time.time;
+            stuckSince = -1f;
+            pathFailureCount = 0;
+            staticCollisionCount = 0;
             outsideSeconds = 0f;
             attackState = AttackState.Tracking;
             attackStateUntil = spawnAt + 2f;
             nextShotAt = 0f;
             nextSuicideWarningAt = 0f;
+            suicideCommitEndsAt = 0f;
+            lineOfSightLostAt = -1f;
             returnAt = float.PositiveInfinity;
+            PathIntent = EdpcgPathIntent.Ingress;
+            TacticalState = EdpcgEnemyTacticalState.Ingress;
+            WeaponPermission = EdpcgWeaponPermission.Safe;
             route.Clear();
             routeIndex = 0;
             ConfigureForProfile();
@@ -2004,6 +2423,11 @@ namespace UnityPlanet.ModularAssembly
             activeForCombat = false;
             dead = false;
             hasAttackToken = false;
+            RosterMemberId = string.Empty;
+            RosterIndex = -1;
+            PathIntent = EdpcgPathIntent.Ingress;
+            TacticalState = EdpcgEnemyTacticalState.Resolved;
+            WeaponPermission = EdpcgWeaponPermission.Safe;
             route.Clear();
             routeIndex = 0;
             if (rootCollider != null)
@@ -2042,7 +2466,10 @@ namespace UnityPlanet.ModularAssembly
                     ForceMode.Impulse);
             }
             if (health <= 0f)
-                Die(damage, applied);
+                Die(
+                    damage,
+                    applied,
+                    EdpcgEnemyResolutionReason.KilledByPlayer);
         }
 
         void Update()
@@ -2138,30 +2565,130 @@ namespace UnityPlanet.ModularAssembly
 
         void UpdateNavigation()
         {
-            Vector3 tactical = director.ResolveTacticalDestination(this);
-            bool stuck = Time.time - progressCheckedAt >= 2f &&
-                         Vector3.Distance(body.position, lastProgressPosition) < 5f;
-            if (Time.time >= nextReplanAt || stuck || route.Count == 0)
+            if (Time.time >= nextSemanticDecisionAt)
             {
-                director.TryFindPath(body.position, tactical, route);
-                routeIndex = 0;
-                nextReplanAt = Time.time + 0.5f;
+                EdpcgPathIntent nextIntent = ChoosePathIntent();
+                Vector3 nextDestination = director.ResolveTacticalDestination(
+                    this,
+                    nextIntent);
+                bool semanticChanged = nextIntent != PathIntent ||
+                                       Vector3.Distance(
+                                           nextDestination,
+                                           tacticalDestination) > 35f;
+                PathIntent = nextIntent;
+                tacticalDestination = nextDestination;
+                nextSemanticDecisionAt = Time.time +
+                                         director.SemanticReplanSeconds;
+                if (semanticChanged)
+                    nextReplanAt = Time.time;
+            }
+
+            if (Time.time - progressCheckedAt >= 1f)
+            {
+                float moved = Vector3.Distance(
+                    body.position,
+                    lastProgressPosition);
+                if (moved >= 5f)
+                {
+                    stuckSince = -1f;
+                    staticCollisionCount = Mathf.Max(0, staticCollisionCount - 1);
+                }
+                else if (stuckSince < 0f)
+                {
+                    stuckSince = Time.time;
+                }
                 progressCheckedAt = Time.time;
                 lastProgressPosition = body.position;
+            }
+
+            float stuckSeconds = stuckSince < 0f
+                ? 0f
+                : Time.time - stuckSince;
+            if (director.EdpcgRuntime != null &&
+                stuckSeconds >= director.NavigationRecoveryAfterSeconds)
+            {
+                BeginNavigationRecovery("stuck-timeout");
+                return;
+            }
+            if (stuckSeconds >= director.EvasiveAfterSeconds)
+            {
+                TacticalState = EdpcgEnemyTacticalState.NavigationRecovery;
+                PathIntent = EdpcgPathIntent.NavigationRecovery;
+                route.Clear();
+                routeIndex = 0;
+                Vector3 lateral = Vector3.Cross(
+                    Vector3.up,
+                    playerBody.worldCenterOfMass - body.position).normalized;
+                if ((SlotIndex & 1) != 0)
+                    lateral = -lateral;
+                desiredVelocity = Vector3.ClampMagnitude(
+                    lateral * profile.maximumSpeed * 0.72f +
+                    Vector3.up * profile.maximumSpeed * 0.35f,
+                    profile.maximumSpeed);
+                desiredAim = desiredVelocity.normalized;
+                nextReplanAt = Mathf.Max(nextReplanAt, Time.time + 0.5f);
+                return;
+            }
+
+            bool localRepair = stuckSeconds >= director.LocalRepairAfterSeconds;
+            if ((Time.time >= nextReplanAt || localRepair || route.Count == 0) &&
+                Time.time >= nextPathRetryAt)
+            {
+                bool found = director.TryFindPath(
+                    this,
+                    body.position,
+                    tacticalDestination,
+                    route);
+                routeIndex = 0;
+                nextReplanAt = Time.time + director.SemanticReplanSeconds;
+                if (found && route.Count > 0)
+                {
+                    pathFailureCount = 0;
+                    nextPathRetryAt = Time.time;
+                }
+                else
+                {
+                    route.Clear();
+                    pathFailureCount++;
+                    float retry = Mathf.Min(
+                        4f,
+                        0.5f * Mathf.Pow(2f, pathFailureCount - 1));
+                    nextPathRetryAt = Time.time + retry;
+                    director.EdpcgRuntime?.RecordPathFailure(
+                        this,
+                        PathIntent,
+                        localRepair ? "local-repair-failed" : "route-not-found");
+                }
             }
             while (routeIndex < route.Count &&
                    Vector3.Distance(body.position, route[routeIndex]) < 14f)
                 routeIndex++;
-            Vector3 waypoint = routeIndex < route.Count
-                ? route[routeIndex]
-                : tactical;
-            Vector3 direction = waypoint - body.position;
-            if (direction.sqrMagnitude < 0.01f)
-                direction = transform.forward;
             Vector3 separation = director.SampleSeparation(this) * 20f;
-            desiredVelocity = Vector3.ClampMagnitude(
-                direction.normalized * profile.maximumSpeed + separation,
-                profile.maximumSpeed);
+            if (routeIndex < route.Count)
+            {
+                Vector3 direction = route[routeIndex] - body.position;
+                if (direction.sqrMagnitude < 0.01f)
+                    direction = transform.forward;
+                desiredVelocity = Vector3.ClampMagnitude(
+                    direction.normalized * profile.maximumSpeed + separation,
+                    profile.maximumSpeed);
+            }
+            else
+            {
+                // A failed graph query is not permission to fly straight
+                // through the city. Loiter and separate until the backoff ends.
+                Vector3 fromPlayer = body.position -
+                                     playerBody.worldCenterOfMass;
+                Vector3 tangent = Vector3.Cross(Vector3.up, fromPlayer);
+                if (tangent.sqrMagnitude < 0.01f)
+                    tangent = transform.right;
+                if ((SlotIndex & 1) != 0)
+                    tangent = -tangent;
+                desiredVelocity = Vector3.ClampMagnitude(
+                    tangent.normalized * profile.maximumSpeed * 0.35f +
+                    separation,
+                    profile.maximumSpeed * 0.45f);
+            }
             Vector3 predicted = playerBody.worldCenterOfMass +
                                 playerBody.velocity * Mathf.Clamp(
                                     Vector3.Distance(
@@ -2170,6 +2697,60 @@ namespace UnityPlanet.ModularAssembly
                                     0f,
                                     0.8f);
             desiredAim = (predicted - body.worldCenterOfMass).normalized;
+        }
+
+        EdpcgPathIntent ChoosePathIntent()
+        {
+            if (Time.time < spawnAt + 1.25f)
+            {
+                TacticalState = EdpcgEnemyTacticalState.Ingress;
+                return EdpcgPathIntent.Ingress;
+            }
+            if (IsSuicide)
+            {
+                if (attackState == AttackState.Firing)
+                {
+                    TacticalState = EdpcgEnemyTacticalState.Attacking;
+                    return EdpcgPathIntent.CommitAttackRun;
+                }
+                if (attackState == AttackState.Telegraph)
+                {
+                    TacticalState = EdpcgEnemyTacticalState.Telegraphing;
+                    return EdpcgPathIntent.Intercept;
+                }
+                if (attackState == AttackState.Recovering)
+                {
+                    TacticalState = EdpcgEnemyTacticalState.Disengaging;
+                    return EdpcgPathIntent.BreakAway;
+                }
+                TacticalState = director.StrategyLevel >= 2
+                    ? EdpcgEnemyTacticalState.Positioning
+                    : EdpcgEnemyTacticalState.Threatening;
+                return director.StrategyLevel >= 2
+                    ? EdpcgPathIntent.MaskedFlank
+                    : EdpcgPathIntent.Probe;
+            }
+            if (attackState == AttackState.Firing)
+            {
+                TacticalState = EdpcgEnemyTacticalState.Attacking;
+                return EdpcgPathIntent.Suppress;
+            }
+            if (attackState == AttackState.Telegraph)
+            {
+                TacticalState = EdpcgEnemyTacticalState.Telegraphing;
+                return EdpcgPathIntent.RangedPerch;
+            }
+            if (attackState == AttackState.Recovering)
+            {
+                TacticalState = EdpcgEnemyTacticalState.Disengaging;
+                return EdpcgPathIntent.BreakLineOfSight;
+            }
+            TacticalState = EdpcgEnemyTacticalState.Positioning;
+            return director.StrategyLevel >= 2
+                ? EdpcgPathIntent.MaskedFlank
+                : director.StrategyLevel >= 1
+                    ? EdpcgPathIntent.RangedPerch
+                    : EdpcgPathIntent.FormUp;
         }
 
         void UpdateAttack()
@@ -2182,20 +2763,37 @@ namespace UnityPlanet.ModularAssembly
 
             Vector3 target = playerBody.worldCenterOfMass;
             float distance = Vector3.Distance(body.worldCenterOfMass, target);
+            bool hasLineOfSight = director.HasLineOfTravel(
+                body.worldCenterOfMass,
+                target);
+            if (!hasLineOfSight)
+                lineOfSightLostAt = Time.time;
+            float hysteresis = director.EdpcgRuntime != null
+                ? director.EdpcgRuntime.Settings.lineOfSightHysteresisSeconds
+                : 0.2f;
+            bool sightStable = hasLineOfSight &&
+                               (lineOfSightLostAt < 0f ||
+                                Time.time - lineOfSightLostAt >= hysteresis);
             bool canEngage = Time.time >= spawnAt + 2f &&
-                             distance <= 420f &&
-                             director.HasLineOfTravel(body.worldCenterOfMass, target);
+                             distance <= 420f && sightStable;
             switch (attackState)
             {
                 case AttackState.Tracking:
+                    WeaponPermission = EdpcgWeaponPermission.Safe;
                     if (canEngage && Time.time >= attackStateUntil &&
                         director.TryAcquireAttackToken(this))
                     {
                         attackState = AttackState.Telegraph;
-                        attackStateUntil = Time.time + 0.55f;
+                        WeaponPermission = EdpcgWeaponPermission.TelegraphOnly;
+                        attackStateUntil = Time.time +
+                            (director.EdpcgRuntime != null
+                                ? director.EdpcgRuntime.Settings.
+                                    rangedTelegraphSeconds
+                                : 0.55f);
                     }
                     break;
                 case AttackState.Telegraph:
+                    WeaponPermission = EdpcgWeaponPermission.TelegraphOnly;
                     visuals?.SpawnTracer(
                         ResolveMuzzle(0),
                         target,
@@ -2211,11 +2809,29 @@ namespace UnityPlanet.ModularAssembly
                     else if (Time.time >= attackStateUntil)
                     {
                         attackState = AttackState.Firing;
-                        attackStateUntil = Time.time + 0.8f;
+                        WeaponPermission = EdpcgWeaponPermission.Live;
+                        attackStateUntil = Time.time +
+                            (director.EdpcgRuntime != null
+                                ? director.EdpcgRuntime.Settings.
+                                    rangedBurstSeconds
+                                : 0.8f);
                         nextShotAt = 0f;
                     }
                     break;
                 case AttackState.Firing:
+                    WeaponPermission = EdpcgWeaponPermission.Live;
+                    if (!hasLineOfSight || distance > 420f)
+                    {
+                        director.ReleaseAttackToken(this);
+                        WeaponPermission = EdpcgWeaponPermission.Safe;
+                        attackState = AttackState.Recovering;
+                        attackStateUntil = Time.time +
+                            (director.EdpcgRuntime != null
+                                ? director.EdpcgRuntime.Settings.
+                                    rangedRelocationSeconds
+                                : 0.9f);
+                        break;
+                    }
                     if (Time.time >= nextShotAt)
                     {
                         FireVolley(target);
@@ -2224,11 +2840,17 @@ namespace UnityPlanet.ModularAssembly
                     if (Time.time >= attackStateUntil)
                     {
                         director.ReleaseAttackToken(this);
+                        WeaponPermission = EdpcgWeaponPermission.Safe;
                         attackState = AttackState.Recovering;
-                        attackStateUntil = Time.time + 0.9f;
+                        attackStateUntil = Time.time +
+                            (director.EdpcgRuntime != null
+                                ? director.EdpcgRuntime.Settings.
+                                    rangedRelocationSeconds
+                                : 0.9f);
                     }
                     break;
                 default:
+                    WeaponPermission = EdpcgWeaponPermission.Safe;
                     if (Time.time >= attackStateUntil)
                         attackState = AttackState.Tracking;
                     break;
@@ -2244,16 +2866,23 @@ namespace UnityPlanet.ModularAssembly
             switch (attackState)
             {
                 case AttackState.Tracking:
+                    WeaponPermission = EdpcgWeaponPermission.Safe;
                     if (Time.time >= spawnAt + 1.25f &&
-                        distance <= 36f && hasApproach &&
+                        distance <= 72f && hasApproach &&
                         director.TryAcquireAttackToken(this))
                     {
                         attackState = AttackState.Telegraph;
-                        attackStateUntil = Time.time + 0.55f;
+                        WeaponPermission = EdpcgWeaponPermission.TelegraphOnly;
+                        attackStateUntil = Time.time +
+                            (director.EdpcgRuntime != null
+                                ? director.EdpcgRuntime.Settings.
+                                    suicideTelegraphSeconds
+                                : 0.55f);
                         nextSuicideWarningAt = 0f;
                     }
                     break;
                 case AttackState.Telegraph:
+                    WeaponPermission = EdpcgWeaponPermission.TelegraphOnly;
                     if (Time.time >= nextSuicideWarningAt)
                     {
                         nextSuicideWarningAt = Time.time + 0.12f;
@@ -2264,7 +2893,7 @@ namespace UnityPlanet.ModularAssembly
                             0.1f,
                             "HordeSuicideTelegraph");
                     }
-                    if (!hasApproach || distance > 48f)
+                    if (!hasApproach || distance > 88f)
                     {
                         director.ReleaseAttackToken(this);
                         attackState = AttackState.Recovering;
@@ -2272,19 +2901,56 @@ namespace UnityPlanet.ModularAssembly
                     }
                     else if (Time.time >= attackStateUntil)
                     {
-                        if (distance <= Mathf.Max(
-                                10f,
-                                profile.detonationRadius * 1.1f))
-                        {
-                            Detonate();
-                        }
-                        else
-                        {
-                            attackStateUntil = Time.time + 0.12f;
-                        }
+                        float commitSeconds = director.EdpcgRuntime != null
+                            ? director.EdpcgRuntime.Settings.
+                                suicideCommitSeconds
+                            : 1.25f;
+                        float lead = Mathf.Clamp(
+                            distance / Mathf.Max(1f, profile.maximumSpeed),
+                            0.15f,
+                            commitSeconds);
+                        suicideCommitAim = target +
+                                           playerBody.velocity * lead;
+                        suicideCommitEndsAt = Time.time + commitSeconds;
+                        attackState = AttackState.Firing;
+                        WeaponPermission = EdpcgWeaponPermission.Live;
                     }
                     break;
+                case AttackState.Firing:
+                {
+                    WeaponPermission = EdpcgWeaponPermission.Live;
+                    Vector3 commitDirection = suicideCommitAim -
+                                              body.worldCenterOfMass;
+                    if (commitDirection.sqrMagnitude > 0.01f)
+                    {
+                        desiredAim = commitDirection.normalized;
+                        desiredVelocity = desiredAim * profile.maximumSpeed;
+                    }
+                    if (distance <= Mathf.Max(
+                            10f,
+                            profile.detonationRadius * 1.1f))
+                    {
+                        Detonate();
+                        break;
+                    }
+                    bool missed = commitDirection.sqrMagnitude <= 36f ||
+                                  Time.time >= suicideCommitEndsAt;
+                    if (!missed)
+                        break;
+                    director.ReleaseAttackToken(this);
+                    WeaponPermission = EdpcgWeaponPermission.Safe;
+                    attackState = AttackState.Recovering;
+                    attackStateUntil = Time.time +
+                        (director.EdpcgRuntime != null
+                            ? director.EdpcgRuntime.Settings.
+                                suicideBreakAwaySeconds
+                            : 2.2f);
+                    PathIntent = EdpcgPathIntent.BreakAway;
+                    nextSemanticDecisionAt = Time.time;
+                    break;
+                }
                 default:
+                    WeaponPermission = EdpcgWeaponPermission.Safe;
                     if (Time.time >= attackStateUntil)
                         attackState = AttackState.Tracking;
                     break;
@@ -2357,14 +3023,43 @@ namespace UnityPlanet.ModularAssembly
             body.isKinematic = true;
         }
 
-        void Die(SpaceDamageInfo damage, float appliedDamage)
+        void BeginNavigationRecovery(string reason)
+        {
+            if (!IsCombatCapable)
+                return;
+            dead = true;
+            activeForCombat = false;
+            returnAt = Time.time;
+            TacticalState = EdpcgEnemyTacticalState.NavigationRecovery;
+            WeaponPermission = EdpcgWeaponPermission.Safe;
+            director?.NotifyEnemyNavigationRecovery(this, reason);
+            if (rootCollider != null)
+                rootCollider.enabled = false;
+            SetRenderers(false);
+            if (body != null)
+            {
+                if (!body.isKinematic)
+                {
+                    body.velocity = Vector3.zero;
+                    body.angularVelocity = Vector3.zero;
+                }
+                body.isKinematic = true;
+            }
+        }
+
+        void Die(
+            SpaceDamageInfo damage,
+            float appliedDamage,
+            EdpcgEnemyResolutionReason resolutionReason)
         {
             if (dead)
                 return;
             dead = true;
             activeForCombat = false;
             returnAt = Time.time + 0.35f;
-            director?.NotifyEnemyDeath(this, 0f);
+            TacticalState = EdpcgEnemyTacticalState.Resolved;
+            WeaponPermission = EdpcgWeaponPermission.Safe;
+            director?.NotifyEnemyDeath(this, 0f, resolutionReason);
             rootCollider.enabled = false;
             if (!body.isKinematic)
             {
@@ -2402,6 +3097,31 @@ namespace UnityPlanet.ModularAssembly
                 (hit != null && hit.IsChildOf(playerBody.transform)))
             {
                 Detonate();
+                return;
+            }
+            if (collision.rigidbody == null ||
+                collision.rigidbody.isKinematic)
+            {
+                staticCollisionCount++;
+                director?.ReleaseAttackToken(this);
+                WeaponPermission = EdpcgWeaponPermission.Safe;
+                attackState = AttackState.Recovering;
+                attackStateUntil = Time.time + 1.2f;
+                PathIntent = EdpcgPathIntent.BreakAway;
+                nextSemanticDecisionAt = Time.time;
+                Vector3 normal = collision.contactCount > 0
+                    ? collision.GetContact(0).normal
+                    : -transform.forward;
+                desiredVelocity = Vector3.Reflect(
+                    body.velocity.sqrMagnitude > 1f
+                        ? body.velocity.normalized
+                        : transform.forward,
+                    normal) * profile.maximumSpeed * 0.55f;
+                if (director.EdpcgRuntime != null &&
+                    staticCollisionCount >= 3)
+                {
+                    BeginNavigationRecovery("repeated-static-collision");
+                }
             }
         }
 
@@ -2431,7 +3151,8 @@ namespace UnityPlanet.ModularAssembly
                     Vector3.zero,
                     SpaceDamageType.Explosion,
                     gameObject),
-                0f);
+                0f,
+                EdpcgEnemyResolutionReason.SelfDetonated);
         }
 
         void ConfigureForProfile()

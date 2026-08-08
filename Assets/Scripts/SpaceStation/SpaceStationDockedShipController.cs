@@ -13,6 +13,9 @@ namespace UnityPlanet.SpaceStation
     {
         const string DefinitionResourcePath =
             "ModularAssembly/Definitions";
+        const string CoreSourceId =
+            "block:core:core_heavy_222";
+        const string CoreVisualName = "NeoXCoreHeavy222";
 
         [SerializeField] Transform stationWalker;
         [SerializeField] GameObject defaultParkedShip;
@@ -51,6 +54,7 @@ namespace UnityPlanet.SpaceStation
         {
             stationWalker = walker;
             defaultParkedShip = fallbackShip;
+            HideDefaultParkedShip();
             floor01SpawnPosition = floorRoomSpawn;
             dockingBaySpawnPosition = dockRoomSpawn;
             assemblySceneName = string.IsNullOrWhiteSpace(
@@ -61,6 +65,7 @@ namespace UnityPlanet.SpaceStation
 
         void Awake()
         {
+            HideDefaultParkedShip();
             LastAppliedSpawnLocation =
                 SpaceStationFlowContext.EnterStation();
             ApplyEntrySpawn(LastAppliedSpawnLocation);
@@ -118,7 +123,7 @@ namespace UnityPlanet.SpaceStation
                     GalaxyLaunchContext.SelectedSlotId))
             {
                 statusMessage =
-                    "未选择正式存档，停靠位使用默认测试飞船。";
+                    "未选择正式存档，停靠位保持为空。";
                 yield break;
             }
 
@@ -163,7 +168,7 @@ namespace UnityPlanet.SpaceStation
                 if (string.IsNullOrWhiteSpace(loadError))
                 {
                     statusMessage =
-                        "当前存档还没有模块飞船，停靠位使用默认飞船。";
+                        "当前存档还没有模块飞船，停靠位保持为空。";
                 }
                 else
                 {
@@ -196,7 +201,7 @@ namespace UnityPlanet.SpaceStation
                 baseDefinitions.Length == 0)
             {
                 FailSavedDesign(
-                    "运行时模块定义资源缺失。停靠位已保留默认飞船。");
+                    "运行时模块定义资源缺失，停靠位保持为空。");
                 yield break;
             }
 
@@ -249,7 +254,17 @@ namespace UnityPlanet.SpaceStation
                 contentService.IsLoadingAssets)
             {
                 FailSavedDesign(
-                    "模块外观载入超时，停靠位已恢复默认飞船。");
+                    "模块外观载入超时，停靠位保持为空。");
+                yield break;
+            }
+
+            string coreVisualError = null;
+            yield return ReplaceCoreVisual(
+                presenter,
+                error => coreVisualError = error);
+            if (!string.IsNullOrEmpty(coreVisualError))
+            {
+                FailSavedDesign(coreVisualError);
                 yield break;
             }
 
@@ -262,14 +277,101 @@ namespace UnityPlanet.SpaceStation
                 yield break;
             }
 
-            if (defaultParkedShip != null)
-            {
-                defaultParkedShip.SetActive(false);
-            }
+            HideDefaultParkedShip();
 
             usingSavedDesign = true;
             loadingSavedDesign = false;
             statusMessage = "停靠位已同步最后一次成功保存的模块飞船。";
+        }
+
+        IEnumerator ReplaceCoreVisual(
+            GridAssemblyPresenter presenter,
+            Action<string> completed)
+        {
+            GridModuleView coreView = null;
+            foreach (GridModuleView view in presenter.Views.Values)
+            {
+                if (view?.Record?.Definition == null ||
+                    !string.Equals(
+                        view.Record.Definition.ModuleId,
+                        GridAssemblyModel.CoreModuleId,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                coreView = view;
+                break;
+            }
+
+            if (coreView == null)
+            {
+                completed(
+                    "停靠飞船缺少驾驶核心外观，停靠位保持为空。");
+                yield break;
+            }
+
+            ModularContentRecord coreRecord = null;
+            foreach (ModularContentRecord record in
+                     contentService.Catalog.Items)
+            {
+                if (record != null &&
+                    string.Equals(
+                        record.sourceId,
+                        CoreSourceId,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    coreRecord = record;
+                    break;
+                }
+            }
+
+            if (coreRecord == null)
+            {
+                completed(
+                    "模块目录缺少驾驶核心模型，停靠位保持为空。");
+                yield break;
+            }
+
+            GameObject loaded = null;
+            if (!contentService.TryInstantiatePrepared(
+                    coreRecord,
+                    coreView.transform,
+                    out loaded))
+            {
+                yield return contentService.InstantiateAsync(
+                    coreRecord,
+                    coreView.transform,
+                    value => loaded = value);
+            }
+
+            if (coreView == null || loaded == null)
+            {
+                if (loaded != null)
+                {
+                    Destroy(loaded);
+                }
+                completed(
+                    "驾驶核心模型载入失败，停靠位保持为空。");
+                yield break;
+            }
+
+            loaded.name = CoreVisualName;
+            foreach (Collider collider in
+                     loaded.GetComponentsInChildren<Collider>(true))
+            {
+                collider.enabled = false;
+            }
+            foreach (Renderer renderer in
+                     coreView.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!renderer.transform.IsChildOf(loaded.transform))
+                {
+                    renderer.enabled = false;
+                }
+            }
+
+            completed(string.Empty);
         }
 
         bool TryPrepareStaticVisual(
@@ -281,7 +383,7 @@ namespace UnityPlanet.SpaceStation
                     out Bounds initialBounds))
             {
                 error =
-                    "模块飞船没有可显示的渲染网格，已保留默认飞船。";
+                    "模块飞船没有可显示的渲染网格，停靠位保持为空。";
                 return false;
             }
 
@@ -389,11 +491,17 @@ namespace UnityPlanet.SpaceStation
                 Destroy(savedVisualRoot);
                 savedVisualRoot = null;
             }
-            if (defaultParkedShip != null)
-            {
-                defaultParkedShip.SetActive(true);
-            }
+            HideDefaultParkedShip();
             Debug.LogError("[SpaceStation] " + message, this);
+        }
+
+        void HideDefaultParkedShip()
+        {
+            if (defaultParkedShip != null &&
+                defaultParkedShip.activeSelf)
+            {
+                defaultParkedShip.SetActive(false);
+            }
         }
 
         bool IsWalkerInInteractionRange()
@@ -433,7 +541,7 @@ namespace UnityPlanet.SpaceStation
                 ? "正在同步已保存的停靠飞船……"
                 : usingSavedDesign
                     ? "当前展示：最后一次成功保存的完整设计"
-                    : "当前展示：默认停靠飞船；保存设计后将自动替换";
+                    : "当前展示：停靠位为空；保存设计后将自动显示";
             GUI.Label(
                 new Rect(left + 16f, top + 41f, width - 32f, 22f),
                 detail,

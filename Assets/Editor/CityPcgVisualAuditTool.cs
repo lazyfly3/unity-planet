@@ -701,7 +701,7 @@ public static class CityPcgVisualAuditTool
                 "低/中/高=" + low + "/" + medium + "/" + high),
             new AuditCheck("空白街区补入可形成路线选择的战术楼体", infillBuildings.Length >= 30,
                 "规则填充楼=" + infillBuildings.Length + "（大地块主导后要求≥30）"),
-            new AuditCheck("正式敌机入口位于刷怪允许半径", maximumIngressRadius <= 510f,
+            new AuditCheck("内部刷新兼容采样点位于允许半径", maximumIngressRadius <= 510f,
                 "最远入口=" + maximumIngressRadius.ToString("0.0") + "m"),
             new AuditCheck("屋顶设备存在且都在所属屋顶范围", mechanical.Length > 0 && rooftopPlacementFailures == 0,
                 "设备=" + mechanical.Length + "，越界=" + rooftopPlacementFailures),

@@ -354,6 +354,364 @@ public sealed class VehicleRuntimeOptimizationTests
     }
 
     [Test]
+    public void ArcadeAssist_StrafeIntentIsSeparatedFromForwardDrift()
+    {
+        Vector3 velocity = Vector3.forward * 24f;
+        TrainingFlightAssistDemand demand =
+            TrainingFlightAssist.CalculateDemand(
+                Vector3.zero,
+                velocity,
+                Vector3.zero,
+                true,
+                Vector3.right,
+                18f);
+
+        Assert.That(
+            Vector3.Dot(
+                demand.intentAccelerationWorld,
+                Vector3.right),
+            Is.GreaterThan(0f));
+        Assert.That(
+            Mathf.Abs(Vector3.Dot(
+                demand.intentAccelerationWorld,
+                Vector3.forward)),
+            Is.LessThan(0.0001f));
+        Assert.That(
+            Vector3.Dot(
+                demand.driftCancellationAccelerationWorld,
+                velocity),
+            Is.LessThan(0f));
+        AssertVector(
+            (demand.targetVelocityWorld - velocity) /
+            TrainingFlightAssist.VelocityResponseSeconds,
+            demand.controlAccelerationWorld);
+    }
+
+    [TestCase(1f, 0f, 0f)]
+    [TestCase(-1f, 0f, 0f)]
+    [TestCase(0f, 0f, -1f)]
+    [TestCase(0f, 1f, 0f)]
+    [TestCase(1f, 0f, -1f)]
+    public void ArcadeAssist_NewDirectionReceivesPrimaryDemand(
+        float x,
+        float y,
+        float z)
+    {
+        Vector3 direction = new Vector3(x, y, z).normalized;
+        TrainingFlightAssistDemand demand =
+            TrainingFlightAssist.CalculateDemand(
+                Vector3.zero,
+                Vector3.forward * 22f,
+                Vector3.zero,
+                true,
+                direction,
+                18f);
+
+        Assert.That(
+            Vector3.Dot(
+                demand.intentAccelerationWorld,
+                direction),
+            Is.GreaterThan(0f));
+    }
+
+    [Test]
+    public void ArcadeAssist_ReleaseStopIsStrongButLegacyDemandIsStable()
+    {
+        Vector3 position = new Vector3(2f, -1f, 0.5f);
+        Vector3 velocity = new Vector3(8f, -2f, 3f);
+        TrainingFlightAssistDemand demand =
+            TrainingFlightAssist.CalculateDemand(
+                position,
+                velocity,
+                Vector3.zero,
+                true,
+                Vector3.zero,
+                30f);
+
+        Assert.That(
+            Vector3.Dot(demand.stopAccelerationWorld, velocity),
+            Is.LessThan(0f));
+        Assert.That(
+            demand.stopAccelerationWorld.magnitude,
+            Is.EqualTo(
+                velocity.magnitude *
+                TrainingFlightAssist.StopVelocityGain)
+                .Within(0.001f));
+        Assert.That(
+            demand.positionHoldAccelerationWorld.x,
+            Is.LessThan(0f));
+        AssertVector(
+            -position * 5f - velocity * 4.6f,
+            demand.controlAccelerationWorld);
+    }
+
+    [Test]
+    public void ArcadeAssist_IntentPriorityOnlyAppliesToDirectPlayerTraining()
+    {
+        Assert.IsTrue(
+            TrainingFlightAssist.ShouldPrioritizePlayerIntent(
+                VehicleCoreAssistMode.Training,
+                true,
+                false));
+        Assert.IsFalse(
+            TrainingFlightAssist.ShouldPrioritizePlayerIntent(
+                VehicleCoreAssistMode.Standard,
+                true,
+                false));
+        Assert.IsFalse(
+            TrainingFlightAssist.ShouldPrioritizePlayerIntent(
+                VehicleCoreAssistMode.Training,
+                true,
+                true));
+        Assert.IsFalse(
+            TrainingFlightAssist.ShouldPrioritizePlayerIntent(
+                VehicleCoreAssistMode.Training,
+                false,
+                false));
+    }
+
+    [Test]
+    public void ArcadeTuningProfile_ChangesPlayerResponseAndTargetSpeed()
+    {
+        var tuning = ScriptableObject.CreateInstance<
+            ArcadeFlightTuningProfile>();
+        try
+        {
+            tuning.ResetToDefaults();
+            tuning.intentResponseSeconds = 0.08f;
+            tuning.driftResponseSeconds = 0.64f;
+            tuning.baseTargetSpeed = 20f;
+            tuning.minimumTargetSpeed = 20f;
+            tuning.maximumTargetSpeed = 100f;
+            tuning.accelerationToSpeed = 5f;
+
+            TrainingFlightAssistDemand demand =
+                TrainingFlightAssist.CalculateDemand(
+                    Vector3.zero,
+                    Vector3.forward * 24f,
+                    Vector3.zero,
+                    true,
+                    Vector3.right,
+                    18f,
+                    tuning);
+
+            Assert.That(
+                demand.intentAccelerationWorld.x,
+                Is.EqualTo(18f / 0.08f).Within(0.001f));
+            Assert.That(
+                demand.driftCancellationAccelerationWorld.z,
+                Is.EqualTo(-24f / 0.64f).Within(0.001f));
+            Assert.That(
+                TrainingFlightAssist.CalculateTargetSpeed(
+                    8f,
+                    false,
+                    tuning),
+                Is.EqualTo(60f).Within(0.001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(tuning);
+        }
+    }
+
+    [Test]
+    public void ArcadeTuningProfile_DefaultResourceIsAvailable()
+    {
+        ArcadeFlightTuningProfile tuning =
+            ArcadeFlightTuningProfile.Load();
+
+        Assert.NotNull(tuning);
+        Assert.That(
+            tuning.intentAuthorityFraction,
+            Is.EqualTo(0.75f).Within(0.0001f));
+        Assert.That(
+            tuning.stopVelocityGain,
+            Is.EqualTo(10f).Within(0.0001f));
+    }
+
+    [Test]
+    public void TestFlightMapSelectionExposesNaturalAndCityProviders()
+    {
+        Assert.That(
+            (int)FlightEnvironmentKind.Natural,
+            Is.EqualTo((int)FlightEnvironmentKind.PlanetLab));
+        Assert.That(
+            (int)FlightEnvironmentKind.City,
+            Is.EqualTo((int)FlightEnvironmentKind.CombatMapLab));
+        Assert.That(
+            Resources.Load<GameObject>(
+                "PlanetSurface/UrbanCombatCityTemplate"),
+            Is.Not.Null);
+
+        var host = new GameObject("CityFlightProviderTest");
+        try
+        {
+            CityTestFlightEnvironmentController provider =
+                host.AddComponent<CityTestFlightEnvironmentController>();
+            Assert.That(provider, Is.InstanceOf<IGridFlightEnvironment>());
+            Assert.That(provider, Is.InstanceOf<IGridFlightEnvironmentWarmup>());
+            Assert.That(provider, Is.InstanceOf<ICombatArenaProvider>());
+        }
+        finally
+        {
+            Object.DestroyImmediate(host);
+        }
+    }
+
+    [Test]
+    public void ArcadeTuningProfile_RuntimeCopyPersistsWithoutMutatingAsset()
+    {
+        bool hadSavedOverride = PlayerPrefs.HasKey(
+            ArcadeFlightTuningProfile.RuntimePreferencesKey);
+        string savedOverride = hadSavedOverride
+            ? PlayerPrefs.GetString(
+                ArcadeFlightTuningProfile.RuntimePreferencesKey)
+            : string.Empty;
+        ArcadeFlightTuningProfile source =
+            ArcadeFlightTuningProfile.Load();
+        float sourceIntentResponse = source.intentResponseSeconds;
+        ArcadeFlightTuningProfile edited = null;
+        ArcadeFlightTuningProfile restored = null;
+        try
+        {
+            edited = ArcadeFlightTuningProfile.CreateRuntimeCopy(false);
+            Assert.AreNotSame(source, edited);
+            edited.ApplyPreset(ArcadeFlightTuningPreset.Responsive);
+            edited.SaveRuntimeOverrides();
+
+            restored = ArcadeFlightTuningProfile.CreateRuntimeCopy(true);
+
+            Assert.That(
+                restored.intentResponseSeconds,
+                Is.EqualTo(0.08f).Within(0.0001f));
+            Assert.That(
+                restored.stopVelocityGain,
+                Is.EqualTo(14f).Within(0.0001f));
+            Assert.That(
+                source.intentResponseSeconds,
+                Is.EqualTo(sourceIntentResponse).Within(0.0001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(edited);
+            Object.DestroyImmediate(restored);
+            if (hadSavedOverride)
+            {
+                PlayerPrefs.SetString(
+                    ArcadeFlightTuningProfile.RuntimePreferencesKey,
+                    savedOverride);
+            }
+            else
+            {
+                PlayerPrefs.DeleteKey(
+                    ArcadeFlightTuningProfile.RuntimePreferencesKey);
+            }
+            PlayerPrefs.Save();
+        }
+    }
+
+    [Test]
+    public void AirBuildPalette_UsesOnlyRequestedFiveCategories()
+    {
+        CollectionAssert.AreEqual(
+            new[] { "结构", "机翼", "推进", "能源", "武器" },
+            AirBuildCatalog.PaletteCategories);
+        CollectionAssert.DoesNotContain(
+            AirBuildCatalog.PaletteCategories,
+            "移动");
+        CollectionAssert.DoesNotContain(
+            AirBuildCatalog.PaletteCategories,
+            "全部");
+        CollectionAssert.DoesNotContain(
+            AirBuildCatalog.PaletteCategories,
+            "防御");
+    }
+
+    [Test]
+    public void AirBuildPalette_FiltersEnergyAndStructureWithoutRemovingCatalogDefinitions()
+    {
+        Assert.IsTrue(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("core_heavy_222", "Core")));
+        Assert.IsTrue(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("block_111", "Structure")));
+        Assert.IsTrue(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("block_1_2_111", "Structure")));
+        Assert.IsFalse(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("assemble_222", "Structure")));
+
+        Assert.IsTrue(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("core_energy_111", "Core")));
+        Assert.IsFalse(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("fire_energy_storage_422", "Energy")));
+        Assert.IsFalse(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("radar_222", "Radar")));
+
+        Assert.IsTrue(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("rocket_222", "Thruster")));
+        Assert.IsTrue(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("large_wing_left_361", "Wing")));
+        Assert.IsTrue(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("waste_rudder", "ControlSurface")));
+        Assert.IsTrue(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("machinegun_111", "Cannon")));
+        Assert.IsFalse(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("shield_121", "Shield")));
+        Assert.IsFalse(AirBuildCatalog.IsVisibleInPalette(
+            PaletteRecord("wheel_basic_111", "Wheel")));
+
+        Assert.That(
+            AirBuildCatalog.OrderedIds,
+            Does.Contain("wheel_basic_111"),
+            "目录过滤不能删除定义；已有飞船仍需解析隐藏模块。");
+    }
+
+    [Test]
+    public void ArcadeAllocator_MissingDriftAxisKeepsPrimaryIntent()
+    {
+        var allocator = new VirtualRcs24Allocator();
+        allocator.Rebuild(
+            new[]
+            {
+                Thruster(
+                    0,
+                    Vector3.zero,
+                    Vector3.right,
+                    100f,
+                    0.01f)
+            },
+            Vector3.zero,
+            false,
+            0f,
+            0f,
+            0f);
+        allocator.BeginStep(new[] { 1f });
+        Rcs24SolveResult primary = allocator.SolveTranslation(
+            new Rcs24SolveRequest
+            {
+                desired = Vector3.right * 60f,
+                strictDirection = false,
+                group = "test_primary_intent"
+            });
+        Rcs24SolveResult withMissingDrift = allocator.SolveTranslation(
+            new Rcs24SolveRequest
+            {
+                desired = Vector3.right * 60f +
+                          Vector3.back * 80f,
+                strictDirection = false,
+                group = "test_missing_drift"
+            });
+
+        Assert.That(primary.localForce.x, Is.EqualTo(60f).Within(0.01f));
+        Assert.That(
+            withMissingDrift.localForce.x,
+            Is.EqualTo(primary.localForce.x).Within(0.01f));
+        Assert.That(
+            Mathf.Abs(withMissingDrift.localForce.z),
+            Is.LessThan(0.01f));
+        Assert.That(withMissingDrift.missingAxisMask & 4, Is.EqualTo(4));
+    }
+
+    [Test]
     public void ArcadeAssist_SpaceAndControlRequestOppositeVerticalSpeeds()
     {
         TrainingFlightAssistDemand ascend =
@@ -664,5 +1022,17 @@ public sealed class VehicleRuntimeOptimizationTests
             area = area,
             dragCoefficient = 0.7f
         });
+    }
+
+    static ModularContentRecord PaletteRecord(
+        string id,
+        string behavior)
+    {
+        return new ModularContentRecord
+        {
+            neoXId = id,
+            behavior = behavior,
+            selectableForAirBuild = true
+        };
     }
 }

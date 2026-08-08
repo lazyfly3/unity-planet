@@ -476,6 +476,9 @@ public sealed class GridLabCameraController : MonoBehaviour
     {
         if (targetCamera == null || target == null)
             return;
+        bool tuningInputCaptured =
+            UnityPlanet.ModularAssembly.
+                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured;
         if (flightMode &&
             Time.unscaledTime >= nextFlightBoundsRefresh)
         {
@@ -496,8 +499,9 @@ public sealed class GridLabCameraController : MonoBehaviour
             }
             distance = Mathf.Clamp(distance - Input.mouseScrollDelta.y * 1.2f, 5f, 58f);
         }
-        else if (Input.GetKey(KeyCode.LeftAlt) ||
-                 Input.GetKey(KeyCode.RightAlt))
+        else if (!tuningInputCaptured &&
+                 (Input.GetKey(KeyCode.LeftAlt) ||
+                  Input.GetKey(KeyCode.RightAlt)))
         {
             freeLookYaw += Input.GetAxisRaw("Mouse X") * 3f;
             freeLookPitch = Mathf.Clamp(
@@ -506,7 +510,7 @@ public sealed class GridLabCameraController : MonoBehaviour
                 -55f,
                 70f);
         }
-        else if (flightMode)
+        else if (flightMode && !tuningInputCaptured)
         {
             flightAimYaw += Input.GetAxisRaw("Mouse X") * 2.2f;
             flightAimPitch = Mathf.Clamp(
@@ -554,12 +558,18 @@ public sealed class GridLabCameraController : MonoBehaviour
         previousVelocity = velocity;
         hasPreviousVelocity = true;
 
-        bool boostRequested =
-            Input.GetKey(KeyCode.LeftShift) ||
-            Input.GetKey(KeyCode.RightShift);
-        bool hasMovement = TryGetBoostDirection(
-            out Vector3 movementDirection,
-            out float presentationWeight);
+        bool tuningInputCaptured =
+            UnityPlanet.ModularAssembly.
+                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured;
+        bool boostRequested = !tuningInputCaptured &&
+            (Input.GetKey(KeyCode.LeftShift) ||
+             Input.GetKey(KeyCode.RightShift));
+        Vector3 movementDirection = Vector3.zero;
+        float presentationWeight = 0f;
+        bool hasMovement = !tuningInputCaptured &&
+            TryGetBoostDirection(
+                out movementDirection,
+                out presentationWeight);
 
         float targetOffset = 0f;
         if (boostRequested &&
@@ -1358,7 +1368,12 @@ public sealed class GridKineticWeaponSystem : MonoBehaviour
             enabled = false;
             return;
         }
-        if (flight == null || !flight.IsFlying || !Input.GetMouseButton(0) || Time.time < nextShot)
+        if (UnityPlanet.ModularAssembly.
+                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured ||
+            flight == null ||
+            !flight.IsFlying ||
+            !Input.GetMouseButton(0) ||
+            Time.time < nextShot)
             return;
         List<GridModuleView> weapons = presenter.Views.Values
             .Where(view => view != null && view.Record.Definition.Category == GridModuleCategory.KineticWeapon)
@@ -2190,6 +2205,12 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
 
     void Update()
     {
+        if (flight.State == GridFlightState.Flight &&
+            UnityPlanet.ModularAssembly.
+                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured)
+        {
+            return;
+        }
         if (Input.GetKeyDown(KeyCode.F5))
             ToggleFlight();
         if (flight.State == GridFlightState.Flight)
