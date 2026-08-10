@@ -51,14 +51,7 @@ namespace UnityPlanet.ModularAssembly
             "radar_222",
             "shield_121",
             "heavy_energyshield_242",
-            "uav_222",
-            "wheel_basic_111",
-            "wheel_m_222",
-            "wheel_l_422",
-            "speedwheel_small_l_322",
-            "speedwheel_small_r_322",
-            "speedwheel_large_l_522",
-            "speedwheel_large_r_522"
+            "uav_222"
         };
 
         private static readonly HashSet<string> Polished =
@@ -104,6 +97,14 @@ namespace UnityPlanet.ModularAssembly
             }
 
             string id = record.neoXId ?? string.Empty;
+            // Land driving was removed from the current design. Keep the
+            // records loadable for legacy blueprints, but never expose wheels
+            // in the air-build palette even if an old catalog flag says they
+            // are selectable.
+            if (Wheels.Contains(id))
+            {
+                return false;
+            }
             if (PaletteStructureIds.Contains(id))
             {
                 return true;

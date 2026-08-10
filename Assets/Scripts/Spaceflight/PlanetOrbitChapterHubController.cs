@@ -58,6 +58,7 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
     Material planetMaterial;
     Material atmosphereMaterial;
     Material beaconMaterial;
+    Material lockedBeaconMaterial;
     Material starMaterial;
     Camera worldCamera;
     Canvas canvas;
@@ -68,6 +69,7 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
     Text detailTitleText;
     Text detailBodyText;
     Text statusText;
+    Text enterButtonLabel;
     RectTransform missionDetailPanel;
     Button enterButton;
     Button returnButton;
@@ -88,6 +90,7 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
     PlanetOrbitDragSurface planetDragSurface;
     float planetViewYaw;
     float planetViewPitch;
+    Coroutine planetSwitchRoutine;
 
     public bool IsReady { get; private set; }
     public bool ShipControlsSuppressed { get; private set; }
@@ -539,6 +542,17 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             FinitePlanetMissionRules.Resolve(
                 bossId,
                 selectedPlanetIndex);
+        string planetId = targetPlanet == null
+            ? string.Empty
+            : targetPlanet.planetId;
+        int requiredCompletionCount =
+            PlanetMissionProgressService.CountCompleted(
+                planetId,
+                mineId,
+                outpostId);
+        bool bossLocked =
+            !PlanetMissionProgressService.AreAllMissionsUnlocked() &&
+            requiredCompletionCount < 2;
         AddMission(new MissionDefinition(
             mineId,
             "废弃采矿区",
@@ -546,7 +560,9 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             mineRules.DifficultyLabel,
             mineRules.ObjectiveDescription,
             mineRules.GalaxyCoinReward + " 银河币",
-            ResolveMissionSurfaceDirection(mineId)));
+            ResolveMissionSurfaceDirection(mineId),
+            false,
+            string.Empty));
         AddMission(new MissionDefinition(
             outpostId,
             "敌方工业区",
@@ -554,7 +570,9 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             outpostRules.DifficultyLabel,
             outpostRules.ObjectiveDescription,
             outpostRules.GalaxyCoinReward + " 银河币",
-            ResolveMissionSurfaceDirection(outpostId)));
+            ResolveMissionSurfaceDirection(outpostId),
+            false,
+            string.Empty));
         AddMission(new MissionDefinition(
             bossId,
             "模块化首领",
@@ -562,7 +580,12 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             bossRules.DifficultyLabel,
             bossRules.ObjectiveDescription,
             bossRules.GalaxyCoinReward + " 银河币",
-            ResolveMissionSurfaceDirection(bossId)));
+            ResolveMissionSurfaceDirection(bossId),
+            bossLocked,
+            bossLocked
+                ? "完成本星球其余区域后解锁\n进度 " +
+                  requiredCompletionCount + "/2"
+                : string.Empty));
     }
 
     Vector3 ResolveMissionSurfaceDirection(string missionId)
@@ -679,7 +702,8 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
 
     public void SelectPlanet(int index)
     {
-        if (transitionStarted || availablePlanets.Count == 0)
+        if (transitionStarted || planetSwitchRoutine != null ||
+            availablePlanets.Count == 0)
         {
             return;
         }
@@ -693,14 +717,79 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             return;
         }
 
+        int direction = wrappedIndex ==
+                        (selectedPlanetIndex + 1) %
+                        availablePlanets.Count
+            ? 1
+            : -1;
+        planetSwitchRoutine = StartCoroutine(
+            PlayPlanetSwitch(wrappedIndex, direction));
+    }
+
+    IEnumerator PlayPlanetSwitch(int wrappedIndex, int direction)
+    {
+        SetInteractionEnabled(false);
+        ClearMissionSelection();
+        SetStatus(direction > 0
+            ? "正在前往下一颗星球……"
+            : "正在返回上一颗星球……");
+
+        const float halfDuration = 0.2f;
+        float elapsed = 0f;
+        Vector3 lateral = worldCamera == null
+            ? Vector3.right
+            : worldCamera.transform.right;
+        while (elapsed < halfDuration && planetRoot != null)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.Clamp01(elapsed / halfDuration));
+            planetRoot.transform.position = planetPosition +
+                lateral * direction * Mathf.Lerp(0f, 34f, progress);
+            planetRoot.transform.localScale =
+                Vector3.one * Mathf.Lerp(1f, 0.86f, progress);
+            yield return null;
+        }
+
         selectedPlanetIndex = wrappedIndex;
         targetPlanet = availablePlanets[selectedPlanetIndex];
-        CreatePlanetPresentation();
         DestroyMissionPresentation();
+        CreatePlanetPresentation();
         CreateMissionDefinitions();
         CreateMissionPresentation();
         RefreshPlanetInterface();
         ClearMissionSelection();
+
+        if (planetRoot != null)
+        {
+            planetRoot.transform.position = planetPosition -
+                lateral * direction * 34f;
+            planetRoot.transform.localScale = Vector3.one * 0.86f;
+        }
+        elapsed = 0f;
+        while (elapsed < halfDuration && planetRoot != null)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.Clamp01(elapsed / halfDuration));
+            planetRoot.transform.position = planetPosition -
+                lateral * direction * Mathf.Lerp(34f, 0f, progress);
+            planetRoot.transform.localScale =
+                Vector3.one * Mathf.Lerp(0.86f, 1f, progress);
+            yield return null;
+        }
+        if (planetRoot != null)
+        {
+            planetRoot.transform.position = planetPosition;
+            planetRoot.transform.localScale = Vector3.one;
+        }
+
+        planetSwitchRoutine = null;
+        SetInteractionEnabled(true);
         string displayName = travelManager == null
             ? targetPlanet.displayName
             : travelManager.GetPlanetDisplayName(targetPlanet);
@@ -717,15 +806,32 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         if (planetNameText != null)
         {
             planetNameText.text = displayName;
+            FitTextWithinRect(planetNameText, 14, 23);
         }
         if (chapterText != null)
         {
+            string planetId = targetPlanet == null
+                ? string.Empty
+                : targetPlanet.planetId;
+            int completed = PlanetMissionProgressService.CountCompleted(
+                planetId,
+                "abandoned_mine",
+                "industrial_outpost",
+                "modular_boss");
+            int unlocked = PlanetMissionProgressService.CountCompleted(
+                planetId,
+                "abandoned_mine",
+                "industrial_outpost") >= 2 ||
+                PlanetMissionProgressService.AreAllMissionsUnlocked()
+                ? missions.Count
+                : Mathf.Max(0, missions.Count - 1);
             chapterText.text = targetPlanet == null
                 ? "星球章节\n暂无可用区域"
                 : "星球章节  ·  " +
                   GetClimateDisplayName(targetPlanet.climate) +
-                  "\n可用区域  " + missions.Count + "/" +
-                  missions.Count;
+                  "\n可进入  " + unlocked + "/" + missions.Count +
+                  "  ·  已完成  " + completed + "/" + missions.Count;
+            FitTextWithinRect(chapterText, 12, 17);
         }
         if (planetIndexText != null)
         {
@@ -779,6 +885,23 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         missions.Add(new MissionRuntime(definition));
     }
 
+    public void RefreshMissionProgress()
+    {
+        if (!isActiveAndEnabled || transitionStarted ||
+            planetSwitchRoutine != null || missions.Count == 0 ||
+            canvas == null)
+        {
+            return;
+        }
+
+        DestroyMissionPresentation();
+        CreateMissionDefinitions();
+        CreateMissionPresentation();
+        RefreshPlanetInterface();
+        ClearMissionSelection();
+        SetStatus("作弊码已解锁全部关卡，请选择降落区域。");
+    }
+
     void CreateMissionPresentation()
     {
         Shader shader = Shader.Find("Standard");
@@ -791,6 +914,15 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         };
         beaconMaterial.EnableKeyword("_EMISSION");
         beaconMaterial.SetColor("_EmissionColor", Cyan * 1.4f);
+        lockedBeaconMaterial = new Material(shader)
+        {
+            name = "OrbitHub_LockedBeaconMaterial",
+            color = CyanDim
+        };
+        lockedBeaconMaterial.EnableKeyword("_EMISSION");
+        lockedBeaconMaterial.SetColor(
+            "_EmissionColor",
+            CyanDim * 0.8f);
 
         for (int index = 0; index < missions.Count; index++)
         {
@@ -805,7 +937,9 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             }
             beacon.transform.localScale = Vector3.one * 4.5f;
             beacon.GetComponent<MeshRenderer>().sharedMaterial =
-                beaconMaterial;
+                runtime.Definition.Locked
+                    ? lockedBeaconMaterial
+                    : beaconMaterial;
             runtime.Beacon = beacon.transform;
 
             GameObject lineObject = new GameObject(
@@ -815,14 +949,20 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             line.useWorldSpace = true;
             line.startWidth = 0.8f;
             line.endWidth = 0.25f;
-            line.sharedMaterial = beaconMaterial;
-            line.startColor = Cyan;
-            line.endColor = new Color(Cyan.r, Cyan.g, Cyan.b, 0.2f);
+            line.sharedMaterial = runtime.Definition.Locked
+                ? lockedBeaconMaterial
+                : beaconMaterial;
+            line.startColor = runtime.Definition.Locked
+                ? CyanDim
+                : Cyan;
+            line.endColor = runtime.Definition.Locked
+                ? new Color(CyanDim.r, CyanDim.g, CyanDim.b, 0.18f)
+                : new Color(Cyan.r, Cyan.g, Cyan.b, 0.2f);
             runtime.Line = line;
 
             int capturedIndex = index;
             Button marker = CreateIconButton(
-                canvas.transform,
+                canvasRect,
                 "MissionMarker_" + runtime.Definition.Id,
                 markerSprite,
                 new Vector2(96f, 96f));
@@ -831,6 +971,12 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             runtime.MarkerRect =
                 marker.GetComponent<RectTransform>();
             runtime.MarkerImage = marker.GetComponent<Image>();
+            if (runtime.Definition.Locked)
+            {
+                runtime.MarkerImage.color =
+                    new Color(CyanDim.r, CyanDim.g, CyanDim.b, 0.76f);
+                CreateLockBadge(runtime.MarkerRect);
+            }
         }
     }
 
@@ -845,16 +991,31 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             canvasObject.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1280f, 720f);
-        scaler.matchWidthOrHeight = 0.5f;
+        // Keep the authored 16:9 HUD in one immutable 1280x720 design space.
+        // MatchWidthOrHeight changes the logical canvas size on non-16:9 game
+        // views, while the generated frame is still aspect-fitted. That split
+        // coordinate system pushed fitted text across the painted borders.
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
         canvasObject.AddComponent<GraphicRaycaster>();
-        canvasRect = canvas.GetComponent<RectTransform>();
+
+        GameObject designSpaceObject = new GameObject(
+            "OrbitHudDesignSpace",
+            typeof(RectTransform),
+            typeof(AspectRatioFitter));
+        designSpaceObject.transform.SetParent(canvas.transform, false);
+        canvasRect = designSpaceObject.GetComponent<RectTransform>();
+        SetRectStretch(canvasRect, Vector2.zero, Vector2.zero);
+        AspectRatioFitter designSpaceFitter =
+            designSpaceObject.GetComponent<AspectRatioFitter>();
+        designSpaceFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+        designSpaceFitter.aspectRatio = 16f / 9f;
 
         GameObject dragObject = new GameObject(
             "PlanetDragSurface",
             typeof(RectTransform),
             typeof(Image),
             typeof(PlanetOrbitDragSurface));
-        dragObject.transform.SetParent(canvas.transform, false);
+        dragObject.transform.SetParent(canvasRect, false);
         RectTransform dragRect = dragObject.GetComponent<RectTransform>();
         dragRect.anchorMin = new Vector2(0.18f, 0.10f);
         dragRect.anchorMax = new Vector2(0.82f, 0.94f);
@@ -876,7 +1037,7 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
                 "GeneratedHudFrame",
                 typeof(RectTransform),
                 typeof(Image));
-            frameObject.transform.SetParent(canvas.transform, false);
+            frameObject.transform.SetParent(canvasRect, false);
             Image frameImage = frameObject.GetComponent<Image>();
             frameImage.sprite = frameSprite;
             frameImage.color = Color.white;
@@ -897,7 +1058,7 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         }
 
         Text title = CreateText(
-            canvas.transform,
+            canvasRect,
             "HubTitle",
             "近轨道任务选择",
             25,
@@ -911,7 +1072,7 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             new Vector2(360f, 48f));
 
         RectTransform left = CreatePanel(
-            canvas.transform,
+            canvasRect,
             "PlanetOverviewPanel",
             PanelColor);
         SetRect(
@@ -936,7 +1097,7 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             new Vector2(0f, 1f),
             new Vector2(0f, 1f),
             new Vector2(16f, -16f),
-            new Vector2(230f, 34f),
+            new Vector2(230f, 42f),
             new Vector2(0f, 1f));
         SetTextBestFit(planetNameText, 16, 23);
         chapterText = CreateText(
@@ -950,8 +1111,8 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             chapterText.rectTransform,
             new Vector2(0f, 1f),
             new Vector2(0f, 1f),
-            new Vector2(16f, -58f),
-            new Vector2(230f, 46f),
+            new Vector2(16f, -64f),
+            new Vector2(230f, 48f),
             new Vector2(0f, 1f));
 
         previousPlanetButton = CreateCompactNavigationButton(
@@ -998,7 +1159,7 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             () => SelectPlanet(selectedPlanetIndex + 1));
 
         missionDetailPanel = CreatePanel(
-            canvas.transform,
+            canvasRect,
             "MissionDetailPanel",
             PanelColor);
         SetRect(
@@ -1052,10 +1213,12 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             new Vector2(0.5f, 0f));
         enterButton.onClick.AddListener(
             () => TryEnterSelectedMission());
+        enterButtonLabel = enterButton.transform.Find("Label")
+            ?.GetComponent<Text>();
         missionDetailPanel.gameObject.SetActive(false);
 
         returnButton = CreateButton(
-            canvas.transform,
+            canvasRect,
             "ReturnStationButton",
             "返回空间站  Esc",
             new Vector2(244f, 72f),
@@ -1077,7 +1240,7 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             () => ReturnToStation());
 
         RectTransform bottom = CreatePanel(
-            canvas.transform,
+            canvasRect,
             "ControlStrip",
             PanelColor);
         SetRect(
@@ -1101,7 +1264,7 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             new Vector2(-16f, -6f));
 
         statusText = CreateText(
-            canvas.transform,
+            canvasRect,
             "Status",
             "正在准备星球与模块飞船……",
             16,
@@ -1212,6 +1375,13 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             Vector3 screen = worldCamera.WorldToScreenPoint(beacon);
             visible = visible && screen.z > 0f;
             mission.Visible = visible;
+            Button markerButton =
+                mission.MarkerRect.GetComponent<Button>();
+            if (markerButton != null)
+            {
+                markerButton.interactable =
+                    interactionEnabled && visible;
+            }
             mission.MarkerRect.gameObject.SetActive(visible);
             if (!visible)
             {
@@ -1232,7 +1402,8 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         {
             enterButton.interactable = interactionEnabled &&
                                        HasSelectedMission &&
-                                       missions[selectedIndex].Visible;
+                                       missions[selectedIndex].Visible &&
+                                       !missions[selectedIndex].Definition.Locked;
         }
     }
 
@@ -1257,8 +1428,9 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         {
             if (runtime.MarkerImage != null)
             {
-                runtime.MarkerImage.color =
-                    new Color(Cyan.r, Cyan.g, Cyan.b, 0.82f);
+                runtime.MarkerImage.color = runtime.Definition.Locked
+                    ? new Color(CyanDim.r, CyanDim.g, CyanDim.b, 0.76f)
+                    : new Color(Cyan.r, Cyan.g, Cyan.b, 0.82f);
             }
             if (runtime.MarkerRect != null)
             {
@@ -1282,6 +1454,10 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         if (enterButton != null)
         {
             enterButton.interactable = false;
+        }
+        if (enterButtonLabel != null)
+        {
+            enterButtonLabel.text = "确认降落";
         }
         if (missionDetailPanel != null)
         {
@@ -1310,8 +1486,12 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             if (runtime.MarkerImage != null)
             {
                 runtime.MarkerImage.color = selected
-                    ? Orange
-                    : new Color(Cyan.r, Cyan.g, Cyan.b, 0.82f);
+                    ? runtime.Definition.Locked
+                        ? new Color(0.62f, 0.52f, 0.34f, 0.92f)
+                        : Orange
+                    : runtime.Definition.Locked
+                        ? new Color(CyanDim.r, CyanDim.g, CyanDim.b, 0.76f)
+                        : new Color(Cyan.r, Cyan.g, Cyan.b, 0.82f);
             }
             if (runtime.MarkerRect != null)
             {
@@ -1321,7 +1501,11 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             }
             if (runtime.Line != null)
             {
-                Color color = selected ? Orange : Cyan;
+                Color color = runtime.Definition.Locked
+                    ? selected
+                        ? new Color(0.62f, 0.52f, 0.34f, 1f)
+                        : CyanDim
+                    : selected ? Orange : Cyan;
                 runtime.Line.startColor = color;
                 runtime.Line.endColor =
                     new Color(color.r, color.g, color.b, 0.22f);
@@ -1334,18 +1518,39 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             ResolveMissionEnvironment(definition);
         if (detailTitleText != null)
         {
-            detailTitleText.text = definition.Name;
+            detailTitleText.text = definition.Locked
+                ? definition.Name + "  ·  未解锁"
+                : definition.Name;
+            FitTextWithinRect(detailTitleText, 16, 24);
         }
         if (detailBodyText != null)
         {
-            detailBodyText.text =
-                "任务类型：" + definition.Type + "\n\n" +
-                "作战环境：" +
-                PlanetMissionEnvironmentResolver.GetDisplayName(environment) +
-                "\n\n" +
-                "危险等级：" + definition.Difficulty + "\n\n" +
-                "完成条件：" + definition.Condition + "\n\n" +
-                "任务奖励：" + definition.Reward;
+            detailBodyText.text = definition.Locked
+                ? "状态  未解锁\n" + definition.LockReason +
+                  "\n\n类型  " + definition.Type +
+                  "\n环境  " +
+                  PlanetMissionEnvironmentResolver.GetDisplayName(environment) +
+                  "\n危险  " + definition.Difficulty +
+                  "\n奖励  " + definition.Reward
+                : "类型  " + definition.Type +
+                  "\n环境  " +
+                  PlanetMissionEnvironmentResolver.GetDisplayName(environment) +
+                  "\n危险  " + definition.Difficulty +
+                  "\n\n目标\n" + definition.Condition +
+                  "\n\n奖励  " + definition.Reward;
+            FitTextWithinRect(detailBodyText, 13, 18);
+        }
+        if (enterButtonLabel != null)
+        {
+            enterButtonLabel.text = definition.Locked
+                ? "区域未解锁"
+                : "确认降落";
+        }
+        if (enterButton != null)
+        {
+            enterButton.interactable = interactionEnabled &&
+                                       !definition.Locked &&
+                                       missions[selectedIndex].Visible;
         }
     }
 
@@ -1366,6 +1571,11 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         }
 
         MissionRuntime selectedMission = missions[selectedIndex];
+        if (selectedMission.Definition.Locked)
+        {
+            SetStatus(selectedMission.Definition.LockReason);
+            return false;
+        }
         if (!selectedMission.Visible)
         {
             SetStatus("任务点位于星球背面，请按住鼠标左键拖动星球找到它。");
@@ -1660,7 +1870,8 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         if (enterButton != null)
         {
             enterButton.interactable = value && HasSelectedMission &&
-                                       missions[selectedIndex].Visible;
+                                       missions[selectedIndex].Visible &&
+                                       !missions[selectedIndex].Definition.Locked;
         }
         if (returnButton != null)
         {
@@ -1789,6 +2000,12 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         {
             outline.enabled = false;
         }
+        if (panel.GetComponent<RectMask2D>() == null)
+        {
+            // Final containment guard for every localized mission string,
+            // including future content with unexpectedly long names.
+            panel.gameObject.AddComponent<RectMask2D>();
+        }
     }
 
     static Text CreateText(
@@ -1832,6 +2049,32 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             maximumSize);
     }
 
+    static void FitTextWithinRect(
+        Text text,
+        int minimumSize,
+        int maximumSize)
+    {
+        if (text == null)
+            return;
+
+        text.resizeTextForBestFit = false;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        text.verticalOverflow = VerticalWrapMode.Truncate;
+        RectTransform rect = text.rectTransform;
+        LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
+        float availableHeight = Mathf.Max(1f, rect.rect.height - 1f);
+        int minimum = Mathf.Max(8, minimumSize);
+        int maximum = Mathf.Max(minimum, maximumSize);
+        for (int size = maximum; size >= minimum; size--)
+        {
+            text.fontSize = size;
+            LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
+            if (text.preferredHeight <= availableHeight + 0.5f)
+                return;
+        }
+        text.fontSize = minimum;
+    }
+
     static Button CreateButton(
         Transform parent,
         string name,
@@ -1873,6 +2116,7 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             text.rectTransform,
             new Vector2(8f, 4f),
             new Vector2(-8f, -4f));
+        SetTextBestFit(text, Mathf.Max(10, fontSize - 7), fontSize);
         return button;
     }
 
@@ -2076,6 +2320,80 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         return button;
     }
 
+    static void CreateLockBadge(RectTransform marker)
+    {
+        if (marker == null)
+            return;
+
+        GameObject badgeObject = new GameObject(
+            "BossLockBadge",
+            typeof(RectTransform),
+            typeof(Image));
+        badgeObject.transform.SetParent(marker, false);
+        RectTransform badge = badgeObject.GetComponent<RectTransform>();
+        SetRect(
+            badge,
+            Vector2.one,
+            Vector2.one,
+            new Vector2(-7f, -7f),
+            new Vector2(30f, 30f),
+            Vector2.one);
+        Image badgeImage = badgeObject.GetComponent<Image>();
+        badgeImage.color = new Color(0.015f, 0.08f, 0.1f, 0.96f);
+        badgeImage.raycastTarget = false;
+        Outline badgeOutline = badgeObject.AddComponent<Outline>();
+        badgeOutline.effectColor = new Color(
+            Orange.r,
+            Orange.g,
+            Orange.b,
+            0.72f);
+        badgeOutline.effectDistance = new Vector2(1f, -1f);
+
+        CreateLockPart(
+            badge,
+            "Body",
+            new Vector2(0f, -5f),
+            new Vector2(14f, 11f));
+        CreateLockPart(
+            badge,
+            "ShackleTop",
+            new Vector2(0f, 4f),
+            new Vector2(10f, 2.5f));
+        CreateLockPart(
+            badge,
+            "ShackleLeft",
+            new Vector2(-4f, 1f),
+            new Vector2(2.5f, 7f));
+        CreateLockPart(
+            badge,
+            "ShackleRight",
+            new Vector2(4f, 1f),
+            new Vector2(2.5f, 7f));
+    }
+
+    static void CreateLockPart(
+        RectTransform parent,
+        string name,
+        Vector2 position,
+        Vector2 size)
+    {
+        GameObject partObject = new GameObject(
+            name,
+            typeof(RectTransform),
+            typeof(Image));
+        partObject.transform.SetParent(parent, false);
+        RectTransform rect = partObject.GetComponent<RectTransform>();
+        SetRect(
+            rect,
+            new Vector2(0.5f, 0.5f),
+            new Vector2(0.5f, 0.5f),
+            position,
+            size);
+        Image image = partObject.GetComponent<Image>();
+        image.color = new Color(1f, 0.56f, 0.16f, 0.96f);
+        image.raycastTarget = false;
+    }
+
     static void SetRect(
         RectTransform rect,
         Vector2 anchorMin,
@@ -2131,6 +2449,11 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             Destroy(beaconMaterial);
             beaconMaterial = null;
         }
+        if (lockedBeaconMaterial != null)
+        {
+            Destroy(lockedBeaconMaterial);
+            lockedBeaconMaterial = null;
+        }
     }
 
     void DestroyPlanetPresentation()
@@ -2178,6 +2501,8 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         public readonly string Condition;
         public readonly string Reward;
         public readonly Vector3 SurfaceDirection;
+        public readonly bool Locked;
+        public readonly string LockReason;
 
         public MissionDefinition(
             string id,
@@ -2186,7 +2511,9 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             string difficulty,
             string condition,
             string reward,
-            Vector3 surfaceDirection)
+            Vector3 surfaceDirection,
+            bool locked,
+            string lockReason)
         {
             Id = id;
             Name = name;
@@ -2194,6 +2521,8 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
             Difficulty = difficulty;
             Condition = condition;
             Reward = reward;
+            Locked = locked;
+            LockReason = lockReason ?? string.Empty;
             SurfaceDirection = surfaceDirection.sqrMagnitude > 0.001f
                 ? surfaceDirection.normalized
                 : Vector3.up;

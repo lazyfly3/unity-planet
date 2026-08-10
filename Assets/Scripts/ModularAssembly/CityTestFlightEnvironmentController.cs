@@ -95,7 +95,8 @@ namespace UnityPlanet.ModularAssembly
             target.position = preparedPosition;
             target.rotation = preparedRotation;
             Physics.SyncTransforms();
-            yield return null;
+            // Complete in this same frame so the bridge can snap the flight
+            // camera before Unity renders the newly activated city and ship.
             completed?.Invoke(
                 true,
                 preparedPosition,
@@ -210,6 +211,11 @@ namespace UnityPlanet.ModularAssembly
             }
 
             CreateGroundCollision(cityRoot.transform, cityLab.Settings.mapSize);
+            UrbanEnvironmentalFieldDirector environmentalFields =
+                cityRoot.GetComponentInChildren<
+                    UrbanEnvironmentalFieldDirector>(true) ??
+                cityRoot.AddComponent<UrbanEnvironmentalFieldDirector>();
+            environmentalFields.Configure(cityLab.Plan, cityLab.Settings);
             cityLab.enabled = false;
             cityRoot.SetActive(false);
             ready = true;

@@ -269,8 +269,20 @@ public sealed class UrbanDestructionRuntimeTests
     [Test]
     public void CrescentEnergyBladeCutsAtHitHeightWhileOrdinaryShellingDoesNot()
     {
-        Material originalMaterial = building.GetComponent<Renderer>()
-            .sharedMaterial;
+        Renderer sourceRenderer = building.GetComponent<Renderer>();
+        Material originalMaterial = sourceRenderer.sharedMaterial;
+        int globalProperty = Shader.PropertyToID(
+            "_UrbanSliceGlobalPropertyRegression");
+        int slotProperty = Shader.PropertyToID(
+            "_UrbanSliceSlotPropertyRegression");
+        var sourceProperties = new MaterialPropertyBlock();
+        sourceProperties.SetFloat(globalProperty, 0.375f);
+        sourceRenderer.SetPropertyBlock(sourceProperties);
+        sourceProperties.Clear();
+        sourceProperties.SetFloat(slotProperty, 0.625f);
+        sourceRenderer.SetPropertyBlock(sourceProperties, 0);
+        sourceRenderer.lightmapIndex = 2;
+        sourceRenderer.realtimeLightmapIndex = 1;
         Vector3 cutPoint = new Vector3(0f, 72f, 19f);
         bool applied = UrbanDestructionWorld.TryApplyEnergyBlade(
             buildingCollider,
@@ -305,6 +317,31 @@ public sealed class UrbanDestructionRuntimeTests
                 renderer.sharedMaterials.Contains(originalMaterial)),
             Is.True,
             "切割后的外立面必须继续引用原建筑材质，不能整栋换成替代 Shader。");
+        Assert.That(cutRenderers.All(renderer =>
+        {
+            MeshFilter filter = renderer.GetComponent<MeshFilter>();
+            return filter != null && filter.sharedMesh != null &&
+                   renderer.sharedMaterials.Length ==
+                   filter.sharedMesh.subMeshCount &&
+                   renderer.sharedMaterials.All(material => material != null);
+        }), Is.True,
+            "切割后的每个可见子网格都必须有有效材质，不能因材质槽和子网格数量错位而变成空白面。");
+        foreach (Renderer cutRenderer in cutRenderers)
+        {
+            Assert.That(cutRenderer.lightmapIndex, Is.EqualTo(-1),
+                "会移动的运行时切片不能继续采样原静态楼房的烘焙 Lightmap。");
+            Assert.That(cutRenderer.realtimeLightmapIndex, Is.EqualTo(-1));
+            var copiedProperties = new MaterialPropertyBlock();
+            cutRenderer.GetPropertyBlock(copiedProperties);
+            Assert.That(copiedProperties.GetFloat(globalProperty),
+                Is.EqualTo(0.375f).Within(0.0001f),
+                "切割替换 Renderer 时必须保留全局 MaterialPropertyBlock。");
+            copiedProperties.Clear();
+            cutRenderer.GetPropertyBlock(copiedProperties, 0);
+            Assert.That(copiedProperties.GetFloat(slotProperty),
+                Is.EqualTo(0.625f).Within(0.0001f),
+                "Dark City 外立面的逐材质属性块必须传递到切割网格。");
+        }
         Assert.That(cutRenderers.SelectMany(renderer => renderer.sharedMaterials)
                 .Where(material => material != null)
                 .Any(material => material.name.StartsWith("UrbanCutFacade_")),
@@ -837,6 +874,34 @@ public sealed class UrbanDestructionRuntimeTests
         Assert.That(
             UrbanDestructibleBridge.ActiveBossRamDebrisHalfCount,
             Is.LessThanOrEqualTo(24));
+    }
+
+    [Test]
+    public void RuntimeStaticBatchingKeepsDestructibleBuildingMeshIndependent()
+    {
+        var generated = new GameObject("GeneratedCity_SafeBatchingTest");
+        generated.transform.SetParent(root.transform, false);
+        var destructibleRoot = new GameObject("DestructibleBuildingRoot");
+        destructibleRoot.transform.SetParent(generated.transform, false);
+        destructibleRoot.AddComponent<UrbanDestructibleBuilding>();
+        GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        visual.name = "ReadableFacade";
+        visual.transform.SetParent(destructibleRoot.transform, false);
+        MeshFilter filter = visual.GetComponent<MeshFilter>();
+        Mesh originalMesh = filter.sharedMesh;
+
+        System.Reflection.MethodInfo method = typeof(AirCombatCityPcgLab)
+            .GetMethod(
+                "ApplySafeRuntimeStaticBatching",
+                System.Reflection.BindingFlags.Static |
+                System.Reflection.BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null);
+        method.Invoke(null, new object[] { generated });
+
+        Assert.That(filter.sharedMesh, Is.SameAs(originalMesh));
+        Assert.That(filter.sharedMesh.isReadable, Is.True);
+        Assert.That(visual.GetComponent<Renderer>().isPartOfStaticBatch, Is.False,
+            "可破坏建筑不能被运行时合批成不可读的城市级 Combined Mesh。 ");
     }
 
     [Test]

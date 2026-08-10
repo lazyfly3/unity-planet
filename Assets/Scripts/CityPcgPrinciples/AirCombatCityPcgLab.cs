@@ -349,6 +349,70 @@ namespace UnityPlanet.CityPcg
                 generated.GetComponent<UrbanCityGlowRuntime>() ??
                 generated.AddComponent<UrbanCityGlowRuntime>();
             cityGlow.Configure(1.02f, 0.78f, 2, 2);
+
+            // Runtime slicing must read the original vertex streams and keep
+            // each authored material/submesh assignment. Unity's runtime static
+            // batching replaces those renderers with non-readable Combined Mesh
+            // instances, so batching a destructible building makes a later cut
+            // copy a city-wide batch with the wrong facade material. Keep every
+            // IUrbanDestructible hierarchy independent and batch only immutable
+            // roads/background presentation.
+            if (Application.isPlaying)
+                ApplySafeRuntimeStaticBatching(generated);
+
+        }
+
+        static void ApplySafeRuntimeStaticBatching(GameObject generated)
+        {
+            if (generated == null)
+                return;
+
+            var excludedFilters = new System.Collections.Generic.HashSet<int>();
+            MonoBehaviour[] behaviours =
+                generated.GetComponentsInChildren<MonoBehaviour>(true);
+            for (int behaviourIndex = 0;
+                 behaviourIndex < behaviours.Length;
+                 behaviourIndex++)
+            {
+                MonoBehaviour behaviour = behaviours[behaviourIndex];
+                if (!(behaviour is IUrbanDestructible))
+                    continue;
+                MeshFilter[] ownedFilters =
+                    behaviour.GetComponentsInChildren<MeshFilter>(true);
+                for (int filterIndex = 0;
+                     filterIndex < ownedFilters.Length;
+                     filterIndex++)
+                {
+                    MeshFilter filter = ownedFilters[filterIndex];
+                    if (filter != null)
+                        excludedFilters.Add(filter.GetInstanceID());
+                }
+            }
+
+            MeshFilter[] filters =
+                generated.GetComponentsInChildren<MeshFilter>(true);
+            var batchable = new System.Collections.Generic.List<GameObject>(
+                filters.Length);
+            for (int index = 0; index < filters.Length; index++)
+            {
+                MeshFilter filter = filters[index];
+                if (filter == null ||
+                    excludedFilters.Contains(filter.GetInstanceID()) ||
+                    !filter.gameObject.activeSelf)
+                {
+                    continue;
+                }
+                Renderer renderer = filter.GetComponent<Renderer>();
+                if (renderer == null || !renderer.enabled)
+                    continue;
+                batchable.Add(filter.gameObject);
+            }
+            if (batchable.Count > 0)
+            {
+                StaticBatchingUtility.Combine(
+                    batchable.ToArray(),
+                    generated);
+            }
         }
 
         public void NextSeed()
@@ -814,7 +878,7 @@ namespace UnityPlanet.CityPcg
                 GameObject courtyard = CreatePrimitive(
                     PrimitiveType.Cube,
                     roadRoot,
-                    "RepairCourtyard_隐蔽维修区_" + i,
+                    "MagneticCourtyard_三面磁场陷阱_" + i,
                     false);
                 courtyard.transform.localPosition = new Vector3(
                     volume.center.x,
@@ -5425,76 +5489,13 @@ namespace UnityPlanet.CityPcg
 
         void BuildBackgroundSkyline()
         {
-            if (buildingCatalog == null && darkCity2Catalog == null)
-                return;
-            Transform background = CreateRoot(
+            UrbanCityVisualContinuityBuilder.Build(
                 buildingRoot,
-                "BackgroundSkyline_无碰撞城市延伸_边界之外");
-            const int BuildingsPerSide = 14;
-            float outer = settings.mapSize * 0.5f + 108f;
-            float span = settings.mapSize * 0.94f;
-            int stable = 0;
-            for (int side = 0; side < 4; side++)
-            for (int index = 0; index < BuildingsPerSide; index++)
-            {
-                AirCombatBuildingBand band = (index + side) % 3 == 0
-                    ? AirCombatBuildingBand.High
-                    : AirCombatBuildingBand.Medium;
-                GameObject prefab = darkCity2Catalog != null
-                    ? darkCity2Catalog.ResolveBackground(
-                        index * 17 + side * 31 + settings.seed)
-                    : buildingCatalog.Resolve(
-                        band,
-                        index * 17 + side * 31 + settings.seed);
-                if (prefab == null)
-                    continue;
-                GameObject building = Instantiate(prefab, background, false);
-                NormalizedBuildingModelInfo modelInfo =
-                    building.GetComponent<NormalizedBuildingModelInfo>();
-                Vector3 authoredSize = modelInfo != null
-                    ? modelInfo.AuthoredSize
-                    : Vector3.one;
-                float width = 40f + ((index * 13 + side * 7) % 5) * 5f;
-                float depth = 38f + ((index * 19 + side * 11) % 4) * 6f;
-                float height = band == AirCombatBuildingBand.High
-                    ? 268f + ((index * 29 + side * 23) % 5) * 24f
-                    : 148f + ((index * 31 + side * 17) % 5) * 18f;
-                building.transform.localScale = new Vector3(
-                    width / Mathf.Max(0.1f, authoredSize.x),
-                    height / Mathf.Max(0.1f, authoredSize.y),
-                    depth / Mathf.Max(0.1f, authoredSize.z));
-                float across = Mathf.Lerp(
-                    -span * 0.5f,
-                    span * 0.5f,
-                    index / (float)(BuildingsPerSide - 1));
-                float stagger = (index & 1) == 0 ? 0f : 54f;
-                Vector3 position;
-                float yaw;
-                switch (side)
-                {
-                    case 0:
-                        position = new Vector3(across, 0f, outer + stagger);
-                        yaw = 180f;
-                        break;
-                    case 1:
-                        position = new Vector3(across, 0f, -outer - stagger);
-                        yaw = 0f;
-                        break;
-                    case 2:
-                        position = new Vector3(outer + stagger, 0f, across);
-                        yaw = -90f;
-                        break;
-                    default:
-                        position = new Vector3(-outer - stagger, 0f, across);
-                        yaw = 90f;
-                        break;
-                }
-                building.name = "BackgroundBuilding_NoCollision_" +
-                                stable++.ToString("D2");
-                building.transform.localPosition = position;
-                building.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
-                RemoveColliders(building);
-            }
+                plan,
+                settings,
+                palette,
+                buildingCatalog,
+                darkCity2Catalog);
         }
 
         static void RemoveColliders(GameObject target)

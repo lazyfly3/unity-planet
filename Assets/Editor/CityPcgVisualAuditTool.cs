@@ -27,6 +27,204 @@ public static class CityPcgVisualAuditTool
         GenerateAudit();
     }
 
+    public static string GenerateBoundaryAudit(string roundName)
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+            return "Boundary audit skipped while Unity is in Play Mode.";
+
+        GameObject template = AssetDatabase.LoadAssetAtPath<GameObject>(
+            TemplatePath);
+        if (template == null)
+            throw new FileNotFoundException(
+                "Formal urban combat template not found.",
+                TemplatePath);
+
+        string safeRoundName = string.IsNullOrEmpty(roundName)
+            ? "Boundary_Current"
+            : roundName;
+        string outputDirectory = Path.GetFullPath(Path.Combine(
+            Application.dataPath,
+            "../Artifacts/CityPcgVisualIteration/" + safeRoundName));
+        Directory.CreateDirectory(outputDirectory);
+
+        Scene previousActiveScene = SceneManager.GetActiveScene();
+        Scene preview = EditorSceneManager.NewScene(
+            NewSceneSetup.EmptyScene,
+            NewSceneMode.Additive);
+        try
+        {
+            SceneManager.SetActiveScene(preview);
+            GameObject city = UnityEngine.Object.Instantiate(template);
+            city.name = "FormalPlanetUrbanCombat_BoundaryAuditOnly";
+            SceneManager.MoveGameObjectToScene(city, preview);
+            city.SetActive(true);
+
+            AirCombatCityPcgLab lab =
+                city.GetComponent<AirCombatCityPcgLab>();
+            if (lab == null)
+                throw new InvalidOperationException(
+                    "Formal city template is missing AirCombatCityPcgLab.");
+
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            lab.ConfigureRuntimeMission(
+                7319,
+                AirCombatCityMission.Clearance);
+            timer.Stop();
+            if (lab.Plan == null || lab.Report == null)
+                throw new InvalidOperationException(
+                    "Formal city did not generate an auditable plan.");
+
+            Camera camera = CreateAuditCamera(preview);
+            CreateAuditLighting(preview);
+            float half = lab.Settings.mapSize * 0.5f - 5.8f;
+            AirCombatRoadStrip road = lab.Plan.roads
+                .Where(item => item.kind == AirCombatRouteKind.Main)
+                .OrderByDescending(item =>
+                    (item.end - item.start).sqrMagnitude)
+                .FirstOrDefault() ?? lab.Plan.roads.First();
+            Vector3 endpoint = road.start.sqrMagnitude > road.end.sqrMagnitude
+                ? road.start
+                : road.end;
+            Vector3 outward;
+            Vector3 wall;
+            if (Mathf.Abs(endpoint.x) > Mathf.Abs(endpoint.z))
+            {
+                outward = endpoint.x >= 0f ? Vector3.right : Vector3.left;
+                wall = new Vector3(
+                    endpoint.x >= 0f ? half : -half,
+                    95f,
+                    endpoint.z);
+            }
+            else
+            {
+                outward = endpoint.z >= 0f ? Vector3.forward : Vector3.back;
+                wall = new Vector3(
+                    endpoint.x,
+                    95f,
+                    endpoint.z >= 0f ? half : -half);
+            }
+
+            var views = new List<AuditView>
+            {
+                new AuditView(
+                    "A_接近边界_全息警告完整出现",
+                    wall - outward * 88f,
+                    wall + outward * 12f,
+                    68f),
+                new AuditView(
+                    "B_边界中距_全息警告渐显",
+                    wall - outward * 170f + Vector3.up * 22f,
+                    wall + outward * 30f,
+                    68f),
+                new AuditView(
+                    "C_正常战斗距离_边界隐藏远城完整",
+                    wall - outward * 440f + Vector3.up * 58f,
+                    wall + outward * 300f + Vector3.up * 28f,
+                    68f),
+                new AuditView(
+                    "D_全城高空_无固定边界围栏",
+                    new Vector3(-half * 0.72f, 780f, -half * 0.88f),
+                    new Vector3(0f, 90f, 0f),
+                    64f)
+            };
+            for (int index = 0; index < views.Count; index++)
+                RenderView(camera, views[index], outputDirectory);
+
+            Transform background = city
+                .GetComponentsInChildren<Transform>(true)
+                .FirstOrDefault(item =>
+                    item.name == "BackgroundCityContinuity_VisualOnly");
+            if (background == null)
+                throw new InvalidOperationException(
+                    "Visual-only background root was not generated.");
+
+            MeshRenderer[] renderers = background
+                .GetComponentsInChildren<MeshRenderer>(true);
+            MeshFilter[] filters = background
+                .GetComponentsInChildren<MeshFilter>(true);
+            var uniqueMeshes = new HashSet<Mesh>();
+            var uniqueMaterials = new HashSet<Material>();
+            long meshBytes = 0L;
+            long vertexInstances = 0L;
+            long triangles = 0L;
+            foreach (MeshFilter filter in filters)
+            {
+                Mesh mesh = filter.sharedMesh;
+                if (mesh == null)
+                    continue;
+                vertexInstances += mesh.vertexCount;
+                for (int subMesh = 0;
+                     subMesh < mesh.subMeshCount;
+                     subMesh++)
+                {
+                    triangles += (long)mesh.GetIndexCount(subMesh) / 3L;
+                }
+                if (uniqueMeshes.Add(mesh))
+                {
+                    meshBytes += UnityEngine.Profiling.Profiler
+                        .GetRuntimeMemorySizeLong(mesh);
+                }
+            }
+            foreach (MeshRenderer renderer in renderers)
+            foreach (Material material in renderer.sharedMaterials)
+            {
+                if (material != null)
+                    uniqueMaterials.Add(material);
+            }
+
+            int enabledBehaviours = background
+                .GetComponentsInChildren<Behaviour>(true)
+                .Count(item => item.enabled);
+            Collider[] cityColliders = city
+                .GetComponentsInChildren<Collider>(true);
+            int boundaryColliders = cityColliders.Count(item =>
+                item.name.StartsWith(
+                    "BoundaryAirWall_",
+                    StringComparison.Ordinal));
+            int enabledBoundaryColliders = cityColliders.Count(item =>
+                item.enabled && item.name.StartsWith(
+                    "BoundaryAirWall_",
+                    StringComparison.Ordinal));
+
+            string report =
+                "Boundary hologram focused audit\n" +
+                "Seed=7319 Mission=Clearance\n" +
+                "BuildMs=" + timer.Elapsed.TotalMilliseconds.ToString("0.0") +
+                "\nTransforms=" + background
+                    .GetComponentsInChildren<Transform>(true).Length +
+                "\nRenderers=" + renderers.Length +
+                "\nVertexInstances=" + vertexInstances +
+                "\nTriangles=" + triangles +
+                "\nUniqueMeshBytes=" + meshBytes +
+                "\nMaterials=" + uniqueMaterials.Count +
+                "\nBackgroundColliders=" + background
+                    .GetComponentsInChildren<Collider>(true).Length +
+                "\nBackgroundRigidbodies=" + background
+                    .GetComponentsInChildren<Rigidbody>(true).Length +
+                "\nBackgroundJoints=" + background
+                    .GetComponentsInChildren<Joint>(true).Length +
+                "\nBackgroundEnabledBehaviours=" + enabledBehaviours +
+                "\nBoundaryColliders=" + boundaryColliders +
+                "\nEnabledBoundaryColliders=" + enabledBoundaryColliders +
+                "\nPlanValid=" + lab.Report.valid +
+                "\nOutput=" + outputDirectory;
+            File.WriteAllText(
+                Path.Combine(outputDirectory, "Boundary_Audit.txt"),
+                report,
+                new UTF8Encoding(false));
+            return report;
+        }
+        finally
+        {
+            if (previousActiveScene.IsValid() &&
+                previousActiveScene.isLoaded)
+            {
+                SceneManager.SetActiveScene(previousActiveScene);
+            }
+            EditorSceneManager.CloseScene(preview, true);
+        }
+    }
+
     [MenuItem("Tools/城市 PCG/只运行城市 PCG 的 9 个局部测试")]
     public static void RunTargetedCityTests()
     {

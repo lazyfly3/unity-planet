@@ -28,7 +28,8 @@ public enum ModularBossObstacleState
     PlayerRamTelegraph = 5,
     PlayerRamCharge = 6,
     CoverBreachTelegraph = 7,
-    CoverBreachCharge = 8
+    CoverBreachCharge = 8,
+    BacktrackEscape = 9
 }
 
 /// <summary>
@@ -37,6 +38,14 @@ public enum ModularBossObstacleState
 /// </summary>
 public static class ModularBossCombatPolicy
 {
+    public const int AssemblyModuleLimit = 512;
+    public const int AssemblyCpuLimit = ModuleCpuBudget.AbsoluteMaximum;
+    public const float MinimumBossShotCadence = 0.065f;
+    public const float ShieldBreakWindowSeconds = 8f;
+    public const float ShieldBreakWeaponStaggerSeconds = 0.9f;
+    public const float ShieldRechargeFraction = 0.35f;
+    public const float ShieldRechargeHullLockoutRatio = 0.35f;
+    public const float ShieldMaximumWeaponDamagePerFrameFraction = 0.20f;
     public const float PursuitForceMultiplier = 1.18f;
     public const float PlayerRamTelegraphSeconds = 0.62f;
     public const float PlayerRamChargeSeconds = 1.55f;
@@ -45,9 +54,20 @@ public static class ModularBossCombatPolicy
     public const float CoverBreachTelegraphSeconds = 0.78f;
     public const float CoverBreachChargeSeconds = 2.35f;
     public const float CoverBreachCooldownSeconds = 7.5f;
+    public const float BuildingStuckBreachSeconds = 2.75f;
+    public const float BuildingStuckProgressDistance = 3f;
+    public const float AvoidanceMaximumSeconds = 6f;
+    public const float VerticalEscapeSeconds = 2.2f;
+    public const float MinimumVerticalEscapeClearance = 0.28f;
+    public const int SafeNavigationTrailCapacity = 12;
+    public const float SafeNavigationPointSpacing = 12f;
+    public const float BacktrackEscapeSeconds = 8f;
+    public const float BacktrackMinimumTargetDistance = 18f;
+    public const float BacktrackArrivalDistance = 6f;
     public const float CoverMemorySeconds = 0.42f;
-    public const float NearbyCoverRadius = 30f;
-    public const float EntrenchedCoverRadius = 22f;
+    public const float NearbyCoverRadius = 52f;
+    public const float EntrenchedCoverRadius = 48f;
+    public const int PlayerCoverSampleCount = 7;
     public const float MaximumStableAngularSpeed = 1.18f;
     public const float MinimumDamagedMobility = 0.28f;
 
@@ -96,6 +116,71 @@ public static class ModularBossCombatPolicy
             0.14f);
     }
 
+    public static float ResolveBossShotCadence(
+        float shotsPerSecond,
+        int difficultyTier,
+        int liveWeaponCount)
+    {
+        float baseCadence = Mathf.Max(
+            0.22f,
+            1f / Mathf.Max(0.1f, shotsPerSecond));
+        float tierCadence = baseCadence * Mathf.Lerp(
+            1.35f,
+            0.78f,
+            Mathf.Clamp01(difficultyTier / 5f));
+
+        // One surviving weapon keeps the original firing pace. Additional
+        // weapons increase aggregate pressure without multiplying it linearly,
+        // so weapon loss creates meaningful, stable firepower phases.
+        float weaponPressure = Mathf.Sqrt(Mathf.Max(1, liveWeaponCount));
+        return Mathf.Max(
+            MinimumBossShotCadence,
+            tierCadence / weaponPressure);
+    }
+
+    public static float ResolveShieldCapacity(int difficultyTier)
+    {
+        // Explosive player weapons apply both their direct hit and their
+        // explosion to the shield. The current two-cannon starter-scale ship
+        // therefore reaches roughly 660 burst DPS before any metagame damage
+        // or fire-rate bonuses. Keep direct fire as a viable route, but give
+        // city impacts enough time value to remain a meaningful shortcut.
+        return Mathf.Lerp(
+            6000f,
+            15000f,
+            Mathf.Clamp01(difficultyTier / 5f));
+    }
+
+    public static int ResolveShieldRechargeCount(int difficultyTier)
+    {
+        if (difficultyTier >= 4)
+            return 2;
+        return difficultyTier >= 2 ? 1 : 0;
+    }
+
+    public static float ResolveShieldWeaponDamagePerFrameCap(
+        float maximumShieldIntegrity)
+    {
+        return Mathf.Max(0f, maximumShieldIntegrity) *
+               ShieldMaximumWeaponDamagePerFrameFraction;
+    }
+
+    public static float ResolveBuildingShieldDamageFraction(float impactSpeed)
+    {
+        return Mathf.Lerp(
+            0.30f,
+            0.40f,
+            Mathf.InverseLerp(14f, 52f, impactSpeed));
+    }
+
+    public static float ResolveBridgeShieldDamageFraction(float impactSpeed)
+    {
+        return Mathf.Lerp(
+            0.45f,
+            0.60f,
+            Mathf.InverseLerp(8f, 40f, impactSpeed));
+    }
+
     public static float ResolvePlayerRamDamage(
         float maximumModuleIntegrity,
         float relativeSpeed,
@@ -128,6 +213,26 @@ public static class ModularBossCombatPolicy
     {
         return (coverRight && coverLeft) ||
                (coverForward && coverBack);
+    }
+
+    public static bool ShouldAuthorizeCoverBreach(
+        bool directLineBlockedByLiveBuilding,
+        bool coverPersisted)
+    {
+        return directLineBlockedByLiveBuilding && coverPersisted;
+    }
+
+    public static float ScorePlayerCoverBuilding(
+        int occludedPlayerSamples,
+        float distanceFromPlayer,
+        float normalizedSightlineDepth)
+    {
+        // Covering more of the player's silhouette is the primary signal.
+        // For equal coverage, prefer the building closest to the player rather
+        // than an unrelated foreground building closer to the Boss.
+        return Mathf.Max(0, occludedPlayerSamples) * 10000f +
+               Mathf.Clamp01(normalizedSightlineDepth) * 1000f -
+               Mathf.Clamp(distanceFromPlayer, 0f, 999f);
     }
 
     public static float ResolveDamagedMobility(
@@ -575,6 +680,12 @@ public sealed class ModularBossReadabilityPresentation : MonoBehaviour
         RefreshFillLights();
     }
 
+    public void StopTrackingPresenterRebuilds()
+    {
+        if (presenter != null)
+            presenter.Rebuilt -= Refresh;
+    }
+
     void Refresh()
     {
         if (presenter == null)
@@ -724,10 +835,379 @@ public sealed class ModularBossReadabilityPresentation : MonoBehaviour
     }
 }
 
+[DisallowMultipleComponent]
+public sealed class ModularBossShieldRuntime : MonoBehaviour
+{
+    const float EnvironmentalImpactCooldownSeconds = 0.85f;
+    const float BreakVisualSeconds = 0.55f;
+
+    VehicleStructureGraph structureGraph;
+    GridAssemblyPresenter presenter;
+    Transform shell;
+    MeshRenderer shellRenderer;
+    Material shellMaterial;
+    float maximumIntegrity;
+    float integrity;
+    float rechargeAt = -1f;
+    float staggerUntil = -1f;
+    float breakVisualUntil = -1f;
+    float nextEnvironmentalImpactAt = -1f;
+    float hitFlash;
+    float visualOpacity;
+    int remainingRecharges;
+    int breakFrame = -1;
+    int weaponDamageFrame = -1;
+    float weaponDamageAbsorbedThisFrame;
+    bool combatActive;
+    bool permanentlyOffline;
+    bool boundsDirty;
+
+    public float Integrity => integrity;
+    public float MaximumIntegrity => maximumIntegrity;
+    public float IntegrityRatio => maximumIntegrity <= 0.01f
+        ? 0f
+        : Mathf.Clamp01(integrity / maximumIntegrity);
+    public bool IsActive => integrity > 0.01f;
+    public bool IsBreakWeaponStaggerActive => Time.time < staggerUntil;
+    public int RemainingRecharges => remainingRecharges;
+    public string StatusLabel
+    {
+        get
+        {
+            if (IsActive)
+            {
+                return $"护盾 {IntegrityRatio:P0} · " +
+                       $"剩余回充 {remainingRecharges}";
+            }
+            if (!permanentlyOffline && rechargeAt > Time.time)
+                return $"护盾破裂 · 暴露 {rechargeAt - Time.time:0.0}秒";
+            return "护盾离线 · 模块完全暴露";
+        }
+    }
+
+    public void Configure(
+        VehicleStructureGraph graph,
+        GridAssemblyPresenter assemblyPresenter,
+        int difficultyTier)
+    {
+        if (presenter != null)
+            presenter.Rebuilt -= HandlePresenterRebuilt;
+        structureGraph = graph;
+        presenter = assemblyPresenter;
+        maximumIntegrity = ModularBossCombatPolicy.ResolveShieldCapacity(
+            difficultyTier);
+        integrity = maximumIntegrity;
+        remainingRecharges = ModularBossCombatPolicy.
+            ResolveShieldRechargeCount(difficultyTier);
+        rechargeAt = -1f;
+        staggerUntil = -1f;
+        breakVisualUntil = -1f;
+        permanentlyOffline = false;
+        breakFrame = -1;
+        weaponDamageFrame = -1;
+        weaponDamageAbsorbedThisFrame = 0f;
+        boundsDirty = false;
+        EnsureVisual();
+        if (presenter != null)
+            presenter.Rebuilt += HandlePresenterRebuilt;
+        RefreshBounds();
+        RefreshVisual(true);
+    }
+
+    public void SetCombatActive(bool value)
+    {
+        combatActive = value;
+    }
+
+    public SpaceDamageInfo FilterIncomingDamage(
+        string runtimeId,
+        SpaceDamageInfo incoming)
+    {
+        if (incoming.amount <= 0f)
+            return incoming;
+        if (!IsActive)
+        {
+            // When one explosion breaks the shield, only its breaking hit may
+            // overflow. Other colliders reached by that same frame are blocked
+            // so a multi-collider explosion cannot multiply the overflow.
+            return Time.frameCount == breakFrame
+                ? CloneWithAmount(incoming, 0f)
+                : incoming;
+        }
+
+        float eligibleDamage = incoming.amount;
+        bool weaponDamage = incoming.type == SpaceDamageType.Projectile ||
+                            incoming.type == SpaceDamageType.Explosion;
+        if (weaponDamage)
+        {
+            if (weaponDamageFrame != Time.frameCount)
+            {
+                weaponDamageFrame = Time.frameCount;
+                weaponDamageAbsorbedThisFrame = 0f;
+            }
+            float frameBudget =
+                ModularBossCombatPolicy.ResolveShieldWeaponDamagePerFrameCap(
+                    maximumIntegrity);
+            eligibleDamage = Mathf.Min(
+                eligibleDamage,
+                Mathf.Max(0f, frameBudget -
+                               weaponDamageAbsorbedThisFrame));
+            if (eligibleDamage <= 0.0001f)
+                return CloneWithAmount(incoming, 0f);
+        }
+
+        float absorbed = Mathf.Min(integrity, eligibleDamage);
+        integrity = Mathf.Max(0f, integrity - absorbed);
+        if (weaponDamage)
+            weaponDamageAbsorbedThisFrame += absorbed;
+        hitFlash = 1f;
+        ReportAbsorbedDamage(incoming, absorbed);
+        float remainder = Mathf.Max(0f, eligibleDamage - absorbed);
+        if (integrity <= 0.01f)
+            BreakShield();
+        return CloneWithAmount(incoming, remainder);
+    }
+
+    public bool ApplyEnvironmentalImpact(
+        float shieldFraction,
+        Vector3 point,
+        GameObject source)
+    {
+        if (!IsActive)
+            return false;
+        if (Time.time < nextEnvironmentalImpactAt)
+            return true;
+        nextEnvironmentalImpactAt = Time.time +
+                                    EnvironmentalImpactCooldownSeconds;
+        float damage = maximumIntegrity * Mathf.Clamp01(shieldFraction);
+        SpaceDamageInfo impact = new SpaceDamageInfo(
+            damage,
+            point,
+            Vector3.zero,
+            SpaceDamageType.Collision,
+            source);
+        float absorbed = Mathf.Min(integrity, damage);
+        integrity = Mathf.Max(0f, integrity - absorbed);
+        hitFlash = 1f;
+        ReportAbsorbedDamage(impact, absorbed);
+        if (integrity <= 0.01f)
+            BreakShield();
+        // A collision that begins against an active shield is fully caught by
+        // that layer. Later unshielded collisions retain the original module
+        // loss behavior.
+        return true;
+    }
+
+    void Update()
+    {
+        if (combatActive && !IsActive && !permanentlyOffline &&
+            rechargeAt >= 0f && Time.time >= rechargeAt)
+        {
+            TryRecharge();
+        }
+        RefreshVisual(false);
+    }
+
+    void TryRecharge()
+    {
+        if (remainingRecharges <= 0 || structureGraph == null ||
+            structureGraph.IsVehicleDestroyed ||
+            structureGraph.OverallHealthRatio <=
+            ModularBossCombatPolicy.ShieldRechargeHullLockoutRatio)
+        {
+            permanentlyOffline = true;
+            rechargeAt = -1f;
+            return;
+        }
+
+        remainingRecharges--;
+        if (boundsDirty)
+            RefreshBounds();
+        integrity = maximumIntegrity *
+                    ModularBossCombatPolicy.ShieldRechargeFraction;
+        rechargeAt = -1f;
+        hitFlash = 1f;
+        visualOpacity = 0f;
+        RefreshVisual(true);
+    }
+
+    void BreakShield()
+    {
+        integrity = 0f;
+        breakFrame = Time.frameCount;
+        staggerUntil = Time.time +
+                       ModularBossCombatPolicy.ShieldBreakWeaponStaggerSeconds;
+        breakVisualUntil = Time.time + BreakVisualSeconds;
+        if (remainingRecharges > 0 && structureGraph != null &&
+            structureGraph.OverallHealthRatio >
+            ModularBossCombatPolicy.ShieldRechargeHullLockoutRatio)
+        {
+            rechargeAt = Time.time +
+                         ModularBossCombatPolicy.ShieldBreakWindowSeconds;
+        }
+        else
+        {
+            permanentlyOffline = true;
+            rechargeAt = -1f;
+        }
+    }
+
+    void ReportAbsorbedDamage(SpaceDamageInfo damage, float absorbed)
+    {
+        if (absorbed <= 0.0001f)
+            return;
+        VehicleCombatTeam sourceTeam = damage.source != null
+            ? VehicleCombatTeamUtility.Resolve(damage.source.transform)
+            : VehicleCombatTeam.Neutral;
+        CombatDamageFeedbackBus.Report(new CombatDamageAppliedFeedback(
+            sourceTeam,
+            VehicleCombatTeam.Enemy,
+            damage.point,
+            absorbed,
+            false));
+    }
+
+    static SpaceDamageInfo CloneWithAmount(
+        SpaceDamageInfo source,
+        float amount)
+    {
+        return new SpaceDamageInfo(
+            amount,
+            source.point,
+            source.impulse,
+            source.type,
+            source.channel,
+            source.source);
+    }
+
+    void EnsureVisual()
+    {
+        if (shell != null && shellRenderer != null && shellMaterial != null)
+            return;
+        GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        visual.name = "BossEnergyShield";
+        visual.transform.SetParent(transform, false);
+        Collider primitiveCollider = visual.GetComponent<Collider>();
+        if (primitiveCollider != null)
+        {
+            primitiveCollider.enabled = false;
+            if (Application.isPlaying)
+                Destroy(primitiveCollider);
+            else
+                DestroyImmediate(primitiveCollider);
+        }
+        shell = visual.transform;
+        shellRenderer = visual.GetComponent<MeshRenderer>();
+        if (shellRenderer == null)
+            return;
+        shellRenderer.shadowCastingMode =
+            UnityEngine.Rendering.ShadowCastingMode.Off;
+        shellRenderer.receiveShadows = false;
+        Shader shader = Resources.Load<Shader>(
+            "Shaders/BossEnergyShield");
+        if (shader == null)
+            shader = Shader.Find("UnityPlanet/BossEnergyShield");
+        if (shader == null)
+        {
+            Debug.LogWarning(
+                "[ModularBossShield] BossEnergyShield shader was not found.",
+                this);
+            shellRenderer.enabled = false;
+            return;
+        }
+        shellMaterial = new Material(shader)
+        {
+            name = "BossEnergyShield_Runtime",
+            hideFlags = HideFlags.DontSave
+        };
+        Texture2D pattern = Resources.Load<Texture2D>(
+            "Boss/ShieldHexEnergy");
+        if (pattern != null)
+        {
+            pattern.wrapMode = TextureWrapMode.Repeat;
+            pattern.filterMode = FilterMode.Bilinear;
+            shellMaterial.SetTexture("_MainTex", pattern);
+        }
+        shellRenderer.sharedMaterial = shellMaterial;
+    }
+
+    void RefreshBounds()
+    {
+        if (shell == null || structureGraph == null)
+            return;
+        Bounds bounds = structureGraph.ResolveVisualBounds();
+        if (bounds.size.sqrMagnitude <= 0.01f)
+            return;
+        shell.localPosition = transform.InverseTransformPoint(bounds.center);
+        Vector3 lossyScale = transform.lossyScale;
+        Vector3 worldSize = bounds.size * 1.14f + Vector3.one * 2.5f;
+        shell.localScale = new Vector3(
+            worldSize.x / Mathf.Max(0.0001f, Mathf.Abs(lossyScale.x)),
+            worldSize.y / Mathf.Max(0.0001f, Mathf.Abs(lossyScale.y)),
+            worldSize.z / Mathf.Max(0.0001f, Mathf.Abs(lossyScale.z)));
+        boundsDirty = false;
+    }
+
+    void HandlePresenterRebuilt()
+    {
+        // Hull modules cannot be removed through an active shield. While the
+        // shield is broken, defer the O(module count) bounds scan until the
+        // instant a recharge actually needs the shell again.
+        if (IsActive)
+            RefreshBounds();
+        else
+            boundsDirty = true;
+    }
+
+    void RefreshVisual(bool immediate)
+    {
+        if (shellRenderer == null || shellMaterial == null)
+            return;
+        float breakFade = breakVisualUntil <= Time.time
+            ? 0f
+            : Mathf.InverseLerp(
+                breakVisualUntil,
+                breakVisualUntil - BreakVisualSeconds,
+                Time.time);
+        float targetOpacity = IsActive
+            ? Mathf.Lerp(0.48f, 0.68f, IntegrityRatio)
+            : breakFade * 0.82f;
+        visualOpacity = immediate
+            ? targetOpacity
+            : Mathf.MoveTowards(
+                visualOpacity,
+                targetOpacity,
+                Time.unscaledDeltaTime * 2.8f);
+        hitFlash = immediate
+            ? hitFlash
+            : Mathf.MoveTowards(
+                hitFlash,
+                0f,
+                Time.unscaledDeltaTime * 2.6f);
+        shellMaterial.SetFloat("_Integrity", IntegrityRatio);
+        shellMaterial.SetFloat("_Opacity", visualOpacity);
+        shellMaterial.SetFloat("_HitFlash", hitFlash);
+        shellRenderer.enabled = visualOpacity > 0.005f;
+    }
+
+    void OnDestroy()
+    {
+        if (presenter != null)
+            presenter.Rebuilt -= HandlePresenterRebuilt;
+        if (shellMaterial != null)
+        {
+            if (Application.isPlaying)
+                Destroy(shellMaterial);
+            else
+                DestroyImmediate(shellMaterial);
+        }
+    }
+}
+
 /// <summary>
 /// Builds a connected, symmetric six-axis ship from the same module
-/// definitions used by the player. The core is hidden by actual grid blocks;
-/// no artificial invulnerability is added.
+/// definitions used by the player. The core remains hidden by actual grid
+/// blocks after the separate combat shield has been broken.
 /// </summary>
 public static class ModularBossPcgGenerator
 {
@@ -772,7 +1252,10 @@ public static class ModularBossPcgGenerator
             return false;
         }
 
-        var model = new GridAssemblyModel(definitions);
+        var model = new GridAssemblyModel(
+            definitions,
+            ModularBossCombatPolicy.AssemblyModuleLimit,
+            ModularBossCombatPolicy.AssemblyCpuLimit);
         if (model.Find(GridAssemblyModel.CoreRuntimeId) == null)
         {
             error = "Boss generation requires the player core definition.";
@@ -791,6 +1274,33 @@ public static class ModularBossPcgGenerator
             if (IsCoreCell(x, y, z))
                 continue;
             hullCells.Add(new Vector3Int(x, y, z));
+        }
+        int plannedModuleCount = model.Records.Count +
+                                 hullCells.Count +
+                                 ForceDirections.Length *
+                                 profile.ThrustersPerDirection +
+                                 profile.WeaponCount;
+        if (plannedModuleCount > model.EffectiveModuleLimit)
+        {
+            error =
+                $"Boss generation requires {plannedModuleCount} modules, " +
+                $"exceeding its independent limit " +
+                $"{model.EffectiveModuleLimit}.";
+            return false;
+        }
+        int plannedCpuCost =
+            ModuleCpuBudget.Total(model.Records) +
+            hullCells.Count * ModuleCpuBudget.Cost(structure) +
+            ForceDirections.Length * profile.ThrustersPerDirection *
+            ModuleCpuBudget.Cost(thruster) +
+            profile.WeaponCount * ModuleCpuBudget.Cost(weapon);
+        if (plannedCpuCost > model.EffectiveCpuLimit)
+        {
+            error =
+                $"Boss generation requires {plannedCpuCost} CPU, " +
+                $"exceeding its independent limit " +
+                $"{model.EffectiveCpuLimit}.";
+            return false;
         }
         foreach (Vector3Int cell in hullCells
                      .OrderBy(DistanceFromCore)
@@ -1162,6 +1672,8 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
     const float ObstacleProbeDistance = 42f;
     static readonly RaycastHit[] ObstacleProbeHits = new RaycastHit[24];
     static readonly RaycastHit[] SightProbeHits = new RaycastHit[32];
+    static readonly RaycastHit[] PlayerCoverProbeHits = new RaycastHit[128];
+    static readonly RaycastHit[] WeaponSightHits = new RaycastHit[64];
     static readonly Vector3[] CoverProbeDirections =
     {
         Vector3.right,
@@ -1184,6 +1696,14 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         new GridModuleView[3];
     readonly float[] collisionModuleCandidateDistances =
         new float[3];
+    readonly UrbanDestructibleBuilding[] playerCoverCandidates =
+        new UrbanDestructibleBuilding[24];
+    readonly Collider[] playerCoverCandidateColliders = new Collider[24];
+    readonly int[] playerCoverCandidateSampleMasks = new int[24];
+    readonly float[] playerCoverCandidateDepths = new float[24];
+    readonly List<Vector3> safeNavigationTrail =
+        new List<Vector3>(
+            ModularBossCombatPolicy.SafeNavigationTrailCapacity);
 
     Rigidbody body;
     Rigidbody playerBody;
@@ -1193,10 +1713,14 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
     RobocraftMotionCoordinator motion;
     ModularBossGridFlightSession flight;
     ModularBossReadabilityPresentation readability;
+    ModularBossShieldRuntime shield;
     WeaponVisualPool visuals;
     ModularBossBuildResult build;
     float nextShotAt;
+    float nextTargetSearchAt;
     int weaponCursor;
+    VehicleModuleDamageReceiver focusedPlayerModule;
+    Collider focusedPlayerCollider;
     bool prepared;
     bool emergencyAssist;
     bool combatActive;
@@ -1213,6 +1737,8 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
     Vector3 avoidanceDirection;
     Vector3 committedAvoidanceDirection;
     float avoidanceCommitEndsAt;
+    Vector3 avoidanceProgressPosition;
+    float avoidanceProgressStartedAt = -1f;
     Vector3 collisionEscapeDirection;
     float lastWorldCollisionAt = -1f;
     float bridgeContactStartedAt = -1f;
@@ -1230,6 +1756,11 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
     UrbanDestructibleBuilding blockingCoverBuilding;
     UrbanDestructibleRuinSection blockingCoverRuin;
     Collider blockingCoverCollider;
+    UrbanDestructibleBuilding contactedBuilding;
+    Collider contactedBuildingCollider;
+    UrbanDestructibleBuilding stuckObservationBuilding;
+    Vector3 stuckObservationPosition;
+    float stuckObservationStartedAt = -1f;
     float nextAwarenessProbeAt;
     float coverObservedAt = -1f;
     float coveredSince = -1f;
@@ -1243,8 +1774,13 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
     UrbanDestructibleBuilding coverBreachBuilding;
     Collider coverBreachCollider;
     Vector3 coverBreachPoint;
+    bool resumeBacktrackAfterCoverBreach;
     Vector3 recoveryEscapeDirection;
     float recoveryEscapeEndsAt;
+    int backtrackTargetIndex = -1;
+    Vector3 backtrackTarget;
+    Vector3 backtrackProgressPosition;
+    float backtrackProgressStartedAt = -1f;
 
     public event Action Destroyed;
 
@@ -1257,6 +1793,10 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
     public int LiveWeaponCount => liveWeapons.Count;
     public int LiveThrusterCount => liveThrusters.Values.Sum();
     public int InitialThrusterCount => build?.ThrusterDirections.Count ?? 0;
+    public float ShieldIntegrityRatio => shield == null
+        ? 0f
+        : shield.IntegrityRatio;
+    public bool ShieldActive => shield != null && shield.IsActive;
     public bool EmergencyAssistActive => emergencyAssist;
     public bool SpawnWasAdjusted => spawnWasAdjusted;
     public float HealthyActuatorForceMultiplier =>
@@ -1268,7 +1808,9 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         obstacleState == ModularBossObstacleState.PlayerRamCharge ||
         obstacleState == ModularBossObstacleState.CoverBreachTelegraph ||
         obstacleState == ModularBossObstacleState.CoverBreachCharge ||
-        obstacleState == ModularBossObstacleState.Recovery;
+        obstacleState == ModularBossObstacleState.BacktrackEscape ||
+        obstacleState == ModularBossObstacleState.Recovery ||
+        (shield != null && shield.IsBreakWeaponStaggerActive);
     public float CeaseFireRemaining => obstacleState ==
         ModularBossObstacleState.BlockedCeaseFire
         ? Mathf.Max(0f, stateEndsAt - Time.time)
@@ -1299,6 +1841,8 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
                     return "Boss 已承诺冲撞方向";
                 case ModularBossObstacleState.CoverBreachTelegraph:
                     return "Boss 正在锁定掩体";
+                case ModularBossObstacleState.BacktrackEscape:
+                    return "Boss 正在沿安全路径脱离";
                 case ModularBossObstacleState.CoverBreachCharge:
                     return "Boss 正在撞毁掩体";
                 default:
@@ -1314,11 +1858,16 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         {
             if (structureGraph == null)
                 return "Boss preparing";
+            string shieldState = shield == null
+                ? string.Empty
+                : shield.StatusLabel + "\n";
             if (emergencyAssist)
-                return "Emergency stabilization / reduced mobility";
+                return shieldState +
+                       "Emergency stabilization / reduced mobility";
             if (IntegrityRatio < 0.65f)
-                return "Structure damaged / thrust asymmetric";
-            return "Systems operational";
+                return shieldState +
+                       "Structure damaged / thrust asymmetric";
+            return shieldState + "Systems operational";
         }
     }
 
@@ -1336,6 +1885,7 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
     {
         prepared = false;
         PreparationError = string.Empty;
+        ClearFocusedPlayerTarget();
         playerBody = targetPlayerBody;
         playerGraph = targetPlayerGraph;
         if (world == null || playerBody == null || playerGraph == null ||
@@ -1377,7 +1927,6 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         assembly.Configure(body, parts, null, 650f);
         presenter = gameObject.AddComponent<GridAssemblyPresenter>();
         presenter.Initialize(build.Model, assembly, core);
-        presenter.Rebuilt += ApplyBossModuleScale;
         ApplyBossModuleScale();
 
         NeoXCatalogIntegration integration =
@@ -1388,6 +1937,8 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
             contentRecords);
         while (!integration.IsReady || contentService.IsLoadingAssets)
             yield return null;
+        integration.StopRuntimeRebuildTracking();
+        presenter.SetRuntimeRemovalOptimization(true);
 
         flight = gameObject.AddComponent<ModularBossGridFlightSession>();
         structureGraph = gameObject.AddComponent<VehicleStructureGraph>();
@@ -1460,13 +2011,17 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         VehicleCombatTeamUtility.SetTeam(
             gameObject,
             VehicleCombatTeam.Enemy);
-        presenter.Rebuilt += RebuildLiveModules;
         structureGraph.StructureChanged += HandleStructureChanged;
         structureGraph.Destroyed += HandleDestroyed;
         RebuildLiveModules();
         readability = gameObject.AddComponent<
             ModularBossReadabilityPresentation>();
         readability.Configure(presenter, build);
+        readability.StopTrackingPresenterRebuilds();
+        shield = gameObject.AddComponent<ModularBossShieldRuntime>();
+        shield.Configure(structureGraph, presenter, build.Profile.Tier);
+        structureGraph.SetModuleDamageFilter(
+            shield.FilterIncomingDamage);
         prepared = true;
     }
 
@@ -1475,6 +2030,7 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         combatActive = value && prepared &&
                        structureGraph != null &&
                        !structureGraph.IsVehicleDestroyed;
+        shield?.SetCombatActive(combatActive);
         if (body == null)
             return;
         if (combatActive && body.isKinematic)
@@ -1505,9 +2061,12 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         else
         {
             smoothedAimForward = transform.forward;
+            nextTargetSearchAt = 0f;
             nextPlayerRamAt = Time.time + 1.4f;
             nextCoverBreachAt = Time.time + 2.5f;
+            ResetSafeNavigationTrail();
             SetObstacleState(ModularBossObstacleState.Pursuit);
+            TryRecordSafeNavigationPoint(true);
         }
     }
 
@@ -1529,6 +2088,7 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
             return;
         }
         UpdateCombatAwareness();
+        TryRecordSafeNavigationPoint(false);
         UpdateObstacleState();
         UpdatePilotControl();
     }
@@ -1614,6 +2174,19 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
             }
         }
 
+        Bounds playerBounds = playerGraph.ResolveVisualBounds();
+        if (TrySelectPlayerCoverBuilding(
+                origin,
+                playerBounds,
+                out UrbanDestructibleBuilding selectedCoverBuilding,
+                out Collider selectedCoverCollider))
+        {
+            directLineBlocked = true;
+            blockingCoverBuilding = selectedCoverBuilding;
+            blockingCoverCollider = selectedCoverCollider;
+            blockingCoverRuin = null;
+        }
+
         if (TryFindNearbyUrbanCover(
                 target,
                 out _,
@@ -1630,6 +2203,165 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
                 HasIntactBuildingCover(target, Vector3.forward),
                 HasIntactBuildingCover(target, Vector3.back));
 
+    }
+
+    bool TrySelectPlayerCoverBuilding(
+        Vector3 bossCenter,
+        Bounds playerBounds,
+        out UrbanDestructibleBuilding selectedBuilding,
+        out Collider selectedCollider)
+    {
+        selectedBuilding = null;
+        selectedCollider = null;
+        Bounds bossBounds = structureGraph.ResolveVisualBounds();
+        int candidateCount = 0;
+        for (int sampleIndex = 0;
+             sampleIndex < ModularBossCombatPolicy.PlayerCoverSampleCount;
+             sampleIndex++)
+        {
+            Vector3 sample = ResolvePlayerCoverSample(
+                playerBounds,
+                sampleIndex);
+            Vector3 centerRay = sample - bossCenter;
+            float centerDistance = centerRay.magnitude;
+            if (centerDistance <= 0.01f)
+                continue;
+            Vector3 direction = centerRay / centerDistance;
+            float bossSurfaceOffset =
+                Mathf.Abs(direction.x) * bossBounds.extents.x +
+                Mathf.Abs(direction.y) * bossBounds.extents.y +
+                Mathf.Abs(direction.z) * bossBounds.extents.z + 0.5f;
+            bossSurfaceOffset = Mathf.Min(
+                bossSurfaceOffset,
+                centerDistance * 0.45f);
+            Vector3 rayOrigin = bossCenter + direction * bossSurfaceOffset;
+            Vector3 ray = sample - rayOrigin;
+            float rayDistance = ray.magnitude;
+            if (rayDistance <= 0.01f)
+                continue;
+
+            int hitCount = Physics.RaycastNonAlloc(
+                rayOrigin,
+                ray / rayDistance,
+                PlayerCoverProbeHits,
+                rayDistance,
+                Physics.DefaultRaycastLayers,
+                QueryTriggerInteraction.Ignore);
+            for (int hitIndex = 0; hitIndex < hitCount; hitIndex++)
+            {
+                RaycastHit hit = PlayerCoverProbeHits[hitIndex];
+                Collider collider = hit.collider;
+                if (!IsRelevantWorldCollider(collider))
+                    continue;
+                UrbanDestructibleBuilding building =
+                    ResolveUrbanBuilding(collider);
+                if (building == null || building.IsUrbanDestroyed)
+                    continue;
+
+                int candidateIndex = -1;
+                for (int index = 0; index < candidateCount; index++)
+                {
+                    if (playerCoverCandidates[index] != building)
+                        continue;
+                    candidateIndex = index;
+                    break;
+                }
+                if (candidateIndex < 0)
+                {
+                    if (candidateCount >= playerCoverCandidates.Length)
+                        continue;
+                    candidateIndex = candidateCount++;
+                    playerCoverCandidates[candidateIndex] = building;
+                    playerCoverCandidateColliders[candidateIndex] = collider;
+                    playerCoverCandidateSampleMasks[candidateIndex] = 0;
+                    playerCoverCandidateDepths[candidateIndex] = 0f;
+                }
+
+                int sampleBit = 1 << sampleIndex;
+                if ((playerCoverCandidateSampleMasks[candidateIndex] &
+                     sampleBit) == 0)
+                {
+                    playerCoverCandidateSampleMasks[candidateIndex] |=
+                        sampleBit;
+                }
+                float normalizedDepth = hit.distance / rayDistance;
+                if (normalizedDepth >
+                    playerCoverCandidateDepths[candidateIndex])
+                {
+                    playerCoverCandidateDepths[candidateIndex] =
+                        normalizedDepth;
+                    playerCoverCandidateColliders[candidateIndex] = collider;
+                }
+            }
+        }
+
+        float bestScore = float.NegativeInfinity;
+        for (int index = 0; index < candidateCount; index++)
+        {
+            int sampleMask = playerCoverCandidateSampleMasks[index];
+            // The center sample is the actual Boss-to-player firing corridor.
+            // Side-only buildings are context, not demolition targets.
+            if ((sampleMask & 1) == 0)
+                continue;
+            UrbanDestructibleBuilding building = playerCoverCandidates[index];
+            if (building == null || building.IsUrbanDestroyed)
+                continue;
+            int coveredSamples = CountSetBits(sampleMask);
+            float distanceFromPlayer = Vector3.Distance(
+                playerBounds.center,
+                building.DestructionBounds.ClosestPoint(
+                    playerBounds.center));
+            float score = ModularBossCombatPolicy.ScorePlayerCoverBuilding(
+                coveredSamples,
+                distanceFromPlayer,
+                playerCoverCandidateDepths[index]);
+            if (score <= bestScore)
+                continue;
+            bestScore = score;
+            selectedBuilding = building;
+            selectedCollider = playerCoverCandidateColliders[index];
+        }
+
+        for (int index = 0; index < candidateCount; index++)
+        {
+            playerCoverCandidates[index] = null;
+            playerCoverCandidateColliders[index] = null;
+            playerCoverCandidateSampleMasks[index] = 0;
+            playerCoverCandidateDepths[index] = 0f;
+        }
+        return selectedBuilding != null;
+    }
+
+    static Vector3 ResolvePlayerCoverSample(Bounds bounds, int sampleIndex)
+    {
+        switch (sampleIndex)
+        {
+            case 1:
+                return bounds.center + Vector3.right * bounds.extents.x * 0.7f;
+            case 2:
+                return bounds.center - Vector3.right * bounds.extents.x * 0.7f;
+            case 3:
+                return bounds.center + Vector3.up * bounds.extents.y * 0.7f;
+            case 4:
+                return bounds.center - Vector3.up * bounds.extents.y * 0.7f;
+            case 5:
+                return bounds.center + Vector3.forward * bounds.extents.z * 0.7f;
+            case 6:
+                return bounds.center - Vector3.forward * bounds.extents.z * 0.7f;
+            default:
+                return bounds.center;
+        }
+    }
+
+    static int CountSetBits(int value)
+    {
+        int count = 0;
+        while (value != 0)
+        {
+            value &= value - 1;
+            count++;
+        }
+        return count;
     }
 
     bool HasIntactBuildingCover(Vector3 origin, Vector3 direction)
@@ -1789,7 +2521,7 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         {
             if (!HasLiveCoverBreachTarget())
             {
-                BeginRecovery(now);
+                CompleteCoverBreachAttempt(now);
             }
             else if (now >= stateEndsAt)
             {
@@ -1803,8 +2535,13 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         {
             if (!HasLiveCoverBreachTarget() || now >= stateEndsAt)
             {
-                BeginRecovery(now);
+                CompleteCoverBreachAttempt(now);
             }
+            return;
+        }
+        if (obstacleState == ModularBossObstacleState.BacktrackEscape)
+        {
+            UpdateBacktrackEscape(now);
             return;
         }
 
@@ -1840,6 +2577,15 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         probedBlockingBridge = blockingBridge;
         probedBridgePoint = blockingBridgePoint;
         forceBridgeApproach = false;
+        if (TryBeginStuckBuildingBreach(now, blockingBridge))
+            return;
+        if (TryBeginStalledAvoidanceRecovery(
+                now,
+                needsAvoidance,
+                blockingBridge))
+        {
+            return;
+        }
         if (needsAvoidance)
         {
             if (recentWorldCollision)
@@ -1856,8 +2602,11 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
             }
         }
 
-        bool hardCoverBlocksBoss = playerEntrenchedInCover &&
-            directLineBlocked &&
+        // A wider city no longer guarantees opposing buildings within the
+        // short entrenched probe. Persistent, intact cover on the actual
+        // Boss-to-player firing corridor is sufficient authorization to
+        // breach; the delay still gives a passing player time to move on.
+        bool hardCoverBlocksBoss = directLineBlocked &&
             blockingCoverBuilding != null &&
             !blockingCoverBuilding.IsUrbanDestroyed;
         if (hardCoverBlocksBoss)
@@ -1880,9 +2629,10 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
                 now - coveredSince >=
                 ModularBossCombatPolicy.CoverBreachDelay(
                     build.Profile.Tier);
-            if (coverPersisted && now >= nextCoverBreachAt &&
-                HasLiveBlockingCoverTarget() &&
-                directLineBlocked)
+            if (now >= nextCoverBreachAt &&
+                ModularBossCombatPolicy.ShouldAuthorizeCoverBreach(
+                    directLineBlocked && HasLiveBlockingCoverTarget(),
+                    coverPersisted))
             {
                 BeginCoverBreach(
                     now,
@@ -2090,12 +2840,15 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
     void BeginCoverBreach(
         float now,
         UrbanDestructibleBuilding building,
-        Collider collider)
+        Collider collider,
+        bool resumeBacktrack = false)
     {
         if (building == null || building.IsUrbanDestroyed)
             return;
+        ResetStuckBuildingObservation();
         coverBreachBuilding = building;
         coverBreachCollider = collider;
+        resumeBacktrackAfterCoverBreach = resumeBacktrack;
         Bounds targetBounds = building.DestructionBounds;
         coverBreachPoint = targetBounds.ClosestPoint(
             body.worldCenterOfMass);
@@ -2107,10 +2860,171 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         coveredSince = -1f;
     }
 
+    bool TryBeginStuckBuildingBreach(
+        float now,
+        UrbanDestructibleBridge blockingBridge)
+    {
+        bool canBreachFromCurrentState =
+            obstacleState == ModularBossObstacleState.Pursuit ||
+            obstacleState == ModularBossObstacleState.LocalAvoidance;
+        bool liveBuildingContact =
+            now - lastWorldCollisionAt <= 0.32f &&
+            contactedBuilding != null &&
+            !contactedBuilding.IsUrbanDestroyed &&
+            contactedBuildingCollider != null;
+        if (!canBreachFromCurrentState || !liveBuildingContact ||
+            blockingBridge != null || lockedBridge != null || body == null)
+        {
+            ResetStuckBuildingObservation();
+            return false;
+        }
+
+        Vector3 currentPosition = body.worldCenterOfMass;
+        if (stuckObservationBuilding != contactedBuilding ||
+            stuckObservationStartedAt < 0f)
+        {
+            stuckObservationBuilding = contactedBuilding;
+            stuckObservationPosition = currentPosition;
+            stuckObservationStartedAt = now;
+            return false;
+        }
+
+        float progress = Vector3.Distance(
+            stuckObservationPosition,
+            currentPosition);
+        if (progress >
+            ModularBossCombatPolicy.BuildingStuckProgressDistance)
+        {
+            stuckObservationPosition = currentPosition;
+            stuckObservationStartedAt = now;
+            return false;
+        }
+        if (now - stuckObservationStartedAt <
+            ModularBossCombatPolicy.BuildingStuckBreachSeconds)
+        {
+            return false;
+        }
+
+        UrbanDestructibleBuilding target = contactedBuilding;
+        Collider targetCollider = contactedBuildingCollider;
+        ResetStuckBuildingObservation();
+        BeginCoverBreach(now, target, targetCollider, true);
+        return obstacleState ==
+               ModularBossObstacleState.CoverBreachTelegraph;
+    }
+
+    void ResetStuckBuildingObservation()
+    {
+        stuckObservationBuilding = null;
+        stuckObservationPosition = Vector3.zero;
+        stuckObservationStartedAt = -1f;
+    }
+
+    bool TryBeginStalledAvoidanceRecovery(
+        float now,
+        bool needsAvoidance,
+        UrbanDestructibleBridge blockingBridge)
+    {
+        if (obstacleState != ModularBossObstacleState.LocalAvoidance ||
+            !needsAvoidance || body == null || structureGraph == null ||
+            blockingBridge != null || lockedBridge != null)
+        {
+            ResetAvoidanceProgressObservation();
+            return false;
+        }
+
+        Vector3 current = body.worldCenterOfMass;
+        if (avoidanceProgressStartedAt < 0f)
+        {
+            avoidanceProgressPosition = current;
+            avoidanceProgressStartedAt = now;
+            return false;
+        }
+        if (Vector3.Distance(current, avoidanceProgressPosition) >=
+            ModularBossCombatPolicy.BuildingStuckProgressDistance)
+        {
+            avoidanceProgressPosition = current;
+            avoidanceProgressStartedAt = now;
+        }
+
+        bool noTranslation = now - avoidanceProgressStartedAt >=
+                             ModularBossCombatPolicy.
+                                 BuildingStuckBreachSeconds;
+        bool avoidanceLoop = now - obstacleStateStartedAt >=
+                             ModularBossCombatPolicy.
+                                 AvoidanceMaximumSeconds;
+        if (!noTranslation && !avoidanceLoop)
+            return false;
+
+        // A real intact-building contact gets first refusal so it can be
+        // breached instead of escaped. This branch handles probe-boundary
+        // hover locks and ruin/city pockets that produce no live building.
+        bool liveBuildingContact =
+            now - lastWorldCollisionAt <= 0.55f &&
+            contactedBuilding != null &&
+            !contactedBuilding.IsUrbanDestroyed &&
+            contactedBuildingCollider != null;
+        if (liveBuildingContact)
+            return false;
+
+        ResetAvoidanceProgressObservation();
+        if (!TryResolveVerticalEscapeDirection(out Vector3 escapeDirection))
+            return TryBeginBacktrackEscape(now);
+
+        recoveryEscapeDirection = escapeDirection;
+        recoveryEscapeEndsAt = now +
+            ModularBossCombatPolicy.VerticalEscapeSeconds;
+        SetObstacleState(ModularBossObstacleState.Recovery);
+        stateEndsAt = recoveryEscapeEndsAt;
+        return true;
+    }
+
+    bool TryResolveVerticalEscapeDirection(out Vector3 direction)
+    {
+        direction = Vector3.zero;
+        if (structureGraph == null)
+            return false;
+
+        Bounds bounds = structureGraph.ResolveVisualBounds();
+        Vector3 planarToPlayer = playerBody == null
+            ? transform.forward
+            : Vector3.ProjectOnPlane(
+                playerBody.worldCenterOfMass - bounds.center,
+                Vector3.up);
+        planarToPlayer = SafeDirection(planarToPlayer, transform.forward);
+        Vector3 right = SafeDirection(
+            Vector3.Cross(Vector3.up, planarToPlayer),
+            transform.right);
+        Vector3[] candidates =
+        {
+            Vector3.up,
+            (Vector3.up * 1.35f + planarToPlayer * 0.45f).normalized,
+            (Vector3.up * 1.35f - planarToPlayer * 0.45f).normalized,
+            (Vector3.up * 1.25f + right * 0.55f).normalized,
+            (Vector3.up * 1.25f - right * 0.55f).normalized
+        };
+        float bestClearance = float.NegativeInfinity;
+        foreach (Vector3 candidate in candidates)
+        {
+            float clearance = ProbeClearance(bounds, candidate);
+            if (clearance <= bestClearance)
+                continue;
+            bestClearance = clearance;
+            direction = candidate;
+        }
+        return bestClearance >=
+               ModularBossCombatPolicy.MinimumVerticalEscapeClearance;
+    }
+
+    void ResetAvoidanceProgressObservation()
+    {
+        avoidanceProgressPosition = Vector3.zero;
+        avoidanceProgressStartedAt = -1f;
+    }
+
     bool HasLiveBlockingCoverTarget()
     {
-        return playerEntrenchedInCover &&
-               blockingCoverBuilding != null &&
+        return blockingCoverBuilding != null &&
                !blockingCoverBuilding.IsUrbanDestroyed;
     }
 
@@ -2127,12 +3041,15 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
 
     void BeginRecovery(float now, float duration)
     {
+        resumeBacktrackAfterCoverBreach = false;
+        ClearBacktrackTarget();
         SetObstacleState(ModularBossObstacleState.Recovery);
         stateEndsAt = now + Mathf.Max(0.1f, duration);
     }
 
     void BeginBuildingEscapeRecovery(float now, Vector3 impactDirection)
     {
+        resumeBacktrackAfterCoverBreach = false;
         Vector3 away = -Vector3.ProjectOnPlane(
             impactDirection,
             Vector3.up);
@@ -2149,7 +3066,201 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
                 velocityChange * body.mass,
                 body.worldCenterOfMass);
         }
-        BeginRecovery(now, 1.45f);
+        if (!TryBeginBacktrackEscape(now))
+            BeginRecovery(now, 1.45f);
+    }
+
+    void TryRecordSafeNavigationPoint(bool force)
+    {
+        if (body == null || structureGraph == null ||
+            (!force &&
+             obstacleState != ModularBossObstacleState.Pursuit &&
+             obstacleState != ModularBossObstacleState.LocalAvoidance) ||
+            (!force && Time.time - lastWorldCollisionAt <= 0.55f))
+        {
+            return;
+        }
+
+        Bounds bounds = structureGraph.ResolveVisualBounds();
+        Vector3 extents = bounds.extents + Vector3.one * 1.5f;
+        if (!IsNavigationVolumeClear(bounds.center, extents))
+            return;
+        if (safeNavigationTrail.Count > 0 &&
+            Vector3.Distance(
+                safeNavigationTrail[safeNavigationTrail.Count - 1],
+                bounds.center) <
+            ModularBossCombatPolicy.SafeNavigationPointSpacing)
+        {
+            return;
+        }
+
+        safeNavigationTrail.Add(bounds.center);
+        if (safeNavigationTrail.Count >
+            ModularBossCombatPolicy.SafeNavigationTrailCapacity)
+        {
+            safeNavigationTrail.RemoveAt(0);
+        }
+    }
+
+    bool IsNavigationVolumeClear(Vector3 center, Vector3 extents)
+    {
+        int hitCount = Physics.OverlapBoxNonAlloc(
+            center,
+            extents,
+            spawnOverlapBuffer,
+            Quaternion.identity,
+            Physics.DefaultRaycastLayers,
+            QueryTriggerInteraction.Ignore);
+        if (hitCount >= spawnOverlapBuffer.Length)
+            return false;
+        for (int index = 0; index < hitCount; index++)
+        {
+            Collider collider = spawnOverlapBuffer[index];
+            if (collider == null || !collider.enabled ||
+                collider.transform.IsChildOf(transform) ||
+                (playerBody != null &&
+                 collider.transform.IsChildOf(playerBody.transform)))
+            {
+                continue;
+            }
+            if (IsUrbanCover(collider))
+                return false;
+        }
+        return true;
+    }
+
+    bool TryBeginBacktrackEscape(float now)
+    {
+        if (body == null || structureGraph == null ||
+            safeNavigationTrail.Count == 0)
+        {
+            return false;
+        }
+
+        int startIndex = backtrackTargetIndex >= 0
+            ? Mathf.Min(backtrackTargetIndex,
+                safeNavigationTrail.Count - 1)
+            : safeNavigationTrail.Count - 1;
+        return TrySelectBacktrackTarget(now, startIndex);
+    }
+
+    bool TrySelectBacktrackTarget(float now, int startIndex)
+    {
+        Bounds bounds = structureGraph.ResolveVisualBounds();
+        Vector3 extents = bounds.extents + Vector3.one * 1.5f;
+        for (int index = Mathf.Min(startIndex,
+                 safeNavigationTrail.Count - 1);
+             index >= 0;
+             index--)
+        {
+            Vector3 candidate = safeNavigationTrail[index];
+            if (Vector3.Distance(bounds.center, candidate) <
+                    ModularBossCombatPolicy.BacktrackMinimumTargetDistance ||
+                !IsNavigationVolumeClear(candidate, extents))
+            {
+                continue;
+            }
+
+            backtrackTargetIndex = index;
+            backtrackTarget = candidate;
+            backtrackProgressPosition = bounds.center;
+            backtrackProgressStartedAt = now;
+            SetObstacleState(ModularBossObstacleState.BacktrackEscape);
+            stateEndsAt = now +
+                ModularBossCombatPolicy.BacktrackEscapeSeconds;
+            return true;
+        }
+        return false;
+    }
+
+    void UpdateBacktrackEscape(float now)
+    {
+        if (body == null || structureGraph == null ||
+            backtrackTargetIndex < 0)
+        {
+            BeginRecovery(now, 0.65f);
+            return;
+        }
+
+        Bounds bounds = structureGraph.ResolveVisualBounds();
+        Vector3 current = bounds.center;
+        if (Vector3.Distance(current, backtrackTarget) <=
+            ModularBossCombatPolicy.BacktrackArrivalDistance)
+        {
+            BeginRecovery(now, 0.65f);
+            return;
+        }
+
+        if (Vector3.Distance(current, backtrackProgressPosition) >=
+            ModularBossCombatPolicy.BuildingStuckProgressDistance)
+        {
+            backtrackProgressPosition = current;
+            backtrackProgressStartedAt = now;
+        }
+
+        bool progressTimedOut = backtrackProgressStartedAt >= 0f &&
+            now - backtrackProgressStartedAt >=
+            ModularBossCombatPolicy.BuildingStuckBreachSeconds;
+        if (progressTimedOut)
+        {
+            bool liveBuildingContact =
+                now - lastWorldCollisionAt <= 0.55f &&
+                contactedBuilding != null &&
+                !contactedBuilding.IsUrbanDestroyed &&
+                contactedBuildingCollider != null;
+            if (liveBuildingContact)
+            {
+                BeginCoverBreach(
+                    now,
+                    contactedBuilding,
+                    contactedBuildingCollider,
+                    true);
+                return;
+            }
+            if (TrySelectBacktrackTarget(
+                    now,
+                    backtrackTargetIndex - 1))
+            {
+                return;
+            }
+            BeginRecovery(now, 0.65f);
+            return;
+        }
+
+        if (now >= stateEndsAt)
+        {
+            if (!TrySelectBacktrackTarget(
+                    now,
+                    backtrackTargetIndex - 1))
+            {
+                BeginRecovery(now, 0.65f);
+            }
+        }
+    }
+
+    void ClearBacktrackTarget()
+    {
+        backtrackTargetIndex = -1;
+        backtrackTarget = Vector3.zero;
+        backtrackProgressPosition = Vector3.zero;
+        backtrackProgressStartedAt = -1f;
+    }
+
+    void CompleteCoverBreachAttempt(float now)
+    {
+        bool shouldResumeBacktrack = resumeBacktrackAfterCoverBreach;
+        resumeBacktrackAfterCoverBreach = false;
+        coverBreachBuilding = null;
+        coverBreachCollider = null;
+        if (shouldResumeBacktrack && TryBeginBacktrackEscape(now))
+            return;
+        BeginRecovery(now);
+    }
+
+    void ResetSafeNavigationTrail()
+    {
+        safeNavigationTrail.Clear();
+        ClearBacktrackTarget();
     }
 
     void SetObstacleState(ModularBossObstacleState value)
@@ -2184,6 +3295,8 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
     void ResetObstacleRuntime()
     {
         ReleaseBridgeObstacleTracking();
+        ClearFocusedPlayerTarget();
+        ResetSafeNavigationTrail();
         stateEndsAt = 0f;
         immunityEndsAt = 0f;
         ceaseFireWindowCount = 0;
@@ -2193,13 +3306,18 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         blockingCoverBuilding = null;
         blockingCoverRuin = null;
         blockingCoverCollider = null;
+        contactedBuilding = null;
+        contactedBuildingCollider = null;
+        ResetStuckBuildingObservation();
         nextAwarenessProbeAt = 0f;
         coverObservedAt = -1f;
         coveredSince = -1f;
         coverBreachBuilding = null;
         coverBreachCollider = null;
+        resumeBacktrackAfterCoverBreach = false;
         committedAvoidanceDirection = Vector3.zero;
         avoidanceCommitEndsAt = -1f;
+        ResetAvoidanceProgressObservation();
         collisionEscapeDirection = Vector3.zero;
         lastWorldCollisionAt = -1f;
         recoveryEscapeDirection = Vector3.zero;
@@ -2620,12 +3738,21 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         Vector3 impactDirection = SafeDirection(
             body.velocity,
             committedRamDirection);
-        ApplyBossBuildingCollisionLoss(
-            contact.point,
-            impactDirection,
-            collision.impulse,
-            speed,
-            building.gameObject);
+        bool shieldProtected = shield != null &&
+            shield.ApplyEnvironmentalImpact(
+                ModularBossCombatPolicy.ResolveBuildingShieldDamageFraction(
+                    speed),
+                contact.point,
+                building.gameObject);
+        if (!shieldProtected)
+        {
+            ApplyBossBuildingCollisionLoss(
+                contact.point,
+                impactDirection,
+                collision.impulse,
+                speed,
+                building.gameObject);
+        }
         bool collapsed = UrbanDestructionWorld.TryApplyEnergyBlade(
             urbanCollider,
             contact.point,
@@ -2640,6 +3767,9 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         {
             coverBreachBuilding = null;
             coverBreachCollider = null;
+            contactedBuilding = null;
+            contactedBuildingCollider = null;
+            ResetStuckBuildingObservation();
             coveredSince = -1f;
             BeginBuildingEscapeRecovery(
                 Time.time,
@@ -2782,6 +3912,11 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         Vector3 contactPoint = collision.contactCount > 0
             ? collision.GetContact(0).point
             : bridge.DestructionBounds.ClosestPoint(body.worldCenterOfMass);
+        shield?.ApplyEnvironmentalImpact(
+            ModularBossCombatPolicy.ResolveBridgeShieldDamageFraction(
+                collision.relativeVelocity.magnitude),
+            contactPoint,
+            bridge.gameObject);
         float now = Time.time;
         if (lockedBridge != null && lockedBridge != bridge &&
             !lockedBridge.IsUrbanDestroyed &&
@@ -2819,10 +3954,27 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         Collider urbanCollider = ResolveBuildingCollisionCollider(collision);
         if (urbanCollider == null)
         {
+            contactedBuilding = null;
+            contactedBuildingCollider = null;
             Collider candidate = collision.collider;
             UrbanDestructibleRuinSection ruin = ResolveUrbanRuin(candidate);
             if (ruin == null || ruin.IsUrbanDestroyed)
                 return false;
+        }
+        else
+        {
+            UrbanDestructibleBuilding building =
+                ResolveUrbanBuilding(urbanCollider);
+            if (building != null && !building.IsUrbanDestroyed)
+            {
+                contactedBuilding = building;
+                contactedBuildingCollider = urbanCollider;
+            }
+            else
+            {
+                contactedBuilding = null;
+                contactedBuildingCollider = null;
+            }
         }
         Vector3 away = contact.normal;
         if (away.sqrMagnitude < 0.001f)
@@ -2866,6 +4018,18 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         float desiredHeight = Mathf.Max(
             22f + build.Profile.Tier * 2f,
             bossBounds.extents.y + 14f);
+        // Keep the encounter genuinely three-dimensional. The offset is an
+        // altitude lane, not a visual bob: cover raises the lane and the slow
+        // orbit makes both upward and downward thrusters participate in pursuit.
+        float altitudeOrbit = Mathf.Sin(
+            Time.time * 0.22f + build.Profile.Tier * 1.37f) *
+            Mathf.Lerp(
+                7f,
+                13f,
+                Mathf.Clamp01(build.Profile.Tier / 5f));
+        if (nearbyUrbanCover || directLineBlocked)
+            altitudeOrbit += 7f;
+        desiredHeight += altitudeOrbit;
         float heightError =
             (playerBody.worldCenterOfMass.y + desiredHeight) -
             body.worldCenterOfMass.y;
@@ -2967,6 +4131,40 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
                 boost = !emergencyAssist,
                 freeLook = false,
                 aimForwardWorld = ramAim,
+                hasAimOverride = true
+            });
+            return;
+        }
+
+        if (obstacleState == ModularBossObstacleState.BacktrackEscape)
+        {
+            Vector3 toSafePoint = backtrackTarget - bossBounds.center;
+            Vector3 escapeDirection = SafeDirection(
+                toSafePoint,
+                recoveryEscapeDirection);
+            Vector3 escapeAxes =
+                ModularBossSteeringPolicy.ToAimRelativeAxes(
+                    escapeDirection,
+                    aim,
+                    up);
+            motion.SetInjectedControl(new RobocraftControlFrame
+            {
+                move = new Vector2(
+                    Mathf.Clamp(escapeAxes.x * 1.25f, -1f, 1f),
+                    Mathf.Clamp(escapeAxes.z * 1.15f, -1f, 1f)) *
+                    mobilityScale,
+                vertical = Mathf.Clamp(
+                    escapeAxes.y * 1.35f,
+                    -1f,
+                    1f) * mobilityScale,
+                roll = emergencyAssist
+                    ? Mathf.Sin(Time.time * 1.7f) * 0.08f
+                    : 0f,
+                braking = false,
+                boost = !emergencyAssist &&
+                        toSafePoint.magnitude > 30f,
+                freeLook = false,
+                aimForwardWorld = aim,
                 hasAimOverride = true
             });
             return;
@@ -3084,7 +4282,7 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
     void TryFire()
     {
         if (WeaponsSuppressed || Time.time < nextShotAt ||
-            liveWeapons.Count == 0)
+            Time.time < nextTargetSearchAt || liveWeapons.Count == 0)
             return;
         GridModuleView view = liveWeapons[
             weaponCursor++ % liveWeapons.Count];
@@ -3101,8 +4299,15 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
         Vector3 muzzleForward = semantics != null
             ? semantics.WorldMuzzleDirection
             : view.transform.forward;
-        if (!playerGraph.TryGetTarget(out Collider target) || target == null)
+        if (!TryResolveFocusedPlayerTarget(origin, out Collider target))
+        {
+            // Fully occluded players used to make every rendered frame scan
+            // every player module. Match the awareness cadence while seeking
+            // a newly exposed module and avoid cover-dependent GC spikes.
+            nextTargetSearchAt = Time.time + 0.12f;
             return;
+        }
+        nextTargetSearchAt = 0f;
         Vector3 desired = target.bounds.center - origin;
         float distance = desired.magnitude;
         if (distance < 0.01f)
@@ -3136,6 +4341,7 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
             profile,
             visuals,
             out RaycastHit hit);
+        AdoptFocusedPlayerModule(hit.collider);
         Vector3 end = hit.collider != null
             ? hit.point
             : origin + direction * range;
@@ -3151,17 +4357,199 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
             new Color(1f, 0.28f, 0.1f),
             0.09f,
             profile.projectileEffect);
-        float cadence = Mathf.Max(
-            0.22f,
-            1f / Mathf.Max(0.1f, profile.shotsPerSecond));
         nextShotAt = Time.time +
-                     cadence * Mathf.Lerp(1.35f, 0.78f,
-                         build.Profile.Tier / 5f);
+                     ModularBossCombatPolicy.ResolveBossShotCadence(
+                         profile.shotsPerSecond,
+                         build.Profile.Tier,
+                         liveWeapons.Count);
+    }
+
+    bool TryResolveFocusedPlayerTarget(
+        Vector3 origin,
+        out Collider target)
+    {
+        target = null;
+        if (IsValidFocusedPlayerTarget() &&
+            HasClearWeaponLineOfFire(origin, focusedPlayerCollider))
+        {
+            target = focusedPlayerCollider;
+            return true;
+        }
+
+        ClearFocusedPlayerTarget();
+        if (playerGraph == null || !playerGraph.Active)
+            return false;
+
+        VehicleModuleDamageReceiver[] modules = playerGraph
+            .GetComponentsInChildren<VehicleModuleDamageReceiver>(true);
+        float bestIntegrityRatio = float.PositiveInfinity;
+        float bestDistance = float.PositiveInfinity;
+        for (int index = 0; index < modules.Length; index++)
+        {
+            VehicleModuleDamageReceiver candidate = modules[index];
+            if (candidate == null || candidate.IsDestroyed ||
+                candidate.StructureGraph != playerGraph ||
+                !TryResolveTargetCollider(candidate, out Collider collider) ||
+                !HasClearWeaponLineOfFire(origin, collider))
+            {
+                continue;
+            }
+
+            float integrityRatio = candidate.Integrity /
+                                   Mathf.Max(1f, candidate.MaximumIntegrity);
+            float distance = collider.bounds.SqrDistance(origin);
+            bool healthierThanBest =
+                integrityRatio > bestIntegrityRatio + 0.0001f;
+            if (healthierThanBest ||
+                (Mathf.Abs(integrityRatio - bestIntegrityRatio) <= 0.0001f &&
+                 distance >= bestDistance))
+            {
+                continue;
+            }
+
+            focusedPlayerModule = candidate;
+            focusedPlayerCollider = collider;
+            bestIntegrityRatio = integrityRatio;
+            bestDistance = distance;
+        }
+
+        target = focusedPlayerCollider;
+        return target != null;
+    }
+
+    bool HasClearWeaponLineOfFire(Vector3 origin, Collider target)
+    {
+        if (target == null)
+            return false;
+        Vector3 toTarget = target.bounds.center - origin;
+        float distance = toTarget.magnitude;
+        if (distance <= 0.01f)
+            return true;
+
+        int hitCount = Physics.RaycastNonAlloc(
+            origin,
+            toTarget / distance,
+            WeaponSightHits,
+            distance + 0.5f,
+            Physics.DefaultRaycastLayers,
+            QueryTriggerInteraction.Ignore);
+        if (hitCount >= WeaponSightHits.Length)
+            return false;
+
+        Collider nearestCollider = null;
+        float nearestDistance = float.PositiveInfinity;
+        for (int index = 0; index < hitCount; index++)
+        {
+            Collider collider = WeaponSightHits[index].collider;
+            if (collider == null || !collider.enabled ||
+                collider.transform.IsChildOf(transform) ||
+                WeaponSightHits[index].distance >= nearestDistance)
+            {
+                continue;
+            }
+            nearestCollider = collider;
+            nearestDistance = WeaponSightHits[index].distance;
+        }
+
+        return IsPlayerCollider(nearestCollider);
+    }
+
+    bool IsPlayerCollider(Collider collider)
+    {
+        if (collider == null)
+            return false;
+        if (playerBody != null &&
+            collider.transform.IsChildOf(playerBody.transform))
+        {
+            return true;
+        }
+        VehicleModuleDamageReceiver receiver = collider
+            .GetComponentInParent<VehicleModuleDamageReceiver>();
+        return receiver != null &&
+               receiver.StructureGraph == playerGraph;
+    }
+
+    bool IsValidFocusedPlayerTarget()
+    {
+        return focusedPlayerModule != null &&
+               focusedPlayerCollider != null &&
+               !focusedPlayerModule.IsDestroyed &&
+               focusedPlayerModule.StructureGraph == playerGraph &&
+               focusedPlayerCollider.enabled &&
+               focusedPlayerCollider.gameObject.activeInHierarchy &&
+               !focusedPlayerCollider.isTrigger;
+    }
+
+    static bool TryResolveTargetCollider(
+        VehicleModuleDamageReceiver module,
+        out Collider target)
+    {
+        target = null;
+        Collider[] colliders = module.GetComponentsInChildren<Collider>(true);
+        for (int index = 0; index < colliders.Length; index++)
+        {
+            Collider candidate = colliders[index];
+            if (candidate == null || !candidate.enabled ||
+                candidate.isTrigger ||
+                !candidate.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            target = candidate;
+            return true;
+        }
+        return false;
+    }
+
+    void AdoptFocusedPlayerModule(Collider hitCollider)
+    {
+        if (hitCollider == null)
+            return;
+        VehicleModuleDamageReceiver hitModule = hitCollider
+            .GetComponentInParent<VehicleModuleDamageReceiver>();
+        if (hitModule == null || hitModule.IsDestroyed ||
+            hitModule.StructureGraph != playerGraph)
+        {
+            return;
+        }
+
+        focusedPlayerModule = hitModule;
+        focusedPlayerCollider = hitCollider;
+    }
+
+    void ClearFocusedPlayerTarget()
+    {
+        focusedPlayerModule = null;
+        focusedPlayerCollider = null;
     }
 
     void HandleStructureChanged(VehicleStructureDelta delta)
     {
-        RebuildLiveModules();
+        if (delta == null || delta.RemovedRuntimeIds.Count == 0 ||
+            build == null)
+        {
+            RebuildLiveModules();
+            return;
+        }
+
+        var removed = new HashSet<string>(
+            delta.RemovedRuntimeIds,
+            StringComparer.Ordinal);
+        liveWeapons.RemoveAll(view =>
+            view == null || view.Record == null ||
+            removed.Contains(view.Record.RuntimeId));
+        foreach (string runtimeId in removed)
+        {
+            if (!build.ThrusterDirections.TryGetValue(
+                    runtimeId,
+                    out ModularBossThrusterDirection direction) ||
+                !liveThrusters.TryGetValue(direction, out int count))
+            {
+                continue;
+            }
+            liveThrusters[direction] = Mathf.Max(0, count - 1);
+        }
     }
 
     void RebuildLiveModules()
@@ -3298,6 +4686,8 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
     {
         prepared = false;
         combatActive = false;
+        shield?.SetCombatActive(false);
+        ClearFocusedPlayerTarget();
         motion?.ClearInjectedControl();
         motion?.EndFlight();
         flight?.ExitFlight();
@@ -3308,11 +4698,11 @@ public sealed class ModularBossCombatRuntime : MonoBehaviour
     {
         if (presenter != null)
         {
-            presenter.Rebuilt -= ApplyBossModuleScale;
-            presenter.Rebuilt -= RebuildLiveModules;
+            presenter.SetRuntimeRemovalOptimization(false);
         }
         if (structureGraph != null)
         {
+            structureGraph.SetModuleDamageFilter(null);
             structureGraph.StructureChanged -= HandleStructureChanged;
             structureGraph.Destroyed -= HandleDestroyed;
         }

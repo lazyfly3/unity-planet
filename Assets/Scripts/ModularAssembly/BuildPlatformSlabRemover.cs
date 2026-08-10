@@ -31,7 +31,9 @@ namespace UnityPlanet.ModularAssembly
         private void LateUpdate()
         {
             bool removedSlab = false;
-            Transform[] sceneTransforms = FindObjectsOfType<Transform>(true);
+            Transform[] sceneTransforms = FindObjectsByType<Transform>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
 
             for (int i = 0; i < sceneTransforms.Length; i++)
             {

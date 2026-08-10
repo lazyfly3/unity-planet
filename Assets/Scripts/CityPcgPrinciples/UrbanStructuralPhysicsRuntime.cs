@@ -104,8 +104,10 @@ namespace UnityPlanet.CityPcg
     }
 
     /// <summary>
-    /// Keeps generated compound colliders outside scaled/imported art roots while
-    /// preserving projectile and high-speed collision routing to the owner.
+    /// Keeps generated compound colliders outside scaled/imported art roots.
+    /// It deliberately has no collision-damage callback: ordinary player and
+    /// minion contacts remain physical without deleting facade cells. Boss ram
+    /// destruction is routed explicitly while the authored skill is active.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class UrbanStructuralColliderProxy : MonoBehaviour
@@ -119,11 +121,6 @@ namespace UnityPlanet.CityPcg
             owner = target;
         }
 
-        void OnCollisionEnter(Collision collision)
-        {
-            if (owner != null)
-                owner.ApplyProxyCollision(collision);
-        }
     }
 
     /// <summary>

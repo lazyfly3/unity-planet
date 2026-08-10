@@ -9,9 +9,6 @@ EditorBuildSettings:
     path: Assets/Scenes/StartMenu.unity
     guid: a0e415b58fb88d547b861ab8ffa7ddd7
   - enabled: 1
-    path: Assets/Scenes/SpacecraftWorkshop.unity
-    guid: 2b2e1ed52e815a647a004f6dc732c913
-  - enabled: 1
     path: Assets/Scenes/InterstellarFlight.unity
     guid: 950fe3ffb1cbcb54aa8f0f9590be48bb
   - enabled: 1
@@ -26,9 +23,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/ModularAssemblyLab.unity
     guid: c59d487d1306f68479f9648ae5b2586b
-  - enabled: 1
-    path: Assets/Scenes/CombatMapRuntime.unity
-    guid: fac8cae3bc6385c43bf451606d9fbbe5
   - enabled: 1
     path: Assets/Scenes/SpaceStationUpgradeTest.unity
     guid: c02f562705cb9b94ba610c7550829cd8

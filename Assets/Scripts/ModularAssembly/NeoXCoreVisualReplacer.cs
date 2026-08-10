@@ -9,11 +9,15 @@ namespace UnityPlanet.ModularAssembly
     {
         private const string CoreSourceId = "block:core:core_heavy_222";
         private const string CoreVisualName = "NeoXCoreHeavy222";
+        private const string PresentationBlocker =
+            "NeoXCoreVisualReplacer";
 
         private ModularContentService contentService;
         private GridAssemblyPresenter presenter;
         private ModularContentRecord coreRecord;
         private bool upgradeRunning;
+
+        public bool IsReady { get; private set; }
 
         private IEnumerator Start()
         {
@@ -31,6 +35,10 @@ namespace UnityPlanet.ModularAssembly
             if (coreRecord == null)
             {
                 Debug.LogWarning("未找到 NeoX 2x2x2 核心资源: " + CoreSourceId);
+                presenter.SetPresentationBlocked(
+                    PresentationBlocker,
+                    false);
+                IsReady = true;
                 yield break;
             }
 
@@ -42,6 +50,10 @@ namespace UnityPlanet.ModularAssembly
         {
             if (!upgradeRunning)
             {
+                IsReady = false;
+                presenter?.SetPresentationBlocked(
+                    PresentationBlocker,
+                    true);
                 StartCoroutine(UpgradeCore());
             }
         }
@@ -53,6 +65,10 @@ namespace UnityPlanet.ModularAssembly
             if (coreView == null || coreView.transform.Find(CoreVisualName) != null)
             {
                 upgradeRunning = false;
+                IsReady = true;
+                presenter?.SetPresentationBlocked(
+                    PresentationBlocker,
+                    false);
                 yield break;
             }
 
@@ -61,9 +77,14 @@ namespace UnityPlanet.ModularAssembly
                 coreRecord,
                 coreView.transform,
                 value => loaded = value);
+            presenter?.RefreshPresentationVisibility();
             if (coreView == null || loaded == null)
             {
                 upgradeRunning = false;
+                IsReady = true;
+                presenter?.SetPresentationBlocked(
+                    PresentationBlocker,
+                    false);
                 yield break;
             }
 
@@ -81,6 +102,10 @@ namespace UnityPlanet.ModularAssembly
             }
 
             upgradeRunning = false;
+            IsReady = true;
+            presenter.SetPresentationBlocked(
+                PresentationBlocker,
+                false);
         }
 
         private GridModuleView FindCoreView()
@@ -103,6 +128,9 @@ namespace UnityPlanet.ModularAssembly
             if (presenter != null)
             {
                 presenter.Rebuilt -= RequestUpgrade;
+                presenter.SetPresentationBlocked(
+                    PresentationBlocker,
+                    false);
             }
         }
     }

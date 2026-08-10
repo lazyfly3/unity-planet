@@ -66,7 +66,10 @@ namespace UnityPlanet.ModularAssembly
 
     public static class ModuleCpuBudget
     {
-        public const int Maximum = 9999;
+        public const int AbsoluteMaximum = 9999;
+        public static int Maximum =>
+            UnityPlanet.SpacecraftArchitecture.
+                ShipArchitectureProgressService.CpuCapacity;
 
         static readonly Dictionary<string, int> WeaponCosts =
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
@@ -647,7 +650,8 @@ namespace UnityPlanet.ModularAssembly
             if (flight == null ||
                 !flight.IsFlying ||
                 !controlsEnabled ||
-                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured)
+                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured ||
+                ModularSpacecraftPauseMenu.IsOpen)
             {
                 RestoreFov();
                 return;
@@ -2684,6 +2688,27 @@ namespace UnityPlanet.ModularAssembly
         }
     }
 
+    public static class EnemyUrbanImpactPolicy
+    {
+        public static bool ShouldUseAnimatedWallImpact(
+            Transform projectileOwner,
+            Collider hitCollider)
+        {
+            if (projectileOwner == null || hitCollider == null ||
+                projectileOwner.GetComponentInParent<HordeEnemyVehicle>() ==
+                null)
+            {
+                return false;
+            }
+            return hitCollider.GetComponentInParent<
+                       UrbanDestructibleBuilding>() != null ||
+                   hitCollider.GetComponentInParent<
+                       UrbanDestructibleBridge>() != null ||
+                   hitCollider.GetComponentInParent<
+                       UrbanDestructibleRuinSection>() != null;
+        }
+    }
+
     public sealed class WeaponProjectilePool : MonoBehaviour
     {
         readonly List<WeaponProjectile> projectiles =
@@ -3047,12 +3072,21 @@ namespace UnityPlanet.ModularAssembly
             {
                 damageBatch?.EndDamageBatch();
             }
-            visuals.SpawnImpact(
-                hit.point,
-                hit.normal,
-                profile.effectColor,
-                profile.impactEffect,
-                profile.explosionRadius);
+            bool animatedWallImpact =
+                EnemyUrbanImpactPolicy.ShouldUseAnimatedWallImpact(
+                    owner,
+                    hit.collider) &&
+                CombatFeedbackController.GetOrCreate()
+                    .PlayUrbanSurfaceImpact(hit.point, hit.normal);
+            if (!animatedWallImpact)
+            {
+                visuals.SpawnImpact(
+                    hit.point,
+                    hit.normal,
+                    profile.effectColor,
+                    profile.impactEffect,
+                    profile.explosionRadius);
+            }
             if (destructionRound &&
                 PlayerSkillCombatEffects.TryConsumeDestructionRound(
                     source,
@@ -3253,6 +3287,7 @@ namespace UnityPlanet.ModularAssembly
         float coreIntegrityMultiplier = 1f;
         float systemIntegrityMultiplier = 1f;
         int damageBatchDepth;
+        Func<string, SpaceDamageInfo, SpaceDamageInfo> moduleDamageFilter;
 
         public bool Active =>
             active && damageEnabled && !vehicleDestroyed;
@@ -3402,6 +3437,12 @@ namespace UnityPlanet.ModularAssembly
             damageEnabled = value;
             if (!value)
                 VehicleDetachedDebris.ClearAll();
+        }
+
+        public void SetModuleDamageFilter(
+            Func<string, SpaceDamageInfo, SpaceDamageInfo> filter)
+        {
+            moduleDamageFilter = filter;
         }
 
         public void BeginDamageBatch()
@@ -4033,6 +4074,21 @@ namespace UnityPlanet.ModularAssembly
                 appliedDamage);
             if (appliedDamage <= 0f)
                 return;
+            if (moduleDamageFilter != null)
+            {
+                damage = moduleDamageFilter(
+                    runtimeId,
+                    new SpaceDamageInfo(
+                        appliedDamage,
+                        damage.point,
+                        damage.impulse,
+                        damage.type,
+                        damage.channel,
+                        damage.source));
+                appliedDamage = Mathf.Max(0f, damage.amount);
+                if (appliedDamage <= 0f)
+                    return;
+            }
             combatDamagedRuntimeIds.Add(runtimeId);
             node.Health = Mathf.Max(
                 0f,

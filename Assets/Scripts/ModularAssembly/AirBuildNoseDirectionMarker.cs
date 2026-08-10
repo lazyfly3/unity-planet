@@ -89,6 +89,10 @@ public sealed class AirBuildNoseDirectionMarker : MonoBehaviour
         if (lineMaterial.HasProperty("_BaseColor"))
             lineMaterial.SetColor("_BaseColor", color);
         directionLine.sharedMaterial = lineMaterial;
+        // The line is created after the presenter's initial visibility pass.
+        // Apply the same loading gate immediately so it cannot leak one frame
+        // while the ship visuals are still being upgraded.
+        presenter.RefreshPresentationVisibility();
     }
 
     void RefreshLine()

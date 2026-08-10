@@ -923,7 +923,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 336281373}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 495793462}
+  m_Script: {fileID: 11500000, guid: ccc173b2a7f72594ba871f6131e9db91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
@@ -990,7 +990,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 343514800}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 495793462}
+  m_Script: {fileID: 11500000, guid: ccc173b2a7f72594ba871f6131e9db91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
@@ -1675,21 +1675,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 456137691}
   m_CullTransparentMesh: 1
---- !u!115 &495793462
-MonoScript:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: 
-  serializedVersion: 7
-  m_DefaultReferences: {}
-  m_Icon: {fileID: 0}
-  m_Type: 0
-  m_ExecutionOrder: 0
-  m_ClassName: SpaceflightHudIconGraphic
-  m_Namespace: 
-  m_AssemblyName: Assembly-CSharp
 --- !u!1 &522642166
 GameObject:
   m_ObjectHideFlags: 0
@@ -2361,7 +2346,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 688792680}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 495793462}
+  m_Script: {fileID: 11500000, guid: ccc173b2a7f72594ba871f6131e9db91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
@@ -2956,7 +2941,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 835058680}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 1452160448}
+  m_Script: {fileID: 11500000, guid: b4fcac69664bf384e9acdc84369aafa6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
@@ -3935,7 +3920,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1243463389}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 495793462}
+  m_Script: {fileID: 11500000, guid: ccc173b2a7f72594ba871f6131e9db91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
@@ -4033,7 +4018,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1300385759}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 1452160448}
+  m_Script: {fileID: 11500000, guid: b4fcac69664bf384e9acdc84369aafa6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
@@ -4126,21 +4111,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1740573682}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!115 &1452160448
-MonoScript:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: 
-  serializedVersion: 7
-  m_DefaultReferences: {}
-  m_Icon: {fileID: 0}
-  m_Type: 0
-  m_ExecutionOrder: 0
-  m_ClassName: SpaceflightSegmentedBarGraphic
-  m_Namespace: 
-  m_AssemblyName: Assembly-CSharp
 --- !u!1 &1459059575
 GameObject:
   m_ObjectHideFlags: 0
@@ -5846,7 +5816,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1836689452}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 1452160448}
+  m_Script: {fileID: 11500000, guid: b4fcac69664bf384e9acdc84369aafa6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
@@ -5918,7 +5888,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1847121260}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 495793462}
+  m_Script: {fileID: 11500000, guid: ccc173b2a7f72594ba871f6131e9db91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
@@ -6155,7 +6125,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1877507936}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 1452160448}
+  m_Script: {fileID: 11500000, guid: b4fcac69664bf384e9acdc84369aafa6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
@@ -6227,7 +6197,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1880544967}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 1452160448}
+  m_Script: {fileID: 11500000, guid: b4fcac69664bf384e9acdc84369aafa6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
@@ -6330,7 +6300,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1908132898}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 495793462}
+  m_Script: {fileID: 11500000, guid: ccc173b2a7f72594ba871f6131e9db91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
@@ -6555,7 +6525,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 2054088766}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 495793462}
+  m_Script: {fileID: 11500000, guid: ccc173b2a7f72594ba871f6131e9db91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}

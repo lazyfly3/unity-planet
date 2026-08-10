@@ -48,7 +48,9 @@ namespace UnityPlanet.EDPCG
         BreakContact,
         Regroup,
         Withdraw,
-        NavigationRecovery
+        NavigationRecovery,
+        ReacquirePlayer,
+        EnvironmentalTrapCommit
     }
 
     public enum EdpcgEnemyTacticalState
@@ -63,7 +65,9 @@ namespace UnityPlanet.EDPCG
         Regrouping,
         Withdrawing,
         NavigationRecovery,
-        Resolved
+        Resolved,
+        Reengaging,
+        EnvironmentalTrapCommit
     }
 
     public enum EdpcgWeaponPermission
@@ -80,7 +84,9 @@ namespace UnityPlanet.EDPCG
         CentralManeuverDistrict,
         HighRiseOcclusionChain,
         ExposedFireShortcut,
-        RepairCourtyard,
+        MagneticCourtyard,
+        [Obsolete("恢复庭院已改为三面磁场战斗陷阱。")]
+        RepairCourtyard = MagneticCourtyard,
         LowMidVerticalTransition
     }
 
@@ -145,6 +151,7 @@ namespace UnityPlanet.EDPCG
         public int rosterIndex;
         public int spawnAttempts;
         public float healthRatio = 1f;
+        public bool environmentalPursuer;
         public bool creditedKill;
         public bool rewardGranted;
 
@@ -156,15 +163,18 @@ namespace UnityPlanet.EDPCG
         public readonly string RosterMemberId;
         public readonly HordeEnemyRole Role;
         public readonly int RosterIndex;
+        public readonly bool EnvironmentalPursuer;
 
         public EdpcgRosterAssignment(
             string rosterMemberId,
             HordeEnemyRole role,
-            int rosterIndex)
+            int rosterIndex,
+            bool environmentalPursuer = false)
         {
             RosterMemberId = rosterMemberId ?? string.Empty;
             Role = role;
             RosterIndex = rosterIndex;
+            EnvironmentalPursuer = environmentalPursuer;
         }
     }
 
@@ -184,6 +194,7 @@ namespace UnityPlanet.EDPCG
         public float suicideNavigationPressure;
         public float rangedNavigationPressure;
         public float committedNavigationPressure;
+        public float environmentalPursuitPressure;
         public float playerStrain;
         public float playerDamageAssist;
         public int rosterCount;
@@ -196,6 +207,7 @@ namespace UnityPlanet.EDPCG
         public int suicideCommitCount;
         public int rangedFireLaneCount;
         public int navigationRecoveryCount;
+        public int environmentalPursuitCount;
         public int resolvedCount;
         public string activeTacticalAreaId = string.Empty;
         public EdpcgTacticalAreaKind activeTacticalAreaKind;
@@ -246,6 +258,7 @@ namespace UnityPlanet.EDPCG
         public float expiresAt;
         public int priority;
         public int direction;
+        public int waypointIndex;
     }
 
     [Serializable]

@@ -55,7 +55,7 @@ public sealed class ModularSpaceflightTransitionTests
     }
 
     [Test]
-    public void InitialAssemblyPrimaryButtonEntersSpaceStation()
+    public void InitialAssemblyPrimaryButtonEntersSpaceHangar()
     {
         SpaceStationFlowContext.BeginInitialAssembly();
 
@@ -64,7 +64,7 @@ public sealed class ModularSpaceflightTransitionTests
             Is.True);
         Assert.That(AirBuildExperienceController.ResolvePrimaryDestinationLabel(
             SpaceStationFlowContext.MustSaveInitialAssembly),
-            Is.EqualTo("进入空间站"));
+            Is.EqualTo("进入太空仓"));
     }
 
     [TestCase(false, false, false, SpacecraftBlueprintRoute.ModularAssembly)]

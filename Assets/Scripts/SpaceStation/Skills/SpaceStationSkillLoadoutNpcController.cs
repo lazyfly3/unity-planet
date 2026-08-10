@@ -115,13 +115,15 @@ namespace UnityPlanet.SpaceStation.Skills
             if (!interfaceOpen)
             {
                 bool inRange = IsPlayerInRange();
-                promptRoot.SetActive(inRange);
+                if (promptRoot.activeSelf != inRange)
+                    promptRoot.SetActive(inRange);
                 if (inRange && Input.GetKeyDown(KeyCode.F))
                     OpenInterface();
                 return;
             }
 
-            promptRoot.SetActive(false);
+            if (promptRoot.activeSelf)
+                promptRoot.SetActive(false);
             if (Input.GetKeyDown(KeyCode.Escape))
                 CloseInterface();
         }

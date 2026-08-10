@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using ModularAssembly;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -16,6 +15,8 @@ namespace UnityPlanet.ModularAssembly
     {
         private const int CardsPerPage = 8;
         private const int PreviewLayer = 31;
+        private const string BuildSkyboxResourcePath =
+            "Skyboxes/BloubergSunrise/Blouberg Sunrise Equirect";
         private static readonly string[] Categories =
             AirBuildCatalog.PaletteCategories.ToArray();
 
@@ -27,6 +28,10 @@ namespace UnityPlanet.ModularAssembly
             new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<Renderer, bool> environmentRenderers =
             new Dictionary<Renderer, bool>();
+        private static readonly IComparer<RaycastHit> RaycastHitDistanceComparer =
+            Comparer<RaycastHit>.Create(
+                (left, right) => left.distance.CompareTo(right.distance));
+        private RaycastHit[] candidateHits = new RaycastHit[32];
 
         private ModularContentService contentService;
         private ModularAssemblyLabController controller;
@@ -44,14 +49,8 @@ namespace UnityPlanet.ModularAssembly
         private Button flightButton;
         private Text flightButtonLabel;
         private Button spaceLaunchButton;
-        private Button saveCanonicalButton;
         private Button savePresetButton;
         private Button presetFlightButton;
-        private Button battleTestButton;
-        private GameObject combatModeOverlay;
-        private Button duelModeButton;
-        private Button hordeModeButton;
-        private int selectedCombatMode;
         private Button coreThrusterToggleButton;
         private Text coreThrusterToggleLabel;
         private RobocraftMotionCoordinator motionCoordinatorRc1;
@@ -61,8 +60,6 @@ namespace UnityPlanet.ModularAssembly
         private GameObject selectionPanel;
         private Text selectionName;
         private Button selectionDeleteButton;
-        private GameObject wheelRoleRoot;
-        private readonly List<Button> wheelRoleButtons = new List<Button>();
         private RawImage compactImage;
         private Text compactName;
         private Transform thumbnailRoot;
@@ -78,7 +75,6 @@ namespace UnityPlanet.ModularAssembly
         private Material ghostMaterial;
         private Material faceMaterial;
         private Material boundaryMaterial;
-        private Material hangarMaterial;
         private ModularContentRecord activeRecord;
         private GridModuleDefinition activeDefinition;
         private GridPlacementCandidate candidate;
@@ -91,7 +87,18 @@ namespace UnityPlanet.ModularAssembly
         private bool presentationInitialized;
         private CameraClearFlags originalClearFlags;
         private Color originalBackground;
+        private Material buildSkybox;
         private Coroutine thumbnailWorker;
+
+        private void Awake()
+        {
+            sceneCamera = Camera.main;
+            presenter = FindObjectsOfType<GridAssemblyPresenter>()
+                .FirstOrDefault(item =>
+                    item != null && item.name == "GridShip");
+            presenter?.SetPresentationVisible(false);
+            SetBuildPresentation(true);
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
@@ -110,10 +117,13 @@ namespace UnityPlanet.ModularAssembly
         {
             HideLegacyBootstrapUi();
             NeoXCatalogIntegration catalogIntegration = null;
+            NeoXCoreVisualReplacer coreVisualReplacer = null;
             while (contentService == null || !contentService.IsReady ||
                    controller == null || presenter == null ||
                    catalogIntegration == null ||
-                   !catalogIntegration.DefinitionsReady)
+                   !catalogIntegration.IsReady ||
+                   coreVisualReplacer == null ||
+                   !coreVisualReplacer.IsReady)
             {
                 contentService = FindObjectOfType<ModularContentService>();
                 controller = FindObjectOfType<ModularAssemblyLabController>();
@@ -121,6 +131,8 @@ namespace UnityPlanet.ModularAssembly
                     .FirstOrDefault(item => item != null && item.name == "GridShip");
                 catalogIntegration =
                     FindObjectOfType<NeoXCatalogIntegration>();
+                coreVisualReplacer =
+                    FindObjectOfType<NeoXCoreVisualReplacer>();
                 yield return null;
             }
 
@@ -147,6 +159,7 @@ namespace UnityPlanet.ModularAssembly
             StartThumbnailWorker();
             CancelPlacement();
             FocusAssembly();
+            presenter.SetPresentationVisible(true);
             if (ModularSpaceLaunchStatus.TryConsume(out string launchMessage)
                 && placementText != null)
             {
@@ -201,25 +214,6 @@ namespace UnityPlanet.ModularAssembly
             }
             if (flying)
             {
-                return;
-            }
-            if (combatModeOverlay != null && combatModeOverlay.activeSelf)
-            {
-                if (Input.GetKeyDown(KeyCode.Escape))
-                {
-                    CloseCombatModeSelector();
-                }
-                else if (Input.GetKeyDown(KeyCode.LeftArrow) ||
-                         Input.GetKeyDown(KeyCode.RightArrow))
-                {
-                    selectedCombatMode = 1 - selectedCombatMode;
-                    RefreshCombatModeSelection();
-                }
-                else if (Input.GetKeyDown(KeyCode.Return) ||
-                         Input.GetKeyDown(KeyCode.KeypadEnter))
-                {
-                    StartSelectedCombatMode();
-                }
                 return;
             }
             if (!placing &&
@@ -346,8 +340,7 @@ namespace UnityPlanet.ModularAssembly
                 controller == null ||
                 controller.Model == null ||
                 selectionName == null ||
-                selectionDeleteButton == null ||
-                wheelRoleRoot == null)
+                selectionDeleteButton == null)
             {
                 return;
             }
@@ -373,39 +366,13 @@ namespace UnityPlanet.ModularAssembly
                 selected.Definition.Footprint.y + "×" +
                 selected.Definition.Footprint.z;
             selectionDeleteButton.interactable = editable;
-            bool isWheel = WheelModuleProfile.IsWheelModuleId(
-                selected.Definition.ModuleId);
-            wheelRoleRoot.SetActive(isWheel);
             RectTransform selectionRect =
                 selectionPanel.GetComponent<RectTransform>();
-            selectionRect.sizeDelta = new Vector2(
-                310f,
-                isWheel ? 226f : 142f);
+            selectionRect.sizeDelta = new Vector2(310f, 142f);
             SetRect(
                 selectionDeleteButton.GetComponent<RectTransform>(),
-                new Vector2(
-                    16f,
-                    isWheel ? -168f : -84f),
+                new Vector2(16f, -84f),
                 new Vector2(278f, 42f));
-            if (isWheel)
-            {
-                WheelRoleOverride role =
-                    WheelRoleSettings.Parse(selected.BehaviorSettings);
-                for (int index = 0; index < wheelRoleButtons.Count; index++)
-                {
-                    wheelRoleButtons[index].GetComponent<Image>().color =
-                        index == (int)role
-                            ? new Color(0.04f, 0.82f, 0.70f, 0.96f)
-                            : new Color(0.09f, 0.22f, 0.28f, 0.96f);
-                }
-            }
-        }
-
-        private void SetSelectedWheelRole(WheelRoleOverride role)
-        {
-            controller?.SetSelectedBehaviorSettings(
-                WheelRoleSettings.Serialize(role));
-            RefreshSelectionPanel();
         }
 
         private void DeleteSelectedModule()
@@ -451,17 +418,6 @@ namespace UnityPlanet.ModularAssembly
                 placementText.text = message;
         }
 
-        private void SaveCanonicalFromBuildUi()
-        {
-            if (controller == null || controller.IsFlying)
-                return;
-            if (placing)
-                CancelPlacement();
-            controller.TrySaveCanonical(out string message);
-            if (placementText != null)
-                placementText.text = message;
-        }
-
         private void EnterSpaceFromBuildUi()
         {
             if (controller == null || controller.IsFlying)
@@ -483,13 +439,21 @@ namespace UnityPlanet.ModularAssembly
                 return;
             }
 
+            if (!controller.TrySaveCanonical(out string saveMessage))
+            {
+                if (placementText != null)
+                    placementText.text =
+                        "进入太空前自动保存失败：" + saveMessage;
+                return;
+            }
+
             SpaceStationFlowContext.PrepareSpaceLaunch(
                 controller.Model.CaptureBlueprint());
             if (spaceLaunchButton != null)
                 spaceLaunchButton.interactable = false;
             if (placementText != null)
                 placementText.text =
-                    "正在使用当前设计进入太空；磁盘存档未被修改……";
+                    "设计已自动保存，正在进入太空……";
             SceneManager.LoadScene("InterstellarFlight", LoadSceneMode.Single);
         }
 
@@ -500,33 +464,28 @@ namespace UnityPlanet.ModularAssembly
 
             bool initialAssembly =
                 SpaceStationFlowContext.MustSaveInitialAssembly;
-            if (initialAssembly)
+            if (controller == null || controller.IsFlying)
+                return false;
+            if (placing)
+                CancelPlacement();
+            if (!controller.TrySaveCanonical(out string saveMessage))
             {
-                if (controller == null || controller.IsFlying)
-                    return false;
-                if (placing)
-                    CancelPlacement();
-                if (!controller.TrySaveCanonical(out string saveMessage))
+                if (placementText != null)
                 {
-                    if (placementText != null)
-                    {
-                        placementText.text =
-                            "首次飞船未能保存，仍停留在改装界面：" +
-                            saveMessage;
-                    }
-                    return false;
+                    placementText.text =
+                        "返回太空仓前自动保存失败，仍停留在改装界面：" +
+                        saveMessage;
                 }
+                return false;
             }
 
             if (spaceLaunchButton != null)
                 spaceLaunchButton.interactable = false;
-            if (saveCanonicalButton != null)
-                saveCanonicalButton.interactable = false;
             if (placementText != null)
             {
                 placementText.text = initialAssembly
-                    ? "首次飞船已保存，正在进入空间站……"
-                    : "正在返回空间站；未保存的改动不会替换停靠飞船……";
+                    ? "首次飞船已自动保存，正在进入太空仓……"
+                    : "设计已自动保存，正在返回太空仓……";
             }
             SpaceStationFlowContext.CompleteAssemblyReturn();
             SceneManager.LoadScene(
@@ -542,35 +501,7 @@ namespace UnityPlanet.ModularAssembly
             if (placing)
                 CancelPlacement();
             controller.LoadPresetForBuild(out string message);
-            if (placementText != null)
-                placementText.text = message;
-        }
-
-        private void StartCombatTestFromBuildUi()
-        {
-            if (placing)
-                CancelPlacement();
-            OpenCombatModeSelector();
-        }
-
-        private void StartSelectedCombatMode()
-        {
-            StartCombatModeFromBuildUi(
-                selectedCombatMode == 0
-                    ? CombatTestMode.Duel
-                    : CombatTestMode.Horde);
-        }
-
-        private void StartCombatModeFromBuildUi(CombatTestMode mode)
-        {
-            CloseCombatModeSelector();
-            CombatTestController combat =
-                FindObjectOfType<CombatTestController>();
-            string message;
-            if (combat == null)
-                message = "战斗测试系统尚未初始化。";
-            else
-                combat.TryBeginCombat(mode, out message);
+            RefreshSavedDesignState();
             if (placementText != null)
                 placementText.text = message;
         }
@@ -613,16 +544,21 @@ namespace UnityPlanet.ModularAssembly
             }
 
             Ray ray = sceneCamera.ScreenPointToRay(Input.mousePosition);
-            RaycastHit[] hits = Physics.RaycastAll(
+            int hitCount = QueryCandidateHits(
                 ray,
                 500f,
                 ~0,
                 QueryTriggerInteraction.Collide);
-            Array.Sort(hits, (left, right) => left.distance.CompareTo(right.distance));
+            Array.Sort(
+                candidateHits,
+                0,
+                hitCount,
+                RaycastHitDistanceComparer);
             RaycastHit? selected = null;
             AirBuildSurfaceCell surfaceCell = null;
-            foreach (RaycastHit hit in hits)
+            for (int index = 0; index < hitCount; index++)
             {
+                RaycastHit hit = candidateHits[index];
                 AirBuildSurfaceCell cell = hit.collider.GetComponent<AirBuildSurfaceCell>();
                 if (cell == null)
                 {
@@ -663,6 +599,25 @@ namespace UnityPlanet.ModularAssembly
                     presenter.transform.TransformDirection(candidate.ExhaustDirection);
             }
             ShowCandidate(candidate);
+        }
+
+        private int QueryCandidateHits(
+            Ray ray,
+            float maximumDistance,
+            int layerMask,
+            QueryTriggerInteraction triggerInteraction)
+        {
+            int count;
+            while ((count = Physics.RaycastNonAlloc(
+                       ray,
+                       candidateHits,
+                       maximumDistance,
+                       layerMask,
+                       triggerInteraction)) >= candidateHits.Length)
+            {
+                Array.Resize(ref candidateHits, candidateHits.Length * 2);
+            }
+            return count;
         }
 
         private void CommitCandidate()
@@ -946,42 +901,8 @@ namespace UnityPlanet.ModularAssembly
         {
             hangarRoot = new GameObject("BuildHangarRoot");
             hangarRoot.transform.SetParent(presenter.transform, false);
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ??
-                            Shader.Find("Standard");
-            hangarMaterial = new Material(shader)
-            {
-                name = "BuildHangarMaterial",
-                color = new Color(0.045f, 0.095f, 0.12f, 1f)
-            };
-            GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            floor.name = "BuildDeck";
-            floor.transform.SetParent(hangarRoot.transform, false);
-            floor.transform.localPosition = new Vector3(0f, -6f, 0f);
-            floor.transform.localScale = new Vector3(48f, 0.25f, 48f);
-            floor.GetComponent<Renderer>().sharedMaterial = hangarMaterial;
-            Destroy(floor.GetComponent<Collider>());
-
-            Material gridMaterial = new Material(
-                Shader.Find("Sprites/Default") ?? Shader.Find("Unlit/Color"))
-            {
-                color = new Color(0.05f, 0.48f, 0.55f, 0.22f)
-            };
-            for (int index = -20; index <= 20; index++)
-            {
-                CreateLine(
-                    hangarRoot.transform,
-                    new Vector3(index, -5.86f, -20f),
-                    new Vector3(index, -5.86f, 20f),
-                    gridMaterial,
-                    0.018f);
-                CreateLine(
-                    hangarRoot.transform,
-                    new Vector3(-20f, -5.86f, index),
-                    new Vector3(20f, -5.86f, index),
-                    gridMaterial,
-                    0.018f);
-            }
-
+            // The build view intentionally has no visible hangar geometry.
+            // Keep only invisible lights so the spacecraft remains readable.
             CreatePointLight("BuildKey", new Vector3(-8f, 10f, -8f), new Color(0.70f, 0.88f, 1f), 4.2f);
             CreatePointLight("BuildFill", new Vector3(9f, 3f, -2f), new Color(0.20f, 0.75f, 0.82f), 2.4f);
             CreatePointLight("BuildRim", new Vector3(0f, 5f, 10f), new Color(1f, 0.48f, 0.20f), 2.0f);
@@ -998,9 +919,15 @@ namespace UnityPlanet.ModularAssembly
 
             if (canvas != null) canvas.gameObject.SetActive(build);
             if (hangarRoot != null) hangarRoot.SetActive(build);
+            if (build)
+                EnsureBuildSkybox();
             if (sceneCamera != null)
             {
-                sceneCamera.clearFlags = build ? CameraClearFlags.SolidColor : originalClearFlags;
+                sceneCamera.clearFlags = RenderSettings.skybox != null
+                    ? CameraClearFlags.Skybox
+                    : build
+                        ? CameraClearFlags.SolidColor
+                        : originalClearFlags;
                 sceneCamera.backgroundColor = build
                     ? new Color(0.008f, 0.022f, 0.032f, 1f)
                     : originalBackground;
@@ -1008,22 +935,7 @@ namespace UnityPlanet.ModularAssembly
 
             if (build)
             {
-                environmentRenderers.Clear();
-                foreach (Renderer renderer in FindObjectsOfType<Renderer>())
-                {
-                    if (renderer == null || renderer.transform.IsChildOf(presenter.transform) ||
-                        renderer.transform.IsChildOf(hangarRoot.transform))
-                    {
-                        continue;
-                    }
-                    string path = HierarchyPath(renderer.transform);
-                    if (!IsTestEnvironment(path, renderer))
-                    {
-                        continue;
-                    }
-                    environmentRenderers[renderer] = renderer.enabled;
-                    renderer.enabled = false;
-                }
+                HideTestEnvironmentRenderers();
             }
             else
             {
@@ -1032,6 +944,43 @@ namespace UnityPlanet.ModularAssembly
                     if (pair.Key != null) pair.Key.enabled = pair.Value;
                 }
                 environmentRenderers.Clear();
+            }
+        }
+
+        private void EnsureBuildSkybox()
+        {
+            if (buildSkybox == null)
+            {
+                buildSkybox = RenderSettings.skybox != null
+                    ? RenderSettings.skybox
+                    : Resources.Load<Material>(BuildSkyboxResourcePath);
+            }
+            if (buildSkybox != null && RenderSettings.skybox != buildSkybox)
+                RenderSettings.skybox = buildSkybox;
+        }
+
+        private void HideTestEnvironmentRenderers()
+        {
+            foreach (Renderer renderer in FindObjectsOfType<Renderer>())
+            {
+                if (renderer == null ||
+                    (presenter != null &&
+                     renderer.transform.IsChildOf(presenter.transform)) ||
+                    (hangarRoot != null &&
+                     renderer.transform.IsChildOf(hangarRoot.transform)))
+                {
+                    continue;
+                }
+                string path = HierarchyPath(renderer.transform);
+                if (!IsTestEnvironment(path, renderer))
+                {
+                    continue;
+                }
+                if (!environmentRenderers.ContainsKey(renderer))
+                {
+                    environmentRenderers[renderer] = renderer.enabled;
+                }
+                renderer.enabled = false;
             }
         }
 
@@ -1225,42 +1174,6 @@ namespace UnityPlanet.ModularAssembly
                 new Vector2(16f, -14f),
                 new Vector2(278f, 58f));
 
-            wheelRoleRoot = new GameObject(
-                "WheelRole",
-                typeof(RectTransform));
-            wheelRoleRoot.transform.SetParent(selectionPanel.transform, false);
-            SetRect(
-                wheelRoleRoot.GetComponent<RectTransform>(),
-                new Vector2(16f, -72f),
-                new Vector2(278f, 82f));
-            Text wheelRoleLabel = CreateText(
-                wheelRoleRoot.transform,
-                "轮胎职责",
-                14,
-                FontStyle.Normal,
-                new Color(0.62f, 0.78f, 0.84f, 1f));
-            SetRect(
-                wheelRoleLabel.rectTransform,
-                Vector2.zero,
-                new Vector2(278f, 24f));
-            string[] roleLabels = { "自动", "转向驱动", "仅驱动", "自由轮" };
-            for (int index = 0; index < roleLabels.Length; index++)
-            {
-                WheelRoleOverride role = (WheelRoleOverride)index;
-                Button roleButton = CreateButton(
-                    wheelRoleRoot.transform,
-                    roleLabels[index]);
-                SetRect(
-                    roleButton.GetComponent<RectTransform>(),
-                    new Vector2(index * 69f, -30f),
-                    new Vector2(65f, 38f));
-                roleButton.GetComponentInChildren<Text>().fontSize = 12;
-                roleButton.onClick.AddListener(
-                    () => SetSelectedWheelRole(role));
-                wheelRoleButtons.Add(roleButton);
-            }
-            wheelRoleRoot.SetActive(false);
-
             selectionDeleteButton = CreateButton(
                 selectionPanel.transform,
                 "删除模块");
@@ -1271,19 +1184,22 @@ namespace UnityPlanet.ModularAssembly
             selectionDeleteButton.onClick.AddListener(DeleteSelectedModule);
             selectionPanel.SetActive(false);
 
-            flightButton = CreateButton(canvas.transform, "开始试飞  F5");
-            RectTransform flightRect = flightButton.GetComponent<RectTransform>();
-            flightRect.anchorMin = new Vector2(1f, 1f);
-            flightRect.anchorMax = new Vector2(1f, 1f);
-            flightRect.pivot = new Vector2(1f, 1f);
-            flightRect.anchoredPosition = new Vector2(-24f, -24f);
-            flightRect.sizeDelta = new Vector2(210f, 58f);
-            flightButton.GetComponent<Image>().color =
-                new Color(0.04f, 0.72f, 0.65f, 0.98f);
-            flightButtonLabel = flightButton.GetComponentInChildren<Text>();
-            flightButtonLabel.text = "开始试飞  F5";
-            flightButtonLabel.fontSize = 19;
-            flightButton.onClick.AddListener(StartFlightFromBuildUi);
+            spaceLaunchButton = CreateButton(
+                canvas.transform,
+                ResolvePrimaryDestinationLabel(
+                    SpaceStationFlowContext.MustSaveInitialAssembly));
+            RectTransform spaceLaunchRect =
+                spaceLaunchButton.GetComponent<RectTransform>();
+            spaceLaunchRect.anchorMin = new Vector2(1f, 1f);
+            spaceLaunchRect.anchorMax = new Vector2(1f, 1f);
+            spaceLaunchRect.pivot = new Vector2(1f, 1f);
+            spaceLaunchRect.anchoredPosition = new Vector2(-24f, -24f);
+            spaceLaunchRect.sizeDelta = new Vector2(210f, 58f);
+            spaceLaunchButton.GetComponent<Image>().color =
+                new Color(0.12f, 0.48f, 0.92f, 0.98f);
+            spaceLaunchButton.GetComponentInChildren<Text>().fontSize = 19;
+            spaceLaunchButton.onClick.AddListener(
+                EnterSpaceFromBuildUi);
 
             savePresetButton = CreateButton(canvas.transform, "保存预制");
             RectTransform savePresetRect =
@@ -1291,7 +1207,7 @@ namespace UnityPlanet.ModularAssembly
             savePresetRect.anchorMin = new Vector2(1f, 1f);
             savePresetRect.anchorMax = new Vector2(1f, 1f);
             savePresetRect.pivot = new Vector2(1f, 1f);
-            savePresetRect.anchoredPosition = new Vector2(-432f, -94f);
+            savePresetRect.anchoredPosition = new Vector2(-296f, -94f);
             savePresetRect.sizeDelta = new Vector2(128f, 42f);
             savePresetButton.GetComponentInChildren<Text>().fontSize = 15;
             savePresetButton.onClick.AddListener(SavePresetFromBuildUi);
@@ -1302,7 +1218,7 @@ namespace UnityPlanet.ModularAssembly
             presetFlightRect.anchorMin = new Vector2(1f, 1f);
             presetFlightRect.anchorMax = new Vector2(1f, 1f);
             presetFlightRect.pivot = new Vector2(1f, 1f);
-            presetFlightRect.anchoredPosition = new Vector2(-296f, -94f);
+            presetFlightRect.anchoredPosition = new Vector2(-160f, -94f);
             presetFlightRect.sizeDelta = new Vector2(128f, 42f);
             presetFlightButton.GetComponent<Image>().color =
                 new Color(0.04f, 0.58f, 0.72f, 0.98f);
@@ -1310,56 +1226,19 @@ namespace UnityPlanet.ModularAssembly
             presetFlightButton.onClick.AddListener(
                 LoadPresetFromBuildUi);
 
-            battleTestButton = CreateButton(canvas.transform, "战斗测试");
-            RectTransform battleTestRect =
-                battleTestButton.GetComponent<RectTransform>();
-            battleTestRect.anchorMin = new Vector2(1f, 1f);
-            battleTestRect.anchorMax = new Vector2(1f, 1f);
-            battleTestRect.pivot = new Vector2(1f, 1f);
-            battleTestRect.anchoredPosition = new Vector2(-568f, -94f);
-            battleTestRect.sizeDelta = new Vector2(128f, 42f);
-            battleTestButton.GetComponent<Image>().color =
-                new Color(0.82f, 0.22f, 0.12f, 0.98f);
-            battleTestButton.GetComponentInChildren<Text>().fontSize = 15;
-            
-            battleTestButton.gameObject.SetActive(
-                ModularLabSceneProfile.AllowsCombatTest(gameObject.scene));
-battleTestButton.onClick.AddListener(
-                StartCombatTestFromBuildUi);
-
-            spaceLaunchButton = CreateButton(
-                canvas.transform,
-                ResolvePrimaryDestinationLabel(
-                    SpaceStationFlowContext.MustSaveInitialAssembly));
-            RectTransform spaceLaunchRect =
-                spaceLaunchButton.GetComponent<RectTransform>();
-            spaceLaunchRect.anchorMin = new Vector2(1f, 1f);
-            spaceLaunchRect.anchorMax = new Vector2(1f, 1f);
-            spaceLaunchRect.pivot = new Vector2(1f, 1f);
-            spaceLaunchRect.anchoredPosition = new Vector2(-24f, -94f);
-            spaceLaunchRect.sizeDelta = new Vector2(128f, 42f);
-            spaceLaunchButton.GetComponent<Image>().color =
-                new Color(0.12f, 0.48f, 0.92f, 0.98f);
-            spaceLaunchButton.GetComponentInChildren<Text>().fontSize = 15;
-            spaceLaunchButton.onClick.AddListener(
-                EnterSpaceFromBuildUi);
-
-            saveCanonicalButton = CreateButton(
-                canvas.transform,
-                "保存设计");
-            RectTransform saveCanonicalRect =
-                saveCanonicalButton.GetComponent<RectTransform>();
-            saveCanonicalRect.anchorMin = new Vector2(1f, 1f);
-            saveCanonicalRect.anchorMax = new Vector2(1f, 1f);
-            saveCanonicalRect.pivot = new Vector2(1f, 1f);
-            saveCanonicalRect.anchoredPosition =
-                new Vector2(-160f, -94f);
-            saveCanonicalRect.sizeDelta = new Vector2(128f, 42f);
-            saveCanonicalButton.GetComponent<Image>().color =
-                new Color(0.04f, 0.58f, 0.48f, 0.98f);
-            saveCanonicalButton.GetComponentInChildren<Text>().fontSize = 15;
-            saveCanonicalButton.onClick.AddListener(
-                SaveCanonicalFromBuildUi);
+            flightButton = CreateButton(canvas.transform, "开始试飞  F5");
+            RectTransform flightRect = flightButton.GetComponent<RectTransform>();
+            flightRect.anchorMin = new Vector2(1f, 1f);
+            flightRect.anchorMax = new Vector2(1f, 1f);
+            flightRect.pivot = new Vector2(1f, 1f);
+            flightRect.anchoredPosition = new Vector2(-24f, -94f);
+            flightRect.sizeDelta = new Vector2(128f, 42f);
+            flightButton.GetComponent<Image>().color =
+                new Color(0.04f, 0.72f, 0.65f, 0.98f);
+            flightButtonLabel = flightButton.GetComponentInChildren<Text>();
+            flightButtonLabel.text = "开始试飞  F5";
+            flightButtonLabel.fontSize = 15;
+            flightButton.onClick.AddListener(StartFlightFromBuildUi);
 
             coreThrusterToggleButton = CreateButton(
                 canvas.transform,
@@ -1392,165 +1271,32 @@ battleTestButton.onClick.AddListener(
             controlSchemeLabel.text = "控制：RC相机转向";
             controlSchemeButton.interactable = false;
 
-            v3StatsText = CreateText(
+            GameObject flightInfoPanel = CreatePanel(
                 canvas.transform,
+                "FlightInformationPanel",
+                new Color(0.015f, 0.09f, 0.13f, 0.90f));
+            RectTransform flightInfoRect =
+                flightInfoPanel.GetComponent<RectTransform>();
+            flightInfoRect.anchorMin = flightInfoRect.anchorMax =
+                new Vector2(1f, 1f);
+            flightInfoRect.pivot = new Vector2(1f, 1f);
+            flightInfoRect.anchoredPosition = new Vector2(-24f, -282f);
+            flightInfoRect.sizeDelta = new Vector2(370f, 154f);
+
+            v3StatsText = CreateText(
+                flightInfoPanel.transform,
                 string.Empty,
                 15,
                 FontStyle.Normal,
                 new Color(0.72f, 0.88f, 0.91f, 1f));
             RectTransform statsRect = v3StatsText.rectTransform;
-            statsRect.anchorMin = new Vector2(1f, 1f);
-            statsRect.anchorMax = new Vector2(1f, 1f);
-            statsRect.pivot = new Vector2(1f, 1f);
-            statsRect.anchoredPosition = new Vector2(-24f, -146f);
-            statsRect.sizeDelta = new Vector2(408f, 230f);
-            v3StatsText.alignment = TextAnchor.UpperRight;
-            BuildCombatModeSelector();
+            statsRect.anchorMin = Vector2.zero;
+            statsRect.anchorMax = Vector2.one;
+            statsRect.offsetMin = new Vector2(14f, 10f);
+            statsRect.offsetMax = new Vector2(-14f, -10f);
+            v3StatsText.alignment = TextAnchor.UpperLeft;
             RefreshCoreThrusterToggle();
             RefreshCategoryColors();
-        }
-
-        private void BuildCombatModeSelector()
-        {
-            combatModeOverlay = CreatePanel(
-                canvas.transform,
-                "CombatModeOverlay",
-                new Color(0.005f, 0.015f, 0.02f, 0.78f));
-            Stretch(combatModeOverlay.GetComponent<RectTransform>());
-            Button blocker = combatModeOverlay.AddComponent<Button>();
-            blocker.transition = Selectable.Transition.None;
-            blocker.onClick.AddListener(CloseCombatModeSelector);
-
-            GameObject panel = CreatePanel(
-                combatModeOverlay.transform,
-                "CombatModePanel",
-                new Color(0.018f, 0.065f, 0.085f, 0.98f));
-            RectTransform panelRect = panel.GetComponent<RectTransform>();
-            panelRect.anchorMin = panelRect.anchorMax =
-                new Vector2(0.5f, 0.5f);
-            panelRect.pivot = new Vector2(0.5f, 0.5f);
-            panelRect.anchoredPosition = Vector2.zero;
-            panelRect.sizeDelta = new Vector2(760f, 380f);
-
-            Text title = CreateText(
-                panel.transform,
-                "选择战斗测试模式",
-                30,
-                FontStyle.Bold,
-                new Color(0.16f, 0.95f, 0.84f, 1f));
-            title.alignment = TextAnchor.MiddleCenter;
-            RectTransform titleRect = title.rectTransform;
-            titleRect.anchorMin = titleRect.anchorMax =
-                new Vector2(0.5f, 1f);
-            titleRect.pivot = new Vector2(0.5f, 1f);
-            titleRect.anchoredPosition = new Vector2(0f, -24f);
-            titleRect.sizeDelta = new Vector2(600f, 48f);
-
-            duelModeButton = CreateCombatModeCard(
-                panel.transform,
-                "1v1 单挑",
-                "保留当前模块化敌机\n单体对决 · 模块损伤 · 完整物理",
-                new Vector2(-170f, -20f));
-            hordeModeButton = CreateCombatModeCard(
-                panel.transform,
-                "割草战斗",
-                "4分钟固定强度生存战\n规则化增援 · 自动航路 · 总体血量",
-                new Vector2(170f, -20f));
-            duelModeButton.onClick.AddListener(
-                () => StartCombatModeFromBuildUi(CombatTestMode.Duel));
-            hordeModeButton.onClick.AddListener(
-                () => StartCombatModeFromBuildUi(CombatTestMode.Horde));
-
-            Button close = CreateButton(panel.transform, "取消  Esc");
-            RectTransform closeRect = close.GetComponent<RectTransform>();
-            closeRect.anchorMin = closeRect.anchorMax =
-                new Vector2(0.5f, 0f);
-            closeRect.pivot = new Vector2(0.5f, 0f);
-            closeRect.anchoredPosition = new Vector2(0f, 22f);
-            closeRect.sizeDelta = new Vector2(180f, 44f);
-            close.onClick.AddListener(CloseCombatModeSelector);
-            combatModeOverlay.SetActive(false);
-        }
-
-        private Button CreateCombatModeCard(
-            Transform parent,
-            string title,
-            string description,
-            Vector2 position)
-        {
-            GameObject card = CreatePanel(
-                parent,
-                "CombatMode_" + title,
-                new Color(0.07f, 0.19f, 0.24f, 0.98f));
-            RectTransform rect = card.GetComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = position;
-            rect.sizeDelta = new Vector2(300f, 190f);
-            Button button = card.AddComponent<Button>();
-
-            Text heading = CreateText(
-                card.transform,
-                title,
-                26,
-                FontStyle.Bold,
-                Color.white);
-            heading.alignment = TextAnchor.MiddleCenter;
-            RectTransform headingRect = heading.rectTransform;
-            headingRect.anchorMin = new Vector2(0f, 1f);
-            headingRect.anchorMax = new Vector2(1f, 1f);
-            headingRect.pivot = new Vector2(0.5f, 1f);
-            headingRect.anchoredPosition = new Vector2(0f, -24f);
-            headingRect.sizeDelta = new Vector2(-24f, 42f);
-
-            Text details = CreateText(
-                card.transform,
-                description,
-                16,
-                FontStyle.Normal,
-                new Color(0.76f, 0.88f, 0.91f, 1f));
-            details.alignment = TextAnchor.MiddleCenter;
-            RectTransform detailsRect = details.rectTransform;
-            detailsRect.anchorMin = new Vector2(0f, 0f);
-            detailsRect.anchorMax = new Vector2(1f, 1f);
-            detailsRect.offsetMin = new Vector2(18f, 18f);
-            detailsRect.offsetMax = new Vector2(-18f, -72f);
-            return button;
-        }
-
-        private void OpenCombatModeSelector()
-        {
-            if (combatModeOverlay == null)
-                return;
-            selectedCombatMode = 0;
-            combatModeOverlay.transform.SetAsLastSibling();
-            combatModeOverlay.SetActive(true);
-            RefreshCombatModeSelection();
-        }
-
-        private void CloseCombatModeSelector()
-        {
-            if (combatModeOverlay != null)
-                combatModeOverlay.SetActive(false);
-        }
-
-        private void RefreshCombatModeSelection()
-        {
-            if (duelModeButton == null || hordeModeButton == null)
-                return;
-            duelModeButton.GetComponent<Image>().color =
-                selectedCombatMode == 0
-                    ? new Color(0.04f, 0.72f, 0.65f, 1f)
-                    : new Color(0.07f, 0.19f, 0.24f, 0.98f);
-            hordeModeButton.GetComponent<Image>().color =
-                selectedCombatMode == 1
-                    ? new Color(0.88f, 0.28f, 0.10f, 1f)
-                    : new Color(0.07f, 0.19f, 0.24f, 0.98f);
-            Button selected = selectedCombatMode == 0
-                ? duelModeButton
-                : hordeModeButton;
-            if (EventSystem.current != null)
-                EventSystem.current.SetSelectedGameObject(selected.gameObject);
         }
 
         private RobocraftMotionCoordinator ResolveMotionCoordinatorRc1()
@@ -1566,7 +1312,7 @@ battleTestButton.onClick.AddListener(
         public static string ResolvePrimaryDestinationLabel(
             bool initialAssembly)
         {
-            return initialAssembly ? "进入空间站" : "进入太空";
+            return initialAssembly ? "进入太空仓" : "进入太空";
         }
 
         private void ToggleBuiltInCoreThrusters()
@@ -1580,6 +1326,23 @@ battleTestButton.onClick.AddListener(
                     ? VehicleCoreAssistMode.Training
                     : VehicleCoreAssistMode.Standard;
             coordinator.SetCoreAssistMode(next);
+            RefreshCoreThrusterToggle();
+            if (controller != null && !controller.IsFlying)
+            {
+                bool saved = controller.TrySaveCanonical(
+                    out string saveMessage);
+                if (placementText != null)
+                {
+                    placementText.text = saved
+                        ? "核心辅助已切换并自动保存。"
+                        : "核心辅助已切换，但自动保存失败：" +
+                          saveMessage;
+                }
+            }
+        }
+
+        public void RefreshSavedDesignState()
+        {
             RefreshCoreThrusterToggle();
         }
 
@@ -1633,11 +1396,30 @@ battleTestButton.onClick.AddListener(
             if (controlSchemeLabel != null)
             {
                 controlSchemeLabel.text = level == VehicleCoreAssistMode.Training
-                    ? "街机：W/S沿准星飞行，A/D横移，松键自停"
-                    : "标准：RC物理推力，Space/Ctrl升降";
+                    ? "控制：街机"
+                    : "控制：标准";
             }
             if (v3StatsText != null && coordinator != null)
-                v3StatsText.text = coordinator.Telemetry.BuildSummary();
+            {
+                RobocraftTelemetry telemetry = coordinator.Telemetry;
+                int moduleCount = controller?.Model?.Records?.Count ?? 0;
+                int cpu = controller?.Model == null
+                    ? 0
+                    : ModuleCpuBudget.Total(controller.Model.Records);
+                v3StatsText.text =
+                    "模块  " + moduleCount + "/" +
+                    GridAssemblyModel.ModuleLimit +
+                    "    CPU  " + cpu + "/" + ModuleCpuBudget.Maximum +
+                    "\n质量  " + telemetry.totalMass.ToString("0") +
+                    " kg    升重比  " +
+                    telemetry.hoverRatio.ToString("0.00") +
+                    "\n推进件  " + telemetry.activeAirMovers +
+                    "    机翼面积  " + telemetry.wingArea.ToString("0.0") +
+                    "\n状态  " +
+                    (string.IsNullOrWhiteSpace(telemetry.status)
+                        ? "待命"
+                        : telemetry.status);
+            }
         }
 
         private void RefreshCards()
@@ -1847,11 +1629,7 @@ battleTestButton.onClick.AddListener(
             {
                 bounds.Encapsulate(renderers[index].bounds);
             }
-            Type type = rig.GetType();
-            FieldInfo pan = type.GetField("panOffset", BindingFlags.Instance | BindingFlags.NonPublic);
-            FieldInfo distance = type.GetField("distance", BindingFlags.Instance | BindingFlags.NonPublic);
-            pan?.SetValue(rig, bounds.center - presenter.transform.position);
-            distance?.SetValue(rig, Mathf.Clamp(bounds.extents.magnitude * 2.8f, 7f, 58f));
+            rig.FrameBounds(bounds);
         }
 
         private static void ApplyPose(
@@ -2066,16 +1844,25 @@ battleTestButton.onClick.AddListener(
                 new Color(0.08f, 0.17f, 0.21f, 1f));
             InputField input = target.AddComponent<InputField>();
             Text value = CreateText(target.transform, string.Empty, 16, FontStyle.Normal, Color.white);
+            Stretch(value.rectTransform);
             value.rectTransform.offsetMin = new Vector2(12f, 4f);
             value.rectTransform.offsetMax = new Vector2(-12f, -4f);
+            value.alignment = TextAnchor.MiddleLeft;
+            value.horizontalOverflow = HorizontalWrapMode.Wrap;
+            value.verticalOverflow = VerticalWrapMode.Truncate;
             Text placeholder = CreateText(
                 target.transform,
                 "搜索中文名或 NeoX ID",
                 16,
                 FontStyle.Normal,
                 new Color(0.55f, 0.66f, 0.70f, 1f));
+            Stretch(placeholder.rectTransform);
             placeholder.rectTransform.offsetMin = new Vector2(12f, 4f);
             placeholder.rectTransform.offsetMax = new Vector2(-12f, -4f);
+            placeholder.alignment = TextAnchor.MiddleLeft;
+            placeholder.resizeTextForBestFit = true;
+            placeholder.resizeTextMinSize = 12;
+            placeholder.resizeTextMaxSize = 16;
             input.textComponent = value;
             input.placeholder = placeholder;
             return input;
@@ -2124,7 +1911,6 @@ battleTestButton.onClick.AddListener(
             if (ghostMaterial != null) Destroy(ghostMaterial);
             if (faceMaterial != null) Destroy(faceMaterial);
             if (boundaryMaterial != null) Destroy(boundaryMaterial);
-            if (hangarMaterial != null) Destroy(hangarMaterial);
         }
     }
 }

@@ -25,6 +25,7 @@ namespace UnityPlanet.ModularAssembly
         float presentationScale = 1f;
         float emissionScale = 1f;
         Material exhaustMaterial;
+        RobocraftMotionCoordinator motionCoordinator;
 
         public static bool Supports(NeoXBehaviorModule value)
         {
@@ -39,6 +40,7 @@ namespace UnityPlanet.ModularAssembly
         public void Configure(NeoXBehaviorModule source)
         {
             module = source;
+            ResolveMotionCoordinator();
             string id = source?.SourceId ?? string.Empty;
             if (id.IndexOf(
                     "small_propeller_224",
@@ -77,9 +79,10 @@ namespace UnityPlanet.ModularAssembly
         {
             if (module == null)
                 return;
-            RobocraftMotionCoordinator rc1 =
-                GetComponentInParent<RobocraftMotionCoordinator>();
-            bool rc1Active = rc1 != null && rc1.IsActive;
+            if (motionCoordinator == null)
+                ResolveMotionCoordinator();
+            bool rc1Active = motionCoordinator != null &&
+                             motionCoordinator.IsActive;
             if (!rc1Active)
                 targetThrottle = 0f;
 
@@ -110,6 +113,17 @@ namespace UnityPlanet.ModularAssembly
                 Quaternion.LookRotation(direction, referenceUp));
 
             ApplyThrottle();
+        }
+
+        void OnTransformParentChanged()
+        {
+            ResolveMotionCoordinator();
+        }
+
+        void ResolveMotionCoordinator()
+        {
+            motionCoordinator =
+                GetComponentInParent<RobocraftMotionCoordinator>();
         }
 
         void OnDisable()

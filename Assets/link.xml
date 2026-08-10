@@ -1,0 +1,6 @@
+<linker>
+  <!-- Runtime systems use reflection to read compatibility fields and methods. -->
+  <assembly fullname="Assembly-CSharp" preserve="all" />
+  <assembly fullname="SpacecraftEditor.Runtime" preserve="all" />
+  <assembly fullname="UnityPlanet.CityPcgPrinciples" preserve="all" />
+</linker>

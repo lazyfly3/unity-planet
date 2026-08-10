@@ -172,8 +172,10 @@ public sealed class PlanarSurfaceModularFlightController : MonoBehaviour
     GridLabCameraController cameraController;
     bool gameplayReady;
     bool transitionInProgress;
+    bool cinematicPresentation;
 
     public bool GameplayReady => gameplayReady;
+    public bool CinematicPresentation => cinematicPresentation;
 
     public void Initialize(
         InfinitePlanarSurfaceWorld targetWorld,
@@ -196,7 +198,8 @@ public sealed class PlanarSurfaceModularFlightController : MonoBehaviour
 
     public void SetGameplayReady(bool ready)
     {
-        gameplayReady = ready && !transitionInProgress;
+        gameplayReady = ready && !transitionInProgress &&
+                        !cinematicPresentation;
         if (motion != null)
             motion.ControlsEnabled = gameplayReady;
         if (aimSource != null)
@@ -220,6 +223,36 @@ public sealed class PlanarSurfaceModularFlightController : MonoBehaviour
             cameraController.SetFlightMode(true);
         }
         session?.BeginSession();
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
+    public void SetCinematicPresentation(bool active)
+    {
+        if (cinematicPresentation == active)
+            return;
+        cinematicPresentation = active;
+        if (!active)
+            return;
+
+        gameplayReady = false;
+        if (motion != null)
+            motion.ControlsEnabled = false;
+        if (aimSource != null)
+            aimSource.GameplayReady = false;
+        if (weapons != null)
+            weapons.ControlsEnabled = false;
+        if (cameraController != null)
+            cameraController.enabled = false;
+        if (body != null)
+        {
+            if (!body.isKinematic)
+            {
+                body.velocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+            }
+            body.isKinematic = true;
+        }
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }

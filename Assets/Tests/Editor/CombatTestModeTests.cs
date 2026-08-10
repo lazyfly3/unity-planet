@@ -13,6 +13,151 @@ using Object = UnityEngine.Object;
 
 public sealed class CombatTestModeTests
 {
+    [Test]
+    public void HordeReengagementStartsAfterLostContactOrHardDistance()
+    {
+        Assert.That(
+            HordeReengagementPolicy.ShouldBegin(
+                8f,
+                HordeReengagementPolicy.LostContactSeconds,
+                320f,
+                false,
+                false),
+            Is.True);
+        Assert.That(
+            HordeReengagementPolicy.ShouldBegin(
+                4f,
+                1f,
+                HordeReengagementPolicy.HardRecallDistance,
+                false,
+                false),
+            Is.True);
+    }
+
+    [Test]
+    public void HordeReengagementDoesNotInterruptOpeningOrAttackRecovery()
+    {
+        Assert.That(
+            HordeReengagementPolicy.ShouldBegin(
+                1f,
+                20f,
+                700f,
+                false,
+                false),
+            Is.False);
+        Assert.That(
+            HordeReengagementPolicy.ShouldBegin(
+                20f,
+                20f,
+                700f,
+                true,
+                false),
+            Is.False);
+        Assert.That(
+            HordeReengagementPolicy.ShouldBegin(
+                20f,
+                20f,
+                700f,
+                false,
+                true),
+            Is.False);
+    }
+
+    [Test]
+    public void HordeReengagementDestinationUsesAlternatingSideStandoff()
+    {
+        HordeEnemyProfile ranged = HordeEnemyProfile.ForRole(
+            HordeEnemyRole.Striker);
+        Vector3 player = new Vector3(100f, 20f, -40f);
+        Vector3 evenDestination = HordeReengagementPolicy.ResolveDestination(
+            ranged,
+            player + Vector3.right * 400f,
+            player,
+            Vector3.zero,
+            0);
+        Vector3 oddDestination = HordeReengagementPolicy.ResolveDestination(
+            ranged,
+            player + Vector3.right * 400f,
+            player,
+            Vector3.zero,
+            1);
+
+        Vector3 evenHorizontal = Vector3.ProjectOnPlane(
+            evenDestination - player,
+            Vector3.up);
+        Vector3 oddHorizontal = Vector3.ProjectOnPlane(
+            oddDestination - player,
+            Vector3.up);
+        Assert.That(evenHorizontal.magnitude,
+            Is.EqualTo(110f).Within(0.01f));
+        Assert.That(oddHorizontal.magnitude,
+            Is.EqualTo(110f).Within(0.01f));
+        Assert.That(evenDestination.y, Is.EqualTo(36f).Within(0.01f));
+        Assert.That(oddDestination.y, Is.EqualTo(36f).Within(0.01f));
+        Assert.That(evenDestination.z, Is.LessThan(player.z));
+        Assert.That(oddDestination.z, Is.GreaterThan(player.z));
+        Assert.That(
+            Mathf.Abs(Vector3.Dot(
+                evenHorizontal.normalized,
+                Vector3.right)),
+            Is.LessThan(0.4f),
+            "Re-engagement must flank instead of repeating the blocked " +
+            "frontal line.");
+        Assert.That(
+            HordeReengagementPolicy.HasReestablishedContact(
+                HordeEnemyAttackKind.Ranged,
+                380f,
+                true,
+                false),
+            Is.True);
+        Assert.That(
+            HordeReengagementPolicy.HasReestablishedContact(
+                HordeEnemyAttackKind.Ranged,
+                380f,
+                false,
+                false),
+            Is.False);
+    }
+
+    [Test]
+    public void HordeUrbanPolicyReservesDestructionForBossAndPlayerSkills()
+    {
+        Assert.That(
+            HordeUrbanCombatPolicy.CanDamageUrbanStructures,
+            Is.False);
+    }
+
+    [Test]
+    public void EnemyWallImpactPolicyRequiresHordeOwnerAndUrbanCover()
+    {
+        GameObject enemy = CreateRoot("WallImpactHordeOwner", Vector3.zero);
+        enemy.AddComponent<HordeEnemyVehicle>();
+        GameObject player = CreateRoot("WallImpactPlayerOwner", Vector3.zero);
+        GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        roots.Add(wall);
+        wall.name = "WallImpactUrbanCover";
+        wall.AddComponent<UrbanDestructibleBuilding>();
+        Collider wallCollider = wall.GetComponent<Collider>();
+        GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        roots.Add(ground);
+
+        Assert.That(
+            EnemyUrbanImpactPolicy.ShouldUseAnimatedWallImpact(
+                enemy.transform,
+                wallCollider),
+            Is.True);
+        Assert.That(
+            EnemyUrbanImpactPolicy.ShouldUseAnimatedWallImpact(
+                player.transform,
+                wallCollider),
+            Is.False);
+        Assert.That(
+            EnemyUrbanImpactPolicy.ShouldUseAnimatedWallImpact(
+                enemy.transform,
+                ground.GetComponent<Collider>()),
+            Is.False);
+    }
+
     public sealed class TestDamageable : MonoBehaviour, ISpaceDamageable
     {
         public float DamageReceived { get; private set; }
@@ -1146,6 +1291,40 @@ public sealed class CombatTestModeTests
         Assert.That(gunship.attackKind,
             Is.EqualTo(HordeEnemyAttackKind.Ranged));
         Assert.That(gunship.gunCount, Is.GreaterThan(0));
+    }
+
+    [Test]
+    public void HordeReengagementCueIsLoopingSpatialAudioWithOcclusionFilter()
+    {
+        GameObject host = CreateRoot("ReengagementAudioHost", Vector3.zero);
+        HordeCombatDirector director = host.AddComponent<HordeCombatDirector>();
+        WeaponVisualPool visuals = host.AddComponent<WeaponVisualPool>();
+        WeaponProjectilePool projectiles =
+            host.AddComponent<WeaponProjectilePool>();
+        projectiles.Initialize(visuals);
+        GameObject enemyRoot = CreateRoot(
+            "ReengagementAudioEnemy",
+            Vector3.zero);
+        HordeEnemyVehicle enemy =
+            enemyRoot.AddComponent<HordeEnemyVehicle>();
+
+        Assert.That(enemy.Initialize(
+            director,
+            visuals,
+            projectiles,
+            out string error), Is.True, error);
+        AudioSource audio = enemyRoot.GetComponent<AudioSource>();
+        AudioLowPassFilter lowPass =
+            enemyRoot.GetComponent<AudioLowPassFilter>();
+
+        Assert.That(audio, Is.Not.Null);
+        Assert.That(audio.clip, Is.Not.Null);
+        Assert.That(audio.loop, Is.True);
+        Assert.That(audio.playOnAwake, Is.False);
+        Assert.That(audio.spatialBlend, Is.EqualTo(1f));
+        Assert.That(audio.maxDistance, Is.GreaterThanOrEqualTo(250f));
+        Assert.That(lowPass, Is.Not.Null);
+        Assert.That(lowPass.cutoffFrequency, Is.LessThan(1500f));
     }
 
     [Test]

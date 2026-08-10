@@ -206,7 +206,7 @@ namespace UnityPlanet.EDPCG
             ValidatePath(path);
             var builder = new StringBuilder(65536);
             builder.AppendLine(
-                "time,phase,target_min,target_max,actual,forecast_4s,forecast_8s,enemy,navigation,environment,player_strain,active,engaged,tokens,suicide_commits,ranged_lanes,nav_recovery,resolved,area_id,area_kind");
+                "time,phase,target_min,target_max,actual,forecast_4s,forecast_8s,enemy,navigation,environmental_pursuit_pressure,environment,player_strain,active,engaged,environmental_pursuers,tokens,suicide_commits,ranged_lanes,nav_recovery,resolved,area_id,area_kind");
             IReadOnlyList<EdpcgPressureSample> samples =
                 runtime.Recorder.Samples;
             for (int index = 0; index < samples.Count; index++)
@@ -228,11 +228,14 @@ namespace UnityPlanet.EDPCG
                 builder.Append(',');
                 AppendNumber(builder, item.navigationPressure);
                 builder.Append(',');
+                AppendNumber(builder, item.environmentalPursuitPressure);
+                builder.Append(',');
                 AppendNumber(builder, item.measuredEnvironmentPressure);
                 builder.Append(',');
                 AppendNumber(builder, item.playerStrain);
                 builder.Append(',').Append(item.activeCount)
                     .Append(',').Append(item.engagementCount)
+                    .Append(',').Append(item.environmentalPursuitCount)
                     .Append(',').Append(item.attackTokensUsed)
                     .Append(',').Append(item.suicideCommitCount)
                     .Append(',').Append(item.rangedFireLaneCount)

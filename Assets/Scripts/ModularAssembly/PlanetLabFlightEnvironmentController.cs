@@ -51,6 +51,9 @@ namespace UnityPlanet.ModularAssembly
         Color flightAmbientLight;
         CameraClearFlags buildClearFlags;
         CameraClearFlags flightClearFlags;
+        readonly Dictionary<Renderer, bool> warmupRendererStates =
+            new Dictionary<Renderer, bool>();
+        bool suppressWarmupRendering;
 
         
         public int Priority => 0;
@@ -61,9 +64,14 @@ public bool IsReady =>
 
         public IEnumerator Warmup(Action<bool, string> completed)
         {
+            suppressWarmupRendering = true;
             EnsureWorld();
+            SuppressWarmupRenderers();
             yield return null;
+            SuppressWarmupRenderers();
             ExitFlight();
+            suppressWarmupRendering = false;
+            RestoreWarmupRenderers();
             completed(true, "PlanetLab 中心地形已开始预热");
         }
 
@@ -95,6 +103,8 @@ public bool IsReady =>
             }
 
             ApplyFlightPresentation();
+            suppressWarmupRendering = false;
+            RestoreWarmupRenderers();
             worldRoot.SetActive(true);
             world.SetMovementTarget(target.transform);
 
@@ -277,6 +287,40 @@ public bool IsReady =>
                 flightBody.worldCenterOfMass,
                 Time.fixedTimeAsDouble);
             motionRc1?.SetEnvironmentProvider(environmentProvider);
+        }
+
+        void LateUpdate()
+        {
+            if (suppressWarmupRendering)
+                SuppressWarmupRenderers();
+        }
+
+        void SuppressWarmupRenderers()
+        {
+            if (worldRoot == null)
+                return;
+            foreach (Renderer renderer in
+                     worldRoot.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer == null)
+                    continue;
+                if (!warmupRendererStates.ContainsKey(renderer))
+                    warmupRendererStates.Add(renderer, renderer.enabled);
+                else if (renderer.enabled)
+                    warmupRendererStates[renderer] = true;
+                renderer.enabled = false;
+            }
+        }
+
+        void RestoreWarmupRenderers()
+        {
+            foreach (KeyValuePair<Renderer, bool> pair in
+                     warmupRendererStates)
+            {
+                if (pair.Key != null)
+                    pair.Key.enabled = pair.Value;
+            }
+            warmupRendererStates.Clear();
         }
 
         string EnsureWorld()

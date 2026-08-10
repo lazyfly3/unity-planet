@@ -27,9 +27,16 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
     ShipAssembly assembly;
     Transform coreRoot;
     readonly Dictionary<string, GridModuleView> views = new Dictionary<string, GridModuleView>();
+    readonly HashSet<string> presentationBlockers =
+        new HashSet<string>(StringComparer.Ordinal);
+    bool presentationVisible = true;
+    bool runtimeRemovalOptimization;
 
     public event Action Rebuilt;
     public IReadOnlyDictionary<string, GridModuleView> Views => views;
+    public GridAssemblyModel Model => model;
+    public bool PresentationVisible =>
+        presentationVisible && presentationBlockers.Count == 0;
 
     public void Initialize(GridAssemblyModel source, ShipAssembly shipAssembly, Transform coreVisualRoot)
     {
@@ -43,11 +50,89 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
     public GridModuleView Find(string runtimeId) =>
         views.TryGetValue(runtimeId, out GridModuleView view) ? view : null;
 
+    /// <summary>
+    /// Enables a removal-only reconciliation path for large runtime vehicles.
+    /// The normal editor/build path remains unchanged. If records are added or
+    /// replaced, reconciliation automatically falls back to the full path.
+    /// </summary>
+    public void SetRuntimeRemovalOptimization(bool enabled)
+    {
+        runtimeRemovalOptimization = enabled;
+    }
+
+    public void SetPresentationVisible(bool visible)
+    {
+        presentationVisible = visible;
+        RefreshPresentationVisibility();
+    }
+
+    public void SetPresentationBlocked(string owner, bool blocked)
+    {
+        if (string.IsNullOrWhiteSpace(owner))
+            return;
+        if (blocked)
+            presentationBlockers.Add(owner);
+        else
+            presentationBlockers.Remove(owner);
+        RefreshPresentationVisibility();
+    }
+
+    public void RefreshPresentationVisibility()
+    {
+        foreach (Renderer renderer in
+                 GetComponentsInChildren<Renderer>(true))
+        {
+            renderer.forceRenderingOff = !PresentationVisible;
+        }
+    }
+
     public void Rebuild()
     {
         GridModuleRecord[] records = model.Records.ToArray();
+        if (runtimeRemovalOptimization &&
+            TryReconcileRuntimeRemovals(records))
+        {
+            return;
+        }
         GridAssemblyValidation validation = model.Validate();
         ReconcileViews(records, validation);
+    }
+
+    bool TryReconcileRuntimeRemovals(
+        IReadOnlyList<GridModuleRecord> records)
+    {
+        var current = records.ToDictionary(
+            record => record.RuntimeId,
+            StringComparer.Ordinal);
+        foreach (GridModuleRecord record in records)
+        {
+            if (!views.TryGetValue(
+                    record.RuntimeId,
+                    out GridModuleView existing) ||
+                existing == null || existing.Record == null ||
+                !string.Equals(
+                    existing.Record.Definition.ModuleId,
+                    record.Definition.ModuleId,
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        var removeIds = new List<string>();
+        foreach (KeyValuePair<string, GridModuleView> pair in views)
+        {
+            if (pair.Value == null || !current.ContainsKey(pair.Key))
+                removeIds.Add(pair.Key);
+        }
+        RemoveViews(removeIds);
+
+        // Removal keeps every surviving view's pose, authored visual, tint and
+        // visibility intact. Only mass/inertia and interested runtime systems
+        // need refreshing; hierarchy scans and renderer retints are redundant.
+        assembly?.Recalculate();
+        Rebuilt?.Invoke();
+        return true;
     }
 
     void ReconcileViews(
@@ -92,6 +177,7 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
         }
         ApplyValidationTint(validation);
         assembly?.Recalculate();
+        RefreshPresentationVisibility();
         Rebuilt?.Invoke();
     }
 
@@ -221,6 +307,7 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
             CreateView(record);
         ApplyValidationTint(validation);
         assembly?.Recalculate();
+        RefreshPresentationVisibility();
         Rebuilt?.Invoke();
     }
 
@@ -391,7 +478,24 @@ public sealed class GridLabCameraController : MonoBehaviour
                 targetCamera.nearClipPlane,
                 0.08f);
         }
-        ApplyImmediate();
+        ApplyImmediate(true);
+    }
+
+    public void FrameBounds(Bounds bounds)
+    {
+        if (target == null)
+            return;
+        panOffset = bounds.center - target.position;
+        distance = Mathf.Clamp(
+            bounds.extents.magnitude * 2.8f,
+            7f,
+            58f);
+        ApplyImmediate(true);
+    }
+
+    public void SnapToTarget()
+    {
+        ApplyImmediate(true);
     }
 
     public void SetAimPresentation(bool aiming, bool precision)
@@ -478,7 +582,9 @@ public sealed class GridLabCameraController : MonoBehaviour
             return;
         bool tuningInputCaptured =
             UnityPlanet.ModularAssembly.
-                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured;
+                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured ||
+            UnityPlanet.ModularAssembly.
+                ModularSpacecraftPauseMenu.IsOpen;
         if (flightMode &&
             Time.unscaledTime >= nextFlightBoundsRefresh)
         {
@@ -560,7 +666,9 @@ public sealed class GridLabCameraController : MonoBehaviour
 
         bool tuningInputCaptured =
             UnityPlanet.ModularAssembly.
-                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured;
+                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured ||
+            UnityPlanet.ModularAssembly.
+                ModularSpacecraftPauseMenu.IsOpen;
         bool boostRequested = !tuningInputCaptured &&
             (Input.GetKey(KeyCode.LeftShift) ||
              Input.GetKey(KeyCode.RightShift));
@@ -875,11 +983,11 @@ public sealed class GridLabCameraController : MonoBehaviour
             180f);
     }
 
-    void ApplyImmediate()
+    void ApplyImmediate(bool snap = false)
     {
         if (targetCamera == null || target == null)
             return;
-        float fovBlend = Application.isPlaying
+        float fovBlend = Application.isPlaying && !snap
             ? 1f - Mathf.Exp(-9f * Time.unscaledDeltaTime)
             : 1f;
         targetCamera.fieldOfView = Mathf.Lerp(
@@ -896,7 +1004,7 @@ public sealed class GridLabCameraController : MonoBehaviour
                 freeLookYaw,
                 0f)
             : Quaternion.Euler(pitch, yaw, 0f);
-        float blend = Application.isPlaying
+        float blend = Application.isPlaying && !snap
             ? 1f - Mathf.Exp(-9f * Time.unscaledDeltaTime)
             : 1f;
         if (!flightMode)
@@ -924,8 +1032,9 @@ public sealed class GridLabCameraController : MonoBehaviour
             out _,
             out float radius);
         float targetDistance = ResolvePresentationDistance(orbit);
-        float distanceBlend =
-            1f - Mathf.Exp(-6f * Time.unscaledDeltaTime);
+        float distanceBlend = Application.isPlaying && !snap
+            ? 1f - Mathf.Exp(-6f * Time.unscaledDeltaTime)
+            : 1f;
         distance = Mathf.Lerp(distance, targetDistance, distanceBlend);
         Vector2 anchor = aimPresentation ? AimAnchor : FlightAnchor;
         float verticalTangent = Mathf.Tan(
@@ -952,7 +1061,9 @@ public sealed class GridLabCameraController : MonoBehaviour
         targetCamera.transform.rotation = Quaternion.Slerp(
             targetCamera.transform.rotation,
             orbit * ResolveDamageKickRotation(),
-            1f - Mathf.Exp(-14f * Time.unscaledDeltaTime));
+            Application.isPlaying && !snap
+                ? 1f - Mathf.Exp(-14f * Time.unscaledDeltaTime)
+                : 1f);
     }
 
     Quaternion ResolveDamageKickRotation()
@@ -1131,8 +1242,6 @@ public void EnterFlight()
         body.isKinematic = true;
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
-        cameraController.SetFlightMode(true);
-
         if (environment == null)
         {
             if (expectsCombatMap)
@@ -1174,6 +1283,7 @@ void CompleteFlightPreparation(
         body.rotation = spawnRotation;
         Physics.SyncTransforms();
         cameraController.SetFlightMode(true);
+        cameraController.SnapToTarget();
         body.isKinematic = false;
         body.velocity = Vector3.zero;
         body.angularVelocity = Vector3.zero;
@@ -1261,6 +1371,7 @@ void CompleteReset(bool success, Vector3 position)
         body.rotation = spawnRotation;
         Physics.SyncTransforms();
         cameraController.SetFlightMode(true);
+        cameraController.SnapToTarget();
         body.isKinematic = false;
         body.velocity = Vector3.zero;
         body.angularVelocity = Vector3.zero;
@@ -1370,19 +1481,29 @@ public sealed class GridKineticWeaponSystem : MonoBehaviour
         }
         if (UnityPlanet.ModularAssembly.
                 ArcadeFlightRuntimeTuningOverlay.IsInputCaptured ||
+            UnityPlanet.ModularAssembly.
+                ModularSpacecraftPauseMenu.IsOpen ||
             flight == null ||
             !flight.IsFlying ||
             !Input.GetMouseButton(0) ||
             Time.time < nextShot)
             return;
-        List<GridModuleView> weapons = presenter.Views.Values
-            .Where(view => view != null && view.Record.Definition.Category == GridModuleCategory.KineticWeapon)
-            .ToList();
-        if (weapons.Count == 0)
-            return;
-        nextShot = Time.time + 0.25f;
-        foreach (GridModuleView weapon in weapons)
+        bool fired = false;
+        foreach (GridModuleView weapon in presenter.Views.Values)
+        {
+            if (weapon == null ||
+                weapon.Record.Definition.Category !=
+                GridModuleCategory.KineticWeapon)
+            {
+                continue;
+            }
+            if (!fired)
+            {
+                nextShot = Time.time + 0.25f;
+                fired = true;
+            }
             Fire(weapon);
+        }
     }
 
     void Fire(GridModuleView weapon)
@@ -1434,6 +1555,7 @@ public sealed class GridKineticProjectile : MonoBehaviour
     Action<GridKineticProjectile> release;
     float expiresAt;
     Vector3 previousPosition;
+    TrailRenderer trail;
 
     public void Launch(Vector3 position, Vector3 launchVelocity, Transform source, Action<GridKineticProjectile> callback)
     {
@@ -1444,7 +1566,8 @@ public sealed class GridKineticProjectile : MonoBehaviour
         release = callback;
         expiresAt = Time.time + 5f;
         gameObject.SetActive(true);
-        TrailRenderer trail = GetComponent<TrailRenderer>();
+        if (trail == null)
+            trail = GetComponent<TrailRenderer>();
         if (trail != null)
             trail.Clear();
     }
@@ -2181,6 +2304,11 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
             Status("无法试驾：" + validation.Message);
             return;
         }
+        if (!TrySaveCanonical(out string saveMessage))
+        {
+            Status("开始试飞前自动保存失败：" + saveMessage);
+            return;
+        }
         activeDefinition = null;
         movingRuntimeId = string.Empty;
         HidePreview();
@@ -2206,8 +2334,10 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
     void Update()
     {
         if (flight.State == GridFlightState.Flight &&
-            UnityPlanet.ModularAssembly.
-                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured)
+            (UnityPlanet.ModularAssembly.
+                 ArcadeFlightRuntimeTuningOverlay.IsInputCaptured ||
+             UnityPlanet.ModularAssembly.
+                 ModularSpacecraftPauseMenu.IsOpen))
         {
             return;
         }

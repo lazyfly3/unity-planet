@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityPlanet.SpaceStation.Architecture;
 using UnityPlanet.SpaceStation.Skills;
 
 namespace UnityPlanet.SpaceStation.Enhancement
@@ -45,6 +46,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
         GameObject promptRoot;
         GameObject dialogueRoot;
         GameObject enhancementRoot;
+        ShipArchitecturePanel architecturePanel;
         Text walletText;
         Text enhancementWalletText;
         Text scanText;
@@ -148,7 +150,10 @@ namespace UnityPlanet.SpaceStation.Enhancement
             bool inRange = IsPlayerInRange();
             if (!interfaceOpen)
             {
-                promptRoot.SetActive(inRange);
+                if (promptRoot.activeSelf != inRange)
+                {
+                    promptRoot.SetActive(inRange);
+                }
                 if (inRange && Input.GetKeyDown(KeyCode.F))
                 {
                     OpenDialogue();
@@ -156,10 +161,17 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 return;
             }
 
-            promptRoot.SetActive(false);
+            if (promptRoot.activeSelf)
+            {
+                promptRoot.SetActive(false);
+            }
             if (!transitionBusy && Input.GetKeyDown(KeyCode.Escape))
             {
-                if (enhancementOpen)
+                if (architecturePanel != null && architecturePanel.IsOpen)
+                {
+                    OpenDialogue();
+                }
+                else if (enhancementOpen)
                 {
                     OpenDialogue();
                 }
@@ -203,6 +215,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
             SetDialoguePortrait(new Rect(0f, 0.5f, 0.5f, 0.5f));
             dialogueRoot.SetActive(true);
             enhancementRoot.SetActive(false);
+            architecturePanel?.Close();
             SetPlayerInputEnabled(false);
         }
 
@@ -212,6 +225,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
             enhancementOpen = true;
             dialogueRoot.SetActive(false);
             enhancementRoot.SetActive(true);
+            architecturePanel?.Close();
             SetPlayerInputEnabled(false);
             transitionBusy = true;
             RefreshCards();
@@ -223,6 +237,17 @@ namespace UnityPlanet.SpaceStation.Enhancement
             dealRoutine = StartCoroutine(DealCards());
         }
 
+        void OpenArchitecture()
+        {
+            interfaceOpen = true;
+            enhancementOpen = false;
+            transitionBusy = false;
+            dialogueRoot.SetActive(false);
+            enhancementRoot.SetActive(false);
+            architecturePanel?.Open();
+            SetPlayerInputEnabled(false);
+        }
+
         void CloseInterface()
         {
             interfaceOpen = false;
@@ -230,6 +255,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
             transitionBusy = false;
             dialogueRoot.SetActive(false);
             enhancementRoot.SetActive(false);
+            architecturePanel?.Close();
             SetPlayerInputEnabled(true);
         }
 
@@ -776,6 +802,14 @@ namespace UnityPlanet.SpaceStation.Enhancement
             BuildPrompt(canvasRoot.transform);
             BuildDialogue(canvasRoot.transform);
             BuildEnhancementScreen(canvasRoot.transform);
+            architecturePanel = GetComponent<ShipArchitecturePanel>() ??
+                                gameObject.AddComponent<
+                                    ShipArchitecturePanel>();
+            architecturePanel.Initialize(
+                canvasRoot.transform,
+                font,
+                coinSprite,
+                OpenDialogue);
             promptRoot.SetActive(false);
             dialogueRoot.SetActive(false);
             enhancementRoot.SetActive(false);
@@ -864,7 +898,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 new Color(0.012f, 0.055f, 0.078f, 0.985f));
             RectTransform rect = panel.rectTransform;
             rect.anchorMin = new Vector2(0.08f, 0.055f);
-            rect.anchorMax = new Vector2(0.92f, 0.34f);
+            rect.anchorMax = new Vector2(0.92f, 0.40f);
             rect.offsetMin = rect.offsetMax = Vector2.zero;
 
             Image accent = CreateImage(
@@ -917,7 +951,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
             Text body = CreateText(
                 panel.transform,
                 "DialogueBody",
-                "我会扫描你当前保存的模块飞船，再根据构筑结构推演三种强化方案。稀有方案会使用特殊边框与揭示特效。需要开始推演吗？",
+                "我可以为当前保存的模块飞船推演随机强化，也可以签发确定性的舰体架构协议。架构协议独立于抽卡与技能，只提升模块装载和 CPU 授权上限。",
                 21,
                 TextAnchor.UpperLeft,
                 new Color(0.88f, 0.94f, 0.97f));
@@ -932,7 +966,7 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 new Vector2(0f, 1f),
                 new Vector2(0f, 1f),
                 new Vector2(300f, -72f),
-                new Vector2(520f, 140f));
+                new Vector2(520f, 156f));
 
             Button enhance = CreateButton(
                 panel.transform,
@@ -944,11 +978,29 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 new Vector2(1f, 0.5f),
                 new Vector2(1f, 0.5f),
                 new Vector2(1f, 0.5f),
-                new Vector2(-34f, 38f),
-                new Vector2(220f, 58f));
+                new Vector2(-34f, 64f),
+                new Vector2(220f, 52f));
             enhance.onClick.AddListener(OpenEnhancement);
             AddPortraitInteraction(
                 enhance,
+                new Rect(0.5f, 0.5f, 0.5f, 0.5f),
+                new Rect(0.5f, 0f, 0.5f, 0.5f));
+
+            Button architecture = CreateButton(
+                panel.transform,
+                "ArchitectureOption",
+                "架构协议",
+                new Color(0.04f, 0.42f, 0.58f, 1f));
+            SetAnchoredRect(
+                architecture.GetComponent<RectTransform>(),
+                new Vector2(1f, 0.5f),
+                new Vector2(1f, 0.5f),
+                new Vector2(1f, 0.5f),
+                new Vector2(-34f, 0f),
+                new Vector2(220f, 52f));
+            architecture.onClick.AddListener(OpenArchitecture);
+            AddPortraitInteraction(
+                architecture,
                 new Rect(0.5f, 0.5f, 0.5f, 0.5f),
                 new Rect(0.5f, 0f, 0.5f, 0.5f));
 
@@ -962,8 +1014,8 @@ namespace UnityPlanet.SpaceStation.Enhancement
                 new Vector2(1f, 0.5f),
                 new Vector2(1f, 0.5f),
                 new Vector2(1f, 0.5f),
-                new Vector2(-34f, -38f),
-                new Vector2(220f, 58f));
+                new Vector2(-34f, -64f),
+                new Vector2(220f, 52f));
             leave.onClick.AddListener(CloseInterface);
             AddPortraitInteraction(
                 leave,

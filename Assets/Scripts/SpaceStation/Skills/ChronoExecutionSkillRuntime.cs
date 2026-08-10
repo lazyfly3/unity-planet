@@ -128,6 +128,8 @@ namespace UnityPlanet.SpaceStation.Skills
         {
             if (!active)
                 return;
+            if (ModularSpacecraftPauseMenu.IsOpen)
+                return;
             int fired = 0;
             int lethal = 0;
             Vector3 sourcePoint = graph.ResolveVisualBounds().center;

@@ -119,8 +119,20 @@ namespace UnityPlanet.ModularAssembly
         public GridFlightSessionKind SessionKind { get; private set; } =
             GridFlightSessionKind.FreeFlight;
 
+        public bool IsCombatActive => combatActive;
+        public bool IsResolving => resolving;
+
         public CombatTestMode CurrentMode { get; private set; } =
             CombatTestMode.Duel;
+
+        public void RequestExitCombat()
+        {
+            if (pendingCombat || combatActive || resolving ||
+                SessionKind == GridFlightSessionKind.CombatTest)
+            {
+                ExitCombat();
+            }
+        }
 
         [RuntimeInitializeOnLoadMethod(
             RuntimeInitializeLoadType.AfterSceneLoad)]

@@ -305,6 +305,28 @@ namespace UnityPlanet.ModularAssembly
             return effectPool.Spawn(context);
         }
 
+        public bool PlayUrbanSurfaceImpact(
+            Vector3 hitPoint,
+            Vector3 hitNormal)
+        {
+            EnsurePool();
+            CombatTransientRoot.EnsureCameraDepthTexture();
+            Vector3 normal = hitNormal.sqrMagnitude > 0.0001f
+                ? hitNormal.normalized
+                : Vector3.up;
+            Vector3 position = hitPoint + normal * 0.035f;
+            return effectPool.Spawn(
+                new ModuleDestructionFeedbackContext(
+                    "$urban-cover-impact",
+                    position,
+                    normal,
+                    GridModuleCategory.Structure,
+                    false,
+                    new Bounds(position, Vector3.one * 0.55f),
+                    0,
+                    0.62f));
+        }
+
         void HandleModuleDamaged(
             VehicleStructureGraph graph,
             VehicleModuleDamageFeedback feedback)

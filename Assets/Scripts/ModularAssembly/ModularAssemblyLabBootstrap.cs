@@ -53,6 +53,12 @@ public sealed class ModularAssemblyLabBootstrap : MonoBehaviour
         var model = new GridAssemblyModel(definitions);
         GridAssemblyPresenter presenter = ship.AddComponent<GridAssemblyPresenter>();
         presenter.Initialize(model, assembly, core);
+        if (useAirBuildExperience)
+        {
+            // Keep the fallback geometry available to drive assembly setup,
+            // but never render it while the authored NeoX modules are loading.
+            presenter.SetPresentationVisible(false);
+        }
 
         GridLabCameraController cameraController = gameObject.AddComponent<GridLabCameraController>();
         cameraController.Initialize(sceneCamera, ship.transform);

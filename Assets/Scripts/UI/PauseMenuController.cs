@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -17,6 +18,10 @@ public sealed class PauseMenuController : MonoBehaviour
 
     VoxelPlanetPlayerController playerController;
     Button returnToStationButton;
+    Button resolutionButton;
+    Text resolutionLabel;
+    readonly List<Vector2Int> availableResolutions =
+        new List<Vector2Int>();
     bool playerControllerWasEnabled;
     float previousTimeScale = 1f;
     bool paused;
@@ -28,9 +33,14 @@ public sealed class PauseMenuController : MonoBehaviour
     {
         playerController = FindObjectOfType<VoxelPlanetPlayerController>();
         BuildMainPanelActions();
+        NormalizeSettingsLayout();
         volumeSlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("MasterVolume", AudioListener.volume));
         sensitivitySlider.SetValueWithoutNotify(PlayerPrefs.GetFloat("MouseSensitivity", playerController != null ? playerController.LookSpeed : 2f));
-        fullscreenToggle.SetIsOnWithoutNotify(Screen.fullScreen);
+        DisplayResolutionSettings.ApplySavedSettings();
+        bool fullscreen = PlayerPrefs.GetInt(
+            "Fullscreen",
+            Screen.fullScreen ? 1 : 0) != 0;
+        fullscreenToggle.SetIsOnWithoutNotify(fullscreen);
         ApplyVolume(volumeSlider.value);
         ApplySensitivity(sensitivitySlider.value);
         pauseRoot.SetActive(false);
@@ -65,8 +75,9 @@ SetPaused(false);
 
     public void OpenSettings()
     {
-mainPanel.SetActive(false);
+        mainPanel.SetActive(false);
         settingsPanel.SetActive(true);
+        RefreshResolutionLabel();
     
 }
 
@@ -98,10 +109,38 @@ value = Mathf.Clamp(value, 0.2f, 5f);
 
     public void ApplyFullscreen(bool fullscreen)
     {
-Screen.fullScreen = fullscreen;
-        PlayerPrefs.SetInt("Fullscreen", fullscreen ? 1 : 0);
+        DisplayResolutionSettings.Apply(
+            PlayerPrefs.GetInt("ResolutionWidth", Screen.width),
+            PlayerPrefs.GetInt("ResolutionHeight", Screen.height),
+            fullscreen);
     
 }
+
+    public void SelectNextResolution()
+    {
+        BuildResolutionList();
+        if (availableResolutions.Count == 0)
+            return;
+        int current = availableResolutions.FindIndex(value =>
+            value.x == PlayerPrefs.GetInt(
+                "ResolutionWidth",
+                Screen.width) &&
+            value.y == PlayerPrefs.GetInt(
+                "ResolutionHeight",
+                Screen.height));
+        int next = (current + 1 + availableResolutions.Count) %
+                   availableResolutions.Count;
+        Vector2Int resolution = availableResolutions[next];
+        DisplayResolutionSettings.Apply(
+            resolution.x,
+            resolution.y,
+            fullscreenToggle != null
+                ? fullscreenToggle.isOn
+                : Screen.fullScreen);
+        RefreshResolutionLabel(
+            resolution.x,
+            resolution.y);
+    }
 
     public void ExitToMainMenu()
     {
@@ -127,9 +166,12 @@ Screen.fullScreen = fullscreen;
 
         FinitePlanetHordeCombatController combat =
             FindObjectOfType<FinitePlanetHordeCombatController>();
-        combat?.AbandonForStationReturn();
-
         RestoreGameState();
+        if (combat != null &&
+            combat.BeginVoluntaryReturnSettlement())
+        {
+            return;
+        }
         PlanetOrbitChapterSelectionContext.Clear();
         SpaceStationFlowContext.PrepareOrbitalReturnToStation();
         SceneManager.LoadScene(
@@ -236,6 +278,191 @@ Screen.fullScreen = fullscreen;
         label.resizeTextMaxSize = Mathf.Max(18, label.fontSize);
         label.horizontalOverflow = HorizontalWrapMode.Wrap;
         label.verticalOverflow = VerticalWrapMode.Truncate;
+    }
+
+    void NormalizeSettingsLayout()
+    {
+        if (settingsPanel == null)
+            return;
+
+        RectTransform panel = settingsPanel.GetComponent<RectTransform>();
+        if (panel != null)
+            panel.sizeDelta = new Vector2(760f, 620f);
+
+        Transform titleTransform = settingsPanel.transform.Find("Title");
+        LayoutSettingsElement(
+            titleTransform as RectTransform,
+            new Vector2(0f, 240f),
+            new Vector2(620f, 58f));
+        ConfigureSettingsText(
+            titleTransform == null
+                ? null
+                : titleTransform.GetComponent<Text>(),
+            20,
+            32);
+
+        LayoutSettingsLabel("VolumeLabel", "主音量", 145f);
+        LayoutSettingsSlider(volumeSlider, 145f);
+        LayoutSettingsLabel(
+            "SensitivityLabel",
+            "视角灵敏度",
+            65f);
+        LayoutSettingsSlider(sensitivitySlider, 65f);
+        LayoutSettingsLabel(
+            "FullscreenLabel",
+            "显示模式",
+            -15f);
+        LayoutSettingsElement(
+            fullscreenToggle == null
+                ? null
+                : fullscreenToggle.GetComponent<RectTransform>(),
+            new Vector2(110f, -15f),
+            new Vector2(64f, 52f));
+
+        Text fullscreenLabel = settingsPanel.transform
+            .Find("FullscreenLabel")?.GetComponent<Text>();
+        Transform resolutionLabelTransform =
+            settingsPanel.transform.Find("ResolutionLabel");
+        if (resolutionLabelTransform == null && fullscreenLabel != null)
+        {
+            resolutionLabelTransform = Instantiate(
+                fullscreenLabel.gameObject,
+                settingsPanel.transform,
+                false).transform;
+            resolutionLabelTransform.name = "ResolutionLabel";
+        }
+        LayoutSettingsLabel("ResolutionLabel", "分辨率", -95f);
+
+        Button backButton = settingsPanel.transform.Find("BackButton")
+            ?.GetComponent<Button>();
+        Transform resolutionTransform =
+            settingsPanel.transform.Find("ResolutionButton");
+        if (resolutionTransform == null && backButton != null)
+        {
+            resolutionTransform = Instantiate(
+                backButton.gameObject,
+                settingsPanel.transform,
+                false).transform;
+            resolutionTransform.name = "ResolutionButton";
+        }
+        if (resolutionTransform != null)
+        {
+            resolutionButton = resolutionTransform.GetComponent<Button>();
+            resolutionButton.onClick = new Button.ButtonClickedEvent();
+            resolutionButton.onClick.AddListener(SelectNextResolution);
+            resolutionLabel = resolutionTransform
+                .GetComponentInChildren<Text>(true);
+            LayoutSettingsElement(
+                resolutionTransform as RectTransform,
+                new Vector2(110f, -95f),
+                new Vector2(360f, 58f));
+            ConfigureSettingsText(resolutionLabel, 16, 22);
+        }
+
+        Transform vsyncLabelTransform =
+            settingsPanel.transform.Find("VsyncLabel");
+        if (vsyncLabelTransform != null)
+            vsyncLabelTransform.gameObject.SetActive(false);
+        Transform vsyncTransform =
+            settingsPanel.transform.Find("VsyncToggle");
+        if (vsyncTransform != null)
+            vsyncTransform.gameObject.SetActive(false);
+
+        if (backButton != null)
+        {
+            LayoutSettingsElement(
+                backButton.GetComponent<RectTransform>(),
+                new Vector2(0f, -235f),
+                new Vector2(360f, 68f));
+            ConfigureSettingsText(
+                backButton.GetComponentInChildren<Text>(true),
+                17,
+                24);
+        }
+        BuildResolutionList();
+        RefreshResolutionLabel();
+    }
+
+    void LayoutSettingsLabel(
+        string objectName,
+        string value,
+        float y)
+    {
+        Text text = settingsPanel.transform.Find(objectName)
+            ?.GetComponent<Text>();
+        if (text == null)
+            return;
+        text.text = value;
+        LayoutSettingsElement(
+            text.rectTransform,
+            new Vector2(-220f, y),
+            new Vector2(210f, 46f));
+        ConfigureSettingsText(text, 16, 22);
+        text.alignment = TextAnchor.MiddleLeft;
+    }
+
+    static void LayoutSettingsSlider(Slider slider, float y)
+    {
+        if (slider == null)
+            return;
+        LayoutSettingsElement(
+            slider.GetComponent<RectTransform>(),
+            new Vector2(110f, y),
+            new Vector2(360f, 48f));
+        Transform handle = slider.transform.Find(
+            "Handle Slide Area/Handle");
+        RectTransform handleRect = handle as RectTransform;
+        if (handleRect != null)
+            handleRect.sizeDelta = new Vector2(14f, 26f);
+    }
+
+    static void LayoutSettingsElement(
+        RectTransform rect,
+        Vector2 position,
+        Vector2 size)
+    {
+        if (rect == null)
+            return;
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
+    }
+
+    static void ConfigureSettingsText(
+        Text text,
+        int minimum,
+        int maximum)
+    {
+        if (text == null)
+            return;
+        text.alignment = TextAnchor.MiddleCenter;
+        text.resizeTextForBestFit = true;
+        text.resizeTextMinSize = minimum;
+        text.resizeTextMaxSize = maximum;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        text.verticalOverflow = VerticalWrapMode.Truncate;
+    }
+
+    void BuildResolutionList()
+    {
+        availableResolutions.Clear();
+        availableResolutions.AddRange(
+            DisplayResolutionSettings.BuildAvailableList());
+    }
+
+    void RefreshResolutionLabel()
+    {
+        RefreshResolutionLabel(
+            PlayerPrefs.GetInt("ResolutionWidth", Screen.width),
+            PlayerPrefs.GetInt("ResolutionHeight", Screen.height));
+    }
+
+    void RefreshResolutionLabel(int width, int height)
+    {
+        if (resolutionLabel != null)
+            resolutionLabel.text = width + " × " + height + "  ›";
     }
 
     void SetPaused(bool shouldPause)

@@ -866,7 +866,7 @@ namespace UnityPlanet.EditorTools
                 "   中央机动 " + areaCounts[(int)EdpcgTacticalAreaKind.CentralManeuverDistrict] +
                 "   高楼掩体链 " + areaCounts[(int)EdpcgTacticalAreaKind.HighRiseOcclusionChain] +
                 "   开放捷径 " + areaCounts[(int)EdpcgTacticalAreaKind.ExposedFireShortcut] +
-                "   维修庭院 " + areaCounts[(int)EdpcgTacticalAreaKind.RepairCourtyard] +
+                "   三面磁场 " + areaCounts[(int)EdpcgTacticalAreaKind.MagneticCourtyard] +
                 "   高度换层 " + areaCounts[(int)EdpcgTacticalAreaKind.LowMidVerticalTransition]);
         }
 

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Reflection;
 using ModularAssembly;
 using UnityEngine;
+using UnityPlanet.CityPcg;
 using UnityPlanet.ModularAssembly;
 
 namespace UnityPlanet.EDPCG
@@ -16,6 +17,13 @@ namespace UnityPlanet.EDPCG
     [DisallowMultipleComponent]
     public sealed class EdpcgEncounterRuntime : MonoBehaviour
     {
+        sealed class EnvironmentalCommitment
+        {
+            public EdpcgRuntimeRoute route;
+            public string reservationId = string.Empty;
+            public Rigidbody body;
+        }
+
         const float TelemetryInterval = 0.1f;
         const float PressureEpsilon = 0.001f;
 
@@ -25,6 +33,16 @@ namespace UnityPlanet.EDPCG
             new Dictionary<string, EdpcgRosterMember>(StringComparer.Ordinal);
         readonly Dictionary<string, object> originalValues =
             new Dictionary<string, object>(StringComparer.Ordinal);
+        readonly Dictionary<string, EnvironmentalCommitment>
+            environmentalCommitments =
+                new Dictionary<string, EnvironmentalCommitment>(
+                    StringComparer.Ordinal);
+        readonly Dictionary<string, EdpcgRuntimeRoute>
+            environmentalFailureBlocks =
+                new Dictionary<string, EdpcgRuntimeRoute>(
+                    StringComparer.Ordinal);
+        readonly List<string> environmentalCleanupIds =
+            new List<string>(16);
 
         HordeCombatDirector director;
         Rigidbody playerBody;
@@ -79,6 +97,8 @@ namespace UnityPlanet.EDPCG
         public int CreditedKills { get; private set; }
         public int ResolvedCount { get; private set; }
         public int UnresolvedCount => Mathf.Max(0, roster.Count - ResolvedCount);
+        public int EnvironmentalPursuitCount =>
+            environmentalCommitments.Count;
         public bool IsRosterResolved => roster.Count > 0 &&
                                         ResolvedCount >= roster.Count;
         public bool CompletionQuotaMet => settings != null &&
@@ -236,6 +256,7 @@ namespace UnityPlanet.EDPCG
             BuildRoster();
             recorder.Clear();
             reservations.Clear();
+            ClearEnvironmentalTrapCommitments();
             originalValues.Clear();
             elapsed = 0f;
             nextTelemetryAt = 0f;
@@ -273,8 +294,23 @@ namespace UnityPlanet.EDPCG
                     IsEncounterResolved ? "resolved" : "interrupted");
             }
             running = false;
+            ClearEnvironmentalTrapCommitments();
             reservations?.Clear();
             EdpcgRuntimeRegistry.Unregister(this);
+        }
+
+        void ClearEnvironmentalTrapCommitments()
+        {
+            foreach (KeyValuePair<string, EnvironmentalCommitment> pair in
+                     environmentalCommitments)
+            {
+                EnvironmentalCommitment commitment = pair.Value;
+                commitment?.route?.EnvironmentalTrap?.field?
+                    .NotifyPursuitReleased(commitment.body);
+            }
+            environmentalCommitments.Clear();
+            environmentalFailureBlocks.Clear();
+            environmentalCleanupIds.Clear();
         }
 
         public void Tick(float deltaTime)
@@ -297,6 +333,7 @@ namespace UnityPlanet.EDPCG
                 ApplyPendingChangesAtSafeBoundary("phase-change");
             }
             reservations.ReleaseExpired(Time.time);
+            ReconcileEnvironmentalTrapState();
             UpdateAreaState();
             UpdatePressure(safeDelta);
             if (elapsed + PressureEpsilon >= nextTelemetryAt)
@@ -333,7 +370,17 @@ namespace UnityPlanet.EDPCG
             assignment = default(EdpcgRosterAssignment);
             if (!running)
                 return false;
-            EdpcgRosterMember selected = FindUnspawned(preferredRole) ??
+            bool trapOpportunity = preferredRole ==
+                                   HordeEnemyRole.Interceptor &&
+                                   playerBody != null && tacticalMap != null &&
+                                   tacticalMap.TrySelectEnvironmentalTrapRoute(
+                                       playerBody.worldCenterOfMass,
+                                       playerBody.worldCenterOfMass,
+                                       out _);
+            EdpcgRosterMember selected = trapOpportunity
+                ? FindUnspawnedEnvironmentalPursuer()
+                : null;
+            selected = selected ?? FindUnspawned(preferredRole) ??
                                          FindUnspawnedAnyRole();
             if (selected == null)
                 return false;
@@ -341,7 +388,8 @@ namespace UnityPlanet.EDPCG
             assignment = new EdpcgRosterAssignment(
                 selected.rosterMemberId,
                 selected.role,
-                selected.rosterIndex);
+                selected.rosterIndex,
+                selected.environmentalPursuer);
             recorder.RecordEvent(
                 elapsed,
                 EdpcgTelemetryEventKind.SpawnQueued,
@@ -363,8 +411,266 @@ namespace UnityPlanet.EDPCG
             assignment = new EdpcgRosterAssignment(
                 member.rosterMemberId,
                 member.role,
-                member.rosterIndex);
+                member.rosterIndex,
+                member.environmentalPursuer);
             return true;
+        }
+
+        public bool TryAcquireOrMaintainEnvironmentalTrap(
+            HordeEnemyVehicle enemy,
+            out Vector3 destination)
+        {
+            destination = Vector3.zero;
+            if (!running || enemy == null || !enemy.IsCombatCapable ||
+                enemy.Role == HordeEnemyRole.Gunship || playerBody == null ||
+                tacticalMap == null ||
+                string.IsNullOrEmpty(enemy.RosterMemberId))
+            {
+                return false;
+            }
+
+            if (environmentalCommitments.TryGetValue(
+                    enemy.RosterMemberId,
+                    out EnvironmentalCommitment existing))
+            {
+                UrbanEnvironmentalPursuitRouteDescriptor descriptor =
+                    existing.route?.EnvironmentalTrap;
+                if (descriptor != null &&
+                    descriptor.IsAvailableForCommit(
+                        playerBody.worldCenterOfMass) &&
+                    reservations.Renew(
+                        existing.reservationId,
+                        Time.time,
+                        Mathf.Max(
+                            settings.reservationLeaseSeconds,
+                            existing.route.EstimatedTravelSeconds + 3f)))
+                {
+                    destination = existing.route.Points[
+                        existing.route.Points.Length - 1];
+                    descriptor.field.NotifyPursuitAssigned(
+                        enemy.Body,
+                        existing.route.EstimatedTravelSeconds);
+                    return true;
+                }
+                ReleaseEnvironmentalTrapCommitment(enemy, "opportunity-ended");
+            }
+
+            // Two failed graph queries mean this aircraft cannot currently
+            // traverse the authored trap approach.  Keep it on ordinary AI
+            // until the player actually leaves that opportunity (or the
+            // field cycles unavailable), instead of releasing and reacquiring
+            // the same route every frame.
+            if (IsEnvironmentalTrapRetryBlocked(enemy.RosterMemberId))
+                return false;
+
+            if (director != null &&
+                director.HasHigherPriorityEnvironmentalCandidate(enemy))
+            {
+                return false;
+            }
+            int effectiveEngagements = Mathf.Max(
+                engagementCount,
+                attackTokensUsed + environmentalCommitments.Count);
+            if (effectiveEngagements >= EngagementCap ||
+                currentSample.actualPressure >= settings.hardPressureLimit ||
+                currentSample.forecastPressure4Seconds >=
+                settings.hardPressureLimit ||
+                !tacticalMap.TrySelectEnvironmentalTrapRoute(
+                    playerBody.worldCenterOfMass,
+                    enemy.BodyPosition,
+                    out EdpcgRuntimeRoute route))
+            {
+                return false;
+            }
+
+            float travelSeconds = Vector3.Distance(
+                enemy.BodyPosition,
+                route.Points[0]) /
+                Mathf.Max(18f, enemy.Profile.maximumSpeed) +
+                route.EstimatedTravelSeconds;
+            int priority = enemy.IsEnvironmentalPursuer
+                ? 3
+                : enemy.Role == HordeEnemyRole.Interceptor ? 2 : 1;
+            if (!reservations.TryReserve(
+                    enemy.RosterMemberId,
+                    route.StableId,
+                    Time.time,
+                    travelSeconds,
+                    Mathf.Max(
+                        settings.reservationLeaseSeconds,
+                        travelSeconds + 3f),
+                    priority,
+                    1,
+                    out string reservationId))
+            {
+                return false;
+            }
+
+            var commitment = new EnvironmentalCommitment
+            {
+                route = route,
+                reservationId = reservationId,
+                body = enemy.Body
+            };
+            environmentalCommitments.Add(
+                enemy.RosterMemberId,
+                commitment);
+            environmentalFailureBlocks.Remove(enemy.RosterMemberId);
+            route.EnvironmentalTrap.field.NotifyPursuitAssigned(
+                enemy.Body,
+                travelSeconds);
+            recorder.RecordEvent(
+                elapsed,
+                EdpcgTelemetryEventKind.ReservationCreated,
+                "environmental-trap-commit",
+                enemy.RosterMemberId,
+                enemy.BodyPosition,
+                0f,
+                string.Empty,
+                route.StableId);
+            destination = route.Points[route.Points.Length - 1];
+            return true;
+        }
+
+        public bool IsEnvironmentalTrapCommitted(string rosterMemberId)
+        {
+            return !string.IsNullOrEmpty(rosterMemberId) &&
+                   environmentalCommitments.ContainsKey(rosterMemberId);
+        }
+
+        public bool CanAttemptEnvironmentalTrap(HordeEnemyVehicle enemy)
+        {
+            if (!running || enemy == null || !enemy.IsCombatCapable ||
+                enemy.Role == HordeEnemyRole.Gunship || playerBody == null ||
+                tacticalMap == null)
+            {
+                return false;
+            }
+            if (IsEnvironmentalTrapCommitted(enemy.RosterMemberId))
+                return true;
+            if (IsEnvironmentalTrapRetryBlocked(enemy.RosterMemberId))
+                return false;
+            return tacticalMap.TrySelectEnvironmentalTrapRoute(
+                playerBody.worldCenterOfMass,
+                enemy.BodyPosition,
+                out _);
+        }
+
+        public void ReleaseEnvironmentalTrapCommitment(
+            HordeEnemyVehicle enemy,
+            string reason)
+        {
+            if (enemy == null)
+                return;
+            ReleaseEnvironmentalTrapCommitment(
+                enemy.RosterMemberId,
+                reason,
+                enemy.BodyPosition);
+        }
+
+        void ReleaseEnvironmentalTrapCommitment(
+            string rosterMemberId,
+            string reason,
+            Vector3 position)
+        {
+            if (string.IsNullOrEmpty(rosterMemberId) ||
+                !environmentalCommitments.TryGetValue(
+                    rosterMemberId,
+                    out EnvironmentalCommitment commitment))
+                return;
+            string releaseReason = reason ??
+                                   "environmental-trap-release";
+            if (string.Equals(
+                    releaseReason,
+                    "route-not-found",
+                    StringComparison.Ordinal) &&
+                commitment.route != null)
+            {
+                environmentalFailureBlocks[rosterMemberId] =
+                    commitment.route;
+            }
+            environmentalCommitments.Remove(rosterMemberId);
+            reservations.Release(commitment.reservationId);
+            commitment.route?.EnvironmentalTrap?.field?.NotifyPursuitReleased(
+                commitment.body);
+            recorder.RecordEvent(
+                elapsed,
+                EdpcgTelemetryEventKind.ReservationReleased,
+                releaseReason,
+                rosterMemberId,
+                position,
+                0f,
+                string.Empty,
+                commitment.route?.StableId ?? string.Empty);
+        }
+
+        bool IsEnvironmentalTrapRetryBlocked(string rosterMemberId)
+        {
+            if (string.IsNullOrEmpty(rosterMemberId) ||
+                !environmentalFailureBlocks.TryGetValue(
+                    rosterMemberId,
+                    out EdpcgRuntimeRoute blockedRoute))
+            {
+                return false;
+            }
+            UrbanEnvironmentalPursuitRouteDescriptor descriptor =
+                blockedRoute?.EnvironmentalTrap;
+            bool opportunityStillOpen = descriptor != null &&
+                playerBody != null &&
+                descriptor.IsAvailableForCommit(
+                    playerBody.worldCenterOfMass);
+            if (opportunityStillOpen)
+                return true;
+            environmentalFailureBlocks.Remove(rosterMemberId);
+            return false;
+        }
+
+        void ReconcileEnvironmentalTrapState()
+        {
+            environmentalCleanupIds.Clear();
+            foreach (KeyValuePair<string, EnvironmentalCommitment> pair in
+                     environmentalCommitments)
+            {
+                EnvironmentalCommitment commitment = pair.Value;
+                if (commitment == null || reservations == null ||
+                    !reservations.HasReservation(
+                        commitment.reservationId))
+                {
+                    environmentalCleanupIds.Add(pair.Key);
+                }
+            }
+            for (int index = 0;
+                 index < environmentalCleanupIds.Count;
+                 index++)
+            {
+                string rosterMemberId = environmentalCleanupIds[index];
+                ReleaseEnvironmentalTrapCommitment(
+                    rosterMemberId,
+                    "lease-expired",
+                    Vector3.zero);
+            }
+
+            environmentalCleanupIds.Clear();
+            foreach (KeyValuePair<string, EdpcgRuntimeRoute> pair in
+                     environmentalFailureBlocks)
+            {
+                UrbanEnvironmentalPursuitRouteDescriptor descriptor =
+                    pair.Value?.EnvironmentalTrap;
+                if (descriptor == null || playerBody == null ||
+                    !descriptor.IsAvailableForCommit(
+                        playerBody.worldCenterOfMass))
+                {
+                    environmentalCleanupIds.Add(pair.Key);
+                }
+            }
+            for (int index = 0;
+                 index < environmentalCleanupIds.Count;
+                 index++)
+            {
+                environmentalFailureBlocks.Remove(
+                    environmentalCleanupIds[index]);
+            }
+            environmentalCleanupIds.Clear();
         }
 
         public void MarkSpawnRecovery(string rosterMemberId, int attempts)
@@ -419,6 +725,11 @@ namespace UnityPlanet.EDPCG
                 return false;
             }
             member.state = EdpcgRosterState.NavigationRecovery;
+            environmentalFailureBlocks.Remove(rosterMemberId);
+            ReleaseEnvironmentalTrapCommitment(
+                rosterMemberId,
+                "navigation-recovery",
+                position);
             reservations.ReleaseOwner(rosterMemberId);
             recorder.RecordEvent(
                 elapsed,
@@ -452,6 +763,11 @@ namespace UnityPlanet.EDPCG
             ResolvedCount++;
             if (creditedKill)
                 CreditedKills++;
+            environmentalFailureBlocks.Remove(rosterMemberId);
+            ReleaseEnvironmentalTrapCommitment(
+                rosterMemberId,
+                "enemy-resolved",
+                position);
             reservations.ReleaseOwner(rosterMemberId);
             recorder.RecordEvent(
                 elapsed,
@@ -581,6 +897,28 @@ namespace UnityPlanet.EDPCG
             {
                 return false;
             }
+            if (!route.AllowReverse)
+            {
+                int waypointIndex = Mathf.Clamp(
+                    selected.waypointIndex,
+                    0,
+                    route.Points.Length - 1);
+                while (waypointIndex < route.Points.Length - 1 &&
+                       Vector3.Distance(
+                           start,
+                           route.Points[waypointIndex]) < 18f)
+                {
+                    waypointIndex++;
+                }
+                selected.waypointIndex = waypointIndex;
+                for (int index = waypointIndex;
+                     index < route.Points.Length;
+                     index++)
+                {
+                    output.Add(route.Points[index]);
+                }
+                return output.Count > 0;
+            }
             bool forward = Vector3.Distance(start, route.Points[0]) <=
                            Vector3.Distance(
                                start,
@@ -600,10 +938,25 @@ namespace UnityPlanet.EDPCG
 
         public bool CanGrantAttack(HordeEnemyVehicle enemy)
         {
+            int effectiveEngagements = Mathf.Max(
+                engagementCount,
+                attackTokensUsed + environmentalCommitments.Count);
             if (!running || enemy == null || settings == null ||
                 currentSample.actualPressure >= settings.hardPressureLimit ||
                 attackTokensUsed >= AttackTokenCap ||
-                engagementCount >= EngagementCap)
+                effectiveEngagements >= EngagementCap)
+            {
+                return false;
+            }
+            // A player deliberately entering a generated trap approach must
+            // have one EDPCG engagement seat available for the committed
+            // pursuer. Ordinary fire permissions cannot consume that final
+            // seat while the trap opportunity is open.
+            if (environmentalCommitments.Count == 0 &&
+                tacticalMap != null && playerBody != null &&
+                tacticalMap.HasEnvironmentalTrapOpportunity(
+                    playerBody.worldCenterOfMass) &&
+                effectiveEngagements >= Mathf.Max(0, EngagementCap - 1))
             {
                 return false;
             }
@@ -772,8 +1125,15 @@ namespace UnityPlanet.EDPCG
                 roles[index] = roles[swap];
                 roles[swap] = value;
             }
+            int environmentalPursuersRemaining =
+                settings.environmentalPursuerCount;
             for (int index = 0; index < roles.Count; index++)
             {
+                bool environmentalPursuer =
+                    roles[index] == HordeEnemyRole.Interceptor &&
+                    environmentalPursuersRemaining > 0;
+                if (environmentalPursuer)
+                    environmentalPursuersRemaining--;
                 var member = new EdpcgRosterMember
                 {
                     rosterMemberId = string.Format(
@@ -782,6 +1142,7 @@ namespace UnityPlanet.EDPCG
                         rosterSeed,
                         index),
                     role = roles[index],
+                    environmentalPursuer = environmentalPursuer,
                     state = EdpcgRosterState.Unspawned,
                     resolutionReason = EdpcgEnemyResolutionReason.None,
                     rosterIndex = index,
@@ -808,10 +1169,14 @@ namespace UnityPlanet.EDPCG
             float rangedNavigation = Mathf.Clamp01(
                 rangedFireLaneCount /
                 Mathf.Max(1f, settings.rangedFireLaneCap));
+            float environmentalPursuit = Mathf.Clamp01(
+                environmentalCommitments.Count /
+                Mathf.Max(1f, settings.engagementCap));
             float navigation = Mathf.Clamp01(
                 navigationRecoveryCount / populationDenominator * 0.45f +
                 suicideNavigation * 0.30f +
-                rangedNavigation * 0.25f);
+                rangedNavigation * 0.25f +
+                environmentalPursuit * 0.35f);
             float healthStrain = playerGraph != null
                 ? 1f - Mathf.Clamp01(playerGraph.OverallHealthRatio)
                 : 0f;
@@ -882,7 +1247,11 @@ namespace UnityPlanet.EDPCG
                 suicideNavigationPressure = suicideNavigation,
                 rangedNavigationPressure = rangedNavigation,
                 committedNavigationPressure = Mathf.Clamp01(
-                    attackTokensUsed / Mathf.Max(1f, settings.attackTokenCap)),
+                    Mathf.Max(
+                        attackTokensUsed /
+                        Mathf.Max(1f, settings.attackTokenCap),
+                        environmentalPursuit)),
+                environmentalPursuitPressure = environmentalPursuit,
                 playerStrain = playerStrain,
                 playerDamageAssist = Mathf.Clamp01(
                     Mathf.InverseLerp(0.55f, 0.85f, smoothedPressure) *
@@ -899,6 +1268,8 @@ namespace UnityPlanet.EDPCG
                 navigationRecoveryCount = Mathf.Max(
                     navigationRecoveryCount,
                     rosterNavigationRecovery),
+                environmentalPursuitCount =
+                    environmentalCommitments.Count,
                 resolvedCount = ResolvedCount,
                 activeTacticalAreaId = activeArea != null
                     ? activeArea.StableId
@@ -1038,6 +1409,20 @@ namespace UnityPlanet.EDPCG
             return null;
         }
 
+        EdpcgRosterMember FindUnspawnedEnvironmentalPursuer()
+        {
+            for (int index = 0; index < roster.Count; index++)
+            {
+                EdpcgRosterMember member = roster[index];
+                if (member.state == EdpcgRosterState.Unspawned &&
+                    member.environmentalPursuer)
+                {
+                    return member;
+                }
+            }
+            return null;
+        }
+
         EdpcgRosterMember FindUnspawnedAnyRole()
         {
             for (int index = 0; index < roster.Count; index++)
@@ -1075,6 +1460,8 @@ namespace UnityPlanet.EDPCG
                    string.Equals(fieldName, "interceptorCount", StringComparison.Ordinal) ||
                    string.Equals(fieldName, "strikerCount", StringComparison.Ordinal) ||
                    string.Equals(fieldName, "gunshipCount", StringComparison.Ordinal) ||
+                   string.Equals(fieldName, "environmentalPursuerCount",
+                       StringComparison.Ordinal) ||
                    string.Equals(fieldName, "planetTier", StringComparison.Ordinal);
         }
 

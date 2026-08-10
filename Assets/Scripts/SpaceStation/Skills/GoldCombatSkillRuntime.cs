@@ -432,7 +432,8 @@ namespace UnityPlanet.SpaceStation.Skills
                 drone.transform,
                 "hull.sf_modular_pirate",
                 "SupportDroneModel",
-                8f);
+                8f,
+                false);
             if (model == null || !EnsureDroneModelVisible(model))
             {
                 if (model != null)

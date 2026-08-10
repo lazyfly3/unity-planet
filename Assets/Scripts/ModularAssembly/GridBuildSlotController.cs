@@ -15,6 +15,10 @@ namespace UnityPlanet.ModularAssembly
         private const int OrientationCount = 24;
 
         private readonly List<GridBuildSlotMarker> markers = new List<GridBuildSlotMarker>();
+        private static readonly IComparer<RaycastHit> RaycastHitDistanceComparer =
+            Comparer<RaycastHit>.Create(
+                (left, right) => left.distance.CompareTo(right.distance));
+        private RaycastHit[] raycastHits = new RaycastHit[32];
         private ModularAssemblyLabController controller;
         private GridAssemblyPresenter presenter;
         private GridModuleDefinition activeDefinition;
@@ -150,15 +154,20 @@ namespace UnityPlanet.ModularAssembly
 
             Ray ray = sceneCamera.ScreenPointToRay(Input.mousePosition);
             GridBuildSlotMarker hovered = null;
-            RaycastHit[] hits = Physics.RaycastAll(
+            int hitCount = QueryRaycastHits(
                 ray,
                 2000f,
                 ~0,
                 QueryTriggerInteraction.Collide);
-            Array.Sort(hits, (left, right) => left.distance.CompareTo(right.distance));
-            for (int index = 0; index < hits.Length; index++)
+            Array.Sort(
+                raycastHits,
+                0,
+                hitCount,
+                RaycastHitDistanceComparer);
+            for (int index = 0; index < hitCount; index++)
             {
-                hovered = hits[index].collider.GetComponentInParent<GridBuildSlotMarker>();
+                hovered = raycastHits[index].collider
+                    .GetComponentInParent<GridBuildSlotMarker>();
                 if (hovered != null)
                 {
                     break;
@@ -229,6 +238,25 @@ namespace UnityPlanet.ModularAssembly
             }
 
             lastRecordCount = controller.Model.Records.Count;
+        }
+
+        private int QueryRaycastHits(
+            Ray ray,
+            float maximumDistance,
+            int layerMask,
+            QueryTriggerInteraction triggerInteraction)
+        {
+            int count;
+            while ((count = Physics.RaycastNonAlloc(
+                       ray,
+                       raycastHits,
+                       maximumDistance,
+                       layerMask,
+                       triggerInteraction)) >= raycastHits.Length)
+            {
+                Array.Resize(ref raycastHits, raycastHits.Length * 2);
+            }
+            return count;
         }
 
         private static bool InsideBuildVolume(

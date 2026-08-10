@@ -587,10 +587,12 @@ namespace UnityPlanet.ModularAssembly
             body = target;
             assembly = shipAssembly;
             ResolvePilotAimSource();
+            presenter = GetComponent<GridAssemblyPresenter>();
             ModularAssemblyLabController lab =
                 FindObjectOfType<ModularAssemblyLabController>();
-            BindModel(lab != null ? lab.Model : null);
-            presenter = GetComponent<GridAssemblyPresenter>();
+            BindModel(presenter != null && presenter.Model != null
+                ? presenter.Model
+                : lab?.Model);
             if (presenter != null)
             {
                 presenter.Rebuilt -= HandlePresenterRebuilt;
@@ -1073,7 +1075,8 @@ public void ConfigureExplicit(
             pendingEvasionDirection = Vector2.zero;
             bool injected = !controlsEnabled || injectedControlActive;
             bool tuningInputCaptured =
-                ArcadeFlightRuntimeTuningOverlay.IsInputCaptured &&
+                (ArcadeFlightRuntimeTuningOverlay.IsInputCaptured ||
+                 ModularSpacecraftPauseMenu.IsOpen) &&
                 controlsEnabled &&
                 !injectedControlActive;
             RobocraftControlFrame control = !controlsEnabled

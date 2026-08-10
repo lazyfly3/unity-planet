@@ -1750,6 +1750,61 @@ public sealed class CombatVfxIntegrationTests
     }
 
     [Test]
+    public void UrbanCoverImpact_UsesSmallAnimatedHqExplosion14()
+    {
+        var root = new GameObject("UrbanCoverImpactFeedbackTest");
+        try
+        {
+            CombatFeedbackController controller =
+                root.AddComponent<CombatFeedbackController>();
+
+            Assert.That(
+                controller.PlayUrbanSurfaceImpact(
+                    new Vector3(2f, 3f, 4f),
+                    Vector3.back),
+                Is.True);
+
+            Transform activeImpact = root
+                .GetComponentsInChildren<Transform>(true)
+                .Single(item =>
+                    item.gameObject.activeSelf &&
+                    item.name == "PooledModuleExplosion_Structural");
+            float maximumScale = Mathf.Max(
+                Mathf.Abs(activeImpact.localScale.x),
+                Mathf.Abs(activeImpact.localScale.y),
+                Mathf.Abs(activeImpact.localScale.z));
+            Assert.That(maximumScale, Is.LessThan(0.3f),
+                "A wall strike must stay smaller than a vehicle death cue.");
+
+            ParticleSystem[] particles = activeImpact
+                .GetComponentsInChildren<ParticleSystem>(true);
+            Assert.That(particles, Is.Not.Empty);
+            Assert.That(particles.Any(item => item.isPlaying), Is.True);
+            Assert.That(
+                particles.Any(item =>
+                {
+                    ParticleSystem.TextureSheetAnimationModule sheet =
+                        item.textureSheetAnimation;
+                    return sheet.enabled &&
+                           sheet.numTilesX * sheet.numTilesY > 1;
+                }),
+                Is.True,
+                "The selected wall impact must animate its flipbook; a " +
+                "single static texture is not sufficient.");
+            Assert.That(
+                activeImpact.GetComponentsInChildren<Rigidbody>(true),
+                Is.Empty);
+            Assert.That(
+                activeImpact.GetComponentsInChildren<Collider>(true),
+                Is.Empty);
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
+    }
+
+    [Test]
     public void HqPool_InvalidPrimaryUsesFallbackAndBothInvalidRejects()
     {
         string folderName =

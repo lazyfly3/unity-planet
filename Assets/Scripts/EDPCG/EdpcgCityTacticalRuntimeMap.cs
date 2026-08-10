@@ -38,6 +38,9 @@ namespace UnityPlanet.EDPCG
         public int Capacity;
         public float EstimatedTravelSeconds;
         public string FallbackRouteId = string.Empty;
+        public bool AllowReverse = true;
+        public bool IsEnvironmentalTrap;
+        public UrbanEnvironmentalPursuitRouteDescriptor EnvironmentalTrap;
     }
 
     public sealed class EdpcgCityTacticalRuntimeMap
@@ -155,6 +158,44 @@ namespace UnityPlanet.EDPCG
                     result.routeById[route.StableId] = route;
             }
 
+            UrbanEnvironmentalFieldDirector environmental =
+                urban.EnvironmentalFields;
+            if (environmental != null)
+            {
+                IReadOnlyList<UrbanEnvironmentalPursuitRouteDescriptor>
+                    trapRoutes = environmental.PursuitRoutes;
+                for (int index = 0; index < trapRoutes.Count; index++)
+                {
+                    UrbanEnvironmentalPursuitRouteDescriptor source =
+                        trapRoutes[index];
+                    if (source == null || !source.IsUsable)
+                        continue;
+                    float length = 0f;
+                    for (int point = 1;
+                         point < source.worldWaypoints.Length;
+                         point++)
+                    {
+                        length += Vector3.Distance(
+                            source.worldWaypoints[point - 1],
+                            source.worldWaypoints[point]);
+                    }
+                    var route = new EdpcgRuntimeRoute
+                    {
+                        StableId = source.stableId,
+                        SourceKind = AirCombatRouteKind.MaskedFlank,
+                        Points = (Vector3[])source.worldWaypoints.Clone(),
+                        Width = Mathf.Max(1f, source.localApproachSize.x),
+                        Capacity = Mathf.Max(1, source.capacity),
+                        EstimatedTravelSeconds = Mathf.Max(0.5f, length / 55f),
+                        AllowReverse = source.allowReverse,
+                        IsEnvironmentalTrap = true,
+                        EnvironmentalTrap = source
+                    };
+                    result.routes.Add(route);
+                    result.routeById[route.StableId] = route;
+                }
+            }
+
             result.AssignFallbackRoutes();
             return result;
         }
@@ -199,6 +240,62 @@ namespace UnityPlanet.EDPCG
                 return false;
             }
             return routeById.TryGetValue(stableId, out route);
+        }
+
+        public bool TrySelectEnvironmentalTrapRoute(
+            Vector3 playerPosition,
+            Vector3 enemyPosition,
+            out EdpcgRuntimeRoute route)
+        {
+            route = null;
+            float bestScore = float.PositiveInfinity;
+            for (int index = 0; index < routes.Count; index++)
+            {
+                EdpcgRuntimeRoute candidate = routes[index];
+                UrbanEnvironmentalPursuitRouteDescriptor descriptor =
+                    candidate.EnvironmentalTrap;
+                if (!candidate.IsEnvironmentalTrap || descriptor == null ||
+                    !descriptor.IsAvailableForCommit(playerPosition) ||
+                    Vector3.Distance(enemyPosition, playerPosition) >
+                    UrbanEnvironmentalFieldPolicy.MaximumLureDistance)
+                {
+                    continue;
+                }
+                float score = Vector3.Distance(
+                    enemyPosition,
+                    candidate.Points[0]);
+                if (descriptor.field.State ==
+                    UrbanEnvironmentalFieldState.Active)
+                {
+                    score -= 70f;
+                }
+                else if (descriptor.field.State ==
+                         UrbanEnvironmentalFieldState.Warning)
+                {
+                    score -= 35f;
+                }
+                if (score >= bestScore)
+                    continue;
+                route = candidate;
+                bestScore = score;
+            }
+            return route != null;
+        }
+
+        public bool HasEnvironmentalTrapOpportunity(Vector3 playerPosition)
+        {
+            for (int index = 0; index < routes.Count; index++)
+            {
+                EdpcgRuntimeRoute candidate = routes[index];
+                UrbanEnvironmentalPursuitRouteDescriptor descriptor =
+                    candidate.EnvironmentalTrap;
+                if (candidate.IsEnvironmentalTrap && descriptor != null &&
+                    descriptor.IsAvailableForCommit(playerPosition))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public bool TrySelectRoleDestination(
@@ -257,8 +354,7 @@ namespace UnityPlanet.EDPCG
             float projected = area.ProjectedPressureUpperBound;
             float speedFactor = Mathf.InverseLerp(15f, 65f, playerSpeed);
             float realized = projected * Mathf.Lerp(0.4f, 1f, speedFactor);
-            if (area.Kind == EdpcgTacticalAreaKind.RepairCourtyard ||
-                area.Kind == EdpcgTacticalAreaKind.SpawnSafeAirspace)
+            if (area.Kind == EdpcgTacticalAreaKind.SpawnSafeAirspace)
             {
                 realized *= 0.35f;
             }
@@ -330,13 +426,16 @@ namespace UnityPlanet.EDPCG
             for (int index = 0; index < routes.Count; index++)
             {
                 EdpcgRuntimeRoute source = routes[index];
+                if (source.IsEnvironmentalTrap)
+                    continue;
                 float bestDistance = float.PositiveInfinity;
                 EdpcgRuntimeRoute best = null;
                 Vector3 sourceStart = source.Points[0];
                 for (int otherIndex = 0; otherIndex < routes.Count; otherIndex++)
                 {
                     EdpcgRuntimeRoute other = routes[otherIndex];
-                    if (other == source || other.SourceKind != source.SourceKind)
+                    if (other == source || other.IsEnvironmentalTrap ||
+                        other.SourceKind != source.SourceKind)
                         continue;
                     float distance = Vector3.Distance(sourceStart, other.Points[0]);
                     if (distance >= bestDistance)
@@ -365,7 +464,14 @@ namespace UnityPlanet.EDPCG
                 Exits = exits,
                 Connections = source.connectedOpportunityIds ?? Array.Empty<string>(),
                 ProjectedPressureUpperBound = PressureUpperBound(kind),
-                SafeWindowSeconds = Mathf.Max(0f, source.safeWindowSeconds),
+                // Recovery pockets are magnetic combat traps now.  Preserve
+                // the authored value in the PCG design profile for backward
+                // compatibility, but do not turn it into a hidden runtime
+                // cease-fire or repair window.
+                SafeWindowSeconds = kind ==
+                    EdpcgTacticalAreaKind.MagneticCourtyard
+                        ? 0f
+                        : Mathf.Max(0f, source.safeWindowSeconds),
                 Risk = Mathf.Clamp01(source.risk),
                 Legibility = Mathf.Clamp01(source.legibility)
             };
@@ -407,7 +513,7 @@ namespace UnityPlanet.EDPCG
                     kind = EdpcgTacticalAreaKind.ExposedFireShortcut;
                     return true;
                 case TacticalOpportunityKind.RecoveryPocket:
-                    kind = EdpcgTacticalAreaKind.RepairCourtyard;
+                    kind = EdpcgTacticalAreaKind.MagneticCourtyard;
                     return true;
                 case TacticalOpportunityKind.VerticalEscape:
                     kind = EdpcgTacticalAreaKind.LowMidVerticalTransition;
@@ -426,8 +532,11 @@ namespace UnityPlanet.EDPCG
             {
                 case EdpcgTacticalAreaKind.SpawnSafeAirspace:
                     return 0.03f;
-                case EdpcgTacticalAreaKind.RepairCourtyard:
-                    return 0.05f;
+                case EdpcgTacticalAreaKind.MagneticCourtyard:
+                    // A magnetic courtyard creates a player-controlled combat
+                    // opportunity; it is not intrinsically safe and therefore
+                    // carries ordinary occlusion-district pressure.
+                    return 0.16f;
                 case EdpcgTacticalAreaKind.CentralManeuverDistrict:
                     return 0.12f;
                 case EdpcgTacticalAreaKind.HighRiseOcclusionChain:
@@ -520,6 +629,8 @@ namespace UnityPlanet.EDPCG
             {
                 return false;
             }
+            if (!route.AllowReverse && direction < 0)
+                return false;
 
             ReleaseExpired(now);
             int overlap = 0;
@@ -548,7 +659,7 @@ namespace UnityPlanet.EDPCG
                 exitAt = exitAt,
                 expiresAt = now + Mathf.Max(1f, leaseSeconds),
                 priority = priority,
-                direction = direction
+                direction = route.AllowReverse ? direction : 1
             });
             return true;
         }
@@ -567,6 +678,23 @@ namespace UnityPlanet.EDPCG
                 }
                 item.expiresAt = now + Mathf.Max(1f, leaseSeconds);
                 return true;
+            }
+            return false;
+        }
+
+        public bool HasReservation(string reservationId)
+        {
+            if (string.IsNullOrEmpty(reservationId))
+                return false;
+            for (int index = 0; index < reservations.Count; index++)
+            {
+                if (string.Equals(
+                        reservations[index].reservationId,
+                        reservationId,
+                        StringComparison.Ordinal))
+                {
+                    return true;
+                }
             }
             return false;
         }

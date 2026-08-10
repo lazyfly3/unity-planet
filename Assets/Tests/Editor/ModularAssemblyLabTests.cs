@@ -13,6 +13,59 @@ public sealed class ModularAssemblyLabTests
     const float AuthoredGeometryTolerance = 0.0001f;
     const float MediumGeometryTolerance = 0.001f;
 
+    [Test]
+    public void PresetLibraryDoesNotRetainProceduralDotPreviewRenderer()
+    {
+        Type removedRenderer = typeof(ModularPresetLibraryUi).Assembly.GetType(
+            "UnityPlanet.ModularAssembly.ModularPresetPreviewRenderer");
+
+        Assert.That(
+            removedRenderer,
+            Is.Null,
+            "The dotted blueprint fallback must not return to the preset UI.");
+    }
+
+    [Test]
+    public void PresetLibraryActualPreviewRendersRealMeshPixels()
+    {
+        var stage = new GameObject("PresetPreviewTestStage");
+        Texture2D preview = null;
+        try
+        {
+            stage.layer = 30;
+            GameObject mesh = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            mesh.transform.SetParent(stage.transform, false);
+            mesh.layer = 30;
+            mesh.transform.localScale = new Vector3(2f, 1f, 3f);
+
+            MethodInfo render = typeof(ModularPresetLibraryUi).GetMethod(
+                "RenderActualPreviewTexture",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(render, Is.Not.Null);
+            preview = (Texture2D)render.Invoke(null, new object[] { stage });
+
+            Assert.That(preview, Is.Not.Null);
+            Assert.That(preview.name, Is.EqualTo("ModularPresetActualPreview"));
+            Assert.That(preview.width, Is.EqualTo(512));
+            Assert.That(preview.height, Is.EqualTo(288));
+            Color32 background = new Color(0.025f, 0.07f, 0.09f, 1f);
+            int meshPixels = preview.GetPixels32().Count(pixel =>
+                Math.Abs(pixel.r - background.r) > 2 ||
+                Math.Abs(pixel.g - background.g) > 2 ||
+                Math.Abs(pixel.b - background.b) > 2);
+            Assert.That(
+                meshPixels,
+                Is.GreaterThan(100),
+                "The preview must contain rendered model geometry, not only a background.");
+        }
+        finally
+        {
+            if (preview != null)
+                Object.DestroyImmediate(preview);
+            Object.DestroyImmediate(stage);
+        }
+    }
+
     static readonly ExpectedWheelGeometry[] SupportedWheelGeometry =
     {
         new ExpectedWheelGeometry(

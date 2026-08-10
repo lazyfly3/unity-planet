@@ -17,6 +17,7 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
     PlanetLabInfiniteTerrainStreamer streamer;
     GameObject cityRoot;
     AirCombatCityPcgLab cityLab;
+    UrbanEnvironmentalFieldDirector environmentalFields;
 
     public bool IsReady { get; private set; }
     public string PreparationError { get; private set; } = string.Empty;
@@ -24,6 +25,8 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
     public int CityBuildingCount { get; private set; }
     public int SyncedEnemyIngressCount { get; private set; }
     public AirCombatCityPlan Plan => cityLab != null ? cityLab.Plan : null;
+    public UrbanEnvironmentalFieldDirector EnvironmentalFields =>
+        environmentalFields;
 
     public bool Configure(InfinitePlanarSurfaceWorld targetWorld)
     {
@@ -89,6 +92,22 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
             terrainPlan.DefenseLayout,
             cityLab.Plan);
         CreateFlatGroundCollision(cityRoot.transform);
+        environmentalFields =
+            cityRoot.GetComponentInChildren<
+                UrbanEnvironmentalFieldDirector>(true) ??
+            cityRoot.AddComponent<UrbanEnvironmentalFieldDirector>();
+        environmentalFields.Configure(cityLab.Plan, cityLab.Settings);
+        if (!environmentalFields.HasRequiredCombatTraps)
+        {
+            string validation = environmentalFields.ValidationError;
+            Destroy(cityRoot);
+            cityRoot = null;
+            cityLab = null;
+            environmentalFields = null;
+            return Fail(string.IsNullOrWhiteSpace(validation)
+                ? "城市 PCG 没有生成完整的风场和三面磁墙战术路线。"
+                : validation);
+        }
 
         // The inactive prefab prevents its edit-lab OnEnable path from
         // generating twice. The formal runtime owns all input and HUD after

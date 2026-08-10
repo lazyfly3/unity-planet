@@ -540,7 +540,9 @@ public sealed class InfinitePlanarSurfaceWorld :
 
     void HandleCameraPreCull(Camera value)
     {
-        if (!configured
+        if (!isActiveAndEnabled
+            || !gameObject.activeInHierarchy
+            || !configured
             || value == null
             || value.cameraType != CameraType.Game)
         {

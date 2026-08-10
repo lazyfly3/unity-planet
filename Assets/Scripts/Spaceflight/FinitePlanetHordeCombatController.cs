@@ -175,6 +175,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
     HordeCombatDirector director;
     EdpcgEncounterRuntime edpcg;
     ModularBossCombatRuntime boss;
+    ModularBossIntroductionDirector bossIntroduction;
     Coroutine returnRoutine;
     Vector3 battleCenter;
     Vector3 extractionPoint;
@@ -192,6 +193,8 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
     string hudText = string.Empty;
     bool sessionRunning;
     bool transitionStarted;
+    bool settlementStarted;
+    bool bossIntroductionPlayed;
     float bossBridgeHintEndsAt;
     string bossBridgeHint = string.Empty;
 
@@ -215,6 +218,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
     {
         IsPrepared = false;
         PreparationError = string.Empty;
+        bossIntroductionPlayed = false;
         world = targetWorld;
         flightController = targetFlightController;
         playerBody = targetBody;
@@ -376,12 +380,15 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
     {
         if (!ready)
         {
+            if (bossIntroduction != null && bossIntroduction.IsPlaying)
+                bossIntroduction.Cancel(false);
             sessionRunning = false;
             director?.EndSession();
             boss?.SetCombatActive(false);
             return;
         }
-        if (!IsPrepared || transitionStarted || sessionRunning)
+        if (!IsPrepared || transitionStarted || sessionRunning ||
+            (bossIntroduction != null && bossIntroduction.IsPlaying))
             return;
 
         int seed = world.FiniteCombatTerrainPlan != null
@@ -396,18 +403,17 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             scanProgress[index] = 0f;
             scanComplete[index] = false;
         }
-        sessionRunning = true;
         if (missionRules.Kind == FinitePlanetMissionObjectiveKind.Boss)
         {
-            boss.SetCombatActive(true);
-            BeginBossBridgeHint();
-            RefreshObjectiveStatus();
-            Debug.Log(
-                $"[FinitePlanetBoss] Started tier " +
-                $"{missionRules.PlanetDifficultyIndex} with seed {seed}.",
-                this);
+            if (!bossIntroductionPlayed &&
+                TryBeginBossIntroduction(seed))
+            {
+                return;
+            }
+            StartBossCombatSession(seed);
             return;
         }
+        sessionRunning = true;
         director.BeginSession(
             playerBody,
             battleCenter,
@@ -418,6 +424,52 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
         Debug.Log(
             $"[FinitePlanetHorde] Started with {IngressCount} PCG entrances " +
             $"and seed {seed}.",
+            this);
+    }
+
+    bool TryBeginBossIntroduction(int seed)
+    {
+        Camera camera = Camera.main;
+        if (boss == null || flightController == null ||
+            playerBody == null || camera == null)
+        {
+            return false;
+        }
+
+        bossIntroduction =
+            GetComponent<ModularBossIntroductionDirector>() ??
+            gameObject.AddComponent<ModularBossIntroductionDirector>();
+        bool started = bossIntroduction.Play(
+            boss,
+            flightController,
+            playerBody,
+            camera,
+            string.IsNullOrWhiteSpace(missionName)
+                ? "\u9996\u9886\u62e6\u622a"
+                : missionName,
+            missionRules.DifficultyLabel,
+            () =>
+            {
+                if (this == null || transitionStarted || !IsPrepared)
+                    return;
+                StartBossCombatSession(seed);
+            });
+        bossIntroductionPlayed |= started;
+        return started;
+    }
+
+    void StartBossCombatSession(int seed)
+    {
+        if (sessionRunning || transitionStarted || boss == null)
+            return;
+
+        sessionRunning = true;
+        boss.SetCombatActive(true);
+        BeginBossBridgeHint();
+        RefreshObjectiveStatus();
+        Debug.Log(
+            $"[FinitePlanetBoss] Started tier " +
+            $"{missionRules.PlanetDifficultyIndex} with seed {seed}.",
             this);
     }
 
@@ -729,37 +781,38 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
 
     void CompleteMission()
     {
-        if (missionCompleted || transitionStarted)
+        if (missionCompleted || transitionStarted || settlementStarted)
             return;
         missionCompleted = true;
-        sessionRunning = false;
-        director?.EndSession();
-        boss?.SetCombatActive(false);
-        flightController?.SetGameplayReady(false);
-        GalaxyCurrencyService.AddGalaxyCoins(
-            missionRules.GalaxyCoinReward);
-        ObjectiveStatus =
-            $"任务完成，获得 {missionRules.GalaxyCoinReward} 银河币，正在返回轨道";
-        UpdateHudText();
-        Debug.Log(
-            $"[FinitePlanetHorde] Mission '{missionId}' complete. " +
-            $"Kills={(director == null ? 0 : director.Kills)}, " +
-            $"escaped={(director == null ? 0 : director.Escaped)}, " +
-            $"reward={missionRules.GalaxyCoinReward} Galaxy Coins.",
-            this);
-        if (returnRoutine == null)
-            returnRoutine = StartCoroutine(ReturnToOrbitAfterVictory());
+        BeginSettlement(CombatSettlementOutcome.Victory);
     }
 
     public void AbandonForStationReturn()
     {
-        if (missionCompleted || transitionStarted)
+        BeginVoluntaryReturnSettlement();
+    }
+
+    public bool BeginVoluntaryReturnSettlement()
+    {
+        if (missionRules == null || settlementStarted ||
+            missionCompleted || transitionStarted)
+        {
+            return false;
+        }
+        BeginSettlement(CombatSettlementOutcome.VoluntaryReturn);
+        return settlementStarted;
+    }
+
+    void BeginSettlement(CombatSettlementOutcome outcome)
+    {
+        if (settlementStarted || missionRules == null)
             return;
 
+        settlementStarted = true;
         transitionStarted = true;
+        if (bossIntroduction != null && bossIntroduction.IsPlaying)
+            bossIntroduction.Cancel(false);
         sessionRunning = false;
-        ObjectiveStatus = "任务已放弃，正在返回空间站";
-        UpdateHudText();
         director?.EndSession();
         boss?.SetCombatActive(false);
         flightController?.SetGameplayReady(false);
@@ -768,6 +821,73 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             playerBody.velocity = Vector3.zero;
             playerBody.angularVelocity = Vector3.zero;
         }
+
+        int creditedKills = edpcg != null
+            ? edpcg.CreditedKills
+            : director == null ? 0 : director.Kills;
+        int completedObjectives = 0;
+        if (missionRules.Kind == FinitePlanetMissionObjectiveKind.Survey)
+        {
+            for (int index = 0; index < scanComplete.Length; index++)
+            {
+                if (scanComplete[index])
+                    completedObjectives++;
+            }
+        }
+        else if (missionRules.Kind ==
+                 FinitePlanetMissionObjectiveKind.Assault)
+        {
+            completedObjectives = destroyedCoreCount;
+        }
+        float bossDamageRatio = boss == null
+            ? 0f
+            : 1f - boss.IntegrityRatio;
+        CombatSettlementData settlement =
+            CombatSettlementCalculator.Calculate(
+                outcome,
+                PlanetOrbitChapterSelectionContext.PlanetId,
+                missionId,
+                missionName,
+                missionRules,
+                creditedKills,
+                completedObjectives,
+                bossDamageRatio);
+
+        GalaxyCurrencyService.AddGalaxyCoins(
+            settlement.galaxyCoinReward);
+        if (settlement.IsVictory)
+        {
+            PlanetMissionProgressService.RecordCompletion(
+                settlement.planetId,
+                settlement.missionId,
+                settlement.totalScore,
+                settlement.galaxyCoinReward);
+        }
+
+        ObjectiveStatus = settlement.IsVictory
+            ? "任务完成，正在汇总战果"
+            : outcome == CombatSettlementOutcome.Defeat
+                ? "飞船损毁，正在汇总战果"
+                : "战术返航，正在汇总战果";
+        UpdateHudText();
+        Debug.Log(
+            $"[CombatSettlement] outcome={outcome}, " +
+            $"mission='{missionId}', kills={creditedKills}, " +
+            $"score={settlement.totalScore}, " +
+            $"reward={settlement.galaxyCoinReward} Galaxy Coins.",
+            this);
+        CombatSettlementController.Show(
+            settlement,
+            ReturnToStationAfterSettlement);
+    }
+
+    void ReturnToStationAfterSettlement()
+    {
+        PlanetOrbitChapterSelectionContext.Clear();
+        SpaceStationFlowContext.PrepareOrbitalReturnToStation();
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+        SceneManager.LoadScene(StationSceneName, LoadSceneMode.Single);
     }
 
     IEnumerator ReturnToOrbitAfterVictory()
@@ -941,22 +1061,9 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
 
     void HandlePlayerDestroyed()
     {
-        if (!sessionRunning || transitionStarted)
+        if (!sessionRunning || transitionStarted || settlementStarted)
             return;
-        transitionStarted = true;
-        sessionRunning = false;
-        ObjectiveStatus = "飞船被摧毁，正在返回空间站";
-        UpdateHudText();
-        director?.EndSession();
-        boss?.SetCombatActive(false);
-        flightController?.SetGameplayReady(false);
-        if (playerBody != null && !playerBody.isKinematic)
-        {
-            playerBody.velocity = Vector3.zero;
-            playerBody.angularVelocity = Vector3.zero;
-        }
-        if (returnRoutine == null)
-            returnRoutine = StartCoroutine(ReturnToStationAfterDestruction());
+        BeginSettlement(CombatSettlementOutcome.Defeat);
     }
 
     IEnumerator ReturnToStationAfterDestruction()
@@ -981,6 +1088,8 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
 
     void OnDestroy()
     {
+        if (bossIntroduction != null && bossIntroduction.IsPlaying)
+            bossIntroduction.Cancel(false);
         if (playerGraph != null)
             playerGraph.Destroyed -= HandlePlayerDestroyed;
         if (boss != null)

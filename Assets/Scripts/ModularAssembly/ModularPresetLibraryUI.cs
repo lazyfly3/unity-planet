@@ -11,6 +11,10 @@ namespace UnityPlanet.ModularAssembly
 {
     public sealed class ModularPresetLibraryUi : MonoBehaviour
     {
+        const int ActualPreviewLayer = 30;
+        const string CorePreviewSourceId =
+            "block:core:core_heavy_222";
+
         static Font sharedFont;
 
         AirBuildExperienceController airBuild;
@@ -31,8 +35,17 @@ namespace UnityPlanet.ModularAssembly
         bool airBuildWasEnabled;
         bool controllerWasEnabled;
         bool inputPaused;
+        Coroutine actualPreviewWorker;
+        GameObject actualPreviewStage;
+        string actualPreviewEntryId;
         readonly List<Texture2D> generatedPreviews =
             new List<Texture2D>();
+        readonly Dictionary<string, Texture2D> actualPreviewCache =
+            new Dictionary<string, Texture2D>(StringComparer.Ordinal);
+        readonly Dictionary<string, RawImage> entryPreviewImages =
+            new Dictionary<string, RawImage>(StringComparer.Ordinal);
+        readonly HashSet<string> failedActualPreviewIds =
+            new HashSet<string>(StringComparer.Ordinal);
         IReadOnlyList<ModularPresetEntry> entries =
             Array.Empty<ModularPresetEntry>();
 
@@ -397,7 +410,11 @@ namespace UnityPlanet.ModularAssembly
 
         void RefreshEntries()
         {
+            StopActualPreview();
             DestroyGeneratedPreviews();
+            actualPreviewCache.Clear();
+            entryPreviewImages.Clear();
+            failedActualPreviewIds.Clear();
             entries = controller.ListNamedPresets();
             foreach (Transform child in listContent)
                 Destroy(child.gameObject);
@@ -433,12 +450,13 @@ namespace UnityPlanet.ModularAssembly
                     new Vector2(0f, 0.5f),
                     new Vector2(8f, 0f),
                     new Vector2(122f, 68f));
-                Texture2D preview =
-                    ModularPresetPreviewRenderer.Create(
-                        controller.Model,
-                        entry.blueprint);
-                generatedPreviews.Add(preview);
-                image.texture = preview;
+                // Never expose the procedural blueprint dots as a vehicle
+                // thumbnail. The row becomes visible only after this exact
+                // preset has been assembled from its real module visuals and
+                // rendered by the preview camera.
+                image.texture = null;
+                image.enabled = false;
+                entryPreviewImages[entry.id] = image;
 
                 string badge = entry.builtIn ? "内置" : "玩家";
                 string ready = entry.isReady
@@ -483,17 +501,17 @@ namespace UnityPlanet.ModularAssembly
             {
                 detailText.text = "没有可用预制。";
                 detailPreview.texture = null;
+                detailPreview.enabled = false;
                 loadButton.interactable = false;
                 deleteButton.interactable = false;
                 return;
             }
 
-            Texture2D preview =
-                ModularPresetPreviewRenderer.Create(
-                    controller.Model,
-                    entry.blueprint);
-            generatedPreviews.Add(preview);
-            detailPreview.texture = preview;
+            bool hasActualPreview = actualPreviewCache.TryGetValue(
+                entry.id,
+                out Texture2D actualPreview);
+            detailPreview.texture = hasActualPreview ? actualPreview : null;
+            detailPreview.enabled = hasActualPreview;
             string assist = entry.coreAssistMode ==
                             VehicleCoreAssistMode.Disabled
                 ? "无辅助"
@@ -509,8 +527,12 @@ namespace UnityPlanet.ModularAssembly
                 $"核心辅助：{assist}    物理：{entry.physicsRevision}\n" +
                 $"状态：{qualification}";
             statusText.text = entry.isReady
-                ? "载入后返回改装界面，不会自动试飞。"
+                ? hasActualPreview
+                    ? string.Empty
+                    : "正在生成飞船真实预览……"
                 : entry.readinessMessage;
+            if (entry.isReady && !hasActualPreview)
+                StartActualPreview(entry);
             loadButton.interactable = entry.isReady;
             deleteButton.interactable = !entry.builtIn;
         }
@@ -523,6 +545,7 @@ namespace UnityPlanet.ModularAssembly
                     selectedId,
                     out string message))
             {
+                airBuild?.RefreshSavedDesignState();
                 CloseOverlay();
                 return;
             }
@@ -581,6 +604,369 @@ namespace UnityPlanet.ModularAssembly
             statusText.text = message;
         }
 
+        IEnumerator RenderActualPreview(ModularPresetEntry entry)
+        {
+            string requestedId = entry?.id;
+            ModularContentService contentService =
+                FindObjectOfType<ModularContentService>();
+            if (contentService == null || !contentService.IsReady ||
+                contentService.Catalog == null ||
+                entry?.blueprint?.modules == null)
+            {
+                if (statusText != null &&
+                    string.Equals(selectedId, requestedId,
+                        StringComparison.Ordinal))
+                    statusText.text = "飞船真实预览暂时不可用。";
+                if (!string.IsNullOrEmpty(requestedId))
+                    failedActualPreviewIds.Add(requestedId);
+                // Always cross one coroutine boundary so StartActualPreview
+                // can retain a valid worker handle even on this fast-fail
+                // path.
+                yield return null;
+                actualPreviewWorker = null;
+                actualPreviewEntryId = null;
+                StartNextPendingActualPreview();
+                yield break;
+            }
+
+            actualPreviewStage = new GameObject(
+                "PresetActualPreviewStage");
+            actualPreviewStage.transform.position =
+                new Vector3(10000f, 10000f, 10000f);
+            SetLayerRecursively(
+                actualPreviewStage,
+                ActualPreviewLayer);
+
+            IReadOnlyDictionary<string, GridModuleDefinition> definitions =
+                controller.Model.Definitions;
+            Dictionary<string, ModularContentRecord> recordsByModuleId =
+                contentService.Catalog.Items
+                    .Where(record =>
+                        record != null && record.IsModule &&
+                        !string.IsNullOrWhiteSpace(record.sourceId))
+                    .GroupBy(
+                        record => ToPreviewModuleId(record),
+                        StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => group.First(),
+                        StringComparer.OrdinalIgnoreCase);
+            ModularContentRecord coreRecord =
+                contentService.Catalog.Items.FirstOrDefault(record =>
+                    record != null &&
+                    string.Equals(
+                        record.sourceId,
+                        CorePreviewSourceId,
+                        StringComparison.OrdinalIgnoreCase));
+
+            foreach (ModularBlueprintModule module in
+                     entry.blueprint.modules)
+            {
+                if (module == null ||
+                    !definitions.TryGetValue(
+                        module.moduleId,
+                        out GridModuleDefinition definition))
+                {
+                    continue;
+                }
+
+                GameObject moduleRoot = new GameObject(
+                    "PreviewModule_" + module.moduleId);
+                moduleRoot.transform.SetParent(
+                    actualPreviewStage.transform,
+                    false);
+                moduleRoot.transform.localPosition =
+                    (Vector3)module.pose.Origin +
+                    (Vector3)GridOrientation.RotatedSize(
+                        definition.Footprint,
+                        module.pose.orientation) * 0.5f;
+                moduleRoot.transform.localRotation =
+                    GridOrientation.Rotation(module.pose.orientation);
+                SetLayerRecursively(moduleRoot, ActualPreviewLayer);
+
+                ModularContentRecord contentRecord =
+                    string.Equals(
+                        module.moduleId,
+                        GridAssemblyModel.CoreModuleId,
+                        StringComparison.OrdinalIgnoreCase)
+                        ? coreRecord
+                        : recordsByModuleId.TryGetValue(
+                            module.moduleId,
+                            out ModularContentRecord found)
+                            ? found
+                            : null;
+                GameObject visual = null;
+                if (contentRecord != null)
+                {
+                    if (!contentService.TryInstantiatePrepared(
+                            contentRecord,
+                            moduleRoot.transform,
+                            out visual))
+                    {
+                        yield return contentService.InstantiateAsync(
+                            contentRecord,
+                            moduleRoot.transform,
+                            value => visual = value);
+                    }
+                }
+                else if (definition.Prefab != null)
+                {
+                    visual = Instantiate(
+                        definition.Prefab,
+                        moduleRoot.transform,
+                        false);
+                }
+
+                if (visual != null)
+                {
+                    PreparePreviewVisual(visual);
+                    SetLayerRecursively(visual, ActualPreviewLayer);
+                }
+
+            }
+
+            Texture2D actualPreview =
+                RenderActualPreviewTexture(actualPreviewStage);
+            if (actualPreview != null && overlay != null)
+            {
+                generatedPreviews.Add(actualPreview);
+                actualPreviewCache[requestedId] = actualPreview;
+                if (entryPreviewImages.TryGetValue(
+                        requestedId,
+                        out RawImage rowPreview) &&
+                    rowPreview != null)
+                {
+                    rowPreview.texture = actualPreview;
+                    rowPreview.enabled = true;
+                }
+                if (detailPreview != null &&
+                    string.Equals(
+                        selectedId,
+                        requestedId,
+                        StringComparison.Ordinal))
+                {
+                    detailPreview.texture = actualPreview;
+                    detailPreview.enabled = true;
+                    statusText.text = string.Empty;
+                }
+            }
+            else if (actualPreview != null)
+            {
+                Destroy(actualPreview);
+            }
+            else
+            {
+                failedActualPreviewIds.Add(requestedId);
+                if (statusText != null &&
+                    string.Equals(
+                        selectedId,
+                        requestedId,
+                        StringComparison.Ordinal))
+                    statusText.text = "飞船真实预览暂时不可用。";
+            }
+
+            // The real texture has already replaced the hidden UI image.
+            // Yield only after that replacement: there is no blueprint frame,
+            // while the coroutine owner still gets a stable worker handle.
+            yield return null;
+            CleanupActualPreviewStage();
+            actualPreviewWorker = null;
+            actualPreviewEntryId = null;
+            StartNextPendingActualPreview();
+        }
+
+        void StartActualPreview(ModularPresetEntry entry)
+        {
+            if (entry == null || !entry.isReady ||
+                actualPreviewCache.ContainsKey(entry.id) ||
+                failedActualPreviewIds.Contains(entry.id))
+                return;
+            if (actualPreviewWorker != null &&
+                string.Equals(
+                    actualPreviewEntryId,
+                    entry.id,
+                    StringComparison.Ordinal))
+                return;
+
+            StopActualPreview();
+            actualPreviewEntryId = entry.id;
+            actualPreviewWorker = StartCoroutine(RenderActualPreview(entry));
+        }
+
+        void StartNextPendingActualPreview()
+        {
+            if (overlay == null || actualPreviewWorker != null)
+                return;
+
+            ModularPresetEntry next = entries.FirstOrDefault(entry =>
+                entry != null &&
+                entry.isReady &&
+                !actualPreviewCache.ContainsKey(entry.id) &&
+                !failedActualPreviewIds.Contains(entry.id));
+            if (next != null)
+                StartActualPreview(next);
+        }
+
+        static string ToPreviewModuleId(ModularContentRecord record)
+        {
+            return "neox@" +
+                   record.sourceId.Replace("@", "_");
+        }
+
+        static void PreparePreviewVisual(GameObject visual)
+        {
+            foreach (Behaviour behaviour in
+                     visual.GetComponentsInChildren<Behaviour>(true))
+                behaviour.enabled = false;
+            foreach (Collider collider in
+                     visual.GetComponentsInChildren<Collider>(true))
+                collider.enabled = false;
+            foreach (Rigidbody body in
+                     visual.GetComponentsInChildren<Rigidbody>(true))
+            {
+                body.isKinematic = true;
+                body.detectCollisions = false;
+            }
+            foreach (Renderer renderer in
+                     visual.GetComponentsInChildren<Renderer>(true))
+                renderer.forceRenderingOff = false;
+        }
+
+        static Texture2D RenderActualPreviewTexture(GameObject stage)
+        {
+            Renderer[] renderers = stage == null
+                ? Array.Empty<Renderer>()
+                : stage.GetComponentsInChildren<Renderer>(true)
+                    .Where(renderer => renderer != null && renderer.enabled)
+                    .ToArray();
+            if (renderers.Length == 0)
+                return null;
+
+            Bounds bounds = renderers[0].bounds;
+            for (int index = 1; index < renderers.Length; index++)
+                bounds.Encapsulate(renderers[index].bounds);
+
+            GameObject cameraObject = new GameObject(
+                "PresetActualPreviewCamera");
+            cameraObject.transform.SetParent(stage.transform, true);
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.enabled = false;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor =
+                new Color(0.025f, 0.07f, 0.09f, 1f);
+            camera.cullingMask = 1 << ActualPreviewLayer;
+            camera.fieldOfView = 28f;
+            camera.allowHDR = false;
+            camera.allowMSAA = true;
+
+            Quaternion viewRotation = Quaternion.Euler(20f, -38f, 0f);
+            camera.transform.rotation = viewRotation;
+            const float aspect = 16f / 9f;
+            float tangent = Mathf.Tan(camera.fieldOfView *
+                                      0.5f * Mathf.Deg2Rad);
+            float verticalDistance =
+                bounds.extents.y / Mathf.Max(0.01f, tangent);
+            float horizontalDistance =
+                bounds.extents.x /
+                Mathf.Max(0.01f, tangent * aspect);
+            float depthDistance = bounds.extents.z * 1.8f;
+            float distance = Mathf.Max(
+                3f,
+                Mathf.Max(verticalDistance, horizontalDistance) +
+                depthDistance) * 1.25f;
+            camera.transform.position =
+                bounds.center - camera.transform.forward * distance;
+            camera.nearClipPlane = Mathf.Max(
+                0.01f,
+                distance - bounds.extents.magnitude * 2.2f);
+            camera.farClipPlane =
+                distance + bounds.extents.magnitude * 3f + 10f;
+
+            CreatePreviewLight(
+                stage.transform,
+                "PresetPreviewKey",
+                Quaternion.Euler(36f, -42f, 0f),
+                new Color(0.82f, 0.92f, 1f),
+                1.55f);
+            CreatePreviewLight(
+                stage.transform,
+                "PresetPreviewFill",
+                Quaternion.Euler(325f, 132f, 0f),
+                new Color(0.35f, 0.65f, 1f),
+                0.75f);
+
+            RenderTexture target = RenderTexture.GetTemporary(
+                512,
+                288,
+                24,
+                RenderTextureFormat.ARGB32);
+            RenderTexture previous = RenderTexture.active;
+            camera.targetTexture = target;
+            camera.Render();
+            RenderTexture.active = target;
+            var texture = new Texture2D(
+                512,
+                288,
+                TextureFormat.RGBA32,
+                false,
+                false)
+            {
+                name = "ModularPresetActualPreview",
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            texture.ReadPixels(new Rect(0f, 0f, 512f, 288f), 0, 0);
+            texture.Apply(false, false);
+            camera.targetTexture = null;
+            RenderTexture.active = previous;
+            RenderTexture.ReleaseTemporary(target);
+            return texture;
+        }
+
+        static void CreatePreviewLight(
+            Transform parent,
+            string name,
+            Quaternion rotation,
+            Color color,
+            float intensity)
+        {
+            GameObject lightObject = new GameObject(name);
+            lightObject.transform.SetParent(parent, false);
+            lightObject.transform.rotation = rotation;
+            Light light = lightObject.AddComponent<Light>();
+            light.type = LightType.Directional;
+            light.color = color;
+            light.intensity = intensity;
+            light.cullingMask = 1 << ActualPreviewLayer;
+            light.shadows = LightShadows.None;
+        }
+
+        static void SetLayerRecursively(GameObject root, int layer)
+        {
+            if (root == null)
+                return;
+            foreach (Transform child in
+                     root.GetComponentsInChildren<Transform>(true))
+                child.gameObject.layer = layer;
+        }
+
+        void StopActualPreview()
+        {
+            if (actualPreviewWorker != null)
+                StopCoroutine(actualPreviewWorker);
+            actualPreviewWorker = null;
+            actualPreviewEntryId = null;
+            CleanupActualPreviewStage();
+        }
+
+        void CleanupActualPreviewStage()
+        {
+            if (actualPreviewStage != null)
+                Destroy(actualPreviewStage);
+            actualPreviewStage = null;
+        }
+
         void PauseBuildInput()
         {
             if (inputPaused)
@@ -611,6 +997,7 @@ namespace UnityPlanet.ModularAssembly
 
         void CloseOverlay()
         {
+            StopActualPreview();
             if (overlay != null)
                 Destroy(overlay);
             overlay = null;
@@ -625,6 +1012,9 @@ namespace UnityPlanet.ModularAssembly
             overwriteArmedName = null;
             deleteArmedId = null;
             DestroyGeneratedPreviews();
+            actualPreviewCache.Clear();
+            entryPreviewImages.Clear();
+            failedActualPreviewIds.Clear();
             ResumeBuildInput();
         }
 
@@ -638,6 +1028,7 @@ namespace UnityPlanet.ModularAssembly
 
         void OnDestroy()
         {
+            StopActualPreview();
             ResumeBuildInput();
             DestroyGeneratedPreviews();
         }

@@ -28,6 +28,11 @@ namespace UnityPlanet.EditorTools
         [InitializeOnLoadMethod]
         private static void ScheduleMissingRuntimeBake()
         {
+            if (!ShouldAutoBakeRuntimeScene())
+            {
+                return;
+            }
+
             if (!RuntimeSceneNeedsBake())
             {
                 return;
@@ -99,6 +104,11 @@ namespace UnityPlanet.EditorTools
 
         private static void TryBakeMissingRuntimeScene()
         {
+            if (!ShouldAutoBakeRuntimeScene())
+            {
+                return;
+            }
+
             if (!RuntimeSceneNeedsBake())
             {
                 return;
@@ -208,6 +218,32 @@ namespace UnityPlanet.EditorTools
                        .IndexOf(
                            "bakeVersion: 4",
                            StringComparison.Ordinal) < 0;
+        }
+
+        private static bool ShouldAutoBakeRuntimeScene()
+        {
+            // CombatMapRuntime is a legacy/generated scene. Do not let its
+            // editor bootstrap silently expand an unrelated player build or
+            // regenerate archived content during command-line validation.
+            // The explicit Tools/Combat Map bake command remains available.
+            if (Application.isBatchMode || BuildPipeline.isBuildingPlayer)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < EditorBuildSettings.scenes.Length; index++)
+            {
+                EditorBuildSettingsScene scene = EditorBuildSettings.scenes[index];
+                if (scene.enabled && string.Equals(
+                        scene.path,
+                        RuntimeScenePath,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void CleanupFailedRuntimeBakeScenes()

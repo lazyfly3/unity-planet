@@ -23,6 +23,7 @@ namespace UnityPlanet.CombatMap
         CombatMapRuntimeController map;
         readonly Dictionary<Collider, bool> buildColliderStates =
             new Dictionary<Collider, bool>();
+        Collider[] spawnOverlapBuffer = new Collider[32];
 
         Quaternion preparedRotation = Quaternion.identity;
         Vector3 preparedPosition;
@@ -208,16 +209,23 @@ bool TryFindSafeSpawn(
                     candidate.y = ground + downwardSupport + clearance;
                     Vector3 boxCenter = candidate + rotation * local.center;
                     Vector3 halfExtents = local.extents + Vector3.one * 0.25f;
-                    Collider[] hits = Physics.OverlapBox(
+                    int hitCount = QuerySpawnOverlaps(
                         boxCenter,
                         halfExtents,
                         rotation,
-                        mask,
-                        QueryTriggerInteraction.Ignore);
-                    bool blocked = hits.Any(value =>
-                        value != null &&
-                        (flightBody == null ||
-                         !value.transform.IsChildOf(flightBody.transform)));
+                        mask);
+                    bool blocked = false;
+                    for (int hitIndex = 0; hitIndex < hitCount; hitIndex++)
+                    {
+                        Collider value = spawnOverlapBuffer[hitIndex];
+                        if (value == null || flightBody != null &&
+                            value.transform.IsChildOf(flightBody.transform))
+                        {
+                            continue;
+                        }
+                        blocked = true;
+                        break;
+                    }
                     if (blocked)
                         continue;
 
@@ -239,6 +247,29 @@ bool TryFindSafeSpawn(
                 }
             }
             return false;
+        }
+
+        int QuerySpawnOverlaps(
+            Vector3 center,
+            Vector3 halfExtents,
+            Quaternion rotation,
+            int layerMask)
+        {
+            int count;
+            while ((count = Physics.OverlapBoxNonAlloc(
+                       center,
+                       halfExtents,
+                       spawnOverlapBuffer,
+                       rotation,
+                       layerMask,
+                       QueryTriggerInteraction.Ignore)) >=
+                   spawnOverlapBuffer.Length)
+            {
+                Array.Resize(
+                    ref spawnOverlapBuffer,
+                    spawnOverlapBuffer.Length * 2);
+            }
+            return count;
         }
 
         static CombatMapFlightEnvelope CaptureGeometryEnvelope(

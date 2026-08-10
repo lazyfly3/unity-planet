@@ -78,7 +78,7 @@ namespace UnityPlanet.Development
             open = value;
             input = string.Empty;
             feedback = value
-                ? "唯一作弊码：kg（解锁全部技能、9,999 银河币、技能无冷却）"
+                ? "唯一作弊码：kg（解锁全部技能和关卡、9,999 银河币、技能无冷却）"
                 : string.Empty;
             feedbackColor = new Color(0.45f, 0.9f, 1f);
             if (open)
@@ -183,7 +183,11 @@ namespace UnityPlanet.Development
                         currency.galaxyCoins = GalaxyCoinCheatBalance;
                         GalaxyCurrencyService.Save(currency);
                         PlayerSkillCombatEffects.SetNoCooldownForTesting(true);
-                        feedback = "KG 已启用：全部技能已解锁" +
+                        PlanetMissionProgressService.UnlockAllForTesting();
+                        PlanetOrbitChapterHubController activeHub =
+                            FindObjectOfType<PlanetOrbitChapterHubController>();
+                        activeHub?.RefreshMissionProgress();
+                        feedback = "KG 已启用：全部技能和关卡已解锁" +
                                    (unlocked > 0
                                        ? "（新增 " + unlocked + " 个）"
                                        : string.Empty) +

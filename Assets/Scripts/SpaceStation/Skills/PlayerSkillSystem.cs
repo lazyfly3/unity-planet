@@ -695,7 +695,8 @@ namespace UnityPlanet.SpaceStation.Skills
                 return;
             }
 
-            if (!ArcadeFlightRuntimeTuningOverlay.IsInputCaptured)
+            if (!ArcadeFlightRuntimeTuningOverlay.IsInputCaptured &&
+                !ModularSpacecraftPauseMenu.IsOpen)
             {
                 if (Input.GetKeyDown(KeyCode.Alpha1))
                     TryActivate(0);
@@ -1668,6 +1669,9 @@ namespace UnityPlanet.SpaceStation.Skills
 
     sealed class SkillRuntimeInstallerHost : MonoBehaviour
     {
+        const string StationSceneName = "SpaceStationUpgradeTest";
+        const float ScanInterval = 0.5f;
+
         static SkillRuntimeInstallerHost instance;
         float nextScan;
 
@@ -1694,7 +1698,13 @@ namespace UnityPlanet.SpaceStation.Skills
         {
             if (Time.unscaledTime < nextScan)
                 return;
-            nextScan = Time.unscaledTime + 0.5f;
+            nextScan = Time.unscaledTime + ScanInterval;
+            // The parked station ship is converted to a renderer-only static
+            // display. It cannot contain a live player vehicle graph, so the
+            // global combat installer has nothing to install in this scene.
+            if (UnityEngine.SceneManagement.SceneManager
+                    .GetActiveScene().name == StationSceneName)
+                return;
             foreach (VehicleStructureGraph graph in
                      FindObjectsOfType<VehicleStructureGraph>())
             {

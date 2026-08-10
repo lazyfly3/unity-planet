@@ -6,12 +6,14 @@ namespace UnityPlanet.EDPCG
     [Serializable]
     public sealed class EdpcgTierSettings
     {
-        static readonly int[] DefaultRosters = { 16, 24, 32, 40, 52, 64 };
+        static readonly int[] BaseRosters = { 16, 24, 32, 40, 52, 64 };
+        static readonly int[] DefaultEnvironmentalPursuers = { 2, 2, 3, 3, 4, 4 };
         [Range(1, 6)] public int planetTier = 1;
         [Min(1)] public int rosterCount = 16;
         [Min(0)] public int interceptorCount = 11;
         [Min(0)] public int strikerCount = 4;
         [Min(0)] public int gunshipCount = 1;
+        [Min(0)] public int environmentalPursuerCount;
         [Min(0)] public int requiredCreditedKills = 6;
 
         [Header("并发预算")]
@@ -90,6 +92,10 @@ namespace UnityPlanet.EDPCG
             strikerCount = Mathf.Max(0, strikerCount);
             gunshipCount = Mathf.Max(0, gunshipCount);
             NormalizeComposition();
+            environmentalPursuerCount = Mathf.Clamp(
+                environmentalPursuerCount,
+                0,
+                interceptorCount);
             requiredCreditedKills = Mathf.Clamp(
                 requiredCreditedKills,
                 0,
@@ -267,10 +273,14 @@ namespace UnityPlanet.EDPCG
             var settings = new EdpcgTierSettings
             {
                 planetTier = tier + 1,
-                rosterCount = DefaultRosters[tier],
-                interceptorCount = interceptors[tier],
+                rosterCount = BaseRosters[tier] +
+                              DefaultEnvironmentalPursuers[tier],
+                interceptorCount = interceptors[tier] +
+                                   DefaultEnvironmentalPursuers[tier],
                 strikerCount = strikers[tier],
                 gunshipCount = gunships[tier],
+                environmentalPursuerCount =
+                    DefaultEnvironmentalPursuers[tier],
                 requiredCreditedKills = credited[tier],
                 populationCap = population[tier],
                 engagementCap = engagement[tier],
@@ -298,10 +308,11 @@ namespace UnityPlanet.EDPCG
 
         public static int DefaultRosterCountForTier(int zeroBasedTier)
         {
-            return DefaultRosters[Mathf.Clamp(
+            int tier = Mathf.Clamp(
                 zeroBasedTier,
                 0,
-                DefaultRosters.Length - 1)];
+                BaseRosters.Length - 1);
+            return BaseRosters[tier] + DefaultEnvironmentalPursuers[tier];
         }
     }
 
@@ -310,34 +321,49 @@ namespace UnityPlanet.EDPCG
         menuName = "Planet Combat/EDPCG Difficulty Profile")]
     public sealed class EdpcgDifficultyProfile : ScriptableObject
     {
-        public const int CurrentSchemaVersion = 1;
+        public const int CurrentSchemaVersion = 2;
         public const string ResourcePath = "EDPCG/EdpcgDifficultyProfile";
 
         public int schemaVersion = CurrentSchemaVersion;
         public string profileId = "edpcg-default";
-        public string profileVersion = "1.0.0";
-        public string formulaVersion = "edpcg-pressure-v1";
+        public string profileVersion = "1.1.0";
+        public string formulaVersion = "edpcg-pressure-v2-environmental-pursuit";
         public EdpcgTierSettings[] tiers = Array.Empty<EdpcgTierSettings>();
 
         public void EnsureInitialized()
         {
-            schemaVersion = CurrentSchemaVersion;
+            bool migrateEnvironmentalPursuers = schemaVersion < 2;
             if (tiers == null || tiers.Length != 6)
                 Array.Resize(ref tiers, 6);
             for (int index = 0; index < tiers.Length; index++)
             {
                 if (tiers[index] == null)
+                {
                     tiers[index] = EdpcgTierSettings.CreateDefault(index);
+                }
+                else if (migrateEnvironmentalPursuers &&
+                         tiers[index].environmentalPursuerCount <= 0)
+                {
+                    int addition = index < 2 ? 2 : index < 4 ? 3 : 4;
+                    tiers[index].rosterCount += addition;
+                    tiers[index].interceptorCount += addition;
+                    tiers[index].environmentalPursuerCount = addition;
+                }
                 tiers[index].planetTier = index + 1;
                 tiers[index].ValidateInPlace();
             }
-            // The highest planet is a product requirement, not a soft default.
-            tiers[5].rosterCount = 64;
-            tiers[5].NormalizeForFixedRoster(40, 20, 4);
+            // The highest planet keeps its authored 40/20/4 composition and
+            // adds four explicit environmental interceptors.
+            tiers[5].rosterCount = 68;
+            tiers[5].NormalizeForFixedRoster(44, 20, 4);
+            tiers[5].environmentalPursuerCount = 4;
             tiers[5].populationCap = Mathf.Min(28, tiers[5].populationCap);
             tiers[5].fullSimulationCap = Mathf.Min(16, tiers[5].fullSimulationCap);
             tiers[5].attackTokenCap = Mathf.Min(4, tiers[5].attackTokenCap);
             tiers[5].ValidateInPlace();
+            schemaVersion = CurrentSchemaVersion;
+            profileVersion = "1.1.0";
+            formulaVersion = "edpcg-pressure-v2-environmental-pursuit";
         }
 
         public EdpcgTierSettings Resolve(int zeroBasedTier)

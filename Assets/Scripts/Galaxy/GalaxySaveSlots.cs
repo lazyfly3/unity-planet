@@ -74,6 +74,7 @@ public sealed class GalaxySaveSlotMetadata
     public VisitedPlanetRecord[] visitedPlanets = Array.Empty<VisitedPlanetRecord>();
     public PlanetSurfaceTopology surfaceTopology = PlanetSurfaceTopology.LegacySphere;
     public bool bossBridgeHintSeen;
+    public bool gameLoopBriefingSeen;
 }
 
 public sealed class GalaxySaveSlotInfo

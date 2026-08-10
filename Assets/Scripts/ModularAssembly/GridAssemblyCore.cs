@@ -266,7 +266,10 @@ namespace ModularAssembly
 
     public sealed class GridAssemblyModel
     {
-        public const int ModuleLimit = 1024;
+        public const int AbsoluteModuleLimit = 1024;
+        public static int ModuleLimit =>
+            UnityPlanet.SpacecraftArchitecture.
+                ShipArchitectureProgressService.ModuleCapacity;
         public const string CoreRuntimeId = "core";
         public const string CoreModuleId = "core";
         static readonly Vector3Int[] Neighbors =
@@ -277,6 +280,8 @@ namespace ModularAssembly
 
         readonly Dictionary<string, GridModuleDefinition> definitions;
         readonly List<GridModuleRecord> records = new List<GridModuleRecord>();
+        readonly int? moduleLimitOverride;
+        readonly int? cpuLimitOverride;
         UnityPlanet.ModularAssembly.VehicleCoreAssistMode coreAssistMode =
             UnityPlanet.ModularAssembly.VehicleCoreAssistMode.Standard;
 
@@ -285,9 +290,50 @@ namespace ModularAssembly
         public IReadOnlyDictionary<string, GridModuleDefinition> Definitions => definitions;
         public UnityPlanet.ModularAssembly.VehicleCoreAssistMode CoreAssistMode =>
             coreAssistMode;
+        public int EffectiveModuleLimit => moduleLimitOverride ?? ModuleLimit;
+        public int EffectiveCpuLimit => cpuLimitOverride ??
+            UnityPlanet.ModularAssembly.ModuleCpuBudget.Maximum;
+        public bool UsesCapacityOverrides =>
+            moduleLimitOverride.HasValue || cpuLimitOverride.HasValue;
 
         public GridAssemblyModel(IEnumerable<GridModuleDefinition> moduleDefinitions)
+            : this(moduleDefinitions, null, null)
         {
+        }
+
+        public GridAssemblyModel(
+            IEnumerable<GridModuleDefinition> moduleDefinitions,
+            int moduleLimit,
+            int cpuLimit)
+            : this(moduleDefinitions, (int?)moduleLimit, (int?)cpuLimit)
+        {
+        }
+
+        GridAssemblyModel(
+            IEnumerable<GridModuleDefinition> moduleDefinitions,
+            int? moduleLimit,
+            int? cpuLimit)
+        {
+            if (moduleLimit.HasValue &&
+                (moduleLimit.Value < 1 ||
+                 moduleLimit.Value > AbsoluteModuleLimit))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(moduleLimit),
+                    $"Module limit must be between 1 and {AbsoluteModuleLimit}.");
+            }
+            if (cpuLimit.HasValue &&
+                (cpuLimit.Value < 1 ||
+                 cpuLimit.Value >
+                 UnityPlanet.ModularAssembly.ModuleCpuBudget.AbsoluteMaximum))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(cpuLimit),
+                    $"CPU limit must be between 1 and " +
+                    $"{UnityPlanet.ModularAssembly.ModuleCpuBudget.AbsoluteMaximum}.");
+            }
+            moduleLimitOverride = moduleLimit;
+            cpuLimitOverride = cpuLimit;
             definitions = moduleDefinitions
                 .Where(item => item != null && !string.IsNullOrWhiteSpace(item.ModuleId))
                 .GroupBy(item => item.ModuleId)
@@ -480,7 +526,7 @@ namespace ModularAssembly
         {
             var result = new GridAssemblyValidation();
             result.HasCore = records.Count(item => item.Definition.Category == GridModuleCategory.Core) == 1;
-            result.ExceedsModuleLimit = records.Count > ModuleLimit;
+            result.ExceedsModuleLimit = records.Count > EffectiveModuleLimit;
             var occupancy = new Dictionary<Vector3Int, string>();
             foreach (GridModuleRecord record in records)
             foreach (Vector3Int cell in GetCells(record))
@@ -501,17 +547,16 @@ namespace ModularAssembly
             result.CpuCost =
                 UnityPlanet.ModularAssembly.ModuleCpuBudget.Total(records);
             result.ExceedsCpu =
-                result.CpuCost >
-                UnityPlanet.ModularAssembly.ModuleCpuBudget.Maximum;
+                result.CpuCost > EffectiveCpuLimit;
             if (!result.HasCore) result.Message = "缺少核心";
             else if (result.HasOverlap) result.Message = "模块占格冲突";
             else if (result.ExceedsModuleLimit)
-                result.Message = $"超过{ModuleLimit}个模块";
+                result.Message = $"超过{EffectiveModuleLimit}个模块";
             else if (result.DisconnectedIds.Count > 0) result.Message = "存在未连接核心的模块";
             else if (result.ExceedsEnergy) result.Message = "能源预算不足";
             else if (result.ExceedsCpu)
                 result.Message =
-                    $"CPU超过{UnityPlanet.ModularAssembly.ModuleCpuBudget.Maximum}";
+                    $"CPU超过{EffectiveCpuLimit}";
             else result.Message = "设计有效";
             return result;
         }
@@ -604,9 +649,9 @@ namespace ModularAssembly
                 error = "蓝图格式不受支持。";
                 return false;
             }
-            if (blueprint.modules.Length > ModuleLimit)
+            if (blueprint.modules.Length > AbsoluteModuleLimit)
             {
-                error = $"蓝图模块数量超过上限 {ModuleLimit}。";
+                error = $"蓝图模块数量超过绝对上限 {AbsoluteModuleLimit}。";
                 return false;
             }
             var restored = new List<GridModuleRecord>();
@@ -687,6 +732,14 @@ namespace ModularAssembly
             {
                 coreAssistMode =
                     UnityPlanet.ModularAssembly.VehicleCoreAssistMode.Standard;
+            }
+            if (!UsesCapacityOverrides)
+            {
+                UnityPlanet.SpacecraftArchitecture.
+                    ShipArchitectureProgressService.EnsureSupportsLegacyBlueprint(
+                        restored.Count,
+                        UnityPlanet.ModularAssembly.ModuleCpuBudget.Total(
+                            restored));
             }
             GridAssemblyValidation validation = Validate();
             if (!validation.IsValid)
@@ -838,19 +891,17 @@ namespace ModularAssembly
         {
             var ignored = new HashSet<string>(ignoredIds ?? Array.Empty<string>());
             List<GridModuleRecord> baseRecords = records.Where(item => !ignored.Contains(item.RuntimeId)).ToList();
-            if (baseRecords.Count + candidates.Count > ModuleLimit)
+            if (baseRecords.Count + candidates.Count > EffectiveModuleLimit)
             {
-                error = $"超过{ModuleLimit}个模块上限。";
+                error = $"超过{EffectiveModuleLimit}个模块上限。";
                 return false;
             }
             int cpuCost =
                 UnityPlanet.ModularAssembly.ModuleCpuBudget.Total(baseRecords)
                 + UnityPlanet.ModularAssembly.ModuleCpuBudget.Total(candidates);
-            if (cpuCost >
-                UnityPlanet.ModularAssembly.ModuleCpuBudget.Maximum)
+            if (cpuCost > EffectiveCpuLimit)
             {
-                error =
-                    $"CPU超过{UnityPlanet.ModularAssembly.ModuleCpuBudget.Maximum}。";
+                error = $"CPU超过{EffectiveCpuLimit}。";
                 return false;
             }
             Dictionary<Vector3Int, string> occupancy = BuildOccupancy(baseRecords);

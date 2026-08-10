@@ -60,7 +60,6 @@ namespace UnityPlanet.CityPcg
         string stableId = string.Empty;
         float maximumIntegrity;
         float integrity;
-        float lastImpactTime = -100f;
         float accumulatedChipDamage;
         float lastCollapseCutHeight;
         Vector3 lastCollapseImpactPoint;
@@ -857,45 +856,6 @@ namespace UnityPlanet.CityPcg
             DestroyRuntimeRoot(ref collisionProxyRoot);
             DestroyBreachVisuals();
             UrbanDestructionWorld.BreakDecorationsNear(collapseBounds);
-        }
-
-        void OnCollisionEnter(Collision collision)
-        {
-            ApplyCollisionDamage(collision);
-        }
-
-        internal void ApplyProxyCollision(Collision collision)
-        {
-            ApplyCollisionDamage(collision);
-        }
-
-        void ApplyCollisionDamage(Collision collision)
-        {
-            if (!configured || collapsed || coordinator == null ||
-                collision == null || collision.contactCount == 0)
-            {
-                return;
-            }
-            if (Time.unscaledTime - lastImpactTime < 0.35f)
-                return;
-            float speed = collision.relativeVelocity.magnitude;
-            float damage = coordinator.EvaluateImpactDamage(
-                speed,
-                collision.impulse.magnitude,
-                maximumIntegrity);
-            if (damage <= 0.01f)
-                return;
-            lastImpactTime = Time.unscaledTime;
-            ContactPoint contact = collision.GetContact(0);
-            ApplyUrbanDamage(new UrbanDamageRequest(
-                contact.point,
-                contact.normal,
-                collision.relativeVelocity,
-                damage,
-                Mathf.Clamp(speed * 0.12f, 2f, 11f),
-                collision.impulse.magnitude,
-                UrbanDamageKind.HighSpeedImpact,
-                collision.gameObject));
         }
 
         public void DebugApplyDemolition(Vector3 point, Vector3 normal)

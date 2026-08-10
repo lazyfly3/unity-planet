@@ -45,6 +45,7 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
     readonly List<Vector3> rejectedCandidates = new List<Vector3>();
     readonly List<StreamedDecoration> streamedDecorations = new List<StreamedDecoration>();
     readonly Dictionary<string, int> rejectionCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+    Collider[] overlapBuffer = new Collider[32];
     GalaxySurfacePropSaveEntry[] savedSnapshot;
     Transform decorationsRoot;
     Transform harvestablesRoot;
@@ -481,20 +482,34 @@ public sealed class PlanetSurfaceDecorationSystem : MonoBehaviour
         }
 
         float overlapRadius = Mathf.Clamp(item.minimumSpacing * 0.2f, 0.15f, 0.8f);
-        Collider[] overlaps = Physics.OverlapSphere(
+        int overlapCount = QueryOverlaps(
             position + radialUp * overlapRadius,
-            overlapRadius,
-            Physics.DefaultRaycastLayers,
-            QueryTriggerInteraction.Ignore);
-        foreach (Collider overlap in overlaps)
+            overlapRadius);
+        for (int index = 0; index < overlapCount; index++)
         {
+            Collider overlap = overlapBuffer[index];
             if (overlap == null || surfaceContext.IsTerrainCollider(overlap)
                 || overlap.GetComponentInParent<PlanetSurfacePropInstance>() != null)
                 continue;
-            AddRejection(nameof(overlaps), position);
+            AddRejection("overlaps", position);
             return false;
         }
         return true;
+    }
+
+    int QueryOverlaps(Vector3 center, float radius)
+    {
+        int count;
+        while ((count = Physics.OverlapSphereNonAlloc(
+                   center,
+                   radius,
+                   overlapBuffer,
+                   Physics.DefaultRaycastLayers,
+                   QueryTriggerInteraction.Ignore)) >= overlapBuffer.Length)
+        {
+            Array.Resize(ref overlapBuffer, overlapBuffer.Length * 2);
+        }
+        return count;
     }
 
     List<Vector3> CreateClusterCenters(PlanetSurfacePropSpawnSettings item, System.Random random)

@@ -362,6 +362,13 @@ namespace UnityPlanet.ModularAssembly
                 ? Instantiate(prefab, parent)
                 : CreatePlaceholder(record, parent);
             instance.name = record.neoXId;
+            // A newly instantiated Renderer does not inherit
+            // forceRenderingOff from its parent. The authored mesh exists
+            // before its asynchronous material requests finish, so without
+            // this immediate refresh it can render for several frames in the
+            // cyan fallback material even while the presenter is blocked.
+            parent?.GetComponentInParent<GridAssemblyPresenter>()
+                ?.RefreshPresentationVisibility();
             NeoXBehaviorModule behavior = instance.GetComponent<NeoXBehaviorModule>();
             if (behavior == null)
             {

@@ -13,6 +13,8 @@ namespace UnityPlanet.ModularAssembly
     public sealed class NeoXCatalogIntegration : MonoBehaviour
     {
         private const string ModulePrefix = "neox@";
+        private const string PresentationBlocker =
+            "NeoXCatalogIntegration";
         private readonly Dictionary<string, ModularContentRecord> recordsByModuleId =
             new Dictionary<string, ModularContentRecord>(StringComparer.OrdinalIgnoreCase);
 
@@ -71,11 +73,24 @@ namespace UnityPlanet.ModularAssembly
             }
         }
 
+        public void StopRuntimeRebuildTracking()
+        {
+            if (presenter == null)
+                return;
+            presenter.Rebuilt -= UpgradeViews;
+            presenter.SetPresentationBlocked(
+                PresentationBlocker,
+                false);
+        }
+
         private void OnDestroy()
         {
             if (presenter != null)
             {
                 presenter.Rebuilt -= UpgradeViews;
+                presenter.SetPresentationBlocked(
+                    PresentationBlocker,
+                    false);
             }
         }
 
@@ -179,6 +194,12 @@ namespace UnityPlanet.ModularAssembly
             {
                 return;
             }
+            // Rebuild creates fallback module geometry synchronously. Block
+            // the whole presentation in that same frame and release it only
+            // after every authored NeoX visual has finished loading.
+            presenter.SetPresentationBlocked(
+                PresentationBlocker,
+                true);
             foreach (KeyValuePair<string, GridModuleView> pair in presenter.Views)
             {
                 GridModuleView view = pair.Value;
@@ -220,6 +241,14 @@ namespace UnityPlanet.ModularAssembly
                         RobocraftMotionCoordinator>()?.Rebuild();
                 }
             }
+            RefreshPresentationBlocker();
+        }
+
+        private void RefreshPresentationBlocker()
+        {
+            presenter?.SetPresentationBlocked(
+                PresentationBlocker,
+                pendingViewUpgrades > 0);
         }
 
         private static ModularWheelRuntime ConfigureWheelElements(
@@ -341,11 +370,13 @@ namespace UnityPlanet.ModularAssembly
                     view.transform,
                     value => loaded = value);
             }
+            presenter?.RefreshPresentationVisibility();
             if (view == null || loaded == null)
             {
                 pendingViewUpgrades = Mathf.Max(
                     0,
                     pendingViewUpgrades - 1);
+                RefreshPresentationBlocker();
                 yield break;
             }
             foreach (Collider collider in loaded.GetComponentsInChildren<Collider>(true))
@@ -383,6 +414,7 @@ namespace UnityPlanet.ModularAssembly
             pendingViewUpgrades = Mathf.Max(
                 0,
                 pendingViewUpgrades - 1);
+            RefreshPresentationBlocker();
         }
 
         private static bool IsWheelDustRenderer(Renderer renderer)
@@ -731,7 +763,8 @@ namespace UnityPlanet.ModularAssembly
         private void Update()
         {
             Repair();
-            if (ArcadeFlightRuntimeTuningOverlay.IsInputCaptured)
+            if (ArcadeFlightRuntimeTuningOverlay.IsInputCaptured ||
+                ModularSpacecraftPauseMenu.IsOpen)
             {
                 return;
             }
@@ -968,20 +1001,45 @@ namespace UnityPlanet.ModularAssembly
             }
             Vector3 targetPosition = owner.position + owner.right * 4f + owner.up * 2f;
             body.AddForce((targetPosition - transform.position) * 12f - body.velocity * 5f, ForceMode.Acceleration);
-            Rigidbody target = FindObjectsOfType<Rigidbody>()
-                .Where(candidate => candidate != body && candidate.transform.root != owner.root)
-                .OrderBy(candidate => (candidate.position - transform.position).sqrMagnitude)
-                .FirstOrDefault();
-            if (target != null && Time.time >= nextShot && (target.position - transform.position).sqrMagnitude < 80f * 80f)
+            if (Time.time < nextShot)
+                return;
+
+            Rigidbody target = null;
+            float nearestDistanceSquared = float.PositiveInfinity;
+            Vector3 origin = transform.position;
+            Transform ownerRoot = owner.root;
+            Rigidbody[] candidates = FindObjectsOfType<Rigidbody>();
+            for (int index = 0; index < candidates.Length; index++)
+            {
+                Rigidbody candidate = candidates[index];
+                if (candidate == null || candidate == body ||
+                    candidate.transform.root == ownerRoot)
+                {
+                    continue;
+                }
+                float distanceSquared =
+                    (candidate.position - origin).sqrMagnitude;
+                if (distanceSquared >= nearestDistanceSquared)
+                    continue;
+                nearestDistanceSquared = distanceSquared;
+                target = candidate;
+            }
+            if (target != null && nearestDistanceSquared < 80f * 80f)
             {
                 nextShot = Time.time + 0.8f;
-                if (Physics.Raycast(transform.position, (target.position - transform.position).normalized, out RaycastHit hit, 80f))
+                Vector3 targetDirection =
+                    (target.position - transform.position).normalized;
+                if (Physics.Raycast(
+                        transform.position,
+                        targetDirection,
+                        out RaycastHit hit,
+                        80f))
                 {
                     ISpaceDamageable damageable = hit.collider.GetComponentInParent<ISpaceDamageable>();
                     damageable?.ApplyDamage(new SpaceDamageInfo(
                         12f,
                         hit.point,
-                        (target.position - transform.position).normalized * 8f,
+                        targetDirection * 8f,
                         SpaceDamageType.Projectile,
                         source));
                 }

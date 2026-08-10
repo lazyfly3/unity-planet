@@ -141,10 +141,13 @@ namespace UnityPlanet.CityPcg
                 colors.Add(vertex.color);
             }
 
-            public Mesh Build(string meshName)
+            public Mesh Build(string meshName, int outputSubMeshCount = -1)
             {
                 if (TriangleCount <= 0)
                     return null;
+                int usedSubMeshCount = outputSubMeshCount > 0
+                    ? Mathf.Min(outputSubMeshCount, triangles.Length)
+                    : triangles.Length;
                 var mesh = new Mesh
                 {
                     name = meshName,
@@ -164,8 +167,8 @@ namespace UnityPlanet.CityPcg
                     mesh.SetUVs(1, uv2);
                 if (hasColors)
                     mesh.SetColors(colors);
-                mesh.subMeshCount = triangles.Length;
-                for (int index = 0; index < triangles.Length; index++)
+                mesh.subMeshCount = usedSubMeshCount;
+                for (int index = 0; index < usedSubMeshCount; index++)
                     mesh.SetTriangles(triangles[index], index, false);
                 if (!hasNormals)
                     mesh.RecalculateNormals();
@@ -299,12 +302,15 @@ namespace UnityPlanet.CityPcg
             {
                 return source;
             }
+            // Never pretend that an intersected, non-readable mesh is a valid
+            // half. Runtime static batching produces exactly this kind of mesh:
+            // returning it here duplicates the whole city batch and assigns one
+            // building material to all of its submeshes. Formal city generation
+            // now excludes destructible hierarchies from batching; unsupported
+            // replacement art therefore fails closed instead of changing its
+            // texture, emission and gloss after a cut.
             if (!source.isReadable)
-                return keepPositive ==
-                       (worldPlane.GetDistanceToPoint(
-                           sourceTransform.TransformPoint(source.bounds.center)) >= 0f)
-                    ? source
-                    : null;
+                return null;
 
             Mesh sliced = SliceReadableMesh(
                 source,
@@ -429,7 +435,8 @@ namespace UnityPlanet.CityPcg
                     keepPositive);
             }
             return builder.Build(
-                source.name + (keepPositive ? "_SlicePositive" : "_SliceNegative"));
+                source.name + (keepPositive ? "_SlicePositive" : "_SliceNegative"),
+                originalSubMeshCount + (hasCap ? 1 : 0));
         }
 
         static SliceVertex ReadVertex(
@@ -661,16 +668,30 @@ namespace UnityPlanet.CityPcg
             int outputCount = Mathf.Max(1, sourceSubMeshCount) +
                               (hasCap ? 1 : 0);
             var output = new Material[outputCount];
+            Material exteriorFallback = ResolveFirstUsableMaterial(source) ??
+                                        capMaterial;
             for (int index = 0;
                  index < Mathf.Max(1, sourceSubMeshCount);
                  index++)
             {
                 if (source != null && source.Length > 0)
                     output[index] = source[Mathf.Min(index, source.Length - 1)];
+                if (output[index] == null)
+                    output[index] = exteriorFallback;
             }
             if (hasCap)
-                output[output.Length - 1] = capMaterial;
+                output[output.Length - 1] = capMaterial ?? exteriorFallback;
             return output;
+        }
+
+        static Material ResolveFirstUsableMaterial(Material[] source)
+        {
+            if (source == null)
+                return null;
+            for (int index = 0; index < source.Length; index++)
+                if (source[index] != null)
+                    return source[index];
+            return null;
         }
 
         static void CreateRendererCopy(
@@ -702,15 +723,52 @@ namespace UnityPlanet.CityPcg
             target.probeAnchor = source.probeAnchor;
             target.motionVectorGenerationMode = source.motionVectorGenerationMode;
             target.allowOcclusionWhenDynamic = source.allowOcclusionWhenDynamic;
-            target.lightmapIndex = source.lightmapIndex;
-            target.lightmapScaleOffset = source.lightmapScaleOffset;
-            target.realtimeLightmapIndex = source.realtimeLightmapIndex;
-            target.realtimeLightmapScaleOffset = source.realtimeLightmapScaleOffset;
+            // A sliced half is runtime geometry and the upper half immediately
+            // starts moving. Reusing the source building's baked-lightmap atlas
+            // entry makes that moving facade sample lighting from its old world
+            // position, washing the authored texture into a flat grey panel.
+            // Keep the source probe settings, but detach every slice from static
+            // baked/realtime lightmaps so both halves use dynamic probe lighting.
+            target.lightmapIndex = -1;
+            target.lightmapScaleOffset = new Vector4(1f, 1f, 0f, 0f);
+            target.realtimeLightmapIndex = -1;
+            target.realtimeLightmapScaleOffset = new Vector4(1f, 1f, 0f, 0f);
             target.sortingLayerID = source.sortingLayerID;
             target.sortingOrder = source.sortingOrder;
             target.sharedMaterials = materials;
+            CopyRendererPropertyBlocks(source, target, materials.Length);
             target.enabled = true;
             visual.AddComponent<UrbanSliceVisual>();
+        }
+
+        static void CopyRendererPropertyBlocks(
+            Renderer source,
+            Renderer target,
+            int materialCount)
+        {
+            if (source == null || target == null || !source.HasPropertyBlock())
+                return;
+
+            // Dark City art may carry per-instance tint/emission/texture data in
+            // a MaterialPropertyBlock.  Reusing sharedMaterials alone therefore
+            // produces a correctly referenced material that still looks blank
+            // after the source renderer is replaced by a sliced renderer.
+            var properties = new MaterialPropertyBlock();
+            source.GetPropertyBlock(properties);
+            if (!properties.isEmpty)
+                target.SetPropertyBlock(properties);
+
+            int sourceSlotCount = source.sharedMaterials != null
+                ? source.sharedMaterials.Length
+                : 0;
+            int slots = Mathf.Min(materialCount, sourceSlotCount);
+            for (int index = 0; index < slots; index++)
+            {
+                properties.Clear();
+                source.GetPropertyBlock(properties, index);
+                if (!properties.isEmpty)
+                    target.SetPropertyBlock(properties, index);
+            }
         }
 
         static float SafeScale(float source, float parent)

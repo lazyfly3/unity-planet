@@ -75,6 +75,9 @@ namespace UnityPlanet.ModularAssembly
             if (controller == null || motion == null)
                 return;
 
+            if (ModularSpacecraftPauseMenu.IsOpen)
+                return;
+
             if (!controller.IsFlying)
             {
                 if (panelOpen)
@@ -105,7 +108,8 @@ namespace UnityPlanet.ModularAssembly
         void OnGUI()
         {
             if (controller == null || motion == null ||
-                !controller.IsFlying)
+                !controller.IsFlying ||
+                ModularSpacecraftPauseMenu.IsOpen)
             {
                 return;
             }
