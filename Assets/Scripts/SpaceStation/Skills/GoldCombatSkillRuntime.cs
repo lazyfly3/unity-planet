@@ -708,6 +708,7 @@ namespace UnityPlanet.SpaceStation.Skills
     public sealed class TemporaryEnemyFreeze : MonoBehaviour
     {
         Rigidbody body;
+        ModularBossCombatRuntime boss;
         bool originalKinematic;
         bool originalDetectCollisions;
         Vector3 storedVelocity;
@@ -726,7 +727,11 @@ namespace UnityPlanet.SpaceStation.Skills
         {
             body = GetComponent<Rigidbody>() ??
                    GetComponentInChildren<Rigidbody>();
+            boss = GetComponent<ModularBossCombatRuntime>() ??
+                   GetComponentInParent<ModularBossCombatRuntime>() ??
+                   GetComponentInChildren<ModularBossCombatRuntime>();
             captured = true;
+            boss?.SetTemporarilyFrozen(true);
             if (body == null)
                 return;
             originalKinematic = body.isKinematic;
@@ -736,9 +741,12 @@ namespace UnityPlanet.SpaceStation.Skills
             body.velocity = Vector3.zero;
             body.angularVelocity = Vector3.zero;
             body.isKinematic = true;
-            SkillFreezeOverlayVisual.Spawn(
-                transform,
-                Mathf.Max(0.1f, until - Time.unscaledTime));
+            if (Application.isPlaying)
+            {
+                SkillFreezeOverlayVisual.Spawn(
+                    transform,
+                    Mathf.Max(0.1f, until - Time.unscaledTime));
+            }
         }
 
         void Update()
@@ -756,14 +764,25 @@ namespace UnityPlanet.SpaceStation.Skills
 
         void OnDisable()
         {
-            captured = false;
+            Restore();
         }
 
         void Restore()
         {
-            if (!captured || body == null)
+            if (!captured)
                 return;
             captured = false;
+            if (boss == null)
+            {
+                boss = GetComponent<ModularBossCombatRuntime>() ??
+                       GetComponentInParent<ModularBossCombatRuntime>() ??
+                       GetComponentInChildren<ModularBossCombatRuntime>();
+            }
+            if (body == null)
+            {
+                boss?.SetTemporarilyFrozen(false);
+                return;
+            }
             HordeEnemyVehicle horde =
                 GetComponent<HordeEnemyVehicle>();
             if (horde != null && !horde.IsCombatCapable)
@@ -772,14 +791,35 @@ namespace UnityPlanet.SpaceStation.Skills
                 GetComponent<EnemyAirCombatVehicle>();
             if (duel != null && !duel.IsCombatCapable)
                 return;
+            if (boss != null && !boss.IsCombatActive)
+            {
+                // Mission settlement owns the inactive Boss body. A delayed
+                // thaw must not turn it dynamic again after combat ended.
+                body.isKinematic = true;
+                body.detectCollisions = originalDetectCollisions;
+                boss.SetTemporarilyFrozen(false);
+                return;
+            }
             body.isKinematic = originalKinematic;
             body.detectCollisions = originalDetectCollisions;
             if (!body.isKinematic)
             {
-                body.velocity = storedVelocity;
-                body.angularVelocity = storedAngularVelocity;
+                if (boss != null)
+                {
+                    // The Boss state machine resumes from the paused state and
+                    // rebuilds velocity through ordinary RC3 input. Restoring a
+                    // pre-freeze ram velocity creates an untelegraphed lunge.
+                    body.velocity = Vector3.zero;
+                    body.angularVelocity = Vector3.zero;
+                }
+                else
+                {
+                    body.velocity = storedVelocity;
+                    body.angularVelocity = storedAngularVelocity;
+                }
                 body.WakeUp();
             }
+            boss?.SetTemporarilyFrozen(false);
         }
     }
 
@@ -1023,6 +1063,7 @@ namespace UnityPlanet.SpaceStation.Skills
         {
             if (hitCollider == null)
                 return false;
+            bool hitTerrainSurface = IsTerrainSurface(hitCollider);
             bool changed = TryDeformVoxel(
                 hitCollider,
                 point,
@@ -1032,8 +1073,14 @@ namespace UnityPlanet.SpaceStation.Skills
                 point,
                 normal,
                 Mathf.Clamp(radius, 4f, 18f),
-                Mathf.Clamp(depth, 2f, 12f));
-            if (!changed)
+                Mathf.Clamp(depth, 2f, 12f),
+                out bool foundTerrainSurface);
+            hitTerrainSurface |= foundTerrainSurface;
+            // Imported meshes and Unity runtime static batches can be valid
+            // terrain collision surfaces while keeping their CPU vertex data
+            // unreadable.  The crescent must still stop and play its cut impact
+            // there; only the optional vertex depression is skipped.
+            if (!changed && !hitTerrainSurface)
                 return false;
             SkillWorldSpriteVisual.SpawnSurface(
                 point + normal * 0.22f,
@@ -1152,6 +1199,24 @@ namespace UnityPlanet.SpaceStation.Skills
             float radius,
             float depth)
         {
+            return TryDeformRuntimeMeshes(
+                hitCollider,
+                point,
+                normal,
+                radius,
+                depth,
+                out _);
+        }
+
+        static bool TryDeformRuntimeMeshes(
+            Collider hitCollider,
+            Vector3 point,
+            Vector3 normal,
+            float radius,
+            float depth,
+            out bool foundTerrainSurface)
+        {
+            foundTerrainSurface = false;
             if (hitCollider == null ||
                 VehicleCombatTeamUtility.Resolve(hitCollider.transform) !=
                 VehicleCombatTeam.Neutral)
@@ -1188,6 +1253,8 @@ namespace UnityPlanet.SpaceStation.Skills
                 }
             }
 
+            foundTerrainSurface = filters.Count > 0;
+
             bool changed = false;
             var deformedMeshes = new HashSet<Mesh>();
             foreach (MeshFilter filter in filters)
@@ -1217,6 +1284,7 @@ namespace UnityPlanet.SpaceStation.Skills
                 LooksLikeTerrain(directCollider) &&
                 deformedMeshes.Add(collisionMesh))
             {
+                foundTerrainSurface = true;
                 bool colliderChanged = DeformRuntimeMesh(
                     directCollider.transform,
                     collisionMesh,
@@ -1312,6 +1380,12 @@ namespace UnityPlanet.SpaceStation.Skills
         {
             if (meshTransform == null || mesh == null)
                 return false;
+            // Accessing mesh.vertices on a non-readable imported/static-batch
+            // mesh logs a Unity error before C# can recover.  Urban buildings
+            // are handled by UrbanDestructionWorld before this fallback; this
+            // path is only the optional deformation used by natural terrain.
+            if (!mesh.isReadable)
+                return false;
             Vector3[] vertices = mesh.vertices;
             if (vertices == null || vertices.Length == 0)
                 return false;
@@ -1347,6 +1421,20 @@ namespace UnityPlanet.SpaceStation.Skills
                 return;
             collider.sharedMesh = null;
             collider.sharedMesh = mesh;
+        }
+
+        static bool IsTerrainSurface(Collider collider)
+        {
+            if (collider == null)
+                return false;
+            if (collider.GetComponentInParent<VoxelWorld>() != null)
+                return true;
+            MeshCollider meshCollider = collider as MeshCollider;
+            if (meshCollider != null && LooksLikeTerrain(meshCollider))
+                return true;
+            MeshFilter filter = collider.GetComponent<MeshFilter>() ??
+                                collider.GetComponentInParent<MeshFilter>();
+            return filter != null && LooksLikeTerrain(filter);
         }
 
         static bool LooksLikeTerrain(MeshFilter filter)

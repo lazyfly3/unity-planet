@@ -43,6 +43,16 @@ namespace UnityPlanet.ModularAssembly
         [Tooltip("消除侧滑最多可申请多少方向权限；仍只能使用新意图和姿态分配后的剩余推力。")]
         [Range(0f, 1f)] public float driftAuthorityFraction = 1f;
 
+        [Header("下降手感")]
+        [Tooltip("按住Ctrl建立下降目标速度所需的响应时间。只影响街机模式下降，不影响标准模式。")]
+        [Range(0.03f, 0.5f)] public float descentResponseSeconds = 0.08f;
+        [Tooltip("下降意图最多可以使用多少幸存推进权限。顶部喷气和模块损坏仍会改变最终下降能力。")]
+        [Range(0.1f, 1f)] public float descentAuthorityFraction = 1f;
+        [Tooltip("同时按住WASD和Ctrl时，下降输入相对平面输入的优先权。")]
+        [Range(1f, 2f)] public float descentInputWeight = 1.35f;
+        [Tooltip("街机模式为重型飞船提供的最低下降加速度保底。实际顶部喷气会继续叠加。")]
+        [Range(0.5f, 15f)] public float minimumDescentAcceleration = 6f;
+
         [Header("松手急停与定点")]
         [Tooltip("松开移动键后的速度反馈强度。越大越倾向于立即用满可用制动力。")]
         [Range(1f, 30f)] public float stopVelocityGain = 10f;
@@ -95,6 +105,10 @@ namespace UnityPlanet.ModularAssembly
             driftResponseSeconds = 0.16f;
             intentAuthorityFraction = 0.75f;
             driftAuthorityFraction = 1f;
+            descentResponseSeconds = 0.08f;
+            descentAuthorityFraction = 1f;
+            descentInputWeight = 1.35f;
+            minimumDescentAcceleration = 6f;
             stopVelocityGain = 10f;
             stopAuthorityFraction = 1f;
             positionHoldGain = 5f;
@@ -114,6 +128,9 @@ namespace UnityPlanet.ModularAssembly
                     intentResponseSeconds = 0.08f;
                     driftResponseSeconds = 0.22f;
                     intentAuthorityFraction = 0.82f;
+                    descentResponseSeconds = 0.055f;
+                    descentInputWeight = 1.45f;
+                    minimumDescentAcceleration = 7f;
                     stopVelocityGain = 14f;
                     aimTorqueMultiplier = 1.2f;
                     strafeRollCoupling = 0.16f;
@@ -123,6 +140,10 @@ namespace UnityPlanet.ModularAssembly
                     driftResponseSeconds = 0.65f;
                     intentAuthorityFraction = 0.68f;
                     driftAuthorityFraction = 0.75f;
+                    descentResponseSeconds = 0.11f;
+                    descentAuthorityFraction = 0.9f;
+                    descentInputWeight = 1.25f;
+                    minimumDescentAcceleration = 5f;
                     stopVelocityGain = 6f;
                     stopAuthorityFraction = 0.8f;
                     strafeRollCoupling = 0.32f;
@@ -196,6 +217,22 @@ namespace UnityPlanet.ModularAssembly
                 1f);
             driftAuthorityFraction = Mathf.Clamp01(
                 driftAuthorityFraction);
+            descentResponseSeconds = Mathf.Clamp(
+                descentResponseSeconds,
+                0.03f,
+                0.5f);
+            descentAuthorityFraction = Mathf.Clamp(
+                descentAuthorityFraction,
+                0.1f,
+                1f);
+            descentInputWeight = Mathf.Clamp(
+                descentInputWeight,
+                1f,
+                2f);
+            minimumDescentAcceleration = Mathf.Clamp(
+                minimumDescentAcceleration,
+                0.5f,
+                15f);
             stopVelocityGain = Mathf.Clamp(stopVelocityGain, 1f, 30f);
             stopAuthorityFraction = Mathf.Clamp(
                 stopAuthorityFraction,

@@ -17,11 +17,49 @@ public enum FinitePlanetMissionObjectiveKind
     Boss
 }
 
+/// <summary>
+/// Pure completion policy for facility-assault credited kills. EDPCG owns the
+/// encounter roster and therefore its credited-kill quota takes precedence
+/// over the mission fallback. A fully resolved, empty fixed roster is also a
+/// terminal success state because self-detonating enemies do not award kills.
+/// </summary>
+public static class FinitePlanetAssaultCompletionPolicy
+{
+    public static int ResolveRequiredCreditedKills(
+        bool hasEdpcgSettings,
+        int edpcgRequiredCreditedKills,
+        int missionFallbackRequiredKills)
+    {
+        return Mathf.Max(
+            1,
+            hasEdpcgSettings
+                ? edpcgRequiredCreditedKills
+                : missionFallbackRequiredKills);
+    }
+
+    public static bool IsKillQuotaMet(
+        int creditedKills,
+        bool hasEdpcgSettings,
+        int edpcgRequiredCreditedKills,
+        int missionFallbackRequiredKills,
+        bool rosterResolved,
+        int aliveCount)
+    {
+        int required = ResolveRequiredCreditedKills(
+            hasEdpcgSettings,
+            edpcgRequiredCreditedKills,
+            missionFallbackRequiredKills);
+        if (Mathf.Max(0, creditedKills) >= required)
+            return true;
+
+        return hasEdpcgSettings && rosterResolved && aliveCount <= 0;
+    }
+}
+
 public sealed class FinitePlanetMissionRules
 {
     public FinitePlanetMissionObjectiveKind Kind { get; private set; }
-    public bool RequiresUrbanEnvironment =>
-        Kind == FinitePlanetMissionObjectiveKind.Boss;
+    public bool RequiresUrbanEnvironment => true;
     public int RequiredKills { get; private set; }
     public int RosterCount { get; private set; }
     public int ObjectiveCount { get; private set; }
@@ -87,10 +125,14 @@ public sealed class FinitePlanetMissionRules
                 "industrial_outpost",
                 StringComparison.Ordinal))
         {
+            EdpcgDifficultyProfile profile =
+                EdpcgDifficultyProfile.LoadOrCreateMemoryDefault();
+            int creditedKillTarget = profile.Resolve(tier)
+                .requiredCreditedKills;
             return new FinitePlanetMissionRules
             {
                 Kind = FinitePlanetMissionObjectiveKind.Assault,
-                RequiredKills = 12 + tier * 2,
+                RequiredKills = creditedKillTarget,
                 RosterCount = RosterForTier(tier),
                 ObjectiveCount = 3,
                 CoreIntegrity = 350f,
@@ -99,7 +141,7 @@ public sealed class FinitePlanetMissionRules
                 DifficultyLabel = difficulty + " · 突袭",
                 ObjectiveDescription =
                     $"摧毁三座能源核心；处理 {RosterForTier(tier)} 架敌机" +
-                    $"（有效击落目标 {12 + tier * 2}）"
+                    $"（有效击落目标 {creditedKillTarget}）"
             };
         }
         return new FinitePlanetMissionRules
@@ -161,6 +203,8 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
         new List<Vector3>(3);
     readonly List<FinitePlanetEnergyCoreObjective> energyCores =
         new List<FinitePlanetEnergyCoreObjective>(3);
+    readonly List<FinitePlanetFacilityAssaultObjective> assaultFacilities =
+        new List<FinitePlanetFacilityAssaultObjective>(3);
     readonly List<FinitePlanetObjectiveMarker> objectiveMarkers =
         new List<FinitePlanetObjectiveMarker>(4);
 
@@ -181,6 +225,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
     Vector3 extractionPoint;
     FinitePlanetMissionRules missionRules;
     FinitePlanetObjectiveMarker extractionMarker;
+    FinitePlanetAssaultObjectiveHud assaultObjectiveHud;
     string missionId;
     string missionName;
     bool[] scanComplete = Array.Empty<bool>();
@@ -218,7 +263,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
     {
         IsPrepared = false;
         PreparationError = string.Empty;
-        bossIntroductionPlayed = false;
+        ResetMissionLocalStateForPrepare();
         world = targetWorld;
         flightController = targetFlightController;
         playerBody = targetBody;
@@ -239,7 +284,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             PlanetMissionEnvironmentKind.Urban)
         {
             PreparationError =
-                "Modular Boss missions require an urban battlefield.";
+                "所有正式关卡都需要已选择的城市战场。";
             yield break;
         }
         weapons?.SetAutoAimAllowed(
@@ -260,7 +305,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             if (urbanCombat == null || !urbanCombat.IsReady)
             {
                 PreparationError =
-                    "Modular Boss creation requires a prepared urban battlefield.";
+                    "正式关卡缺少已准备完成的城市战场。";
                 yield break;
             }
         }
@@ -364,7 +409,16 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             yield break;
         }
 
-        if (!BuildMissionObjectives(layout, out string objectiveError))
+        bool objectivesReady = false;
+        string objectiveError = string.Empty;
+        yield return BuildMissionObjectives(
+            layout,
+            (success, error) =>
+            {
+                objectivesReady = success;
+                objectiveError = error;
+            });
+        if (!objectivesReady)
         {
             PreparationError = objectiveError;
             director.EndSession();
@@ -376,6 +430,64 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
         IsPrepared = true;
     }
 
+    void ResetMissionLocalStateForPrepare()
+    {
+        // Prepare normally runs once, but the editor retry/hot-reload path may
+        // reuse this controller. Tear down every old mission-local subscription
+        // and object before replacing player/world references.
+        if (bossIntroduction != null && bossIntroduction.IsPlaying)
+            bossIntroduction.Cancel(false);
+        if (playerGraph != null)
+            playerGraph.Destroyed -= HandlePlayerDestroyed;
+
+        sessionRunning = false;
+        director?.EndSession();
+        if (boss != null)
+        {
+            boss.Destroyed -= HandleBossDestroyed;
+            boss.SetCombatActive(false);
+            boss.gameObject.SetActive(false);
+            Destroy(boss.gameObject);
+            boss = null;
+        }
+
+        for (int index = 0; index < energyCores.Count; index++)
+        {
+            FinitePlanetEnergyCoreObjective core = energyCores[index];
+            if (core == null)
+                continue;
+            core.Destroyed -= HandleEnergyCoreDestroyed;
+            core.gameObject.SetActive(false);
+            Destroy(core.gameObject);
+        }
+        energyCores.Clear();
+
+        for (int index = 0; index < objectiveMarkers.Count; index++)
+        {
+            FinitePlanetObjectiveMarker marker = objectiveMarkers[index];
+            if (marker == null)
+                continue;
+            marker.gameObject.SetActive(false);
+            Destroy(marker.gameObject);
+        }
+        objectiveMarkers.Clear();
+        scanWorldPositions.Clear();
+        scanComplete = Array.Empty<bool>();
+        scanProgress = Array.Empty<float>();
+        extractionMarker = null;
+        extractionPoint = Vector3.zero;
+        extractionProgress = 0f;
+
+        assaultObjectiveHud?.SetVisible(false);
+        ClearAssaultFacilities();
+        destroyedCoreCount = 0;
+        finalClearStarted = false;
+        missionCompleted = false;
+        bossIntroductionPlayed = false;
+        bossBridgeHint = string.Empty;
+        bossBridgeHintEndsAt = 0f;
+    }
+
     public void SetGameplayReady(bool ready)
     {
         if (!ready)
@@ -385,6 +497,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             sessionRunning = false;
             director?.EndSession();
             boss?.SetCombatActive(false);
+            assaultObjectiveHud?.SetVisible(false);
             return;
         }
         if (!IsPrepared || transitionStarted || sessionRunning ||
@@ -414,6 +527,15 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             return;
         }
         sessionRunning = true;
+        if (missionRules.Kind == FinitePlanetMissionObjectiveKind.Assault &&
+            assaultObjectiveHud != null)
+        {
+            assaultObjectiveHud.Configure(
+                Camera.main,
+                playerBody,
+                assaultFacilities);
+            assaultObjectiveHud.SetVisible(true);
+        }
         director.BeginSession(
             playerBody,
             battleCenter,
@@ -565,21 +687,24 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
         boss.Destroyed += HandleBossDestroyed;
     }
 
-    bool BuildMissionObjectives(
+    IEnumerator BuildMissionObjectives(
         FinitePlanetDefenseLayoutPlan layout,
-        out string error)
+        Action<bool, string> completed)
     {
-        error = string.Empty;
         if (missionRules.Kind == FinitePlanetMissionObjectiveKind.Clearance ||
             missionRules.Kind == FinitePlanetMissionObjectiveKind.Boss)
-            return true;
+        {
+            completed?.Invoke(true, string.Empty);
+            yield break;
+        }
 
         if (layout.powerPositions == null ||
             layout.powerPositions.Length < missionRules.ObjectiveCount)
         {
-            error =
-                "The selected mission requires three valid PCG objective positions.";
-            return false;
+            completed?.Invoke(
+                false,
+                "当前任务缺少三个经过城市 PCG 验证的设施位置。");
+            yield break;
         }
 
         if (missionRules.Kind == FinitePlanetMissionObjectiveKind.Survey)
@@ -587,9 +712,10 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             if (layout.retreatPoints == null ||
                 layout.retreatPoints.Length == 0)
             {
-                error =
-                    "The survey mission requires a valid PCG extraction point.";
-                return false;
+                completed?.Invoke(
+                    false,
+                    "扫描任务缺少经过城市 PCG 验证的撤离点。");
+                yield break;
             }
             scanComplete = new bool[missionRules.ObjectiveCount];
             scanProgress = new float[missionRules.ObjectiveCount];
@@ -615,25 +741,116 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
                 1.25f);
             extractionMarker.gameObject.SetActive(false);
             objectiveMarkers.Add(extractionMarker);
-            return true;
+            completed?.Invoke(true, string.Empty);
+            yield break;
         }
 
+        FinitePlanetUrbanCombatRuntime urbanRuntime =
+            world.GetComponent<FinitePlanetUrbanCombatRuntime>();
+        if (urbanRuntime == null || !urbanRuntime.IsReady ||
+            contentService == null || contentRecords == null)
+        {
+            completed?.Invoke(
+                false,
+                "设备突袭缺少已准备完成的城市或拼装模块目录。");
+            yield break;
+        }
+
+        ClearAssaultFacilities();
+        destroyedCoreCount = 0;
+        var occupiedBounds = new List<Bounds>(
+            missionRules.ObjectiveCount);
+        FacilityAssaultDifficultySpec difficulty =
+            FacilityAssaultDifficultySpec.Resolve(
+                missionRules.PlanetDifficultyIndex);
+        Vector3 requiredSize = difficulty.RequiredHalfExtents * 2f;
         for (int index = 0; index < missionRules.ObjectiveCount; index++)
         {
-            Vector3 position = ResolveObjectivePosition(
-                layout.powerPositions[index].position,
-                7f);
+            Vector3 planPosition = layout.powerPositions[index].position;
+            if (!urbanRuntime.TryResolveAssaultFacilitySite(
+                    planPosition,
+                    requiredSize,
+                    occupiedBounds,
+                    out Vector3 groundPosition,
+                    out Quaternion rotation,
+                    out string placementError))
+            {
+                ClearAssaultFacilities();
+                completed?.Invoke(
+                    false,
+                    "设施 " + (index + 1) +
+                    " 无法合法放置：" + placementError);
+                yield break;
+            }
+
+            Vector3 facilityCenter = groundPosition +
+                                     rotation * Vector3.up *
+                                     difficulty.RequiredHalfExtents.y;
+            occupiedBounds.Add(new Bounds(facilityCenter, requiredSize));
             GameObject root = new GameObject(
-                "EnergyCoreObjective_" + index.ToString("D2"));
-            root.transform.SetParent(transform, false);
-            root.transform.position = position;
-            FinitePlanetEnergyCoreObjective core =
-                root.AddComponent<FinitePlanetEnergyCoreObjective>();
-            core.Configure(missionRules.CoreIntegrity, index);
-            core.Destroyed += HandleEnergyCoreDestroyed;
-            energyCores.Add(core);
+                "FacilityAssaultObjective_模块设施_" +
+                index.ToString("D2"));
+            root.transform.SetParent(transform, true);
+            FinitePlanetFacilityAssaultObjective facility =
+                root.AddComponent<FinitePlanetFacilityAssaultObjective>();
+            bool built = false;
+            string buildError = string.Empty;
+            yield return facility.Build(
+                contentService,
+                contentRecords,
+                missionRules.PlanetDifficultyIndex,
+                index,
+                groundPosition,
+                rotation,
+                (success, error) =>
+                {
+                    built = success;
+                    buildError = error;
+                });
+            if (!built)
+            {
+                root.SetActive(false);
+                Destroy(root);
+                ClearAssaultFacilities();
+                completed?.Invoke(
+                    false,
+                    "设施 " + (index + 1) +
+                    " 的拼装模块部署失败：" + buildError);
+                yield break;
+            }
+
+            facility.Damaged -= HandleFacilityDamaged;
+            facility.Damaged += HandleFacilityDamaged;
+            facility.Destroyed -= HandleFacilityDestroyed;
+            facility.Destroyed += HandleFacilityDestroyed;
+            assaultFacilities.Add(facility);
         }
-        return true;
+
+        assaultObjectiveHud =
+            GetComponent<FinitePlanetAssaultObjectiveHud>() ??
+            gameObject.AddComponent<FinitePlanetAssaultObjectiveHud>();
+        assaultObjectiveHud.Configure(
+            Camera.main,
+            playerBody,
+            assaultFacilities);
+        assaultObjectiveHud.SetVisible(false);
+        completed?.Invoke(true, string.Empty);
+    }
+
+    void ClearAssaultFacilities()
+    {
+        for (int index = 0; index < assaultFacilities.Count; index++)
+        {
+            FinitePlanetFacilityAssaultObjective facility =
+                assaultFacilities[index];
+            if (facility == null)
+                continue;
+            facility.Damaged -= HandleFacilityDamaged;
+            facility.Destroyed -= HandleFacilityDestroyed;
+            facility.gameObject.SetActive(false);
+            Destroy(facility.gameObject);
+        }
+        assaultFacilities.Clear();
     }
 
     FinitePlanetObjectiveMarker CreateMarker(
@@ -681,7 +898,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
                 break;
             case FinitePlanetMissionObjectiveKind.Assault:
                 if (destroyedCoreCount >= missionRules.ObjectiveCount &&
-                    IsNonBossRosterResolved())
+                    AssaultKillQuotaMet())
                 {
                     BeginFinalClear();
                     if (director.AliveCount == 0)
@@ -710,6 +927,30 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             ? edpcg.IsEncounterResolved
             : director != null &&
               director.Kills >= missionRules.RequiredKills;
+    }
+
+    int RequiredAssaultCreditedKills =>
+        FinitePlanetAssaultCompletionPolicy.ResolveRequiredCreditedKills(
+            edpcg != null && edpcg.Settings != null,
+            edpcg != null && edpcg.Settings != null
+                ? edpcg.Settings.requiredCreditedKills
+                : 0,
+            missionRules.RequiredKills);
+
+    bool AssaultKillQuotaMet()
+    {
+        if (director == null)
+            return false;
+        bool hasEdpcgSettings = edpcg != null && edpcg.Settings != null;
+        return FinitePlanetAssaultCompletionPolicy.IsKillQuotaMet(
+            director.Kills,
+            hasEdpcgSettings,
+            hasEdpcgSettings
+                ? edpcg.Settings.requiredCreditedKills
+                : 0,
+            missionRules.RequiredKills,
+            edpcg != null && edpcg.IsRosterResolved,
+            director.AliveCount);
     }
 
     void UpdateSurveyObjective()
@@ -764,6 +1005,41 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             BeginFinalClear();
     }
 
+    void HandleFacilityDamaged(
+        FinitePlanetFacilityAssaultObjective facility,
+        float damage)
+    {
+        if (damage <= 0f)
+            return;
+        edpcg?.NotifyFacilityAssaultObjectiveDamaged();
+    }
+
+    void HandleFacilityDestroyed(
+        FinitePlanetFacilityAssaultObjective facility)
+    {
+        destroyedCoreCount = 0;
+        for (int index = 0; index < assaultFacilities.Count; index++)
+        {
+            if (assaultFacilities[index] != null &&
+                assaultFacilities[index].IsDestroyed)
+            {
+                destroyedCoreCount++;
+            }
+        }
+        if (facility != null)
+        {
+            edpcg?.NotifyFacilityAssaultObjectiveDestroyed(
+                facility.ObjectiveIndex);
+        }
+        RefreshObjectiveStatus();
+        if (destroyedCoreCount >= missionRules.ObjectiveCount &&
+            director != null &&
+            AssaultKillQuotaMet())
+        {
+            BeginFinalClear();
+        }
+    }
+
     void HandleBossDestroyed()
     {
         if (!sessionRunning || transitionStarted)
@@ -815,6 +1091,7 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
         sessionRunning = false;
         director?.EndSession();
         boss?.SetCombatActive(false);
+        assaultObjectiveHud?.SetVisible(false);
         flightController?.SetGameplayReady(false);
         if (playerBody != null && !playerBody.isKinematic)
         {
@@ -966,16 +1243,30 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
                     : $"撤离点稳定 {extractionProgress:0.0}/{missionRules.ExtractionSeconds:0.0} 秒";
                 break;
             case FinitePlanetMissionObjectiveKind.Assault:
+                int liveArmorModules = 0;
+                int totalArmorModules = 0;
+                for (int index = 0;
+                     index < assaultFacilities.Count;
+                     index++)
+                {
+                    FinitePlanetFacilityAssaultObjective facility =
+                        assaultFacilities[index];
+                    if (facility == null)
+                        continue;
+                    liveArmorModules += facility.LiveArmorModuleCount;
+                    totalArmorModules += facility.ArmorModuleCount;
+                }
                 if (destroyedCoreCount < missionRules.ObjectiveCount)
                 {
                     ObjectiveStatus =
-                        $"摧毁能源核心 {destroyedCoreCount}/{missionRules.ObjectiveCount}  ·  " +
-                        $"击落 {director.Kills}/{missionRules.RequiredKills}";
+                        $"摧毁模块设施 {destroyedCoreCount}/{missionRules.ObjectiveCount}  ·  " +
+                        $"外壳 {liveArmorModules}/{totalArmorModules}  ·  " +
+                        $"击落 {director.Kills}/{RequiredAssaultCreditedKills}";
                 }
-                else if (director.Kills < missionRules.RequiredKills)
+                else if (!AssaultKillQuotaMet())
                 {
                     ObjectiveStatus =
-                        $"击落敌机 {director.Kills}/{missionRules.RequiredKills}";
+                        $"击落敌机 {director.Kills}/{RequiredAssaultCreditedKills}";
                 }
                 else
                 {
@@ -1003,12 +1294,17 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
                 : string.Empty;
         if (director != null && edpcg != null && edpcg.IsRunning)
         {
-            combat =
-                $"敌机 活跃 {director.AliveCount}  名单 " +
-                $"{edpcg.ResolvedCount}/{edpcg.RosterCount}  " +
-                $"有效击落 {edpcg.CreditedKills}/" +
-                $"{edpcg.Settings.requiredCreditedKills}  " +
-                $"压力 {edpcg.CurrentSample.actualPressure:P0}";
+            combat = missionRules.Kind ==
+                     FinitePlanetMissionObjectiveKind.Assault
+                ? $"敌机 活跃 {director.AliveCount}  " +
+                  $"有效击落 {director.Kills}/" +
+                  $"{RequiredAssaultCreditedKills}  " +
+                  $"压力 {edpcg.CurrentSample.actualPressure:P0}"
+                : $"敌机 活跃 {director.AliveCount}  名单 " +
+                  $"{edpcg.ResolvedCount}/{edpcg.RosterCount}  " +
+                  $"有效击落 {edpcg.CreditedKills}/" +
+                  $"{edpcg.Settings.requiredCreditedKills}  " +
+                  $"压力 {edpcg.CurrentSample.actualPressure:P0}";
         }
         hudText = title + "\n" + ObjectiveStatus + "\n" + combat;
         if (!string.IsNullOrEmpty(bossBridgeHint) &&
@@ -1099,6 +1395,16 @@ public sealed class FinitePlanetHordeCombatController : MonoBehaviour
             if (energyCores[index] != null)
                 energyCores[index].Destroyed -= HandleEnergyCoreDestroyed;
         }
+        for (int index = 0; index < assaultFacilities.Count; index++)
+        {
+            FinitePlanetFacilityAssaultObjective facility =
+                assaultFacilities[index];
+            if (facility == null)
+                continue;
+            facility.Damaged -= HandleFacilityDamaged;
+            facility.Destroyed -= HandleFacilityDestroyed;
+        }
+        assaultObjectiveHud?.SetVisible(false);
         director?.EndSession();
         boss?.SetCombatActive(false);
         weapons?.SetAutoAimAllowed(true);
@@ -1180,6 +1486,7 @@ public sealed class FinitePlanetEnergyCoreObjective :
 {
     SphereCollider hitCollider;
     FinitePlanetObjectiveMarker marker;
+    FinitePlanetFacilityAssaultObjective facilityOwner;
     float integrity;
     float maximumIntegrity;
 
@@ -1190,22 +1497,47 @@ public sealed class FinitePlanetEnergyCoreObjective :
     public float MaximumIntegrity => maximumIntegrity;
     public bool IsDestroyed { get; private set; }
 
-    public void Configure(float health, int objectiveIndex)
+    public void SetDamageColliderEnabled(bool value)
+    {
+        if (hitCollider != null)
+            hitCollider.enabled = value && !IsDestroyed;
+    }
+
+    public void Configure(
+        float health,
+        int objectiveIndex,
+        float hitRadius = 7f,
+        bool createWorldMarker = true)
     {
         maximumIntegrity = Mathf.Max(1f, health);
         integrity = maximumIntegrity;
         ObjectiveIndex = objectiveIndex;
         IsDestroyed = false;
         hitCollider = gameObject.AddComponent<SphereCollider>();
-        hitCollider.radius = 7f;
+        hitCollider.radius = Mathf.Max(0.5f, hitRadius);
         VehicleCombatTeamUtility.SetTeam(
             gameObject,
             VehicleCombatTeam.Enemy);
-        marker = gameObject.AddComponent<FinitePlanetObjectiveMarker>();
-        marker.Configure(new Color(1f, 0.32f, 0.04f, 1f), 1.15f);
+        if (createWorldMarker)
+        {
+            marker = gameObject.AddComponent<FinitePlanetObjectiveMarker>();
+            marker.Configure(new Color(1f, 0.32f, 0.04f, 1f), 1.15f);
+        }
+        facilityOwner = GetComponentInParent<
+            FinitePlanetFacilityAssaultObjective>();
     }
 
     public void ApplyDamage(SpaceDamageInfo damage)
+    {
+        if (facilityOwner != null)
+        {
+            facilityOwner.ApplyCoreDamage(damage);
+            return;
+        }
+        ApplyDamageAuthoritative(damage);
+    }
+
+    internal void ApplyDamageAuthoritative(SpaceDamageInfo damage)
     {
         if (IsDestroyed || damage.amount <= 0f)
             return;

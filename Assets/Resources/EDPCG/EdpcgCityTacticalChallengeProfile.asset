@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2796ad108fabe64ea02036fc703dea9, type: 3}
+  m_Name: EdpcgCityTacticalChallengeProfile
+  m_EditorClassIdentifier: 
+  cityGeometryProfile: {fileID: 11400000, guid: d127860114e12294285ac88d3d54ea09, type: 2}
+  ordinaryEnemyProfile: {fileID: 11400000, guid: 0f5b11dad07435c4b814cd8d5c01a6f4, type: 2}
+  tiers:
+  - puzzleKind: 0
+    enableOrdinaryRangedReposition: 0
+    playerCellDwellSeconds: 7.5
+    maximumPressureDirections: 1
+    minimumSafeExitCount: 2
+    maximumAcceptedCellPressure: 0.62
+    minimumCrossfireCellCount: 0
+    maximumCrossfireCellCount: 12
+    allowStrikerReposition: 1
+    allowGunshipReposition: 0
+  - puzzleKind: 2
+    enableOrdinaryRangedReposition: 0
+    playerCellDwellSeconds: 6.9
+    maximumPressureDirections: 1
+    minimumSafeExitCount: 2
+    maximumAcceptedCellPressure: 0.664
+    minimumCrossfireCellCount: 0
+    maximumCrossfireCellCount: 15
+    allowStrikerReposition: 1
+    allowGunshipReposition: 1
+  - puzzleKind: 5
+    enableOrdinaryRangedReposition: 0
+    playerCellDwellSeconds: 6.3
+    maximumPressureDirections: 1
+    minimumSafeExitCount: 2
+    maximumAcceptedCellPressure: 0.708
+    minimumCrossfireCellCount: 8
+    maximumCrossfireCellCount: 18
+    allowStrikerReposition: 1
+    allowGunshipReposition: 1
+  - puzzleKind: 1
+    enableOrdinaryRangedReposition: 0
+    playerCellDwellSeconds: 5.7
+    maximumPressureDirections: 2
+    minimumSafeExitCount: 2
+    maximumAcceptedCellPressure: 0.752
+    minimumCrossfireCellCount: 10
+    maximumCrossfireCellCount: 21
+    allowStrikerReposition: 1
+    allowGunshipReposition: 1
+  - puzzleKind: 3
+    enableOrdinaryRangedReposition: 0
+    playerCellDwellSeconds: 5.1
+    maximumPressureDirections: 2
+    minimumSafeExitCount: 2
+    maximumAcceptedCellPressure: 0.796
+    minimumCrossfireCellCount: 12
+    maximumCrossfireCellCount: 24
+    allowStrikerReposition: 1
+    allowGunshipReposition: 1
+  - puzzleKind: 4
+    enableOrdinaryRangedReposition: 0
+    playerCellDwellSeconds: 4.5
+    maximumPressureDirections: 2
+    minimumSafeExitCount: 2
+    maximumAcceptedCellPressure: 0.84
+    minimumCrossfireCellCount: 14
+    maximumCrossfireCellCount: 27
+    allowStrikerReposition: 1
+    allowGunshipReposition: 1

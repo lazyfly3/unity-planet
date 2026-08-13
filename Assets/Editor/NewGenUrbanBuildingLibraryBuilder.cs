@@ -52,7 +52,6 @@ namespace UnityPlanet.CityPcg.Editor
             ImportedParts + "Roof4.prefab"
         };
 
-        [MenuItem("Tools/城市 PCG/重建 NewGen Urban 标准化楼房库")]
         public static void BuildFromMenu()
         {
             NewGenUrbanBuildingCatalog catalog = BuildLibrary();

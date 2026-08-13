@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityPlanet.CityPcg;
 using UnityPlanet.CombatMap;
+using UnityPlanet.EDPCG;
 
 /// <summary>
 /// Replaces only the visual/collision terrain layer of a finite planet
@@ -25,6 +27,10 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
     public int CityBuildingCount { get; private set; }
     public int SyncedEnemyIngressCount { get; private set; }
     public AirCombatCityPlan Plan => cityLab != null ? cityLab.Plan : null;
+    public AirCombatCityRuntimeGeometrySnapshot RuntimeGeometrySnapshot =>
+        cityLab != null ? cityLab.RuntimeGeometrySnapshot : null;
+    public AirCombatCitySettings CitySettings =>
+        cityLab != null ? cityLab.Settings : null;
     public UrbanEnvironmentalFieldDirector EnvironmentalFields =>
         environmentalFields;
 
@@ -74,10 +80,16 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
               FinitePlanetCombatMissionTerrainKind.Assault
                 ? AirCombatCityMission.FacilityAssault
                 : AirCombatCityMission.Clearance;
+        EdpcgCityTacticalChallengeProfile tacticalChallenge = bossMission
+            ? null
+            : EdpcgCityTacticalChallengeProfile.LoadOrCreateMemoryDefault();
         cityLab.ConfigureRuntimeMission(
             PlanetOrbitChapterSelectionContext.MissionSeed,
             mission,
-            PlanetOrbitChapterSelectionContext.PlanetDifficultyIndex);
+            PlanetOrbitChapterSelectionContext.PlanetDifficultyIndex,
+            tacticalChallenge != null
+                ? tacticalChallenge.cityGeometryProfile
+                : null);
         if (!cityLab.HasValidPlan || cityLab.Plan == null)
         {
             string summary = cityLab.LastSummary;
@@ -87,11 +99,31 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
             return Fail("城市 PCG 未通过约束：" + summary);
         }
 
-        CityBuildingCount = cityLab.Plan.buildings.Count;
+        CityBuildingCount = cityLab.RuntimeGeometrySnapshot != null
+            ? cityLab.RuntimeGeometrySnapshot.instantiatedBuildingCount
+            : cityLab.Plan.buildings.Count;
+        float minimumFarClip = cityLab.BuildsVisualBackground
+            ? InfinitePlanarSurfaceWorld.CalculateUrbanVisualRequiredFarClip(
+                cityLab.Settings.mapSize,
+                world.FiniteCombatRadius,
+                AirCombatCityPcgLab
+                    .VisualBackgroundMaximumOutsideDistance,
+                Mathf.Max(
+                    cityLab.Settings.maximumAltitude,
+                    AirCombatCityPcgLab
+                        .VisualBackgroundMaximumBuildingHeight))
+            : 0f;
+        world.ApplyUrbanFlightCeiling(
+            cityLab.Settings.maximumAltitude,
+            minimumFarClip);
         SynchronizeFormalMissionAnchors(
             terrainPlan.DefenseLayout,
             cityLab.Plan);
-        CreateFlatGroundCollision(cityRoot.transform);
+        CreateFlatGroundCollision(
+            cityRoot.transform,
+            Mathf.Max(
+                cityLab.Settings.mapSize + 128f,
+                world.FiniteCombatRadius * 2f + 128f));
         environmentalFields =
             cityRoot.GetComponentInChildren<
                 UrbanEnvironmentalFieldDirector>(true) ??
@@ -118,7 +150,7 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
         streamer = world.Streamer;
         if (streamer != null)
         {
-            SuppressNaturalTerrainChunks();
+            SuppressUnderlyingTerrainChunks();
             streamer.ChunkActivated += HandleChunkActivated;
         }
         IsReady = true;
@@ -147,6 +179,232 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
                 planPosition.x,
                 planPosition.z,
                 GroundHeight));
+    }
+
+    /// <summary>
+    /// Resolves one formal modular-facility ground anchor inside the pad
+    /// reserved by the city planner. This is deliberately a geometry service only: it
+    /// does not know about objectives, damage, EDPCG or player modules.
+    /// </summary>
+    public bool TryResolveAssaultFacilitySite(
+        Vector3 planPosition,
+        Vector3 requiredWorldSize,
+        IReadOnlyList<Bounds> occupiedWorldBounds,
+        out Vector3 worldGroundPosition,
+        out Quaternion worldRotation,
+        out string error)
+    {
+        worldGroundPosition = Vector3.zero;
+        worldRotation = Quaternion.identity;
+        error = string.Empty;
+        if (!IsReady || cityRoot == null || Plan == null ||
+            RuntimeGeometrySnapshot == null ||
+            !RuntimeGeometrySnapshot.IsUsable)
+        {
+            error = "城市实体几何快照尚未准备完成。";
+            return false;
+        }
+
+        Vector3 size = new Vector3(
+            Mathf.Max(8f, requiredWorldSize.x),
+            Mathf.Max(8f, requiredWorldSize.y),
+            Mathf.Max(8f, requiredWorldSize.z));
+        float maximumNudge = Mathf.Max(
+            0f,
+            (AirCombatCityGenerator.FacilityPadSize -
+             Mathf.Max(size.x, size.z)) * 0.5f - 2f);
+        Vector2[] directions =
+        {
+            Vector2.zero,
+            Vector2.right, Vector2.up, Vector2.left, Vector2.down,
+            new Vector2(0.7071068f, 0.7071068f),
+            new Vector2(-0.7071068f, 0.7071068f),
+            new Vector2(-0.7071068f, -0.7071068f),
+            new Vector2(0.7071068f, -0.7071068f)
+        };
+        float[] distances = maximumNudge >= 6f
+            ? new[] { 0f, Mathf.Min(6f, maximumNudge), maximumNudge }
+            : new[] { 0f, maximumNudge };
+        Vector3 ground = ProjectPlanPosition(planPosition);
+        for (int distanceIndex = 0;
+             distanceIndex < distances.Length;
+             distanceIndex++)
+        for (int directionIndex = 0;
+             directionIndex < directions.Length;
+             directionIndex++)
+        {
+            if (distanceIndex == 0 && directionIndex > 0)
+                continue;
+            Vector2 offset = directions[directionIndex] *
+                             distances[distanceIndex];
+            Vector3 candidateGround = ground +
+                                      new Vector3(offset.x, 0f, offset.y);
+            Vector3 candidate = candidateGround +
+                                Vector3.up * (size.y * 0.5f);
+            Bounds bounds = new Bounds(candidate, size);
+            if (!FacilityBoundsAreClear(bounds, occupiedWorldBounds))
+                continue;
+            worldGroundPosition = candidateGround;
+            Vector3 objectiveWorld = ProjectPlanPosition(Plan.objective);
+            Vector3 forward = objectiveWorld - candidate;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.001f)
+                forward = Vector3.forward;
+            worldRotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
+            return true;
+        }
+
+        error = "设施预留地与城市实体、航路或其他设施发生重叠。";
+        return false;
+    }
+
+    bool FacilityBoundsAreClear(
+        Bounds worldBounds,
+        IReadOnlyList<Bounds> occupiedWorldBounds)
+    {
+        if (occupiedWorldBounds != null)
+        {
+            for (int index = 0; index < occupiedWorldBounds.Count; index++)
+            {
+                Bounds occupied = occupiedWorldBounds[index];
+                occupied.Expand(4f);
+                if (occupied.Intersects(worldBounds))
+                    return false;
+            }
+        }
+
+        Vector3 localCenter = cityRoot.transform.InverseTransformPoint(
+            worldBounds.center);
+        Bounds localBounds = new Bounds(localCenter, worldBounds.size);
+        float mapHalf = CitySettings.mapSize * 0.5f - 12f;
+        if (Mathf.Abs(localCenter.x) + localBounds.extents.x > mapHalf ||
+            Mathf.Abs(localCenter.z) + localBounds.extents.z > mapHalf)
+        {
+            return false;
+        }
+
+        AirCombatRuntimeBuildingGeometry[] buildings =
+            RuntimeGeometrySnapshot.buildings;
+        for (int index = 0; index < buildings.Length; index++)
+        {
+            Bounds obstacle = buildings[index].localBounds;
+            obstacle.Expand(4f);
+            if (obstacle.Intersects(localBounds))
+                return false;
+        }
+
+        if (ConnectionIntersectsBounds(
+                RuntimeGeometrySnapshot.skybridges,
+                localBounds,
+                3f) ||
+            ConnectionIntersectsBounds(
+                RuntimeGeometrySnapshot.aerialCables,
+                localBounds,
+                2f) ||
+            RouteIntersectsBounds(
+                RuntimeGeometrySnapshot.routes,
+                localBounds))
+        {
+            return false;
+        }
+
+        Collider[] overlaps = new Collider[128];
+        int count = Physics.OverlapBoxNonAlloc(
+            worldBounds.center,
+            worldBounds.extents * 0.97f,
+            overlaps,
+            Quaternion.identity,
+            ~0,
+            QueryTriggerInteraction.Ignore);
+        if (count >= overlaps.Length)
+            return false;
+        for (int index = 0; index < count; index++)
+        {
+            Collider hit = overlaps[index];
+            if (hit == null || hit is TerrainCollider)
+                continue;
+            Bounds hitBounds = hit.bounds;
+            if (hitBounds.max.y <= worldBounds.min.y + 0.25f ||
+                hit.name.IndexOf("Ground", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                hit.name.IndexOf("地面", System.StringComparison.Ordinal) >= 0)
+            {
+                continue;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    static bool ConnectionIntersectsBounds(
+        AirCombatRuntimeConnectionGeometry[] connections,
+        Bounds bounds,
+        float radius)
+    {
+        if (connections == null)
+            return false;
+        for (int index = 0; index < connections.Length; index++)
+        {
+            Vector3 start = connections[index].localStart;
+            Vector3 end = connections[index].localEnd;
+            if (SegmentIntersectsExpandedBounds(start, end, bounds, radius))
+                return true;
+        }
+        return false;
+    }
+
+    bool RouteIntersectsBounds(
+        AirCombatRuntimeRouteGeometry[] routes,
+        Bounds bounds)
+    {
+        if (routes == null)
+            return false;
+        for (int routeIndex = 0; routeIndex < routes.Length; routeIndex++)
+        {
+            AirCombatRuntimeRouteGeometry route = routes[routeIndex];
+            if (route.kind == AirCombatRouteKind.EnemyIngress ||
+                route.localPoints == null)
+                continue;
+            for (int pointIndex = 1;
+                 pointIndex < route.localPoints.Length;
+                 pointIndex++)
+            {
+                Vector3 start = route.localPoints[pointIndex - 1];
+                Vector3 end = route.localPoints[pointIndex];
+                float verticalSafety = CitySettings.wingspan * 0.45f + 8f;
+                if (Mathf.Min(start.y, end.y) >
+                    bounds.max.y + verticalSafety)
+                {
+                    continue;
+                }
+                if (AirCombatCityGenerator.FootprintIntersectsCorridor(
+                        new Vector2(bounds.center.x, bounds.center.z),
+                        new Vector2(bounds.size.x, bounds.size.z),
+                        0f,
+                        new Vector2(start.x, start.z),
+                        new Vector2(end.x, end.z),
+                        route.width * 0.5f,
+                        out _))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    static bool SegmentIntersectsExpandedBounds(
+        Vector3 start,
+        Vector3 end,
+        Bounds bounds,
+        float radius)
+    {
+        Bounds expanded = bounds;
+        expanded.Expand(Mathf.Max(0f, radius) * 2f);
+        Vector3 direction = end - start;
+        float length = direction.magnitude;
+        if (length <= 0.001f)
+            return expanded.Contains(start);
+        Ray ray = new Ray(start, direction / length);
+        return expanded.IntersectRay(ray, out float distance) &&
+               distance <= length;
     }
 
     public bool TryResolveBossRoadSpawn(
@@ -193,7 +451,12 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
         FinitePlanetDefenseLayoutPlan layout,
         AirCombatCityPlan city)
     {
-        layout.combatCenter = city.objective + Vector3.up * GroundHeight;
+        // Facility objectives deliberately live near the city edge. They are
+        // mission targets, not the origin of the whole horde navigation graph.
+        // Keeping the old objective-based centre shifted every 144-node air
+        // graph toward the northern facility and made otherwise valid PCG
+        // ingresses fail the arena-distance and reachability checks.
+        layout.combatCenter = ResolveFormalCombatCenter(city, GroundHeight);
         layout.playerSpawn = city.playerSpawn + Vector3.up * GroundHeight;
 
         SyncedEnemyIngressCount = 0;
@@ -224,50 +487,267 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
             }
         }
 
+        SynchronizePowerPositions(layout, city);
+        SynchronizeRetreatPoints(layout, city);
+    }
+
+    void SynchronizePowerPositions(
+        FinitePlanetDefenseLayoutPlan layout,
+        AirCombatCityPlan city)
+    {
         if (layout.powerPositions == null ||
-            city.facilityCores.Count == 0)
+            layout.powerPositions.Length == 0)
         {
             return;
         }
-        int coreCount = Mathf.Min(
-            layout.powerPositions.Length,
-            city.facilityCores.Count);
-        for (int index = 0; index < coreCount; index++)
+
+        if (city.facilityCores.Count > 0)
+        {
+            int coreCount = Mathf.Min(
+                layout.powerPositions.Length,
+                city.facilityCores.Count);
+            for (int index = 0; index < coreCount; index++)
+            {
+                CombatSemanticAnchor anchor = layout.powerPositions[index];
+                if (anchor == null)
+                    continue;
+                Vector3 core = city.facilityCores[index];
+                Vector3 outward = core - city.objective;
+                outward.y = 0f;
+                if (outward.sqrMagnitude < 0.001f)
+                    outward = Vector3.forward;
+                // facilityCores now denotes a validated empty modular-facility
+                // pad.  Keep the formal anchor at its actual centre; the
+                // objective builder owns only the vertical placement.
+                anchor.position = core;
+                anchor.position += Vector3.up * GroundHeight;
+                anchor.forward = -outward.normalized;
+            }
+            return;
+        }
+
+        List<Vector3> safePoints = CollectSafeCityVolumeCenters(city, false);
+        if (safePoints.Count == 0)
+            safePoints.Add(city.objective);
+        for (int index = 0; index < layout.powerPositions.Length; index++)
         {
             CombatSemanticAnchor anchor = layout.powerPositions[index];
             if (anchor == null)
                 continue;
-            Vector3 core = city.facilityCores[index];
-            Vector3 outward = core - city.objective;
-            outward.y = 0f;
-            if (outward.sqrMagnitude < 0.001f)
-                outward = Quaternion.Euler(0f, index * 120f, 0f) *
-                          Vector3.forward;
-            // The city generator places a facility building at each core.
-            // Put the formal destructible objective just outside that facade
-            // so it remains visible and shootable without changing its rules.
-            anchor.position = core + outward.normalized * 40f;
-            anchor.position += Vector3.up * GroundHeight;
-            anchor.forward = -outward.normalized;
+            Vector3 point = safePoints[index % safePoints.Count];
+            anchor.position = point + Vector3.up * GroundHeight;
+            anchor.forward = HorizontalDirection(point, city.objective);
         }
     }
 
-    static void CreateFlatGroundCollision(Transform parent)
+    public static Vector3 ResolveFormalCombatCenter(
+        AirCombatCityPlan city,
+        float groundHeight)
+    {
+        if (city != null)
+        {
+            for (int index = 0; index < city.volumes.Count; index++)
+            {
+                AirCombatTacticalVolume volume = city.volumes[index];
+                if (volume != null &&
+                    volume.kind == AirCombatVolumeKind.ManeuverBowl)
+                {
+                    return volume.center + Vector3.up * groundHeight;
+                }
+            }
+        }
+
+        // Older serialized plans may not contain the semantic volume. Their
+        // geometry is still centred on the local origin, so fail safely to the
+        // city centre instead of falling back to an edge objective.
+        return new Vector3(0f, groundHeight, 0f);
+    }
+
+    void SynchronizeRetreatPoints(
+        FinitePlanetDefenseLayoutPlan layout,
+        AirCombatCityPlan city)
+    {
+        if (layout.retreatPoints == null ||
+            layout.retreatPoints.Length == 0)
+        {
+            return;
+        }
+
+        // Prefer recovery pockets, but never put an extraction point directly
+        // on top of a scan/core objective. If all recovery pockets are already
+        // occupied, the other generator-validated city volumes are safer than
+        // falling back to a hidden terrain anchor.
+        List<Vector3> safePoints =
+            CollectSafeCityRetreatCandidates(city);
+
+        var occupied = new List<Vector3>();
+        if (layout.powerPositions != null)
+        {
+            for (int index = 0; index < layout.powerPositions.Length; index++)
+            {
+                CombatSemanticAnchor objective = layout.powerPositions[index];
+                if (objective != null)
+                    occupied.Add(objective.position);
+            }
+        }
+        for (int index = 0; index < layout.retreatPoints.Length; index++)
+        {
+            CombatSemanticAnchor anchor = layout.retreatPoints[index];
+            if (anchor == null)
+                continue;
+            Vector3 point = SelectMostSeparatedPoint(safePoints, occupied);
+            anchor.position = point + Vector3.up * GroundHeight;
+            anchor.forward = HorizontalDirection(point, city.objective);
+            occupied.Add(anchor.position);
+        }
+    }
+
+    static Vector3 SelectMostSeparatedPoint(
+        List<Vector3> candidates,
+        List<Vector3> occupied)
+    {
+        if (candidates == null || candidates.Count == 0)
+            return Vector3.zero;
+        if (occupied == null || occupied.Count == 0)
+            return candidates[0];
+
+        int bestIndex = 0;
+        float bestDistanceSquared = -1f;
+        for (int candidateIndex = 0;
+             candidateIndex < candidates.Count;
+             candidateIndex++)
+        {
+            Vector3 candidate = candidates[candidateIndex];
+            float nearestDistanceSquared = float.PositiveInfinity;
+            for (int occupiedIndex = 0;
+                 occupiedIndex < occupied.Count;
+                 occupiedIndex++)
+            {
+                Vector3 delta = candidate - occupied[occupiedIndex];
+                delta.y = 0f;
+                nearestDistanceSquared = Mathf.Min(
+                    nearestDistanceSquared,
+                    delta.sqrMagnitude);
+            }
+            if (nearestDistanceSquared <= bestDistanceSquared)
+                continue;
+            bestDistanceSquared = nearestDistanceSquared;
+            bestIndex = candidateIndex;
+        }
+        return candidates[bestIndex];
+    }
+
+    static void AppendUniquePoint(List<Vector3> destination, Vector3 point)
+    {
+        for (int index = 0; index < destination.Count; index++)
+        {
+            Vector3 delta = destination[index] - point;
+            delta.y = 0f;
+            if (delta.sqrMagnitude < 1f)
+                return;
+        }
+        destination.Add(point);
+    }
+
+    static List<Vector3> CollectSafeCityVolumeCenters(
+        AirCombatCityPlan city,
+        bool recoveryOnly)
+    {
+        var result = new List<Vector3>(city.volumes.Count);
+        for (int pass = 0; pass < (recoveryOnly ? 1 : 3); pass++)
+        {
+            for (int index = 0; index < city.volumes.Count; index++)
+            {
+                AirCombatTacticalVolume volume = city.volumes[index];
+                bool accepted = pass == 0
+                    ? volume.kind == AirCombatVolumeKind.RecoveryPocket
+                    : pass == 1
+                        ? volume.kind == AirCombatVolumeKind.ManeuverBowl
+                        : volume.kind == AirCombatVolumeKind.SpawnBasin;
+                if (!accepted)
+                    continue;
+                result.Add(volume.center);
+            }
+        }
+        return result;
+    }
+
+    static List<Vector3> CollectSafeCityRetreatCandidates(
+        AirCombatCityPlan city)
+    {
+        var result = new List<Vector3>(city.volumes.Count * 5 + 1);
+        for (int pass = 0; pass < 3; pass++)
+        {
+            for (int index = 0; index < city.volumes.Count; index++)
+            {
+                AirCombatTacticalVolume volume = city.volumes[index];
+                bool accepted = pass == 0
+                    ? volume.kind == AirCombatVolumeKind.RecoveryPocket
+                    : pass == 1
+                        ? volume.kind == AirCombatVolumeKind.ManeuverBowl
+                        : volume.kind == AirCombatVolumeKind.SpawnBasin;
+                if (!accepted)
+                    continue;
+
+                AppendUniquePoint(result, volume.center);
+                // Mission anchors occupy a point, while these PCG volumes are
+                // building-free areas. Add interior alternatives so three
+                // scan targets cannot consume every valid extraction choice.
+                float offsetX = Mathf.Max(0f, volume.size.x * 0.5f - 28f);
+                float offsetZ = Mathf.Max(0f, volume.size.z * 0.5f - 28f);
+                if (offsetX >= 20f)
+                {
+                    AppendUniquePoint(
+                        result,
+                        volume.center + Vector3.right * offsetX);
+                    AppendUniquePoint(
+                        result,
+                        volume.center - Vector3.right * offsetX);
+                }
+                if (offsetZ >= 20f)
+                {
+                    AppendUniquePoint(
+                        result,
+                        volume.center + Vector3.forward * offsetZ);
+                    AppendUniquePoint(
+                        result,
+                        volume.center - Vector3.forward * offsetZ);
+                }
+            }
+        }
+        AppendUniquePoint(result, city.playerSpawn);
+        return result;
+    }
+
+    static Vector3 HorizontalDirection(Vector3 from, Vector3 to)
+    {
+        Vector3 direction = to - from;
+        direction.y = 0f;
+        return direction.sqrMagnitude > 0.001f
+            ? direction.normalized
+            : Vector3.forward;
+    }
+
+    static void CreateFlatGroundCollision(Transform parent, float groundSize)
     {
         var ground = new GameObject(
             "UrbanCombatGroundCollision_城市平坦地面");
         ground.transform.SetParent(parent, false);
         ground.transform.localPosition = new Vector3(0f, -1.1f, 0f);
         BoxCollider collider = ground.AddComponent<BoxCollider>();
-        collider.size = new Vector3(1792f, 2f, 1792f);
+        float safeGroundSize = Mathf.Max(512f, groundSize);
+        collider.size = new Vector3(
+            safeGroundSize,
+            2f,
+            safeGroundSize);
     }
 
     void HandleChunkActivated(Vector2Int coordinate)
     {
-        SuppressNaturalTerrainChunks();
+        SuppressUnderlyingTerrainChunks();
     }
 
-    void SuppressNaturalTerrainChunks()
+    void SuppressUnderlyingTerrainChunks()
     {
         if (streamer == null)
             return;

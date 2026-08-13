@@ -280,14 +280,16 @@ namespace UnityPlanet.CityPcg
             fieldRoot = root.transform;
             fieldRoot.SetParent(transform, false);
 
-            if (TrySelectWindTrapCandidate(
-                    plan,
-                    out WindTrapCandidate windCandidate))
+            List<WindTrapCandidate> windCandidates =
+                SelectWindTrapCandidates(plan, settings);
+            for (int windIndex = 0;
+                 windIndex < windCandidates.Count;
+                 windIndex++)
             {
                 BuildNaturalStreetGale(
-                    windCandidate,
+                    windCandidates[windIndex],
                     settings,
-                    plan.resolvedSeed);
+                    unchecked(plan.resolvedSeed + windIndex * 7919));
             }
 
             int magneticCourtyardIndex = 0;
@@ -295,7 +297,8 @@ namespace UnityPlanet.CityPcg
             {
                 AirCombatTacticalVolume volume = plan.volumes[index];
                 if (volume == null ||
-                    volume.kind != AirCombatVolumeKind.RecoveryPocket)
+                    volume.kind != AirCombatVolumeKind.RecoveryPocket ||
+                    magneticCourtyardIndex >= settings.magneticCourtyardCount)
                 {
                     continue;
                 }
@@ -362,14 +365,93 @@ namespace UnityPlanet.CityPcg
             public Vector3 sideEntry;
             public float sideSign;
             public Vector3 impactPoint;
+            public float score;
+            public int stableOrder;
+
+            public Vector3 Center => road != null
+                ? (road.start + road.end) * 0.5f
+                : Vector3.zero;
         }
 
-        static bool TrySelectWindTrapCandidate(
+        public static bool TryResolvePlannedWindTrapPosition(
             AirCombatCityPlan plan,
-            out WindTrapCandidate selected)
+            AirCombatCitySettings settings,
+            out Vector3 position)
         {
-            selected = default(WindTrapCandidate);
-            float selectedScore = float.NegativeInfinity;
+            return ResolvePlannedWindTrapCount(plan, settings, out position) > 0;
+        }
+
+        public static int ResolvePlannedWindTrapCount(
+            AirCombatCityPlan plan,
+            AirCombatCitySettings settings,
+            out Vector3 firstPosition)
+        {
+            firstPosition = Vector3.zero;
+            AirCombatCitySettings resolvedSettings = settings ??
+                                                     new AirCombatCitySettings();
+            List<WindTrapCandidate> selected = SelectWindTrapCandidates(
+                plan,
+                resolvedSettings);
+            if (selected.Count > 0)
+                firstPosition = selected[0].Center;
+            return selected.Count;
+        }
+
+        public static int ResolvePlannedWindTrapGeometry(
+            AirCombatCityPlan plan,
+            AirCombatCitySettings settings,
+            out string[] stableIds,
+            out Vector3[] centers,
+            out Vector3[] directions,
+            out Vector3[] sizes)
+        {
+            AirCombatCitySettings resolvedSettings = settings ??
+                                                     new AirCombatCitySettings();
+            List<WindTrapCandidate> selected = SelectWindTrapCandidates(
+                plan,
+                resolvedSettings);
+            stableIds = new string[selected.Count];
+            centers = new Vector3[selected.Count];
+            directions = new Vector3[selected.Count];
+            sizes = new Vector3[selected.Count];
+            for (int index = 0; index < selected.Count; index++)
+            {
+                WindTrapCandidate candidate = selected[index];
+                AirCombatRoadStrip road = candidate.road;
+                if (road == null)
+                    continue;
+                float length = Vector3.Distance(road.start, road.end);
+                stableIds[index] = road.stableId ?? string.Empty;
+                centers[index] = candidate.Center;
+                directions[index] = candidate.direction.sqrMagnitude > 0.001f
+                    ? candidate.direction.normalized
+                    : Vector3.forward;
+                sizes[index] = new Vector3(
+                    Mathf.Clamp(road.width * 0.90f, 18f, 104f),
+                    resolvedSettings.maximumAltitude,
+                    length);
+            }
+            return selected.Count;
+        }
+
+        static List<WindTrapCandidate> SelectWindTrapCandidates(
+            AirCombatCityPlan plan,
+            AirCombatCitySettings settings)
+        {
+            var allCandidates = new List<WindTrapCandidate>(32);
+            if (plan == null || settings == null)
+                return allCandidates;
+            float minimumRadius = settings.environmentalTrapPreferredMinimumRadius;
+            float maximumRadius = Mathf.Max(
+                minimumRadius + 1f,
+                settings.environmentalTrapPreferredMaximumRadius);
+            float targetRadius = Mathf.Lerp(
+                minimumRadius,
+                maximumRadius,
+                settings.environmentalTrapEdgeBias);
+            float cityHalf = (plan.mapSize > 1f
+                ? plan.mapSize
+                : settings.mapSize) * 0.5f;
             List<AirCombatRoadStrip> continuousRoads =
                 BuildContinuousRoadCorridors(plan);
             for (int index = 0; index < continuousRoads.Count; index++)
@@ -409,28 +491,176 @@ namespace UnityPlanet.CityPcg
                     }
 
                     Vector3 center = (road.start + road.end) * 0.5f;
-                    float score = length +
-                                  Vector3.Distance(
-                                      center,
-                                      plan.playerSpawn) * 0.22f +
+                    float radius = Vector3.ProjectOnPlane(
+                        center,
+                        Vector3.up).magnitude;
+                    float outsidePreferredRange = radius < minimumRadius
+                        ? minimumRadius - radius
+                        : radius > maximumRadius
+                            ? radius - maximumRadius
+                            : 0f;
+                    float edgeGap = cityHalf - Mathf.Max(
+                        Mathf.Abs(center.x),
+                        Mathf.Abs(center.z)) - road.width * 0.5f;
+                    float separation = DistanceToNearestRecoveryPocket(
+                        plan,
+                        center);
+                    int stableSalt = StableStringHash(road.stableId) ^
+                                     orientation * 0x45D9F3B;
+                    float randomScore = StableNoise01(
+                                            plan.resolvedSeed,
+                                            stableSalt) * 2f - 1f;
+                    float score = length * 0.38f +
                                   (road.kind == AirCombatRouteKind.Main
-                                      ? 80f
+                                      ? 48f
                                       : 0f) -
-                                  impactDistance * 0.35f;
-                    if (score <= selectedScore)
-                        continue;
-                    selected = new WindTrapCandidate
+                                  impactDistance * 0.35f -
+                                  Mathf.Abs(radius - targetRadius) * 0.68f -
+                                  outsidePreferredRange * 2.2f -
+                                  Mathf.Max(
+                                      0f,
+                                      settings.environmentalTrapEdgeClearance -
+                                      edgeGap) * 3.5f -
+                                  Mathf.Max(
+                                      0f,
+                                      settings.environmentalTrapMinimumSeparation -
+                                      separation) * 2.8f +
+                                  randomScore * 150f *
+                                  settings.environmentalTrapRandomness;
+                    allCandidates.Add(new WindTrapCandidate
                     {
                         road = road,
                         direction = direction,
                         sideEntry = sideEntry,
                         sideSign = sideSign,
-                        impactPoint = impactPoint
-                    };
-                    selectedScore = score;
+                        impactPoint = impactPoint,
+                        score = score,
+                        stableOrder = stableSalt
+                    });
                 }
             }
-            return selected.road != null;
+            allCandidates.Sort((first, second) =>
+            {
+                int byScore = second.score.CompareTo(first.score);
+                if (byScore != 0)
+                    return byScore;
+                int byRoad = string.CompareOrdinal(
+                    first.road != null ? first.road.stableId : string.Empty,
+                    second.road != null ? second.road.stableId : string.Empty);
+                return byRoad != 0
+                    ? byRoad
+                    : first.stableOrder.CompareTo(second.stableOrder);
+            });
+
+            int requested = Mathf.Max(1, settings.naturalStreetGaleCount);
+            var selected = new List<WindTrapCandidate>(Mathf.Min(
+                requested,
+                allCandidates.Count));
+            var selectedRoads = new HashSet<string>(StringComparer.Ordinal);
+            AddWindCandidates(
+                selected,
+                selectedRoads,
+                allCandidates,
+                requested,
+                settings.environmentalTrapMinimumSeparation);
+            // As with magnetic courtyards, spacing is a preference. Distinct
+            // physically valid roads may still be used to satisfy a larger
+            // authored count when the city cannot meet that spacing.
+            AddWindCandidates(
+                selected,
+                selectedRoads,
+                allCandidates,
+                requested,
+                0f);
+            return selected;
+        }
+
+        static void AddWindCandidates(
+            List<WindTrapCandidate> selected,
+            HashSet<string> selectedRoads,
+            List<WindTrapCandidate> candidates,
+            int requested,
+            float minimumSeparation)
+        {
+            for (int candidateIndex = 0;
+                 candidateIndex < candidates.Count && selected.Count < requested;
+                 candidateIndex++)
+            {
+                WindTrapCandidate candidate = candidates[candidateIndex];
+                if (candidate.road == null ||
+                    selectedRoads.Contains(candidate.road.stableId))
+                {
+                    continue;
+                }
+                bool available = true;
+                for (int selectedIndex = 0;
+                     selectedIndex < selected.Count;
+                     selectedIndex++)
+                {
+                    if (Vector3.Distance(
+                            candidate.Center,
+                            selected[selectedIndex].Center) < minimumSeparation)
+                    {
+                        available = false;
+                        break;
+                    }
+                }
+                if (!available)
+                    continue;
+                selected.Add(candidate);
+                selectedRoads.Add(candidate.road.stableId);
+            }
+        }
+
+        static float DistanceToNearestRecoveryPocket(
+            AirCombatCityPlan plan,
+            Vector3 point)
+        {
+            float nearest = float.PositiveInfinity;
+            if (plan == null || plan.volumes == null)
+                return nearest;
+            for (int index = 0; index < plan.volumes.Count; index++)
+            {
+                AirCombatTacticalVolume volume = plan.volumes[index];
+                if (volume == null ||
+                    volume.kind != AirCombatVolumeKind.RecoveryPocket)
+                {
+                    continue;
+                }
+                nearest = Mathf.Min(
+                    nearest,
+                    Vector3.Distance(
+                        Vector3.ProjectOnPlane(point, Vector3.up),
+                        Vector3.ProjectOnPlane(volume.center, Vector3.up)));
+            }
+            return nearest;
+        }
+
+        static int StableStringHash(string value)
+        {
+            unchecked
+            {
+                int hash = 23;
+                if (value == null)
+                    return hash;
+                for (int index = 0; index < value.Length; index++)
+                    hash = hash * 31 + value[index];
+                return hash;
+            }
+        }
+
+        static float StableNoise01(int seed, int salt)
+        {
+            unchecked
+            {
+                uint value = (uint)seed ^ ((uint)salt + 0x9E3779B9u);
+                value ^= value >> 16;
+                value *= 0x7FEB352Du;
+                value ^= value >> 15;
+                value *= 0x846CA68Bu;
+                value ^= value >> 16;
+                return (value & 0x00FFFFFFu) / 16777216f;
+            }
         }
 
         static bool TryFindDownwindImpact(
@@ -1079,13 +1309,25 @@ namespace UnityPlanet.CityPcg
             Vector3 facadeWorldNormal = cityRoot != null
                 ? cityRoot.TransformDirection(normals[selected])
                 : normals[selected];
+            Vector3 localCenter = fieldTransform.InverseTransformPoint(
+                facadeWorldCenter);
+            Vector3 localNormal = fieldTransform.InverseTransformDirection(
+                facadeWorldNormal).normalized;
+            if (Mathf.Abs(localNormal.x) > Mathf.Abs(localNormal.z) &&
+                localCenter.z > 0f)
+            {
+                // A rotated side building can place its real inner facade a
+                // few centimetres past the semantic entrance plane. Keep the
+                // magnetic proxy on/behind that plane so the three-wall trap
+                // never grows a thin fourth lip across its authored opening.
+                // The actual building and its collision are not moved.
+                localCenter.z = 0f;
+            }
             surface = new UrbanMagneticWallSurface
             {
                 stableId = building.stableId,
-                localCenter = fieldTransform.InverseTransformPoint(
-                    facadeWorldCenter),
-                localInwardNormal = fieldTransform.InverseTransformDirection(
-                    facadeWorldNormal).normalized,
+                localCenter = localCenter,
+                localInwardNormal = localNormal,
                 width = widths[selected],
                 height = building.size.y
             };
@@ -1145,9 +1387,10 @@ namespace UnityPlanet.CityPcg
             public float halfHeight;
         }
 
-        const int OverlapCapacity = 192;
+        const int InitialOverlapCapacity = 2048;
+        const int MaximumPooledOverlapCapacity = 32768;
         const int RayCapacity = 32;
-        readonly Collider[] overlapBuffer = new Collider[OverlapCapacity];
+        Collider[] overlapBuffer = new Collider[InitialOverlapCapacity];
         readonly RaycastHit[] rayBuffer = new RaycastHit[RayCapacity];
         readonly HashSet<int> sampledBodyIds = new HashSet<int>();
         readonly HashSet<int> assignedPursuerBodyIds = new HashSet<int>();
@@ -1164,6 +1407,10 @@ namespace UnityPlanet.CityPcg
             new List<UrbanMagneticWallSurface>(3);
         readonly Dictionary<Rigidbody, CaptureRecord> captures =
             new Dictionary<Rigidbody, CaptureRecord>();
+        readonly Dictionary<Rigidbody, Collider[]> bodyColliderCache =
+            new Dictionary<Rigidbody, Collider[]>();
+        readonly Dictionary<Rigidbody, Bounds> bodyBoundsThisStep =
+            new Dictionary<Rigidbody, Bounds>();
 
         UrbanEnvironmentalFieldKind kind;
         UrbanEnvironmentalFieldState state;
@@ -1263,6 +1510,7 @@ namespace UnityPlanet.CityPcg
         {
             if (!Application.isPlaying)
                 return;
+            bodyBoundsThisStep.Clear();
             SampleCombatBodies();
             if (controlMode == UrbanEnvironmentalFieldControlMode.Automatic)
             {
@@ -1499,6 +1747,8 @@ namespace UnityPlanet.CityPcg
                 state == UrbanEnvironmentalFieldState.Dormant)
             {
                 assignedPursuerBodyIds.Clear();
+                bodyColliderCache.Clear();
+                bodyBoundsThisStep.Clear();
             }
             switch (state)
             {
@@ -1543,13 +1793,7 @@ namespace UnityPlanet.CityPcg
                     Mathf.Abs(lossy.z)));
             Vector3 center = transform.TransformPoint(
                 Vector3.up * localSize.y * 0.5f);
-            int count = Physics.OverlapBoxNonAlloc(
-                center,
-                half,
-                overlapBuffer,
-                transform.rotation,
-                ~0,
-                QueryTriggerInteraction.Ignore);
+            int count = CollectOverlapColliders(center, half);
             for (int index = 0; index < count; index++)
             {
                 Collider collider = overlapBuffer[index];
@@ -1564,6 +1808,47 @@ namespace UnityPlanet.CityPcg
                     continue;
                 }
                 sampledBodies.Add(body);
+            }
+        }
+
+        int CollectOverlapColliders(Vector3 center, Vector3 half)
+        {
+            while (true)
+            {
+                int count = Physics.OverlapBoxNonAlloc(
+                    center,
+                    half,
+                    overlapBuffer,
+                    transform.rotation,
+                    ~0,
+                    QueryTriggerInteraction.Ignore);
+                if (count < overlapBuffer.Length)
+                    return count;
+                if (overlapBuffer.Length < MaximumPooledOverlapCapacity)
+                {
+                    int nextCapacity = Mathf.Min(
+                        MaximumPooledOverlapCapacity,
+                        overlapBuffer.Length * 2);
+                    Array.Resize(ref overlapBuffer, nextCapacity);
+                    continue;
+                }
+
+                // Extremely dense combined-city collision can still exceed
+                // the pooled broadphase buffer. Pay one allocation on that
+                // exceptional frame, then retain a larger buffer so a large
+                // Boss cannot starve the player from subsequent samples.
+                Collider[] complete = Physics.OverlapBox(
+                    center,
+                    half,
+                    transform.rotation,
+                    ~0,
+                    QueryTriggerInteraction.Ignore);
+                int retainedCapacity = Mathf.NextPowerOfTwo(
+                    Mathf.Max(complete.Length + 1,
+                              overlapBuffer.Length + 1));
+                overlapBuffer = new Collider[retainedCapacity];
+                Array.Copy(complete, overlapBuffer, complete.Length);
+                return complete.Length;
             }
         }
 
@@ -1892,10 +2177,31 @@ namespace UnityPlanet.CityPcg
             return selected;
         }
 
-        static float EstimateBodyRadius(Rigidbody body, Vector3 worldNormal)
+        float EstimateBodyRadius(Rigidbody body, Vector3 worldNormal)
         {
-            Collider[] colliders = body.GetComponentsInChildren<Collider>();
-            Bounds combined = new Bounds(body.worldCenterOfMass, Vector3.zero);
+            if (!TryResolveBodyBounds(body, out Bounds combined))
+                return 2f;
+            Vector3 n = new Vector3(
+                Mathf.Abs(worldNormal.x),
+                Mathf.Abs(worldNormal.y),
+                Mathf.Abs(worldNormal.z));
+            // Boss hulls can exceed 12 m in every half-axis. Capping support at
+            // the player-scale value placed the magnetic target inside the
+            // wall and forced hundreds of penetration checks every frame.
+            return Mathf.Clamp(Vector3.Dot(combined.extents, n), 1f, 64f);
+        }
+
+        bool TryResolveBodyBounds(Rigidbody body, out Bounds combined)
+        {
+            if (body == null)
+            {
+                combined = default;
+                return false;
+            }
+            if (bodyBoundsThisStep.TryGetValue(body, out combined))
+                return true;
+            Collider[] colliders = ResolveBodyColliders(body);
+            combined = new Bounds(body.worldCenterOfMass, Vector3.zero);
             bool initialized = false;
             for (int index = 0; index < colliders.Length; index++)
             {
@@ -1912,13 +2218,44 @@ namespace UnityPlanet.CityPcg
                     combined.Encapsulate(collider.bounds);
                 }
             }
-            if (!initialized)
-                return 2f;
-            Vector3 n = new Vector3(
-                Mathf.Abs(worldNormal.x),
-                Mathf.Abs(worldNormal.y),
-                Mathf.Abs(worldNormal.z));
-            return Mathf.Clamp(Vector3.Dot(combined.extents, n), 1f, 12f);
+            if (initialized)
+                bodyBoundsThisStep[body] = combined;
+            return initialized;
+        }
+
+        Collider[] ResolveBodyColliders(Rigidbody body)
+        {
+            if (body == null)
+                return Array.Empty<Collider>();
+            if (bodyColliderCache.TryGetValue(
+                    body,
+                    out Collider[] cached) &&
+                HasLiveOwnedCollider(body, cached))
+            {
+                return cached;
+            }
+            Collider[] resolved =
+                body.GetComponentsInChildren<Collider>();
+            bodyColliderCache[body] = resolved;
+            return resolved;
+        }
+
+        static bool HasLiveOwnedCollider(
+            Rigidbody body,
+            Collider[] colliders)
+        {
+            if (body == null || colliders == null)
+                return false;
+            for (int index = 0; index < colliders.Length; index++)
+            {
+                Collider collider = colliders[index];
+                if (collider != null &&
+                    collider.transform.IsChildOf(body.transform))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         void ReleaseCapturedBodies()
@@ -1962,8 +2299,7 @@ namespace UnityPlanet.CityPcg
             for (int pass = 0; pass < 3; pass++)
             {
                 Vector3 correction = Vector3.zero;
-                Collider[] bodyColliders =
-                    body.GetComponentsInChildren<Collider>();
+                Collider[] bodyColliders = ResolveBodyColliders(body);
                 for (int bodyIndex = 0;
                      bodyIndex < bodyColliders.Length;
                      bodyIndex++)
@@ -1978,6 +2314,8 @@ namespace UnityPlanet.CityPcg
                     {
                         continue;
                     }
+                    if (!source.bounds.Intersects(panel.bounds))
+                        continue;
                     if (Physics.ComputePenetration(
                             source,
                             source.transform.position,
@@ -2007,7 +2345,7 @@ namespace UnityPlanet.CityPcg
 
         bool IsPenetratingPanel(Rigidbody body)
         {
-            Collider[] bodyColliders = body.GetComponentsInChildren<Collider>();
+            Collider[] bodyColliders = ResolveBodyColliders(body);
             for (int bodyIndex = 0;
                  bodyIndex < bodyColliders.Length;
                  bodyIndex++)
@@ -2022,6 +2360,8 @@ namespace UnityPlanet.CityPcg
                 {
                     continue;
                 }
+                if (!source.bounds.Intersects(panel.bounds))
+                    continue;
                 if (Physics.ComputePenetration(
                         source,
                         source.transform.position,

@@ -180,8 +180,8 @@ public sealed class AirCombatCityPcgTests
             Assert.That(bridges, Has.Length.GreaterThanOrEqualTo(150));
             Assert.That(
                 lab.LastCrossRoadBlockSkybridgeCount,
-                Is.GreaterThanOrEqualTo(Mathf.CeilToInt(bridges.Length * 0.5f)),
-                "At least half of the physical skybridges must cross a road-separated city block.");
+                Is.GreaterThanOrEqualTo(lab.Settings.crossBlockSkybridgeTarget),
+                "Cross-block bridges must satisfy the post-merge block quota.");
             Assert.That(bridges.Count(bridge =>
                     bridge.name.EndsWith(
                         "_CrossRoadBlock",
@@ -204,10 +204,16 @@ public sealed class AirCombatCityPcgTests
                 item.GetComponentsInChildren<AerialCableCurve>(true).Length == 3),
                 Is.True,
                 "Each aerial link must remain a red/dark/blue three-tube bundle.");
-            Assert.That(aerialCableLinks.SelectMany(item =>
-                item.GetComponentsInChildren<Collider>(true)),
-                Is.Empty,
-                "Aerial cables are visual connections and must not change ship physics.");
+            Collider[] cableTriggers = aerialCableLinks.SelectMany(item =>
+                    item.GetComponentsInChildren<Collider>(true))
+                .ToArray();
+            Assert.That(cableTriggers, Is.Not.Empty);
+            Assert.That(cableTriggers.All(item => item.isTrigger), Is.True,
+                "Aerial cable gameplay contacts must remain non-blocking triggers.");
+            Assert.That(aerialCableLinks.All(item =>
+                    item.GetComponent<AerialCableSlowHazard>() != null),
+                Is.True,
+                "Every generated cable bundle must expose the shared slowdown hazard.");
             Assert.That(objects.Count(item =>
                 item.name.StartsWith("TacticalClosePair_", StringComparison.Ordinal) &&
                 item.name.IndexOf("CompactHullGate", StringComparison.Ordinal) >= 0),
@@ -392,6 +398,93 @@ public sealed class AirCombatCityPcgTests
     }
 
     [Test]
+    public void ExcessiveSkybridgeQuotaBuildsMaximumLegalNetwork()
+    {
+        GameObject template = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Resources/PlanetSurface/UrbanCombatCityTemplate.prefab");
+        Assert.That(template, Is.Not.Null);
+        GameObject city = UnityEngine.Object.Instantiate(template);
+        try
+        {
+            AirCombatCityPcgLab lab = city.GetComponent<AirCombatCityPcgLab>();
+            lab.Settings.seed = 1321;
+            lab.Settings.mission = AirCombatCityMission.Clearance;
+            lab.Settings.intraBlockSkybridgeTarget = 62;
+            lab.Settings.crossBlockSkybridgeTarget = 80;
+            lab.Settings.skybridgeMaximumSegmentCount = 1;
+            lab.Rebuild();
+
+            Assert.That(lab.Report.skybridgeNetworkValid, Is.True,
+                lab.LastSummary);
+            Assert.That(lab.LastCrossRoadBlockSkybridgeCount,
+                Is.LessThan(lab.Settings.crossBlockSkybridgeTarget));
+            Assert.That(lab.LastCrossRoadBlockSkybridgeCount,
+                Is.GreaterThan(0));
+            Assert.That(lab.LastSkybridgeCount,
+                Is.GreaterThanOrEqualTo(
+                    lab.Settings.intraBlockSkybridgeTarget));
+            Assert.That(
+                city.GetComponentsInChildren<UrbanDestructibleBridge>(true),
+                Has.Length.EqualTo(lab.LastSkybridgeCount));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(city);
+        }
+    }
+
+    [Test]
+    public void ModularSkybridgesReachCrossBlockQuotaWithoutOverstretching()
+    {
+        GameObject template = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Resources/PlanetSurface/UrbanCombatCityTemplate.prefab");
+        Assert.That(template, Is.Not.Null);
+        GameObject city = UnityEngine.Object.Instantiate(template);
+        try
+        {
+            AirCombatCityPcgLab lab = city.GetComponent<AirCombatCityPcgLab>();
+            lab.Settings.seed = 1321;
+            lab.Settings.mission = AirCombatCityMission.Clearance;
+            lab.Settings.intraBlockSkybridgeTarget = 62;
+            lab.Settings.crossBlockSkybridgeTarget = 80;
+            lab.Settings.skybridgeMaximumSegmentCount = 3;
+            lab.Rebuild();
+
+            Assert.That(lab.Report.skybridgeNetworkValid, Is.True,
+                lab.LastSummary);
+            Assert.That(lab.LastCrossBlockSkybridgeCandidateCount,
+                Is.GreaterThanOrEqualTo(
+                    lab.Settings.crossBlockSkybridgeTarget));
+            Assert.That(lab.LastCrossRoadBlockSkybridgeCount,
+                Is.EqualTo(lab.Settings.crossBlockSkybridgeTarget));
+            Assert.That(lab.LastSkybridgeCount,
+                Is.EqualTo(
+                    lab.Settings.intraBlockSkybridgeTarget +
+                    lab.Settings.crossBlockSkybridgeTarget));
+
+            DarkCity2AssetDescriptor[] spans = city
+                .GetComponentsInChildren<DarkCity2AssetDescriptor>(true)
+                .Where(item => item.name.StartsWith(
+                    "BridgeSpan_",
+                    StringComparison.Ordinal))
+                .ToArray();
+            Assert.That(spans.Any(item => item.name.Contains("of2")), Is.True,
+                "The ordinary network should use modular spans when one safe span is too short.");
+            Assert.That(spans.All(item =>
+                    item.transform.localScale.z + 0.001f >=
+                    item.AllowedStretch.x &&
+                    item.transform.localScale.z <=
+                    item.AllowedStretch.y + 0.001f),
+                Is.True,
+                "Every modular span must remain inside its catalog stretch limits.");
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(city);
+        }
+    }
+
+    [Test]
     public void ReportedRuntimeClearanceSeedBuildsBothCollapseAmbushBridges()
     {
         GameObject template = AssetDatabase.LoadAssetAtPath<GameObject>(
@@ -560,7 +653,7 @@ public sealed class AirCombatCityPcgTests
             Assert.That(
                 lab.LastCrossRoadBlockSkybridgeCount,
                 Is.GreaterThanOrEqualTo(
-                    Mathf.CeilToInt(lab.LastSkybridgeCount * 0.5f)));
+                    lab.Settings.bossCrossBlockSkybridgeTarget));
             AirCombatTacticalSkybridge[] tactical = city
                 .GetComponentsInChildren<AirCombatTacticalSkybridge>(true);
             IGrouping<string, AirCombatTacticalSkybridge>[] groups = tactical
@@ -648,6 +741,66 @@ public sealed class AirCombatCityPcgTests
         }
     }
 
+    [Test]
+    public void MapSixBossSeedBuildsValidatedRuntimeCity()
+    {
+        GameObject template = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Resources/PlanetSurface/UrbanCombatCityTemplate.prefab");
+        Assert.That(template, Is.Not.Null);
+        GameObject city = UnityEngine.Object.Instantiate(template);
+        try
+        {
+            AirCombatCityPcgLab lab = city.GetComponent<AirCombatCityPcgLab>();
+            lab.ConfigureRuntimeMission(
+                -1610282716,
+                AirCombatCityMission.BossEncounter,
+                4);
+
+            Assert.That(lab.HasValidPlan, Is.True, lab.LastSummary);
+            Assert.That(lab.Report.requestedSeed, Is.EqualTo(-1610282716));
+            Assert.That(lab.Report.combatRegionsPhysical, Is.True);
+            Assert.That(lab.Report.occlusionBoundaryTowerCount,
+                Is.GreaterThanOrEqualTo(7));
+            Assert.That(lab.Report.exposureShortcutSavingRatio,
+                Is.InRange(
+                    CombatDrivenCityPcgPlanner
+                        .MinimumExposureShortcutSavingRatio,
+                    CombatDrivenCityPcgPlanner
+                        .MaximumExposureShortcutSavingRatio));
+            Assert.That(lab.Report.skybridgeNetworkValid, Is.True);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(city);
+        }
+    }
+
+    [Test]
+    public void HighestBossTierKeepsExposureShortcutWithinPhysicalBudget()
+    {
+        var settings = new AirCombatCitySettings
+        {
+            seed = -1610282716,
+            mission = AirCombatCityMission.BossEncounter,
+            combatDifficulty = CombatCityDifficultyProfile.CreateForTier(
+                5,
+                AirCombatCityMission.BossEncounter)
+        };
+
+        AirCombatCityGenerator.Generate(
+            settings,
+            out AirCombatCityReport report);
+
+        Assert.That(report.valid, Is.True, report.failureReason);
+        Assert.That(report.combatRegionsPhysical, Is.True);
+        Assert.That(report.exposureShortcutSavingRatio,
+            Is.InRange(
+                CombatDrivenCityPcgPlanner
+                    .MinimumExposureShortcutSavingRatio,
+                CombatDrivenCityPcgPlanner
+                    .MaximumExposureShortcutSavingRatio));
+    }
+
     static Bounds ResolveColliderBounds(GameObject root)
     {
         Collider[] colliders = root.GetComponentsInChildren<Collider>(true)
@@ -711,6 +864,109 @@ public sealed class AirCombatCityPcgTests
     }
 
     [Test]
+    public void GeneratedCombatCityDoesNotReserveRemovedDangerPark()
+    {
+        var settings = new AirCombatCitySettings { seed = 7319 };
+        AirCombatCityPlan plan = AirCombatCityGenerator.Generate(
+            settings,
+            out AirCombatCityReport report);
+
+        Assert.That(report.valid, Is.True, report.failureReason);
+        Assert.That(report.tacticalRolesComplete, Is.True);
+        Assert.That(
+            plan.volumes.Any(volume =>
+                volume.stableId.IndexOf(
+                    "danger-plaza",
+                    StringComparison.OrdinalIgnoreCase) >= 0),
+            Is.False);
+    }
+
+    [Test]
+    public void EnvironmentalTrapDistributionControlsMoveLegalTrapCandidates()
+    {
+        var innerSettings = new AirCombatCitySettings
+        {
+            seed = 7319,
+            environmentalTrapRandomness = 0f,
+            environmentalTrapEdgeBias = 0f
+        };
+        var outerSettings = new AirCombatCitySettings
+        {
+            seed = innerSettings.seed,
+            environmentalTrapRandomness = 0f,
+            environmentalTrapEdgeBias = 1f
+        };
+
+        AirCombatCityPlan innerPlan = AirCombatCityGenerator.Generate(
+            innerSettings,
+            out AirCombatCityReport innerReport);
+        AirCombatCityPlan outerPlan = AirCombatCityGenerator.Generate(
+            outerSettings,
+            out AirCombatCityReport outerReport);
+
+        Assert.That(innerReport.valid, Is.True, innerReport.failureReason);
+        Assert.That(outerReport.valid, Is.True, outerReport.failureReason);
+        Assert.That(innerReport.buildingRoadOverlapCount, Is.Zero);
+        Assert.That(outerReport.buildingRoadOverlapCount, Is.Zero);
+
+        float innerMagneticRadius = innerPlan.volumes
+            .Where(volume => volume.kind == AirCombatVolumeKind.RecoveryPocket)
+            .Average(volume => new Vector2(
+                volume.center.x,
+                volume.center.z).magnitude);
+        float outerMagneticRadius = outerPlan.volumes
+            .Where(volume => volume.kind == AirCombatVolumeKind.RecoveryPocket)
+            .Average(volume => new Vector2(
+                volume.center.x,
+                volume.center.z).magnitude);
+        Assert.That(outerMagneticRadius, Is.GreaterThan(innerMagneticRadius));
+
+        Assert.That(
+            UrbanEnvironmentalFieldDirector.TryResolvePlannedWindTrapPosition(
+                innerPlan,
+                innerSettings.ValidatedCopy(),
+                out Vector3 innerWind),
+            Is.True);
+        Assert.That(
+            UrbanEnvironmentalFieldDirector.TryResolvePlannedWindTrapPosition(
+                outerPlan,
+                outerSettings.ValidatedCopy(),
+                out Vector3 outerWind),
+            Is.True);
+        Assert.That(
+            new Vector2(outerWind.x, outerWind.z).magnitude,
+            Is.GreaterThan(new Vector2(innerWind.x, innerWind.z).magnitude));
+    }
+
+    [Test]
+    public void EnvironmentalTrapCountsUseDistinctLegalCandidates()
+    {
+        var settings = new AirCombatCitySettings
+        {
+            seed = 7319,
+            naturalStreetGaleCount = 4,
+            magneticCourtyardCount = 6
+        };
+
+        AirCombatCityPlan plan = AirCombatCityGenerator.Generate(
+            settings,
+            out AirCombatCityReport report);
+
+        Assert.That(report.valid, Is.True, report.failureReason);
+        Assert.That(report.buildingRoadOverlapCount, Is.Zero);
+        Assert.That(
+            plan.volumes.Count(volume =>
+                volume.kind == AirCombatVolumeKind.RecoveryPocket),
+            Is.EqualTo(6));
+        Assert.That(
+            UrbanEnvironmentalFieldDirector.ResolvePlannedWindTrapCount(
+                plan,
+                settings.ValidatedCopy(),
+                out _),
+            Is.EqualTo(4));
+    }
+
+    [Test]
     public void ClearanceMixesLowAndMediumCoverUnderTheManeuverBowl()
     {
         var settings = new AirCombatCitySettings
@@ -768,6 +1024,57 @@ public sealed class AirCombatCityPcgTests
         Assert.That(report.facilityReachable, Is.True);
         Assert.That(plan.facilityCores.Count, Is.EqualTo(3));
         Assert.That(report.routesClear, Is.True);
+        for (int index = 0; index < plan.ingresses.Count; index++)
+        {
+            Assert.That(
+                AirCombatCityGenerator
+                    .EnemyIngressIntersectsRecoveryDistrict(
+                        plan,
+                        plan.ingresses[index].position),
+                Is.False,
+                "敌人入口不能落进恢复庭院的实体围墙预留区。");
+        }
+    }
+
+    [Test]
+    public void FacilityAssaultHighTiersConstructValidPadsAndCentralHeightMixWithinFormalAttempts()
+    {
+        int[] tiers = { 4, 5 };
+        for (int index = 0; index < tiers.Length; index++)
+        {
+            int tier = tiers[index];
+            var settings = new AirCombatCitySettings
+            {
+                seed = 7319 + tier * 104729,
+                mission = AirCombatCityMission.FacilityAssault,
+                maximumAttempts = 10,
+                combatDifficulty = CombatCityDifficultyProfile.CreateForTier(
+                    tier,
+                    AirCombatCityMission.FacilityAssault)
+            };
+            AirCombatCityPlan plan = AirCombatCityGenerator.Generate(
+                settings,
+                out AirCombatCityReport report);
+
+            Assert.That(report.valid, Is.True, report.failureReason);
+            Assert.That(report.attempts, Is.LessThanOrEqualTo(10));
+            Assert.That(report.facilityReachable, Is.True);
+            Assert.That(report.centralHeightMixValid, Is.True);
+            Assert.That(plan.facilityCores.Count, Is.EqualTo(3));
+            for (int first = 0; first < plan.facilityCores.Count; first++)
+            for (int second = first + 1;
+                 second < plan.facilityCores.Count;
+                 second++)
+            {
+                Assert.That(
+                    Vector3.Distance(
+                        plan.facilityCores[first],
+                        plan.facilityCores[second]),
+                    Is.GreaterThanOrEqualTo(
+                        AirCombatCityGenerator
+                            .FacilityPadMinimumSeparation));
+            }
+        }
     }
 
     [Test]
@@ -814,6 +1121,32 @@ public sealed class AirCombatCityPcgTests
             Assert.That(centralUsefulCover, Is.GreaterThanOrEqualTo(8));
             Assert.That(farthestIngress, Is.LessThanOrEqualTo(510f));
         }
+    }
+
+    [Test]
+    public void PostPlanBuildingsKeepTheFormalIngressFormationPadClear()
+    {
+        var ingresses = new List<AirCombatEnemyIngress>
+        {
+            new AirCombatEnemyIngress
+            {
+                position = Vector3.zero
+            }
+        };
+        Vector3 size = new Vector3(20f, 100f, 20f);
+
+        Assert.That(
+            AirCombatCityPcgLab.IntersectsEnemyIngressReservation(
+                new Vector3(80f, 0f, 0f),
+                size,
+                ingresses),
+            Is.True);
+        Assert.That(
+            AirCombatCityPcgLab.IntersectsEnemyIngressReservation(
+                new Vector3(90f, 0f, 0f),
+                size,
+                ingresses),
+            Is.False);
     }
 
     [Test]
@@ -1011,6 +1344,8 @@ public sealed class AirCombatCityPcgTests
         Assert.That(plan.tacticalBlocks.Any(block =>
             block.role == CombatCityBlockRole.CombatBoundary), Is.True);
 
+        bool checkedMergedConnection = false;
+
         foreach (CombatCityBlockPlan block in plan.tacticalBlocks)
         {
             Assert.That(block.primaryOpportunityId, Is.Not.Empty);
@@ -1019,6 +1354,22 @@ public sealed class AirCombatCityPcgTests
 
             if (block.mergeEast)
             {
+                CombatCityBlockPlan east =
+                    CombatDrivenCityPcgPlanner.GetTacticalBlock(
+                        plan,
+                        block.gridX + 1,
+                        block.gridZ);
+                Assert.That(east, Is.Not.Null);
+                Assert.That(
+                    CombatDrivenCityPcgPlanner.TryCrossesMergedBlockBoundary(
+                        plan,
+                        new Vector2(block.bounds.center.x, block.bounds.center.z),
+                        new Vector2(east.bounds.center.x, east.bounds.center.z),
+                        out bool crossesMergedEast),
+                    Is.True);
+                Assert.That(crossesMergedEast, Is.False,
+                    "A removed east seam must remain inside one merged block.");
+                checkedMergedConnection = true;
                 float seamX = block.bounds.max.x;
                 float sampleZ = block.bounds.center.z;
                 Assert.That(plan.roads.Any(road =>
@@ -1032,6 +1383,22 @@ public sealed class AirCombatCityPcgTests
 
             if (block.mergeNorth)
             {
+                CombatCityBlockPlan north =
+                    CombatDrivenCityPcgPlanner.GetTacticalBlock(
+                        plan,
+                        block.gridX,
+                        block.gridZ + 1);
+                Assert.That(north, Is.Not.Null);
+                Assert.That(
+                    CombatDrivenCityPcgPlanner.TryCrossesMergedBlockBoundary(
+                        plan,
+                        new Vector2(block.bounds.center.x, block.bounds.center.z),
+                        new Vector2(north.bounds.center.x, north.bounds.center.z),
+                        out bool crossesMergedNorth),
+                    Is.True);
+                Assert.That(crossesMergedNorth, Is.False,
+                    "A removed north seam must remain inside one merged block.");
+                checkedMergedConnection = true;
                 float seamZ = block.bounds.max.z;
                 float sampleX = block.bounds.center.x;
                 Assert.That(plan.roads.Any(road =>
@@ -1043,6 +1410,7 @@ public sealed class AirCombatCityPcgTests
                     "Merged north seam still contains a road: " + block.stableId);
             }
         }
+        Assert.That(checkedMergedConnection, Is.True);
     }
 
     [Test]

@@ -422,7 +422,9 @@ public sealed class InterstellarShipController : MonoBehaviour
             groupHasGimbal = true,
             targetLockEnabled = true,
             hasTargetLock = locked != null,
-            mountLabel = "MODULAR",
+            mountLabel = modularWeapons.IsUsingBuiltInWeapon
+                ? "CORE DEFENSE"
+                : "MODULAR",
             targetTransform = locked,
             targetAimPosition = targetInfo == null
                 ? locked == null ? Vector3.zero : locked.position

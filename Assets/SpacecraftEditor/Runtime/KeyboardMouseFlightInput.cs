@@ -22,6 +22,18 @@ namespace SpacecraftEditor
         bool cruisePressed;
         bool secondaryActionPressed;
         float speedLimitDelta;
+        bool coupledToggleHotkeyEnabled = true;
+
+        public bool CoupledToggleHotkeyEnabled
+        {
+            get => coupledToggleHotkeyEnabled;
+            set
+            {
+                coupledToggleHotkeyEnabled = value;
+                if (!value)
+                    coupledToggleRequested = false;
+            }
+        }
 
         public bool CaptureEnabled
         {
@@ -101,7 +113,7 @@ namespace SpacecraftEditor
             command.brake = Input.GetKey(KeyCode.X);
             command.boost = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
-            if (Input.GetKeyDown(KeyCode.C))
+            if (coupledToggleHotkeyEnabled && Input.GetKeyDown(KeyCode.C))
                 coupledToggleRequested = true;
             if (Input.GetKeyDown(KeyCode.T))
                 directToggleRequested = true;

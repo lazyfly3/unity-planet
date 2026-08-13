@@ -463,6 +463,9 @@ public sealed class PlanarSurfaceModularVehicleLoader : MonoBehaviour
         motion.ConfigureExplicit(Body, assembly, model, presenter);
         motion.SetEnvironmentProvider(environment);
         motion.ControlsEnabled = false;
+        PlayerModularLandingAssist landingAssist =
+            modularRoot.AddComponent<PlayerModularLandingAssist>();
+        landingAssist.Configure(Body, motion, environment);
 
         session = modularRoot.AddComponent<
             PlanarSurfaceGridFlightSession>();
@@ -503,6 +506,7 @@ public sealed class PlanarSurfaceModularVehicleLoader : MonoBehaviour
             model,
             null,
             sceneCamera);
+        weapons.EnablePlayerCoreDefenseWeapon();
         weapons.SetHudVisible(false);
         weapons.ControlsEnabled = false;
         VehicleStructureGraph graph = weapons.StructureGraph;

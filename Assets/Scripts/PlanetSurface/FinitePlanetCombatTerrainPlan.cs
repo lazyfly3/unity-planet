@@ -1197,6 +1197,77 @@ public static class FinitePlanetCombatTerrainPlanner
             baseGroundHeight);
     }
 
+    /// <summary>
+    /// Builds only the deterministic mission contract needed by the formal
+    /// city runtime. It deliberately skips generic terrain candidate
+    /// generation and validation: the AirCombatCity generator owns the final
+    /// battlefield geometry and its own hard validation.
+    /// </summary>
+    public static FinitePlanetCombatTerrainPlan CreateUrbanFoundation(
+        GalaxyPlanetDefinition definition,
+        string missionId,
+        int missionSeed,
+        float combatRadius,
+        float seaHeight,
+        bool oceanEnabled)
+    {
+        if (definition == null)
+            throw new ArgumentNullException(nameof(definition));
+
+        FinitePlanetCombatMissionTerrainKind missionKind =
+            ResolveMissionKind(missionId);
+        int seed = StableSeed(
+            definition.seed,
+            missionSeed,
+            definition.climate,
+            missionId);
+        AirCombatMapSettings settings = BuildSettings(
+            definition.climate,
+            missionKind,
+            seed,
+            combatRadius);
+        settings.theme = CombatMapTheme.Urban;
+        float baseGroundHeight = oceanEnabled ? seaHeight + 12f : 0f;
+        var semanticPlan = new CombatSemanticPlan
+        {
+            generatorVersion = settings.generatorVersion,
+            seed = seed,
+            mode = AirCombatMapMode.Horde,
+            theme = CombatMapTheme.Urban,
+            mapCenter = new Vector3(0f, baseGroundHeight, 0f),
+            mapSize = settings.mapSize,
+            warningRadius = settings.warningRadius,
+            forfeitRadius = settings.forfeitRadius,
+            flightCeiling = settings.maximumGroundClearance
+        };
+        FinitePlanetDefenseLayoutPlan defenseLayout =
+            FinitePlanetDefenseLayoutPlanner.Apply(
+                semanticPlan,
+                settings,
+                missionKind,
+                seed,
+                combatRadius);
+        var validation = new CombatMapValidationReport
+        {
+            score = 100f,
+            minimumCommitScore = 0f,
+            checksum = "urban-foundation-" + seed
+        };
+        semanticPlan.checksum = validation.checksum;
+
+        return new FinitePlanetCombatTerrainPlan(
+            settings,
+            semanticPlan,
+            validation,
+            defenseLayout,
+            definition.climate,
+            missionKind,
+            missionId,
+            seed,
+            combatRadius,
+            baseGroundHeight);
+    }
+
     static AirCombatMapSettings BuildSettings(
         PlanetClimate climate,
         FinitePlanetCombatMissionTerrainKind missionKind,

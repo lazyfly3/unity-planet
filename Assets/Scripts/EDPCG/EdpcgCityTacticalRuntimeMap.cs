@@ -6,6 +6,28 @@ using UnityPlanet.ModularAssembly;
 
 namespace UnityPlanet.EDPCG
 {
+    public enum EdpcgTacticalArrowKind
+    {
+        Movement = 0,
+        VerifiedBlockedFireLine = 1,
+        ExpectedFireExchange = 2,
+        TrapApproach = 3,
+        VerticalTransition = 4,
+        SpawnDeparture = 5
+    }
+
+    public sealed class EdpcgRuntimeTacticalArrow
+    {
+        public string StableId = string.Empty;
+        public string AreaId = string.Empty;
+        public EdpcgTacticalArrowKind Kind;
+        public Vector3 Start;
+        public Vector3 End;
+        public Vector3 Marker;
+        public bool Bidirectional;
+        public bool Verified;
+    }
+
     public sealed class EdpcgRuntimeIngress
     {
         public string StableId;
@@ -51,6 +73,8 @@ namespace UnityPlanet.EDPCG
             new List<EdpcgRuntimeArea>(16);
         readonly List<EdpcgRuntimeRoute> routes =
             new List<EdpcgRuntimeRoute>(16);
+        readonly List<EdpcgRuntimeTacticalArrow> tacticalArrows =
+            new List<EdpcgRuntimeTacticalArrow>(32);
         readonly Dictionary<string, EdpcgRuntimeArea> areaById =
             new Dictionary<string, EdpcgRuntimeArea>(StringComparer.Ordinal);
         readonly Dictionary<string, EdpcgRuntimeRoute> routeById =
@@ -59,14 +83,44 @@ namespace UnityPlanet.EDPCG
         public IReadOnlyList<EdpcgRuntimeIngress> Ingresses => ingresses;
         public IReadOnlyList<EdpcgRuntimeArea> Areas => areas;
         public IReadOnlyList<EdpcgRuntimeRoute> Routes => routes;
+        public IReadOnlyList<EdpcgRuntimeTacticalArrow> TacticalArrows =>
+            tacticalArrows;
         public bool HasCityData => areas.Count > 0 || routes.Count > 0;
 
         public static EdpcgCityTacticalRuntimeMap Build(
             FinitePlanetUrbanCombatRuntime urban)
         {
+            if (urban == null)
+                return new EdpcgCityTacticalRuntimeMap();
+            return Build(
+                urban.Plan,
+                planPosition => urban.ProjectPlanPosition(planPosition) +
+                                Vector3.up * planPosition.y,
+                urban.EnvironmentalFields);
+        }
+
+        /// <summary>
+        /// Builds the same read-only tactical map for the isolated city PCG lab.
+        /// This is editor-preview support only; no EDPCG session or gameplay
+        /// component is created.
+        /// </summary>
+        public static EdpcgCityTacticalRuntimeMap Build(AirCombatCityPcgLab lab)
+        {
+            if (lab == null)
+                return new EdpcgCityTacticalRuntimeMap();
+            return Build(
+                lab.Plan,
+                planPosition => lab.transform.TransformPoint(planPosition),
+                null);
+        }
+
+        static EdpcgCityTacticalRuntimeMap Build(
+            AirCombatCityPlan plan,
+            Func<Vector3, Vector3> projectAirPoint,
+            UrbanEnvironmentalFieldDirector environmental)
+        {
             var result = new EdpcgCityTacticalRuntimeMap();
-            AirCombatCityPlan plan = urban != null ? urban.Plan : null;
-            if (plan == null)
+            if (plan == null || projectAirPoint == null)
                 return result;
 
             for (int index = 0; index < plan.ingresses.Count; index++)
@@ -77,8 +131,8 @@ namespace UnityPlanet.EDPCG
                 result.ingresses.Add(new EdpcgRuntimeIngress
                 {
                     StableId = source.stableId ?? string.Empty,
-                    Position = ProjectAirPoint(urban, source.position),
-                    Target = ProjectAirPoint(urban, source.target),
+                    Position = projectAirPoint(source.position),
+                    Target = projectAirPoint(source.target),
                     AttackKind = source.kind == AirCombatEnemyLaneKind.Suicide
                         ? HordeEnemyAttackKind.Suicide
                         : HordeEnemyAttackKind.Ranged,
@@ -94,7 +148,7 @@ namespace UnityPlanet.EDPCG
                 {
                     continue;
                 }
-                EdpcgRuntimeArea area = BuildArea(urban, source, kind);
+                EdpcgRuntimeArea area = BuildArea(projectAirPoint, source, kind);
                 result.areas.Add(area);
                 if (!string.IsNullOrEmpty(area.StableId))
                     result.areaById[area.StableId] = area;
@@ -107,7 +161,7 @@ namespace UnityPlanet.EDPCG
                 AirCombatTacticalVolume volume = plan.volumes[index];
                 if (volume == null || volume.kind != AirCombatVolumeKind.SpawnBasin)
                     continue;
-                Vector3 center = ProjectAirPoint(urban, volume.center);
+                Vector3 center = projectAirPoint(volume.center);
                 var area = new EdpcgRuntimeArea
                 {
                     StableId = volume.stableId ?? "area.spawn-basin",
@@ -135,9 +189,7 @@ namespace UnityPlanet.EDPCG
                      pointIndex < source.points.Length;
                      pointIndex++)
                 {
-                    points[pointIndex] = ProjectAirPoint(
-                        urban,
-                        source.points[pointIndex]);
+                    points[pointIndex] = projectAirPoint(source.points[pointIndex]);
                     if (pointIndex > 0)
                         length += Vector3.Distance(points[pointIndex - 1], points[pointIndex]);
                 }
@@ -158,8 +210,6 @@ namespace UnityPlanet.EDPCG
                     result.routeById[route.StableId] = route;
             }
 
-            UrbanEnvironmentalFieldDirector environmental =
-                urban.EnvironmentalFields;
             if (environmental != null)
             {
                 IReadOnlyList<UrbanEnvironmentalPursuitRouteDescriptor>
@@ -197,7 +247,255 @@ namespace UnityPlanet.EDPCG
             }
 
             result.AssignFallbackRoutes();
+            result.BuildTacticalArrows(projectAirPoint, plan);
             return result;
+        }
+
+        void BuildTacticalArrows(
+            Func<Vector3, Vector3> projectAirPoint,
+            AirCombatCityPlan plan)
+        {
+            tacticalArrows.Clear();
+            if (projectAirPoint == null || plan == null)
+                return;
+
+            for (int index = 0; index < areas.Count; index++)
+            {
+                EdpcgRuntimeArea area = areas[index];
+                switch (area.Kind)
+                {
+                    case EdpcgTacticalAreaKind.SpawnSafeAirspace:
+                        AddSpawnDepartureArrows(area);
+                        break;
+                    case EdpcgTacticalAreaKind.CentralManeuverDistrict:
+                        AddInboundArrows(
+                            area,
+                            EdpcgTacticalArrowKind.ExpectedFireExchange,
+                            4);
+                        break;
+                    case EdpcgTacticalAreaKind.HighRiseOcclusionChain:
+                        AddMovementArrows(area, 2);
+                        AddVerifiedOcclusionFireLines(
+                            projectAirPoint, plan, area);
+                        break;
+                    case EdpcgTacticalAreaKind.ExposedFireShortcut:
+                        AddRouteArrow(
+                            area,
+                            AirCombatRouteKind.LongRange,
+                            EdpcgTacticalArrowKind.ExpectedFireExchange,
+                            true);
+                        break;
+                    case EdpcgTacticalAreaKind.MagneticCourtyard:
+                        AddInboundArrows(
+                            area,
+                            EdpcgTacticalArrowKind.TrapApproach,
+                            2);
+                        break;
+                    case EdpcgTacticalAreaKind.LowMidVerticalTransition:
+                        AddRouteArrow(
+                            area,
+                            AirCombatRouteKind.VerticalEscape,
+                            EdpcgTacticalArrowKind.VerticalTransition,
+                            false);
+                        break;
+                }
+            }
+        }
+
+        void AddSpawnDepartureArrows(EdpcgRuntimeArea area)
+        {
+            float radius = Mathf.Max(
+                25f,
+                Mathf.Min(area.Bounds.extents.x, area.Bounds.extents.z) * 0.55f);
+            Vector3[] directions =
+            {
+                Vector3.forward,
+                Vector3.right,
+                Vector3.back,
+                Vector3.left
+            };
+            for (int index = 0; index < directions.Length; index++)
+            {
+                Vector3 start = area.Bounds.center + directions[index] * radius * 0.2f;
+                AddTacticalArrow(area, EdpcgTacticalArrowKind.SpawnDeparture,
+                    start, area.Bounds.center + directions[index] * radius,
+                    Vector3.zero, false, true, "spawn-" + index);
+            }
+        }
+
+        void AddInboundArrows(
+            EdpcgRuntimeArea area,
+            EdpcgTacticalArrowKind kind,
+            int maximumCount)
+        {
+            Vector3[] sources = area.Entrances != null &&
+                                area.Entrances.Length > 0
+                ? area.Entrances
+                : area.Exits;
+            if (sources == null || sources.Length == 0)
+            {
+                AddTacticalArrow(area, kind,
+                    area.Bounds.center - Vector3.forward * area.Bounds.extents.z,
+                    area.Bounds.center, Vector3.zero, false, true, "inbound-fallback");
+                return;
+            }
+            int count = Mathf.Min(maximumCount, sources.Length);
+            for (int index = 0; index < count; index++)
+            {
+                AddTacticalArrow(area, kind, sources[index], area.Bounds.center,
+                    Vector3.zero, false, true, "inbound-" + index);
+            }
+        }
+
+        void AddMovementArrows(EdpcgRuntimeArea area, int maximumCount)
+        {
+            if (area.Entrances == null || area.Entrances.Length == 0 ||
+                area.Exits == null || area.Exits.Length == 0)
+            {
+                return;
+            }
+            int count = Mathf.Min(maximumCount,
+                Mathf.Min(area.Entrances.Length, area.Exits.Length));
+            for (int index = 0; index < count; index++)
+            {
+                AddTacticalArrow(area, EdpcgTacticalArrowKind.Movement,
+                    area.Entrances[index], area.Exits[index], Vector3.zero,
+                    false, true, "movement-" + index);
+            }
+        }
+
+        void AddRouteArrow(
+            EdpcgRuntimeArea area,
+            AirCombatRouteKind routeKind,
+            EdpcgTacticalArrowKind arrowKind,
+            bool bidirectional)
+        {
+            EdpcgRuntimeRoute best = null;
+            float bestDistance = float.PositiveInfinity;
+            for (int index = 0; index < routes.Count; index++)
+            {
+                EdpcgRuntimeRoute route = routes[index];
+                if (route == null || route.IsEnvironmentalTrap ||
+                    route.SourceKind != routeKind || route.Points == null ||
+                    route.Points.Length < 2)
+                {
+                    continue;
+                }
+                for (int point = 0; point < route.Points.Length; point++)
+                {
+                    float distance = area.Bounds.SqrDistance(route.Points[point]);
+                    if (distance >= bestDistance)
+                        continue;
+                    best = route;
+                    bestDistance = distance;
+                }
+            }
+            if (best == null)
+            {
+                AddInboundArrows(area, arrowKind, 2);
+                return;
+            }
+            int startIndex = best.Points.Length >= 4 ? 2 : 0;
+            int endIndex = best.Points.Length >= 4
+                ? best.Points.Length - 3
+                : best.Points.Length - 1;
+            if (startIndex >= endIndex)
+            {
+                startIndex = 0;
+                endIndex = best.Points.Length - 1;
+            }
+            AddTacticalArrow(area, arrowKind, best.Points[startIndex],
+                best.Points[endIndex], Vector3.zero, bidirectional, true,
+                "route-" + routeKind);
+        }
+
+        void AddVerifiedOcclusionFireLines(
+            Func<Vector3, Vector3> projectAirPoint,
+            AirCombatCityPlan plan,
+            EdpcgRuntimeArea area)
+        {
+            AirCombatFlightRoute route = null;
+            for (int index = 0; index < plan.routes.Count; index++)
+            {
+                if (plan.routes[index] != null &&
+                    plan.routes[index].stableId == "route.masked-flank")
+                {
+                    route = plan.routes[index];
+                    break;
+                }
+            }
+            if (route == null || route.points == null || route.points.Length < 4)
+                return;
+
+            Vector2 threat = new Vector2(plan.objective.x, plan.objective.z);
+            int added = 0;
+            const int Samples = 12;
+            for (int sample = 0; sample < Samples && added < 3; sample++)
+            {
+                float t = (sample + 0.5f) / Samples;
+                Vector3 routePoint = Vector3.Lerp(
+                    route.points[2], route.points[3], t);
+                Vector2 origin = new Vector2(routePoint.x, routePoint.z);
+                for (int buildingIndex = 0;
+                     buildingIndex < plan.buildings.Count;
+                     buildingIndex++)
+                {
+                    AirCombatBuildingLot building = plan.buildings[buildingIndex];
+                    float top = building.center.y + building.size.y * 0.5f;
+                    if (building.clusterId != 1202 || top < routePoint.y + 8f ||
+                        !AirCombatCityGenerator.FootprintIntersectsCorridor(
+                            new Vector2(building.center.x, building.center.z),
+                            new Vector2(building.size.x, building.size.z),
+                            building.yaw, origin, threat, 1f, out _))
+                    {
+                        continue;
+                    }
+
+                    Vector3 localMarker = new Vector3(
+                        building.center.x,
+                        routePoint.y,
+                        building.center.z);
+                    AddTacticalArrow(
+                        area,
+                        EdpcgTacticalArrowKind.VerifiedBlockedFireLine,
+                        projectAirPoint(routePoint),
+                        projectAirPoint(new Vector3(
+                            plan.objective.x,
+                            routePoint.y,
+                            plan.objective.z)),
+                        projectAirPoint(localMarker),
+                        false,
+                        true,
+                        "blocked-" + sample);
+                    added++;
+                    break;
+                }
+            }
+        }
+
+        void AddTacticalArrow(
+            EdpcgRuntimeArea area,
+            EdpcgTacticalArrowKind kind,
+            Vector3 start,
+            Vector3 end,
+            Vector3 marker,
+            bool bidirectional,
+            bool verified,
+            string suffix)
+        {
+            if ((end - start).sqrMagnitude < 1f)
+                return;
+            tacticalArrows.Add(new EdpcgRuntimeTacticalArrow
+            {
+                StableId = (area.StableId ?? "area") + ".arrow." + suffix,
+                AreaId = area.StableId ?? string.Empty,
+                Kind = kind,
+                Start = start,
+                End = end,
+                Marker = marker,
+                Bidirectional = bidirectional,
+                Verified = verified
+            });
         }
 
         public bool TryGetArea(
@@ -307,16 +605,37 @@ namespace UnityPlanet.EDPCG
             out string areaId,
             out string routeId)
         {
+            return TrySelectRoleDestination(
+                role,
+                stableIndex,
+                playerPosition,
+                intent,
+                false,
+                out destination,
+                out areaId,
+                out routeId);
+        }
+
+        public bool TrySelectRoleDestination(
+            HordeEnemyRole role,
+            int stableIndex,
+            Vector3 playerPosition,
+            EdpcgPathIntent intent,
+            bool useRoleAssignments,
+            out Vector3 destination,
+            out string areaId,
+            out string routeId)
+        {
             destination = playerPosition;
             areaId = string.Empty;
             routeId = string.Empty;
-            EdpcgTacticalAreaKind[] preferences = role == HordeEnemyRole.Interceptor
-                ? SuicidePreferences(intent)
-                : RangedPreferences(intent);
-            EdpcgRuntimeArea area = SelectArea(
-                preferences,
-                stableIndex,
-                playerPosition);
+            EdpcgTacticalAreaKind[] preferences = RolePreferences(
+                role,
+                intent,
+                useRoleAssignments);
+            EdpcgRuntimeArea area = useRoleAssignments
+                ? SelectRoleArea(preferences, role, stableIndex, playerPosition)
+                : SelectArea(preferences, stableIndex, playerPosition);
             if (area == null)
                 return false;
 
@@ -337,7 +656,12 @@ namespace UnityPlanet.EDPCG
                 destination = candidates[index];
             }
             areaId = area.StableId;
-            EdpcgRuntimeRoute route = SelectRouteForIntent(intent, stableIndex);
+            EdpcgRuntimeRoute route = SelectRouteForIntent(
+                role,
+                intent,
+                stableIndex,
+                area,
+                useRoleAssignments);
             if (route != null)
                 routeId = route.StableId;
             return true;
@@ -392,33 +716,102 @@ namespace UnityPlanet.EDPCG
         }
 
         EdpcgRuntimeRoute SelectRouteForIntent(
+            HordeEnemyRole role,
             EdpcgPathIntent intent,
-            int stableIndex)
+            int stableIndex,
+            EdpcgRuntimeArea area,
+            bool useRoleAssignments)
         {
             AirCombatRouteKind desired = intent == EdpcgPathIntent.BreakAway ||
-                                         intent == EdpcgPathIntent.BreakLineOfSight
+                                         intent == EdpcgPathIntent.BreakLineOfSight ||
+                                         intent == EdpcgPathIntent.BreakContact ||
+                                         intent == EdpcgPathIntent.Regroup ||
+                                         intent == EdpcgPathIntent.MaskedFlank
                 ? AirCombatRouteKind.MaskedFlank
                 : intent == EdpcgPathIntent.RangedPerch ||
                   intent == EdpcgPathIntent.Suppress
-                    ? AirCombatRouteKind.LongRange
+                    ? useRoleAssignments && role == HordeEnemyRole.Striker
+                        ? AirCombatRouteKind.MaskedFlank
+                        : AirCombatRouteKind.LongRange
                     : intent == EdpcgPathIntent.Ingress
                         ? AirCombatRouteKind.EnemyIngress
                         : AirCombatRouteKind.Main;
-            int count = 0;
-            for (int index = 0; index < routes.Count; index++)
-                if (routes[index].SourceKind == desired)
-                    count++;
-            if (count == 0)
-                return null;
-            int selected = PositiveModulo(stableIndex, count);
+            EdpcgRuntimeRoute selected = null;
+            float bestScore = float.PositiveInfinity;
             for (int index = 0; index < routes.Count; index++)
             {
-                if (routes[index].SourceKind != desired)
+                EdpcgRuntimeRoute candidate = routes[index];
+                if (candidate == null || candidate.IsEnvironmentalTrap ||
+                    candidate.SourceKind != desired ||
+                    candidate.Points == null || candidate.Points.Length < 2)
+                {
                     continue;
-                if (selected-- == 0)
-                    return routes[index];
+                }
+                float routeDistance = float.PositiveInfinity;
+                if (area != null)
+                {
+                    for (int point = 0;
+                         point < candidate.Points.Length;
+                         point++)
+                    {
+                        routeDistance = Mathf.Min(
+                            routeDistance,
+                            area.Bounds.SqrDistance(candidate.Points[point]));
+                    }
+                }
+                else
+                {
+                    routeDistance = 0f;
+                }
+                // Keep deterministic variety only as a tie-breaker. Spatial
+                // compatibility between the selected area and route remains
+                // the primary criterion.
+                float tieBreaker = PositiveModulo(
+                    stableIndex * 31 + index * 17,
+                    997) * 0.0001f;
+                float score = routeDistance + tieBreaker;
+                if (score >= bestScore)
+                    continue;
+                selected = candidate;
+                bestScore = score;
             }
-            return null;
+            return selected;
+        }
+
+        EdpcgRuntimeArea SelectRoleArea(
+            EdpcgTacticalAreaKind[] preferences,
+            HordeEnemyRole role,
+            int stableIndex,
+            Vector3 playerPosition)
+        {
+            float preferredDistance = role == HordeEnemyRole.Interceptor
+                ? 110f
+                : role == HordeEnemyRole.Striker ? 135f : 190f;
+            EdpcgRuntimeArea selected = null;
+            float bestScore = float.PositiveInfinity;
+            for (int preference = 0; preference < preferences.Length; preference++)
+            {
+                for (int index = 0; index < areas.Count; index++)
+                {
+                    EdpcgRuntimeArea candidate = areas[index];
+                    if (candidate.Kind != preferences[preference])
+                        continue;
+                    float distance = Vector3.Distance(
+                        candidate.Bounds.ClosestPoint(playerPosition),
+                        playerPosition);
+                    float rangeError = Mathf.Abs(distance - preferredDistance);
+                    float stableTieBreaker = PositiveModulo(
+                        stableIndex * 31 + index * 17,
+                        997) * 0.001f;
+                    float score = preference * 70f + rangeError +
+                                  stableTieBreaker;
+                    if (score >= bestScore)
+                        continue;
+                    selected = candidate;
+                    bestScore = score;
+                }
+            }
+            return selected;
         }
 
         void AssignFallbackRoutes()
@@ -448,13 +841,13 @@ namespace UnityPlanet.EDPCG
         }
 
         static EdpcgRuntimeArea BuildArea(
-            FinitePlanetUrbanCombatRuntime urban,
+            Func<Vector3, Vector3> projectAirPoint,
             TacticalOpportunity source,
             EdpcgTacticalAreaKind kind)
         {
-            Vector3 center = ProjectAirPoint(urban, source.bounds.center);
-            Vector3[] entrances = ProjectPoints(urban, source.entrances);
-            Vector3[] exits = ProjectPoints(urban, source.exits);
+            Vector3 center = projectAirPoint(source.bounds.center);
+            Vector3[] entrances = ProjectPoints(projectAirPoint, source.entrances);
+            Vector3[] exits = ProjectPoints(projectAirPoint, source.exits);
             return new EdpcgRuntimeArea
             {
                 StableId = source.stableId ?? string.Empty,
@@ -478,23 +871,15 @@ namespace UnityPlanet.EDPCG
         }
 
         static Vector3[] ProjectPoints(
-            FinitePlanetUrbanCombatRuntime urban,
+            Func<Vector3, Vector3> projectAirPoint,
             Vector3[] points)
         {
             if (points == null || points.Length == 0)
                 return Array.Empty<Vector3>();
             Vector3[] result = new Vector3[points.Length];
             for (int index = 0; index < points.Length; index++)
-                result[index] = ProjectAirPoint(urban, points[index]);
+                result[index] = projectAirPoint(points[index]);
             return result;
-        }
-
-        static Vector3 ProjectAirPoint(
-            FinitePlanetUrbanCombatRuntime urban,
-            Vector3 planPosition)
-        {
-            return urban.ProjectPlanPosition(planPosition) +
-                   Vector3.up * planPosition.y;
         }
 
         static bool TryMapAreaKind(
@@ -589,6 +974,60 @@ namespace UnityPlanet.EDPCG
             };
         }
 
+        static EdpcgTacticalAreaKind[] RolePreferences(
+            HordeEnemyRole role,
+            EdpcgPathIntent intent,
+            bool useRoleAssignments)
+        {
+            if (role == HordeEnemyRole.Interceptor)
+                return SuicidePreferences(intent);
+            if (!useRoleAssignments)
+                return RangedPreferences(intent);
+            if (role == HordeEnemyRole.Striker)
+                return StrikerPreferences(intent);
+            return GunshipPreferences(intent);
+        }
+
+        static EdpcgTacticalAreaKind[] StrikerPreferences(EdpcgPathIntent intent)
+        {
+            if (intent == EdpcgPathIntent.BreakLineOfSight ||
+                intent == EdpcgPathIntent.BreakContact ||
+                intent == EdpcgPathIntent.Regroup)
+            {
+                return new[]
+                {
+                    EdpcgTacticalAreaKind.HighRiseOcclusionChain,
+                    EdpcgTacticalAreaKind.CentralManeuverDistrict
+                };
+            }
+            return new[]
+            {
+                EdpcgTacticalAreaKind.HighRiseOcclusionChain,
+                EdpcgTacticalAreaKind.CentralManeuverDistrict,
+                EdpcgTacticalAreaKind.ExposedFireShortcut
+            };
+        }
+
+        static EdpcgTacticalAreaKind[] GunshipPreferences(EdpcgPathIntent intent)
+        {
+            if (intent == EdpcgPathIntent.BreakLineOfSight ||
+                intent == EdpcgPathIntent.BreakContact ||
+                intent == EdpcgPathIntent.Regroup)
+            {
+                return new[]
+                {
+                    EdpcgTacticalAreaKind.CentralManeuverDistrict,
+                    EdpcgTacticalAreaKind.HighRiseOcclusionChain
+                };
+            }
+            return new[]
+            {
+                EdpcgTacticalAreaKind.ExposedFireShortcut,
+                EdpcgTacticalAreaKind.CentralManeuverDistrict,
+                EdpcgTacticalAreaKind.HighRiseOcclusionChain
+            };
+        }
+
         static int PositiveModulo(int value, int modulus)
         {
             if (modulus <= 0)
@@ -622,15 +1061,79 @@ namespace UnityPlanet.EDPCG
             int direction,
             out string reservationId)
         {
+            return TryReserveInternal(
+                ownerRosterMemberId, routeId, now, travelSeconds,
+                leaseSeconds, priority, direction,
+                false, -1, 0f, Vector3.zero, string.Empty,
+                out reservationId);
+        }
+
+        public bool TryReserveToProgress(
+            string ownerRosterMemberId,
+            string routeId,
+            float now,
+            float travelSeconds,
+            float leaseSeconds,
+            int priority,
+            int direction,
+            int targetSegmentIndex,
+            float targetSegmentT,
+            Vector3 targetWorldPosition,
+            string targetStableId,
+            out string reservationId)
+        {
+            return TryReserveInternal(
+                ownerRosterMemberId, routeId, now, travelSeconds,
+                leaseSeconds, priority, direction,
+                true, targetSegmentIndex, targetSegmentT,
+                targetWorldPosition, targetStableId,
+                out reservationId);
+        }
+
+        bool TryReserveInternal(
+            string ownerRosterMemberId,
+            string routeId,
+            float now,
+            float travelSeconds,
+            float leaseSeconds,
+            int priority,
+            int direction,
+            bool hasTargetProgress,
+            int targetSegmentIndex,
+            float targetSegmentT,
+            Vector3 targetWorldPosition,
+            string targetStableId,
+            out string reservationId)
+        {
             reservationId = string.Empty;
             if (string.IsNullOrEmpty(ownerRosterMemberId) ||
                 string.IsNullOrEmpty(routeId) ||
+                !IsFinite(now) || !IsFinite(travelSeconds) ||
+                !IsFinite(leaseSeconds) ||
                 !map.TryGetRoute(routeId, out EdpcgRuntimeRoute route))
             {
                 return false;
             }
             if (!route.AllowReverse && direction < 0)
                 return false;
+            if (hasTargetProgress &&
+                (route.Points == null || route.Points.Length < 2 ||
+                 !IsFinite(targetSegmentT) ||
+                 !IsFinite(targetWorldPosition) ||
+                 targetSegmentIndex < 0 ||
+                 targetSegmentIndex >= route.Points.Length - 1))
+            {
+                return false;
+            }
+            if (hasTargetProgress)
+            {
+                Vector3 routeTarget = Vector3.Lerp(
+                    route.Points[targetSegmentIndex],
+                    route.Points[targetSegmentIndex + 1],
+                    Mathf.Clamp01(targetSegmentT));
+                if (Vector3.Distance(routeTarget, targetWorldPosition) > 1.5f)
+                    return false;
+            }
 
             ReleaseExpired(now);
             int overlap = 0;
@@ -659,12 +1162,71 @@ namespace UnityPlanet.EDPCG
                 exitAt = exitAt,
                 expiresAt = now + Mathf.Max(1f, leaseSeconds),
                 priority = priority,
-                direction = route.AllowReverse ? direction : 1
+                direction = route.AllowReverse ? direction : 1,
+                waypointIndex = route.AllowReverse && direction < 0
+                    ? Mathf.Max(0, route.Points.Length - 1)
+                    : 0,
+                hasTargetProgress = hasTargetProgress,
+                targetSegmentIndex = hasTargetProgress
+                    ? targetSegmentIndex
+                    : -1,
+                targetSegmentT = hasTargetProgress
+                    ? Mathf.Clamp01(targetSegmentT)
+                    : 0f,
+                targetWorldPosition = hasTargetProgress
+                    ? targetWorldPosition
+                    : Vector3.zero,
+                targetStableId = hasTargetProgress
+                    ? targetStableId ?? string.Empty
+                    : string.Empty
             });
             return true;
         }
 
+        static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+
+        static bool IsFinite(Vector3 value)
+        {
+            return IsFinite(value.x) && IsFinite(value.y) &&
+                   IsFinite(value.z);
+        }
+
+        public bool TryGetOwnerReservation(
+            string ownerRosterMemberId,
+            out EdpcgRouteReservation reservation)
+        {
+            reservation = null;
+            if (string.IsNullOrEmpty(ownerRosterMemberId))
+                return false;
+            for (int index = reservations.Count - 1; index >= 0; index--)
+            {
+                EdpcgRouteReservation candidate = reservations[index];
+                if (!string.Equals(
+                        candidate.ownerRosterMemberId,
+                        ownerRosterMemberId,
+                        StringComparison.Ordinal))
+                {
+                    continue;
+                }
+                reservation = candidate;
+                return true;
+            }
+            return false;
+        }
+
         public bool Renew(string reservationId, float now, float leaseSeconds)
+        {
+            return Renew(reservationId, now, leaseSeconds, -1f);
+        }
+
+        public bool Renew(
+            string reservationId,
+            float now,
+            float leaseSeconds,
+            float remainingTravelSeconds)
         {
             for (int index = 0; index < reservations.Count; index++)
             {
@@ -677,6 +1239,11 @@ namespace UnityPlanet.EDPCG
                     continue;
                 }
                 item.expiresAt = now + Mathf.Max(1f, leaseSeconds);
+                if (remainingTravelSeconds >= 0f)
+                {
+                    item.exitAt = now + Mathf.Max(
+                        0.25f, remainingTravelSeconds);
+                }
                 return true;
             }
             return false;

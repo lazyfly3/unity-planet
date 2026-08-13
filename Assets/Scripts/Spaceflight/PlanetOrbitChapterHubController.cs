@@ -1754,7 +1754,7 @@ public sealed class PlanetOrbitChapterHubController : MonoBehaviour
         if (mission == null || targetPlanet == null ||
             travelManager == null)
         {
-            return PlanetMissionEnvironmentKind.Natural;
+            return PlanetMissionEnvironmentKind.Urban;
         }
         return PlanetMissionEnvironmentResolver.Resolve(
             travelManager.WorldSeed,

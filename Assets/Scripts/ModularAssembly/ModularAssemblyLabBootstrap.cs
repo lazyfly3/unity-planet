@@ -51,6 +51,9 @@ public sealed class ModularAssemblyLabBootstrap : MonoBehaviour
         ShipAssembly assembly = ship.AddComponent<ShipAssembly>();
         assembly.Configure(body, parts, null, 1000f);
         var model = new GridAssemblyModel(definitions);
+        model.SetCoreAssistMode(
+            UnityPlanet.ModularAssembly.VehicleCoreAssistMode.Training);
+        model.SetFoundationMountRule(useAirBuildExperience);
         GridAssemblyPresenter presenter = ship.AddComponent<GridAssemblyPresenter>();
         presenter.Initialize(model, assembly, core);
         if (useAirBuildExperience)
@@ -80,6 +83,7 @@ public sealed class ModularAssemblyLabBootstrap : MonoBehaviour
             model,
             target,
             sceneCamera);
+        weapons.EnablePlayerCoreDefenseWeapon();
 
         ModularAssemblyLabController controller = gameObject.AddComponent<ModularAssemblyLabController>();
         controller.Initialize(model, presenter, flight, cameraController, target, sceneCamera, ship.transform);

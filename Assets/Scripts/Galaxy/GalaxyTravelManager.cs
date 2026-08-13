@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -79,6 +80,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     InterstellarCoordinate currentPlanetCoordinate3D;
     GalaxyShipFacing shipFacing = GalaxyShipFacing.Up;
     bool transitionInProgress;
+    Coroutine missionEntryFailureRoutine;
     string galaxyMapReturnSceneName;
     List<InventorySlot> inventorySnapshot;
     int selectedInventorySlot;
@@ -589,6 +591,62 @@ public sealed class GalaxyTravelManager : MonoBehaviour
         if (planar != null && planar.IsFiniteCombatArea)
             PlanetOrbitChapterSelectionContext.Clear();
         transitionInProgress = true;
+        SceneManager.LoadScene(
+            interstellarSceneName,
+            LoadSceneMode.Single);
+    }
+
+    public bool AbortChapterMissionEntry(string reason)
+    {
+        if (transitionInProgress
+            || !PlanetOrbitChapterSelectionContext.HasSelection)
+        {
+            return false;
+        }
+
+        string detail = string.IsNullOrWhiteSpace(reason)
+            ? "城市战场准备失败。"
+            : reason;
+        Debug.LogError(
+            "GalaxyTravelManager: chapter mission entry was aborted. " +
+            detail,
+            this);
+
+        PlanetOrbitChapterSelectionContext.Clear();
+        PlanetApproachContext.Clear();
+        PendingPlanetLandingContext.Consume();
+        PendingSurfaceDepartureContext.Clear();
+
+        PlanetLoadingUI loadingUI = FindObjectOfType<PlanetLoadingUI>(true);
+        loadingUI?.ShowFailure(
+            detail + "\n正在返回轨道……");
+
+        transitionInProgress = true;
+        if (missionEntryFailureRoutine != null)
+            StopCoroutine(missionEntryFailureRoutine);
+        missionEntryFailureRoutine = StartCoroutine(
+            ReturnToOrbitAfterMissionEntryFailure());
+        return true;
+    }
+
+    void FailChapterMissionEntry(GameObject combatRoot, string reason)
+    {
+        if (combatRoot != null)
+            combatRoot.SetActive(false);
+        if (AbortChapterMissionEntry(reason))
+            return;
+
+        // The normal formal-mission path always has an active selection and
+        // therefore returns to orbit above. Keep an explicit terminal UI for
+        // malformed/debug entry paths instead of leaving an endless spinner.
+        PlanetLoadingUI loadingUI = FindObjectOfType<PlanetLoadingUI>(true);
+        loadingUI?.ShowFailure(reason);
+    }
+
+    IEnumerator ReturnToOrbitAfterMissionEntryFailure()
+    {
+        yield return new WaitForSecondsRealtime(1.25f);
+        missionEntryFailureRoutine = null;
         SceneManager.LoadScene(
             interstellarSceneName,
             LoadSceneMode.Single);
@@ -1110,9 +1168,31 @@ if (transitionInProgress)
         if (scene.name != surfaceSceneName)
             return;
 
+        bool hasChapterSelection =
+            PlanetOrbitChapterSelectionContext.HasSelection;
         GalaxyPlanetDefinition planet = CurrentPlanet;
         if (planet == null)
+        {
+            if (hasChapterSelection)
+            {
+                FailChapterMissionEntry(
+                    null,
+                    "城市关卡找不到当前星球数据，已取消进入战场。");
+            }
             return;
+        }
+
+        if (hasChapterSelection &&
+            !string.Equals(
+                PlanetOrbitChapterSelectionContext.PlanetId,
+                planet.planetId,
+                System.StringComparison.Ordinal))
+        {
+            FailChapterMissionEntry(
+                null,
+                "城市关卡的星球身份与当前星球不一致，已取消进入战场。");
+            return;
+        }
 
         if (IsInfiniteGalaxy || IsInterstellarGalaxy)
         {
@@ -1126,12 +1206,7 @@ if (transitionInProgress)
             }
         }
 
-        bool finiteChapterCombat =
-            PlanetOrbitChapterSelectionContext.HasSelection
-            && string.Equals(
-                PlanetOrbitChapterSelectionContext.PlanetId,
-                planet.planetId,
-                System.StringComparison.Ordinal);
+        bool finiteChapterCombat = hasChapterSelection;
         // A chapter mission is a temporary ship-only combat instance. Its
         // routing must not inherit the slot's legacy/open-world topology:
         // pre-v9 saves deliberately retain LegacySphere for compatibility.
@@ -1208,8 +1283,28 @@ if (transitionInProgress)
         GalaxyPlanetDefinition planet,
         bool finiteChapterCombat)
     {
-        if (FindObjectOfType<InfinitePlanarSurfaceWorld>() != null)
+        InfinitePlanarSurfaceWorld existingWorld =
+            FindObjectOfType<InfinitePlanarSurfaceWorld>();
+        if (existingWorld != null)
+        {
+            if (!finiteChapterCombat)
+                return;
+
+            FinitePlanetUrbanCombatRuntime existingCity =
+                existingWorld.GetComponent<FinitePlanetUrbanCombatRuntime>();
+            if (existingWorld.IsFiniteCombatArea &&
+                existingWorld.UsesUrbanFlatSurface &&
+                existingCity != null &&
+                existingCity.IsReady)
+            {
+                return;
+            }
+
+            FailChapterMissionEntry(
+                existingWorld.gameObject,
+                "检测到未完成或非城市的旧战场，已取消本次关卡进入。");
             return;
+        }
 
         VoxelQuadSphereWorld sphere =
             FindObjectOfType<VoxelQuadSphereWorld>();
@@ -1260,9 +1355,12 @@ if (transitionInProgress)
             FindObjectOfType<VoxelPlanetPlayerController>(true);
         if (player == null)
         {
-            Debug.LogError(
-                "GalaxyTravelManager: infinite planar surface requires VoxelPlanetPlayerController.",
-                this);
+            string error = finiteChapterCombat
+                ? "城市关卡缺少玩家控制器，无法准备战场。"
+                : "无限平面地表缺少玩家控制器。";
+            Debug.LogError(error, this);
+            if (finiteChapterCombat)
+                FailChapterMissionEntry(null, error);
             return;
         }
 
@@ -1273,40 +1371,58 @@ if (transitionInProgress)
         InfinitePlanarSurfaceWorld planar =
             root.AddComponent<InfinitePlanarSurfaceWorld>();
         if (finiteChapterCombat)
-            planar.ConfigureFiniteCombatMode();
+        {
+            planar.ConfigureFiniteCombatMode(
+                useUrbanFlatSurface: true);
+        }
         // Infinite planar saves deliberately do not run the random tree,
         // vegetation, landmark, or ground-cover generator. Dedicated
         // harvestable resource settings remain enabled.
         List<PlanetSurfacePropSpawnSettings> surfacePropPlan =
             new List<PlanetSurfacePropSpawnSettings>();
-        planar.Configure(
-            planet,
-            save,
-            landing,
-            player,
-            surfacePropPlan);
-        if (finiteChapterCombat &&
-            PlanetOrbitChapterSelectionContext.EnvironmentKind ==
-            PlanetMissionEnvironmentKind.Urban)
+        try
+        {
+            planar.Configure(
+                planet,
+                save,
+                landing,
+                player,
+                surfacePropPlan);
+        }
+        catch (System.Exception exception)
+        {
+            string error = finiteChapterCombat
+                ? "城市关卡基础任务数据准备失败：" + exception.Message
+                : "无限平面地表准备失败：" + exception.Message;
+            Debug.LogException(exception, this);
+            if (finiteChapterCombat)
+                FailChapterMissionEntry(root, error);
+            return;
+        }
+        if (finiteChapterCombat)
         {
             FinitePlanetUrbanCombatRuntime urbanCombat =
                 root.AddComponent<FinitePlanetUrbanCombatRuntime>();
-            if (!urbanCombat.Configure(planar))
+            try
             {
-                Debug.LogWarning(
-                    "GalaxyTravelManager: city battlefield preparation " +
-                    "failed; the mission keeps its original natural map. " +
-                    urbanCombat.PreparationError,
-                    urbanCombat);
-                PlanetOrbitChapterSelectionContext.Set(
-                    PlanetOrbitChapterSelectionContext.PlanetId,
-                    PlanetOrbitChapterSelectionContext.MissionId,
-                    PlanetOrbitChapterSelectionContext.MissionName,
-                    PlanetOrbitChapterSelectionContext.LandingDirection,
-                    PlanetOrbitChapterSelectionContext.MissionSeed,
-                    PlanetMissionEnvironmentKind.Natural,
-                    PlanetOrbitChapterSelectionContext
-                        .PlanetDifficultyIndex);
+                if (!urbanCombat.Configure(planar))
+                {
+                    string preparationError = urbanCombat.PreparationError;
+                    // Every formal chapter is urban. Continuing on the
+                    // underlying terrain plan would silently start a different
+                    // battlefield with mismatched objectives and EDPCG
+                    // semantics.
+                    FailChapterMissionEntry(root, preparationError);
+                    return;
+                }
+            }
+            catch (System.Exception exception)
+            {
+                string error =
+                    "城市战场实例化失败：" + exception.Message;
+                Debug.LogException(exception, this);
+                FailChapterMissionEntry(root, error);
+                return;
             }
         }
         if (finiteChapterCombat)

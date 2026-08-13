@@ -215,6 +215,8 @@ namespace UnityPlanet.CityPcg
     public static class CombatDrivenCityPcgPlanner
     {
         const int TacticalBlockGridSize = 8;
+        public const float MinimumExposureShortcutSavingRatio = 0.20f;
+        public const float MaximumExposureShortcutSavingRatio = 0.35f;
 
         public static void Populate(
             AirCombatCitySettings settings,
@@ -410,6 +412,7 @@ namespace UnityPlanet.CityPcg
                         : CombatCityBlockRole.Maneuver;
                 ResolveBlockEffects(
                     role,
+                    settings.Difficulty,
                     out float roadScale,
                     out float densityScale,
                     out float heightScale);
@@ -473,6 +476,42 @@ namespace UnityPlanet.CityPcg
             return null;
         }
 
+        /// <summary>
+        /// Classifies a connection against the final playable block layout.
+        /// Adjacent source-grid blocks joined by a removed road seam share one
+        /// mergedGroupId and therefore do not form a cross-block connection.
+        /// </summary>
+        public static bool TryCrossesMergedBlockBoundary(
+            AirCombatCityPlan plan,
+            Vector2 firstPosition,
+            Vector2 secondPosition,
+            out bool crossesBoundary)
+        {
+            CombatCityBlockPlan first = FindTacticalBlock(
+                plan,
+                firstPosition);
+            CombatCityBlockPlan second = FindTacticalBlock(
+                plan,
+                secondPosition);
+            if (first == null || second == null)
+            {
+                crossesBoundary = false;
+                return false;
+            }
+
+            string firstGroup = string.IsNullOrEmpty(first.mergedGroupId)
+                ? first.stableId
+                : first.mergedGroupId;
+            string secondGroup = string.IsNullOrEmpty(second.mergedGroupId)
+                ? second.stableId
+                : second.mergedGroupId;
+            crossesBoundary = !string.Equals(
+                firstGroup,
+                secondGroup,
+                StringComparison.Ordinal);
+            return true;
+        }
+
         static TacticalOpportunity FindNearestOpportunity(
             AirCombatCityPlan plan,
             Vector3 point)
@@ -527,6 +566,7 @@ namespace UnityPlanet.CityPcg
 
         static void ResolveBlockEffects(
             CombatCityBlockRole role,
+            CombatCityDifficultyProfile difficulty,
             out float roadWidth,
             out float density,
             out float height)
@@ -534,13 +574,37 @@ namespace UnityPlanet.CityPcg
             switch (role)
             {
                 case CombatCityBlockRole.Occlusion:
-                    roadWidth = 0.86f; density = 1.12f; height = 1.12f; return;
+                    roadWidth = Mathf.Lerp(
+                        0.96f, 0.74f, difficulty.navigationChallenge);
+                    density = Mathf.Lerp(
+                        1.02f, 1.24f, difficulty.navigationChallenge);
+                    height = Mathf.Lerp(
+                        1.04f, 1.22f, difficulty.navigationChallenge);
+                    return;
                 case CombatCityBlockRole.Exposure:
-                    roadWidth = 1.28f; density = 0.72f; height = 0.82f; return;
+                    roadWidth = Mathf.Lerp(
+                        1.08f, 1.42f, difficulty.exposurePressure);
+                    density = Mathf.Lerp(
+                        0.94f, 0.55f, difficulty.exposurePressure);
+                    height = Mathf.Lerp(
+                        0.96f, 0.62f, difficulty.exposurePressure);
+                    return;
                 case CombatCityBlockRole.Recovery:
-                    roadWidth = 0.82f; density = 0.78f; height = 0.76f; return;
+                    roadWidth = Mathf.Lerp(
+                        0.86f, 1.18f, difficulty.recoveryGenerosity);
+                    density = Mathf.Lerp(
+                        1.02f, 0.68f, difficulty.recoveryGenerosity);
+                    height = Mathf.Lerp(
+                        1.02f, 0.72f, difficulty.recoveryGenerosity);
+                    return;
                 case CombatCityBlockRole.Kite:
-                    roadWidth = 1.02f; density = 0.94f; height = 1.05f; return;
+                    roadWidth = Mathf.Lerp(
+                        1.12f, 0.90f, difficulty.navigationChallenge);
+                    density = Mathf.Lerp(
+                        0.86f, 1.04f, difficulty.navigationChallenge);
+                    height = Mathf.Lerp(
+                        0.94f, 1.10f, difficulty.navigationChallenge);
+                    return;
                 case CombatCityBlockRole.TacticalChoke:
                     roadWidth = 0.84f; density = 1.08f; height = 1.08f; return;
                 case CombatCityBlockRole.Vertical:
@@ -614,8 +678,8 @@ namespace UnityPlanet.CityPcg
             for (int i = 0; i < count; i++)
                 parent[i] = i;
             float chance = Mathf.Lerp(
-                0.28f,
-                0.70f,
+                0.10f,
+                0.78f,
                 settings.Difficulty.blockMergeStrength);
             int selectedSeams = 0;
             int selectedOcclusionSeams = 0;
@@ -703,7 +767,10 @@ namespace UnityPlanet.CityPcg
                     occlusionCandidateCount++;
             }
             int guaranteedOcclusionSeams = Mathf.CeilToInt(
-                occlusionCandidateCount * 0.75f);
+                occlusionCandidateCount * Mathf.Lerp(
+                    0.20f,
+                    0.82f,
+                    settings.Difficulty.blockMergeStrength));
             for (int i = 0; i < fallbackSeams.Count &&
                             selectedOcclusionSeams < guaranteedOcclusionSeams; i++)
             {
@@ -724,8 +791,8 @@ namespace UnityPlanet.CityPcg
 
             int guaranteedSeams = Mathf.Min(
                 Mathf.RoundToInt(Mathf.Lerp(
-                    10f,
-                    20f,
+                    8f,
+                    26f,
                     settings.Difficulty.blockMergeStrength)),
                 fallbackSeams.Count);
             for (int i = 0; i < fallbackSeams.Count &&
@@ -958,6 +1025,12 @@ namespace UnityPlanet.CityPcg
             // and parcel rules; excluding every authored player route prevents
             // the extra height from turning a safe route into a hidden blocker.
             EnsureMeasuredOcclusionBreaks(settings, plan, route, used, 4);
+            EnsureOcclusionTowerQuota(
+                settings,
+                plan,
+                route,
+                used,
+                RequiredOcclusionTowerCount(settings));
 
             TacticalOpportunity opportunity = FindOpportunity(
                 plan,
@@ -1011,6 +1084,131 @@ namespace UnityPlanet.CityPcg
             return null;
         }
 
+        static void EnsureOcclusionTowerQuota(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan,
+            AirCombatFlightRoute route,
+            HashSet<AirCombatBuildingLot> used,
+            int requiredCount)
+        {
+            int currentCount = CountCluster(plan, 1202);
+            if (currentCount >= requiredCount || route == null ||
+                route.points == null || route.points.Length < 4)
+            {
+                return;
+            }
+
+            float routeX = (route.points[2].x + route.points[3].x) * 0.5f;
+            float minimumZ = Mathf.Min(route.points[2].z, route.points[3].z);
+            float maximumZ = Mathf.Max(route.points[2].z, route.points[3].z);
+            float lateralOffset = route.width * 0.5f + 54f;
+            float maximumDistance = settings.buildingSpacing * 2.5f;
+            var candidates = new List<AirCombatBuildingLot>();
+            for (int i = 0; i < plan.buildings.Count; i++)
+            {
+                AirCombatBuildingLot building = plan.buildings[i];
+                if (building.band == AirCombatBuildingBand.Facility ||
+                    building.clusterId >= 900 ||
+                    used.Contains(building) ||
+                    BuildingIntersectsAnyPlayerRoute(building, plan))
+                {
+                    continue;
+                }
+
+                float nearestTargetDistance = float.PositiveInfinity;
+                for (int sideIndex = 0; sideIndex < 2; sideIndex++)
+                for (int feature = 0; feature < 6; feature++)
+                {
+                    Vector2 target = new Vector2(
+                        routeX + (sideIndex == 0 ? -1f : 1f) *
+                        lateralOffset,
+                        Mathf.Lerp(
+                            minimumZ,
+                            maximumZ,
+                            (feature + 0.5f) / 6f));
+                    nearestTargetDistance = Mathf.Min(
+                        nearestTargetDistance,
+                        Vector2.Distance(
+                            new Vector2(
+                                building.center.x,
+                                building.center.z),
+                            target));
+                }
+                if (nearestTargetDistance <= maximumDistance)
+                    candidates.Add(building);
+            }
+
+            candidates.Sort((first, second) =>
+            {
+                float firstDistance = DistanceToOcclusionTowerTargets(
+                    first,
+                    routeX,
+                    minimumZ,
+                    maximumZ,
+                    lateralOffset);
+                float secondDistance = DistanceToOcclusionTowerTargets(
+                    second,
+                    routeX,
+                    minimumZ,
+                    maximumZ,
+                    lateralOffset);
+                int distanceOrder = firstDistance.CompareTo(secondDistance);
+                return distanceOrder != 0
+                    ? distanceOrder
+                    : string.CompareOrdinal(first.stableId, second.stableId);
+            });
+
+            for (int i = 0;
+                 i < candidates.Count && currentCount < requiredCount;
+                 i++)
+            {
+                AirCombatBuildingLot building = candidates[i];
+                used.Add(building);
+                float height = Mathf.Max(
+                    building.size.y,
+                    settings.maximumAltitude + 24f + currentCount * 3f);
+                building.size = new Vector3(
+                    building.size.x,
+                    height,
+                    building.size.z);
+                building.center = new Vector3(
+                    building.center.x,
+                    height * 0.5f,
+                    building.center.z);
+                building.band = AirCombatBuildingBand.High;
+                building.archetype = AirCombatBuildingArchetype.CombatTower;
+                building.clusterId = 1202;
+                currentCount++;
+            }
+        }
+
+        static float DistanceToOcclusionTowerTargets(
+            AirCombatBuildingLot building,
+            float routeX,
+            float minimumZ,
+            float maximumZ,
+            float lateralOffset)
+        {
+            float nearest = float.PositiveInfinity;
+            Vector2 point = new Vector2(
+                building.center.x,
+                building.center.z);
+            for (int sideIndex = 0; sideIndex < 2; sideIndex++)
+            for (int feature = 0; feature < 6; feature++)
+            {
+                Vector2 target = new Vector2(
+                    routeX + (sideIndex == 0 ? -1f : 1f) * lateralOffset,
+                    Mathf.Lerp(
+                        minimumZ,
+                        maximumZ,
+                        (feature + 0.5f) / 6f));
+                nearest = Mathf.Min(
+                    nearest,
+                    Vector2.SqrMagnitude(point - target));
+            }
+            return nearest;
+        }
+
         static bool OcclusionTowerHitsRoad(
             AirCombatCityPlan plan,
             Vector2 point,
@@ -1040,6 +1238,21 @@ namespace UnityPlanet.CityPcg
             Vector2 point,
             Vector2 footprint)
         {
+            float facilityHalf =
+                AirCombatCityGenerator.FacilityPadSize * 0.5f + 8f;
+            for (int index = 0;
+                 index < plan.facilityCores.Count;
+                 index++)
+            {
+                Vector3 core = plan.facilityCores[index];
+                if (Mathf.Abs(core.x - point.x) <=
+                        facilityHalf + footprint.x * 0.5f &&
+                    Mathf.Abs(core.z - point.y) <=
+                        facilityHalf + footprint.y * 0.5f)
+                {
+                    return true;
+                }
+            }
             for (int i = 0; i < plan.buildings.Count; i++)
             {
                 AirCombatBuildingLot building = plan.buildings[i];
@@ -1452,6 +1665,15 @@ namespace UnityPlanet.CityPcg
             return breaks;
         }
 
+        static int RequiredOcclusionTowerCount(
+            AirCombatCitySettings settings)
+        {
+            return Mathf.RoundToInt(Mathf.Lerp(
+                8f,
+                6f,
+                settings.Difficulty.navigationChallenge));
+        }
+
         static int CountRecoveryPocketsWithBlockedOutput(
             AirCombatCitySettings settings,
             AirCombatCityPlan plan)
@@ -1612,8 +1834,10 @@ namespace UnityPlanet.CityPcg
                 ? 1f - exposureLength / maskedLength
                 : 0f;
             bool shortcutSavingValid =
-                report.exposureShortcutSavingRatio >= 0.20f &&
-                report.exposureShortcutSavingRatio <= 0.35f;
+                report.exposureShortcutSavingRatio >=
+                    MinimumExposureShortcutSavingRatio &&
+                report.exposureShortcutSavingRatio <=
+                    MaximumExposureShortcutSavingRatio;
 
             report.occlusionBoundaryTowerCount = CountCluster(plan, 1202);
             report.occlusionBreakCount = CountOcclusionSightBreaks(
@@ -1641,10 +1865,7 @@ namespace UnityPlanet.CityPcg
                 4f,
                 2f,
                 navigationChallenge));
-            int minimumOcclusionTowers = Mathf.RoundToInt(Mathf.Lerp(
-                8f,
-                6f,
-                navigationChallenge));
+            int minimumOcclusionTowers = RequiredOcclusionTowerCount(settings);
             report.combatRegionsPhysical = shortcutSavingValid &&
                 report.occlusionBreakCount >= minimumOcclusionBreaks &&
                 report.occlusionBoundaryTowerCount >= minimumOcclusionTowers &&

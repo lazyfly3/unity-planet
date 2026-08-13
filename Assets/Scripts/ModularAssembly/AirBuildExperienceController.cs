@@ -487,7 +487,10 @@ namespace UnityPlanet.ModularAssembly
                     ? "首次飞船已自动保存，正在进入太空仓……"
                     : "设计已自动保存，正在返回太空仓……";
             }
-            SpaceStationFlowContext.CompleteAssemblyReturn();
+            if (initialAssembly)
+                SpaceStationFlowContext.CompleteInitialAssemblyReturn();
+            else
+                SpaceStationFlowContext.CompleteAssemblyReturn();
             SceneManager.LoadScene(
                 "SpaceStationUpgradeTest",
                 LoadSceneMode.Single);
@@ -726,10 +729,17 @@ namespace UnityPlanet.ModularAssembly
             }
 
             HashSet<Vector3Int> occupied = new HashSet<Vector3Int>();
+            HashSet<Vector3Int> foundationCells =
+                new HashSet<Vector3Int>();
             foreach (GridModuleRecord record in controller.Model.Records)
             foreach (Vector3Int cell in controller.Model.GetCells(record))
             {
                 occupied.Add(cell);
+                if (GridAssemblyModel.IsFoundationModule(
+                        record.Definition))
+                {
+                    foundationCells.Add(cell);
+                }
             }
 
             Vector3Int[] directions =
@@ -737,7 +747,11 @@ namespace UnityPlanet.ModularAssembly
                 Vector3Int.right, Vector3Int.left, Vector3Int.up, Vector3Int.down,
                 new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1)
             };
-            foreach (Vector3Int cell in occupied)
+            IEnumerable<Vector3Int> buildSurfaceCells =
+                controller.Model.RequiresFoundationMounts
+                    ? foundationCells
+                    : occupied;
+            foreach (Vector3Int cell in buildSurfaceCells)
             {
                 if (!directions.Any(direction => !occupied.Contains(cell + direction)))
                 {

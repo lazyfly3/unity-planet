@@ -273,6 +273,70 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 168552659c23a60439e52d2bda058929, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &485526360
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 485526362}
+  - component: {fileID: 485526361}
+  - component: {fileID: 485526363}
+  m_Layer: 31
+  m_Name: "Boss\u529F\u80FD\u68C0\u6D4B\u5DE5\u5177_EditorOnly"
+  m_TagString: EditorOnly
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &485526361
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 485526360}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab708650730876b458791ab0c816df8b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  difficultyTier: 4
+  seed: 7319
+  showShield: 1
+--- !u!4 &485526362
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 485526360}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 5000, y: 1500, z: 5000}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &485526363
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 485526360}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2239b674b9c3fa041b2e088501fe36ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  difficultyTier: 4
+  seed: 7319
+  runContinuously: 1
+  loopRestartDelaySeconds: 4
 --- !u!1 &693296282
 GameObject:
   m_ObjectHideFlags: 0
@@ -371,6 +435,276 @@ MonoScript:
   m_ClassName: UrbanEnvironmentalFieldDirector
   m_Namespace: UnityPlanet.CityPcg
   m_AssemblyName: Assembly-CSharp
+--- !u!1 &1807869229
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1807869230}
+  - component: {fileID: 1807869232}
+  - component: {fileID: 1807869231}
+  m_Layer: 0
+  m_Name: "\u57CE\u5E02\u5730\u5F62_\u771F\u5B9E\u53EF\u78B0\u649E\u5730\u5F62"
+  m_TagString: EditorOnly
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 2147483647
+  m_IsActive: 1
+--- !u!4 &1807869230
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1807869229}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1248, y: -0.12, z: -1248}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3867416557213180142}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!154 &1807869231
+TerrainCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1807869229}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_TerrainData: {fileID: 15600000, guid: b3fe995b9fd8cf2408f048994f807296, type: 2}
+  m_EnableTreeColliders: 1
+--- !u!218 &1807869232
+Terrain:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1807869229}
+  m_Enabled: 1
+  serializedVersion: 6
+  m_TerrainData: {fileID: 15600000, guid: b3fe995b9fd8cf2408f048994f807296, type: 2}
+  m_TreeDistance: 5000
+  m_TreeBillboardDistance: 50
+  m_TreeCrossFadeLength: 5
+  m_TreeMaximumFullLODCount: 50
+  m_DetailObjectDistance: 80
+  m_DetailObjectDensity: 1
+  m_HeightmapPixelError: 12
+  m_SplatMapDistance: 1000
+  m_HeightmapMinimumLODSimplification: 0
+  m_HeightmapMaximumLOD: 0
+  m_ShadowCastingMode: 0
+  m_DrawHeightmap: 1
+  m_DrawInstanced: 1
+  m_DrawTreesAndFoliage: 1
+  m_StaticShadowCaster: 0
+  m_IgnoreQualitySettings: 0
+  m_ReflectionProbeUsage: 1
+  m_MaterialTemplate: {fileID: 10652, guid: 0000000000000000f000000000000000, type: 0}
+  m_BakeLightProbesForTrees: 1
+  m_PreserveTreePrototypeLayers: 0
+  m_DeringLightProbesForTrees: 1
+  m_ReceiveGI: 1
+  m_ScaleInLightmap: 0.010256411
+  m_LightmapParameters: {fileID: 15203, guid: 0000000000000000f000000000000000, type: 0}
+  m_GroupingID: 0
+  m_RenderingLayerMask: 1
+  m_AllowAutoConnect: 1
+  m_EnableHeightmapRayTracing: 1
+  m_EnableTreesAndDetailsRayTracing: 0
+  m_TreeMotionVectorModeOverride: 3
+--- !u!4 &3867416557213180142
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9036453459912485166}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1807869230}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4511080228133865575
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9036453459912485166}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb26a51d6ab541349bbe3ac077dc8c71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  settings:
+    seed: 2090577248
+    mission: 0
+    mapSize: 1664
+    combatSpeed: 55
+    turnRadius: 95
+    weaponRange: 480
+    wingspan: 18
+    lowAltitude: 100
+    mediumAltitude: 135
+    highAltitude: 220
+    maximumAltitude: 350
+    buildingSpacing: 63.6
+    buildingDensity: 0.91
+    maximumAttempts: 10
+    intraBlockSkybridgeTarget: 62
+    crossBlockSkybridgeTarget: 80
+    bossIntraBlockSkybridgeTarget: 110
+    bossCrossBlockSkybridgeTarget: 110
+    skybridgeMinimumCenterDistance: 22
+    skybridgeMaximumCenterDistance: 240
+    skybridgeMinimumHeight: 38
+    skybridgeFacadeEmbed: 9
+    skybridgeMaximumSegmentCount: 3
+    skybridgeMaximumConnectionsPerBuilding: 7
+    skybridgeLandmarkMaximumConnections: 10
+    aerialCableDensityMultiplier: 1
+    aerialCableMinimumCount: 14
+    aerialCableMaximumCount: 26
+    aerialCableMinimumCenterDistance: 76
+    aerialCableMaximumCenterDistance: 310
+    aerialCableMinimumOpenSpan: 54
+    aerialCableMaximumOpenSpan: 248
+    aerialCableSagRatio: 0.075
+    aerialCableMinimumSag: 6
+    aerialCableMaximumSag: 18
+    aerialCableMaximumConnectionsPerBuilding: 3
+    aerialCableLandmarkMaximumConnections: 4
+    aerialCableVerticalSeparation: 2.7
+    cableTriggerRadius: 1.05
+    cableTriggerSegmentsPerCurve: 6
+    cableMinimumAffectedSpeed: 8
+    playerCableSlowdown: 0.28
+    enemyCableSlowdown: 0.14
+    cableRepeatCooldown: 0.45
+    playerCableSwayAmplitude: 1.55
+    enemyCableSwayAmplitude: 0.85
+    cableSwayDuration: 1.05
+    naturalStreetGaleCount: 3
+    magneticCourtyardCount: 2
+    environmentalTrapRandomness: 0.72
+    environmentalTrapEdgeBias: 0.157
+    environmentalTrapPreferredMinimumRadius: 250
+    environmentalTrapPreferredMaximumRadius: 590
+    environmentalTrapEdgeClearance: 120
+    environmentalTrapMinimumSeparation: 260
+    useVisualDistrictThemes: 1
+    removeUpperParameterLimits: 1
+    combatDifficulty:
+      navigationChallenge: 0.42
+      combatPressure: 0.45
+      exposurePressure: 0
+      recoveryGenerosity: 0.72
+      tacticalOpportunityDensity: 0.72
+      routeLegibility: 0.78
+      bossPursuitPressure: 0.45
+      destructionUtility: 0.72
+      decisionComplexity: 0.48
+      roadWidthScale: 1
+      blockMergeStrength: 0.32
+  designProfile: {fileID: 0}
+  palette:
+    road: {fileID: 2100000, guid: 514fcb48999763744ab368bc720b155a, type: 2}
+    asphalt: {fileID: 2100000, guid: 514fcb48999763744ab368bc720b155a, type: 2}
+    cityBlockPaving: {fileID: 2100000, guid: 357cee6c340117c4b91cd36d18ec3bb0, type: 2}
+    sidewalk: {fileID: 2100000, guid: 55f3a5083a34cdd40978457afe6af730, type: 2}
+    curb: {fileID: 2100000, guid: 27aca6b40a801c94abf0dc0bd952d41f, type: 2}
+    laneMarking: {fileID: 2100000, guid: adde1f043ad39ca4fb85b7b9e9a06772, type: 2}
+    dangerLaneMarking: {fileID: 2100000, guid: 233e0f26e21f55d418f6f425529c2776, type: 2}
+    repairCourtyard: {fileID: 2100000, guid: d507cbc790d31b249a89b2c5f24c5e5c, type: 2}
+    lowBuilding: {fileID: 2100000, guid: 1c4e99caba350b049907c70d73e5200a, type: 2}
+    mediumBuilding: {fileID: 2100000, guid: cf2baac4ccf65b140bb7d7852a8f991c, type: 2}
+    highBuilding: {fileID: 2100000, guid: 0eca4ac245d68864f832d2431fc99657, type: 2}
+    facility: {fileID: 2100000, guid: 0da3a72c028927447a9a56b8eb4fb505, type: 2}
+    mainRoute: {fileID: 2100000, guid: 3a0695307b7644a47930ff16853c46ec, type: 2}
+    maskedRoute: {fileID: 2100000, guid: dd5ee052cb09bac4da18e8c69df8a576, type: 2}
+    longRangeRoute: {fileID: 2100000, guid: 1595c79274fd79442ad3acd72d3b28e5, type: 2}
+    suicideRoute: {fileID: 2100000, guid: 40796ef02ff0c4c41ac61b3c1271df97, type: 2}
+    rangedRoute: {fileID: 2100000, guid: ad9324b21f6dfd94db880ac16e9bbbf8, type: 2}
+    spawn: {fileID: 2100000, guid: 8c0c3fdee8a7926498bdb7f2e1ae81a7, type: 2}
+    objective: {fileID: 2100000, guid: 7ee803f48c6feab46b69f39474cbb9f2, type: 2}
+    maneuverVolume: {fileID: 2100000, guid: 1cde7f7dd27b7d340875b278786e9ee9, type: 2}
+    recoveryVolume: {fileID: 2100000, guid: fa3ea89967fe3f9448f11714385f4b03, type: 2}
+    occlusionVolume: {fileID: 2100000, guid: 48bb740249e0be24d8ac57a1f028efd8, type: 2}
+    exposureVolume: {fileID: 2100000, guid: 8b191ead6a225894caea7e4f106a26cc, type: 2}
+  buildingCatalog: {fileID: 11400000, guid: 502d3b97934aec24c8df7eaa640beb2b, type: 2}
+  darkCity2Catalog: {fileID: 11400000, guid: 39f6900667b79fe45a6cbfed552fd235, type: 2}
+  roadJunctionPrefab: {fileID: 0}
+  rooftopMechanicalPrefab: {fileID: 0}
+  rooftopBillboardPrefabs: []
+  streetLightPrefab: {fileID: 0}
+  showSemanticGizmos: 1
+  showRuntimePanel: 0
+  keepBuildingColliders: 1
+  buildVisualBackground: 0
+  destructionSettings:
+    maximumPhysicalDebris: 48
+    maximumVisualDebris: 96
+    debrisLifetime: 7.5
+    physicalCollisionSeconds: 1.35
+    highSpeedImpactThreshold: 34
+    impactDamageScale: 1
+    demolitionIntegrityFraction: 0.48
+    normalProjectileDamageScale: 0.08
+    explosionDamageScale: 0.38
+    structuralColumns: 5
+    targetStructuralFloorHeight: 9
+    neighbourSupportTransfer: 0.22
+    maximumVisibleStructuralHoles: 8
+--- !u!1 &9036453459912485166
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3867416557213180142}
+  - component: {fileID: 4511080228133865575}
+  - component: {fileID: 9036453459912485167}
+  m_Layer: 0
+  m_Name: "\u57CE\u5E02\u7A0B\u5E8F\u5316\u751F\u6210\u9884\u89C8_\u4EC5\u7F16\u8F91\u6A21\u5F0F"
+  m_TagString: EditorOnly
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &9036453459912485167
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9036453459912485166}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 525e3057a5931e64f8e65bb4433af4d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -378,3 +712,5 @@ SceneRoots:
   - {fileID: 112061577}
   - {fileID: 693296284}
   - {fileID: 71749126}
+  - {fileID: 3867416557213180142}
+  - {fileID: 485526362}

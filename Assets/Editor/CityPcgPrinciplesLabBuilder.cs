@@ -18,7 +18,6 @@ namespace UnityPlanet.CityPcg.Editor
         const string NewGenRoot =
             "Assets/Reversed Interactive/New Gen Urban";
 
-        [MenuItem("Tools/城市 PCG/重建空战城市实验场")]
         public static void RebuildScene()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
@@ -69,12 +68,6 @@ namespace UnityPlanet.CityPcg.Editor
                 new Vector4(0f, 0f, 1f, 1f),
                 4.2f,
                 new Color(0.26f, 0.55f, 0.58f));
-            Material parkSurface = EnsureWorldTiledMaterial(
-                "Urban_TacticalPark",
-                NewGenRoot + "/Textures/Grass.png",
-                new Vector4(0f, 0f, 1f, 1f),
-                7.5f,
-                new Color(0.58f, 0.66f, 0.54f));
             Material curb = EnsureMaterial(
                 "Urban_Curb",
                 new Color(0.52f, 0.54f, 0.56f));
@@ -153,7 +146,6 @@ namespace UnityPlanet.CityPcg.Editor
                 laneMarking = laneMarking,
                 dangerLaneMarking = dangerLaneMarking,
                 repairCourtyard = repairCourtyard,
-                parkSurface = parkSurface,
                 lowBuilding = lowBuilding,
                 mediumBuilding = mediumBuilding,
                 highBuilding = highBuilding,
@@ -171,12 +163,10 @@ namespace UnityPlanet.CityPcg.Editor
                 exposureVolume = exposure
             };
             GameObject roadJunctionPrefab = null;
-            GameObject parkTreePrefab = null;
             GameObject rooftopMechanicalPrefab = null;
             GameObject[] rooftopBillboardPrefabs =
                 System.Array.Empty<GameObject>();
             GameObject streetLightPrefab = null;
-            GameObject parkPlanterPrefab = null;
 
             Scene previousActive = SceneManager.GetActiveScene();
             Scene scene = SceneManager.GetSceneByPath(ScenePath);
@@ -200,11 +190,9 @@ namespace UnityPlanet.CityPcg.Editor
                     darkCity2Catalog,
                     buildingCatalog,
                     roadJunctionPrefab,
-                    parkTreePrefab,
                     rooftopMechanicalPrefab,
                     rooftopBillboardPrefabs,
                     streetLightPrefab,
-                    parkPlanterPrefab,
                     mainRoute,
                     maskedRoute,
                     suicideRoute);
@@ -226,7 +214,6 @@ namespace UnityPlanet.CityPcg.Editor
                 "。未修改星球地形、正式战斗或飞船物理结构。");
         }
 
-        [MenuItem("Tools/城市 PCG/打开空战城市实验场")]
         public static void OpenScene()
         {
             if (!File.Exists(ScenePath))
@@ -243,11 +230,9 @@ namespace UnityPlanet.CityPcg.Editor
             DarkCity2UrbanCatalog darkCity2Catalog,
             NewGenUrbanBuildingCatalog buildingCatalog,
             GameObject roadJunctionPrefab,
-            GameObject parkTreePrefab,
             GameObject rooftopMechanicalPrefab,
             GameObject[] rooftopBillboardPrefabs,
             GameObject streetLightPrefab,
-            GameObject parkPlanterPrefab,
             Material frontAxis,
             Material upAxis,
             Material rightAxis)
@@ -265,11 +250,9 @@ namespace UnityPlanet.CityPcg.Editor
                 palette,
                 buildingCatalog,
                 roadJunctionPrefab,
-                parkTreePrefab,
                 rooftopMechanicalPrefab,
                 rooftopBillboardPrefabs,
                 streetLightPrefab,
-                parkPlanterPrefab,
                 darkCity2Catalog);
             SaveRuntimeTemplate(lab);
             lab.Rebuild();

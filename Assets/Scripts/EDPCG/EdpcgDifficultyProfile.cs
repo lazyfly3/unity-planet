@@ -8,6 +8,9 @@ namespace UnityPlanet.EDPCG
     {
         static readonly int[] BaseRosters = { 16, 24, 32, 40, 52, 64 };
         static readonly int[] DefaultEnvironmentalPursuers = { 2, 2, 3, 3, 4, 4 };
+        [Header("运行模式")]
+        public EdpcgIntegrationMode integrationMode =
+            EdpcgIntegrationMode.Legacy;
         [Range(1, 6)] public int planetTier = 1;
         [Min(1)] public int rosterCount = 16;
         [Min(0)] public int interceptorCount = 11;
@@ -15,6 +18,9 @@ namespace UnityPlanet.EDPCG
         [Min(0)] public int gunshipCount = 1;
         [Min(0)] public int environmentalPursuerCount;
         [Min(0)] public int requiredCreditedKills = 6;
+
+        [Header("敌机耐久")]
+        [Range(0.5f, 3f)] public float enemyHealthMultiplier = 1f;
 
         [Header("并发预算")]
         [Min(1)] public int populationCap = 8;
@@ -45,12 +51,19 @@ namespace UnityPlanet.EDPCG
         [Range(0.55f, 0.9f)] public float hardPressureLimit = 0.75f;
 
         [Header("压力计算")]
-        [Range(0f, 1f)] public float enemyThreatWeight = 0.42f;
-        [Range(0f, 1f)] public float navigationWeight = 0.22f;
-        [Range(0f, 1f)] public float environmentWeight = 0.16f;
-        [Range(0f, 1f)] public float playerStrainWeight = 0.20f;
+        [Range(0f, 1f)] public float enemyThreatWeight = 0.45f;
+        [Range(0f, 1f)] public float navigationWeight = 0.25f;
+        [Range(0f, 1f)] public float environmentWeight = 0.14f;
+        [Range(0f, 1f)] public float playerStrainWeight = 0.16f;
         [Range(0.25f, 5f)] public float pressureSmoothingSeconds = 1.5f;
         [Range(2f, 12f)] public float forecastSeconds = 8f;
+
+        [Header("压力闭环")]
+        [Range(1f, 6f)] public float pressureControlStepSeconds = 2.5f;
+        [Range(2f, 8f)] public float pressureControlReleaseSeconds = 4f;
+        [Range(1, 4)] public int maximumPressureAssistSteps = 3;
+        [Range(0f, 0.1f)] public float pressureTargetTolerance = 0.03f;
+        [Range(120f, 420f)] public float closeApproachDistance = 260f;
 
         [Header("AI 策略")]
         [Range(0, 3)] public int maximumStrategyLevel = 1;
@@ -86,6 +99,12 @@ namespace UnityPlanet.EDPCG
 
         public void ValidateInPlace()
         {
+            if (!Enum.IsDefined(
+                    typeof(EdpcgIntegrationMode),
+                    integrationMode))
+            {
+                integrationMode = EdpcgIntegrationMode.Legacy;
+            }
             planetTier = Mathf.Clamp(planetTier, 1, 6);
             rosterCount = Mathf.Max(1, rosterCount);
             interceptorCount = Mathf.Max(0, interceptorCount);
@@ -100,6 +119,12 @@ namespace UnityPlanet.EDPCG
                 requiredCreditedKills,
                 0,
                 Mathf.Max(0, strikerCount + gunshipCount));
+            if (enemyHealthMultiplier <= 0f)
+                enemyHealthMultiplier = 1f;
+            enemyHealthMultiplier = Mathf.Clamp(
+                enemyHealthMultiplier,
+                0.5f,
+                3f);
 
             populationCap = Mathf.Clamp(populationCap, 1, 28);
             engagementCap = Mathf.Clamp(engagementCap, 1, populationCap);
@@ -138,10 +163,10 @@ namespace UnityPlanet.EDPCG
                            environmentWeight + playerStrainWeight;
             if (weight <= 0.001f)
             {
-                enemyThreatWeight = 0.42f;
-                navigationWeight = 0.22f;
-                environmentWeight = 0.16f;
-                playerStrainWeight = 0.20f;
+                enemyThreatWeight = 0.45f;
+                navigationWeight = 0.25f;
+                environmentWeight = 0.14f;
+                playerStrainWeight = 0.16f;
             }
             else
             {
@@ -156,6 +181,36 @@ namespace UnityPlanet.EDPCG
                 0.25f,
                 5f);
             forecastSeconds = Mathf.Clamp(forecastSeconds, 2f, 12f);
+            pressureControlStepSeconds = Mathf.Clamp(
+                pressureControlStepSeconds <= 0f
+                    ? 2.5f
+                    : pressureControlStepSeconds,
+                1f,
+                6f);
+            pressureControlReleaseSeconds = Mathf.Clamp(
+                pressureControlReleaseSeconds <= 0f
+                    ? 4f
+                    : pressureControlReleaseSeconds,
+                2f,
+                8f);
+            maximumPressureAssistSteps = Mathf.Clamp(
+                maximumPressureAssistSteps <= 0
+                    ? 3
+                    : maximumPressureAssistSteps,
+                1,
+                4);
+            pressureTargetTolerance = Mathf.Clamp(
+                pressureTargetTolerance <= 0f
+                    ? 0.03f
+                    : pressureTargetTolerance,
+                0f,
+                0.1f);
+            closeApproachDistance = Mathf.Clamp(
+                closeApproachDistance <= 0f
+                    ? 260f
+                    : closeApproachDistance,
+                120f,
+                420f);
             maximumStrategyLevel = Mathf.Clamp(maximumStrategyLevel, 0, 3);
             localRepairAfterSeconds = Mathf.Max(1f, localRepairAfterSeconds);
             evasiveAfterSeconds = Mathf.Max(
@@ -262,16 +317,18 @@ namespace UnityPlanet.EDPCG
         public static EdpcgTierSettings CreateDefault(int zeroBasedTier)
         {
             int tier = Mathf.Clamp(zeroBasedTier, 0, 5);
-            int[] interceptors = { 11, 16, 21, 26, 33, 40 };
-            int[] strikers = { 4, 7, 10, 12, 16, 20 };
-            int[] gunships = { 1, 1, 1, 2, 3, 4 };
+            int[] interceptors = { 2, 4, 5, 7, 9, 12 };
+            int[] strikers = { 12, 17, 23, 27, 35, 42 };
+            int[] gunships = { 2, 3, 4, 6, 8, 10 };
             int[] credited = { 4, 6, 8, 10, 14, 20 };
             int[] population = { 8, 10, 14, 18, 22, 28 };
             int[] engagement = { 5, 7, 9, 11, 14, 16 };
-            int[] tokens = { 1, 2, 2, 3, 3, 4 };
+            int[] tokens = { 2, 2, 2, 3, 3, 4 };
+            int[] rangedLanes = { 1, 2, 2, 3, 3, 4 };
             float t = tier / 5f;
             var settings = new EdpcgTierSettings
             {
+                integrationMode = EdpcgIntegrationMode.TacticalAssignments,
                 planetTier = tier + 1,
                 rosterCount = BaseRosters[tier] +
                               DefaultEnvironmentalPursuers[tier],
@@ -282,12 +339,14 @@ namespace UnityPlanet.EDPCG
                 environmentalPursuerCount =
                     DefaultEnvironmentalPursuers[tier],
                 requiredCreditedKills = credited[tier],
+                enemyHealthMultiplier = DefaultEnemyHealthMultiplierForTier(
+                    tier),
                 populationCap = population[tier],
                 engagementCap = engagement[tier],
                 fullSimulationCap = Mathf.Min(16, population[tier]),
                 attackTokenCap = tokens[tier],
                 suicideCommitCap = tier < 3 ? 1 : 2,
-                rangedFireLaneCap = tier < 2 ? 1 : 2,
+                rangedFireLaneCap = rangedLanes[tier],
                 pressureDirectionCap = tier < 2 ? 1 : tier < 5 ? 2 : 3,
                 spawnIntervalSeconds = Mathf.Lerp(5.2f, 2.6f, t),
                 sharedAttackCooldownSeconds = Mathf.Lerp(0.8f, 0.42f, t),
@@ -314,6 +373,13 @@ namespace UnityPlanet.EDPCG
                 BaseRosters.Length - 1);
             return BaseRosters[tier] + DefaultEnvironmentalPursuers[tier];
         }
+
+        public static float DefaultEnemyHealthMultiplierForTier(
+            int zeroBasedTier)
+        {
+            int tier = Mathf.Clamp(zeroBasedTier, 0, 5);
+            return Mathf.Lerp(1.2f, 1.7f, tier / 5f);
+        }
     }
 
     [CreateAssetMenu(
@@ -321,18 +387,23 @@ namespace UnityPlanet.EDPCG
         menuName = "Planet Combat/EDPCG Difficulty Profile")]
     public sealed class EdpcgDifficultyProfile : ScriptableObject
     {
-        public const int CurrentSchemaVersion = 2;
+        public const int CurrentSchemaVersion = 6;
         public const string ResourcePath = "EDPCG/EdpcgDifficultyProfile";
 
         public int schemaVersion = CurrentSchemaVersion;
         public string profileId = "edpcg-default";
-        public string profileVersion = "1.1.0";
-        public string formulaVersion = "edpcg-pressure-v2-environmental-pursuit";
+        public string profileVersion = "1.5.0";
+        public string formulaVersion =
+            "edpcg-pressure-v3-combat-calibrated-control";
         public EdpcgTierSettings[] tiers = Array.Empty<EdpcgTierSettings>();
 
         public void EnsureInitialized()
         {
             bool migrateEnvironmentalPursuers = schemaVersion < 2;
+            bool migrateEnemyHealth = schemaVersion < 3;
+            bool migratePressureControl = schemaVersion < 4;
+            bool migrateRangedMajority = schemaVersion < 5;
+            bool migrateCombatPressureWeights = schemaVersion < 6;
             if (tiers == null || tiers.Length != 6)
                 Array.Resize(ref tiers, 6);
             for (int index = 0; index < tiers.Length; index++)
@@ -349,21 +420,62 @@ namespace UnityPlanet.EDPCG
                     tiers[index].interceptorCount += addition;
                     tiers[index].environmentalPursuerCount = addition;
                 }
+                if (migrateEnemyHealth ||
+                    tiers[index].enemyHealthMultiplier <= 0f)
+                {
+                    tiers[index].enemyHealthMultiplier =
+                        EdpcgTierSettings.DefaultEnemyHealthMultiplierForTier(
+                            index);
+                }
+                if (migratePressureControl)
+                {
+                    tiers[index].pressureControlStepSeconds = 2.5f;
+                    tiers[index].pressureControlReleaseSeconds = 4f;
+                    tiers[index].maximumPressureAssistSteps = 3;
+                    tiers[index].pressureTargetTolerance = 0.03f;
+                    tiers[index].closeApproachDistance = 260f;
+                }
+                if (migrateRangedMajority)
+                {
+                    ApplyRangedMajorityComposition(tiers[index], index);
+                }
+                if (migrateCombatPressureWeights)
+                {
+                    tiers[index].enemyThreatWeight = 0.45f;
+                    tiers[index].navigationWeight = 0.25f;
+                    tiers[index].environmentWeight = 0.14f;
+                    tiers[index].playerStrainWeight = 0.16f;
+                }
                 tiers[index].planetTier = index + 1;
                 tiers[index].ValidateInPlace();
             }
-            // The highest planet keeps its authored 40/20/4 composition and
-            // adds four explicit environmental interceptors.
-            tiers[5].rosterCount = 68;
-            tiers[5].NormalizeForFixedRoster(44, 20, 4);
-            tiers[5].environmentalPursuerCount = 4;
-            tiers[5].populationCap = Mathf.Min(28, tiers[5].populationCap);
-            tiers[5].fullSimulationCap = Mathf.Min(16, tiers[5].fullSimulationCap);
-            tiers[5].attackTokenCap = Mathf.Min(4, tiers[5].attackTokenCap);
-            tiers[5].ValidateInPlace();
             schemaVersion = CurrentSchemaVersion;
-            profileVersion = "1.1.0";
-            formulaVersion = "edpcg-pressure-v2-environmental-pursuit";
+            profileVersion = "1.5.0";
+            formulaVersion = "edpcg-pressure-v3-combat-calibrated-control";
+        }
+
+        static void ApplyRangedMajorityComposition(
+            EdpcgTierSettings settings,
+            int zeroBasedTier)
+        {
+            if (settings == null)
+                return;
+            int tier = Mathf.Clamp(zeroBasedTier, 0, 5);
+            int[] interceptors = { 4, 6, 8, 10, 13, 16 };
+            int[] strikers = { 12, 17, 23, 27, 35, 42 };
+            int[] gunships = { 2, 3, 4, 6, 8, 10 };
+            int[] rangedBudgets = { 2, 2, 2, 3, 3, 4 };
+            int[] rangedLanes = { 1, 2, 2, 3, 3, 4 };
+            settings.NormalizeForFixedRoster(
+                interceptors[tier],
+                strikers[tier],
+                gunships[tier]);
+            settings.attackTokenCap = Mathf.Max(
+                settings.attackTokenCap,
+                rangedBudgets[tier]);
+            settings.rangedFireLaneCap = Mathf.Max(
+                settings.rangedFireLaneCap,
+                rangedLanes[tier]);
         }
 
         public EdpcgTierSettings Resolve(int zeroBasedTier)

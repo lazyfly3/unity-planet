@@ -575,6 +575,43 @@ public sealed class UrbanDestructionRuntimeTests
     }
 
     [Test]
+    public void SlicingTopplingSectionRefreshesItsCompoundCollisionOwnership()
+    {
+        Assert.That(UrbanDestructionWorld.TryApplyEnergyBlade(
+            buildingCollider,
+            new Vector3(0f, 42f, 19f),
+            Vector3.forward,
+            Vector3.back,
+            1000f,
+            30f,
+            null), Is.True);
+        UrbanTopplingSection toppling =
+            root.GetComponentInChildren<UrbanTopplingSection>(true);
+        UrbanDestructibleRuinSection fallen = toppling
+            .GetComponentsInChildren<UrbanDestructibleRuinSection>(true)
+            .First(section => section.name.Contains("FallenTower"));
+        Collider hit = fallen.PersistentCollider;
+        int before = toppling.CompoundColliderCount;
+
+        Assert.That(UrbanDestructionWorld.TryApplyEnergyBlade(
+            hit,
+            fallen.DestructionBounds.center,
+            Vector3.up,
+            Vector3.forward,
+            1f,
+            30f,
+            null), Is.True);
+
+        Assert.That(toppling.CompoundColliderCount, Is.GreaterThanOrEqualTo(1));
+        Assert.That(toppling.GetComponentsInChildren<BoxCollider>(true)
+                .Count(item => item.enabled &&
+                               item.attachedRigidbody == toppling.GetComponent<Rigidbody>()),
+            Is.EqualTo(toppling.CompoundColliderCount));
+        Assert.That(toppling.CompoundColliderCount, Is.Not.EqualTo(before),
+            "The state machine must replace retired colliders with the sliced halves.");
+    }
+
+    [Test]
     public void DecorationBreaksFromExplosionWithoutAddingFlightCollider()
     {
         var decorationObject = new GameObject("RoofBillboard_Test");
@@ -700,6 +737,228 @@ public sealed class UrbanDestructionRuntimeTests
         {
             Object.DestroyImmediate(boss);
         }
+    }
+
+    [Test]
+    public void BossTopplingSectionUsesTightCompoundColliders()
+    {
+        Vector3 point = new Vector3(0f, 42f, 19f);
+        Assert.That(UrbanDestructionWorld.TryApplyEnergyBlade(
+            buildingCollider,
+            point,
+            Vector3.forward,
+            Vector3.back,
+            1000f,
+            30f,
+            null), Is.True);
+
+        UrbanTopplingSection toppling =
+            root.GetComponentInChildren<UrbanTopplingSection>(true);
+        Assert.That(toppling, Is.Not.Null);
+        BoxCollider[] colliders = toppling.GetComponents<BoxCollider>();
+        Assert.That(toppling.CompoundColliderCount, Is.GreaterThanOrEqualTo(3));
+        Assert.That(colliders, Has.Length.EqualTo(toppling.CompoundColliderCount));
+
+        Renderer[] upperRenderers = toppling
+            .GetComponentsInChildren<Renderer>(true)
+            .Where(renderer => renderer.name.StartsWith("UpperCutVisual_"))
+            .ToArray();
+        Assert.That(upperRenderers, Is.Not.Empty);
+        Bounds visible = upperRenderers[0].bounds;
+        for (int index = 1; index < upperRenderers.Length; index++)
+            visible.Encapsulate(upperRenderers[index].bounds);
+        Bounds collision = colliders[0].bounds;
+        for (int index = 1; index < colliders.Length; index++)
+            collision.Encapsulate(colliders[index].bounds);
+
+        Assert.That(collision.min.x, Is.LessThanOrEqualTo(visible.min.x + 0.2f));
+        Assert.That(collision.max.x, Is.GreaterThanOrEqualTo(visible.max.x - 0.2f));
+        Assert.That(collision.min.z, Is.LessThanOrEqualTo(visible.min.z + 0.2f));
+        Assert.That(collision.max.z, Is.GreaterThanOrEqualTo(visible.max.z - 0.2f));
+        Assert.That(collision.size.x, Is.LessThanOrEqualTo(visible.size.x + 0.5f));
+        Assert.That(collision.size.z, Is.LessThanOrEqualTo(visible.size.z + 0.5f),
+            "倾倒楼体的碰撞体必须贴合可见外壳，不能继续使用缩小或包住大片空气的单盒代理。");
+    }
+
+    [Test]
+    public void UnsupportedTopplingSectionHandsOffToGravityAfterControlledArc()
+    {
+        Assert.That(UrbanDestructionWorld.TryApplyEnergyBlade(
+            buildingCollider,
+            new Vector3(0f, 42f, 19f),
+            Vector3.forward,
+            Vector3.back,
+            1000f,
+            30f,
+            null), Is.True);
+        UrbanTopplingSection toppling =
+            root.GetComponentInChildren<UrbanTopplingSection>(true);
+        Rigidbody body = toppling.GetComponent<Rigidbody>();
+
+        toppling.DebugAdvance(8f);
+        Assert.That(toppling.ReleasePending, Is.True,
+            "The final safe hinge pose must request a physics handoff.");
+        toppling.DebugReleaseForAudit();
+
+        Assert.That(toppling.IsDynamicFalling, Is.True);
+        Assert.That(body.isKinematic, Is.False,
+            "An unsupported fallen section must not remain kinematic in mid-air.");
+        Assert.That(body.useGravity, Is.True);
+        Assert.That(body.detectCollisions, Is.True);
+        Assert.That(body.collisionDetectionMode,
+            Is.EqualTo(CollisionDetectionMode.ContinuousDynamic));
+    }
+
+    [Test]
+    public void FallenSectionSettlesOnlyWithSupportAndRemainsWakeable()
+    {
+        Assert.That(UrbanDestructionWorld.TryApplyEnergyBlade(
+            buildingCollider,
+            new Vector3(0f, 42f, 19f),
+            Vector3.forward,
+            Vector3.back,
+            1000f,
+            30f,
+            null), Is.True);
+        UrbanTopplingSection toppling =
+            root.GetComponentInChildren<UrbanTopplingSection>(true);
+        Rigidbody body = toppling.GetComponent<Rigidbody>();
+        toppling.DebugAdvance(8f);
+        toppling.DebugReleaseForAudit();
+
+        toppling.DebugAdvanceSettlementForAudit(3f, false);
+        Assert.That(toppling.IsSettledCover, Is.False,
+            "Low velocity without a supporting contact is still floating.");
+
+        toppling.DebugAdvanceSettlementForAudit(1.4f, true);
+        Assert.That(toppling.IsSettledCover, Is.True);
+        Assert.That(body.isKinematic, Is.False,
+            "Settled cover stays a sleeping dynamic body so support removal can wake it.");
+        Assert.That(body.IsSleeping(), Is.True);
+        Assert.That(body.detectCollisions, Is.True);
+    }
+
+    [Test]
+    public void BossTopplingStopsAtNeighbourAndTransfersStructuralImpact()
+    {
+        GameObject neighbourObject = GameObject.CreatePrimitive(
+            PrimitiveType.Cube);
+        neighbourObject.name = "NeighbourTower_TopplingBlocker";
+        neighbourObject.transform.SetParent(root.transform, false);
+        neighbourObject.transform.localPosition = new Vector3(0f, 110f, -72f);
+        neighbourObject.transform.localScale = new Vector3(52f, 220f, 52f);
+        UrbanDestructibleBuilding neighbour =
+            neighbourObject.AddComponent<UrbanDestructibleBuilding>();
+        neighbour.Configure(new AirCombatBuildingLot
+        {
+            stableId = "test-neighbour-toppling-blocker",
+            center = neighbourObject.transform.localPosition,
+            size = neighbourObject.transform.localScale,
+            yaw = 0f,
+            band = AirCombatBuildingBand.High
+        }, coordinator);
+        Collider neighbourCollider = neighbourObject.GetComponent<Collider>();
+        float integrityBefore = neighbour.Integrity01;
+
+        Assert.That(UrbanDestructionWorld.TryApplyEnergyBlade(
+            buildingCollider,
+            new Vector3(0f, 42f, 19f),
+            Vector3.forward,
+            Vector3.back,
+            1000f,
+            30f,
+            null), Is.True);
+        UrbanTopplingSection toppling =
+            root.GetComponentInChildren<UrbanTopplingSection>(true);
+        Assert.That(toppling, Is.Not.Null);
+
+        Physics.SyncTransforms();
+        toppling.DebugAdvance(8f);
+        Physics.SyncTransforms();
+
+        Assert.That(toppling.WasBlocked, Is.True,
+            "上段楼体扫掠到邻楼后必须记录阻挡，不能继续强制穿过。 ");
+        Assert.That(toppling.CurrentAngle, Is.LessThan(80f));
+        Assert.That(toppling.ReleasePending, Is.True,
+            "Obstacle contact ends the controlled hinge phase but must not freeze the tower forever.");
+        Assert.That(neighbour.Integrity01, Is.LessThan(integrityBefore),
+            "倾倒楼体的动量必须传递给被撞建筑。 ");
+        Assert.That(neighbour.BreachCount, Is.Zero,
+            "Toppling fatigue must not reuse the visible facade-breach effect.");
+        Assert.That(neighbour.HasLocalizedDamageVisual, Is.False,
+            "Tower contact should deduct hidden durability without a damage visual.");
+        Assert.That(neighbour.IsCollapsed, Is.False,
+            "该测试使用高完整度邻楼；中等撞击应先造成结构损伤而不是无条件连锁倒塌。 ");
+
+        BoxCollider[] fallingColliders = toppling.GetComponents<BoxCollider>();
+        for (int index = 0; index < fallingColliders.Length; index++)
+        {
+            Assert.That(Physics.ComputePenetration(
+                fallingColliders[index],
+                fallingColliders[index].transform.position,
+                fallingColliders[index].transform.rotation,
+                neighbourCollider,
+                neighbourCollider.transform.position,
+                neighbourCollider.transform.rotation,
+                out _,
+                out float penetration), Is.False,
+                "倾倒停止后不应与仍直立的邻楼发生穿模，penetration=" +
+                penetration.ToString("0.000"));
+        }
+    }
+
+    [Test]
+    public void HeavyTopplingImpactCanStartARealNeighbourCollapse()
+    {
+        GameObject neighbourObject = GameObject.CreatePrimitive(
+            PrimitiveType.Cube);
+        neighbourObject.name = "NeighbourTower_ChainCollapseTarget";
+        neighbourObject.transform.SetParent(root.transform, false);
+        neighbourObject.transform.localPosition = new Vector3(0f, 36f, -52f);
+        neighbourObject.transform.localScale = new Vector3(28f, 72f, 28f);
+        UrbanDestructibleBuilding neighbour =
+            neighbourObject.AddComponent<UrbanDestructibleBuilding>();
+        neighbour.Configure(new AirCombatBuildingLot
+        {
+            stableId = "test-neighbour-chain-collapse",
+            center = neighbourObject.transform.localPosition,
+            size = neighbourObject.transform.localScale,
+            yaw = 0f,
+            band = AirCombatBuildingBand.Low
+        }, coordinator);
+
+        Assert.That(UrbanDestructionWorld.TryApplyEnergyBlade(
+            buildingCollider,
+            new Vector3(0f, 42f, 19f),
+            Vector3.forward,
+            Vector3.back,
+            1000f,
+            30f,
+            null), Is.True);
+        UrbanTopplingSection sourceToppling = root
+            .GetComponentsInChildren<UrbanTopplingSection>(true)
+            .Single();
+
+        Physics.SyncTransforms();
+        sourceToppling.DebugAdvance(1.35f);
+        Physics.SyncTransforms();
+
+        Assert.That(sourceToppling.WasBlocked, Is.True);
+        Assert.That(neighbour.IsCollapsed, Is.True,
+            "高速且质量足够大的楼体撞击应允许邻楼发生真实结构失效，" +
+            "remainingIntegrity=" + neighbour.Integrity01.ToString("0.000") +
+            ", sweepSpeed=" +
+            sourceToppling.LastAttemptedSweepSpeed.ToString("0.00") +
+            ", transfer=" + sourceToppling.LastStructuralTransferApplied +
+            ", target=" + sourceToppling.LastBlockingTargetId +
+            ", neighbour=" + neighbour.GetInstanceID() +
+            ", damage=" +
+            sourceToppling.LastRequestedStructuralDamage.ToString("0.0") +
+            ", integrity=" + neighbour.CurrentIntegrity.ToString("0.0") +
+            "/" + neighbour.MaximumIntegrity.ToString("0.0") + "。 ");
+        Assert.That(root.GetComponentsInChildren<UrbanTopplingSection>(true),
+            Has.Length.GreaterThanOrEqualTo(2),
+            "邻楼失效后必须进入同一套倾倒流程，才能继续形成有上限的连锁倒塌。 ");
     }
 
     [Test]
@@ -902,6 +1161,78 @@ public sealed class UrbanDestructionRuntimeTests
         Assert.That(filter.sharedMesh.isReadable, Is.True);
         Assert.That(visual.GetComponent<Renderer>().isPartOfStaticBatch, Is.False,
             "可破坏建筑不能被运行时合批成不可读的城市级 Combined Mesh。 ");
+    }
+
+    [Test]
+    public void CrescentTerrainFallbackSkipsUnreadableMeshWithoutLosingHitHandling()
+    {
+        var terrain = new GameObject("Terrain_UnreadableCombinedMesh");
+        terrain.transform.SetParent(root.transform, false);
+        MeshFilter filter = terrain.AddComponent<MeshFilter>();
+        BoxCollider collider = terrain.AddComponent<BoxCollider>();
+        var mesh = new Mesh
+        {
+            name = "Combined Mesh (root: Generated_AirCombatCity_Test)"
+        };
+        mesh.vertices = new[]
+        {
+            new Vector3(-2f, 0f, -2f),
+            new Vector3(2f, 0f, -2f),
+            new Vector3(0f, 0f, 2f)
+        };
+        mesh.triangles = new[] { 0, 1, 2 };
+        mesh.RecalculateBounds();
+        filter.sharedMesh = mesh;
+        mesh.UploadMeshData(true);
+
+        try
+        {
+            Assert.That(mesh.isReadable, Is.False);
+            Type runtime = typeof(CombatTerrainDestructionRuntime);
+            System.Reflection.MethodInfo deform = runtime.GetMethod(
+                "DeformRuntimeMesh",
+                System.Reflection.BindingFlags.Static |
+                System.Reflection.BindingFlags.NonPublic,
+                null,
+                new[]
+                {
+                    typeof(Transform),
+                    typeof(Mesh),
+                    typeof(Vector3),
+                    typeof(Vector3),
+                    typeof(float),
+                    typeof(float)
+                },
+                null);
+            System.Reflection.MethodInfo isTerrain = runtime.GetMethod(
+                "IsTerrainSurface",
+                System.Reflection.BindingFlags.Static |
+                System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(deform, Is.Not.Null);
+            Assert.That(isTerrain, Is.Not.Null);
+            Assert.That((bool)isTerrain.Invoke(
+                null,
+                new object[] { collider }), Is.True,
+                "不可读的地形碰撞仍应被月牙光刃识别，从而保留命中特效和阻挡反馈。");
+            Assert.That((bool)deform.Invoke(
+                null,
+                new object[]
+                {
+                    terrain.transform,
+                    mesh,
+                    Vector3.zero,
+                    Vector3.up,
+                    8f,
+                    4f
+                }), Is.False,
+                "不可读网格只能跳过顶点凹陷，不能再访问 mesh.vertices 抛错。");
+        }
+        finally
+        {
+            filter.sharedMesh = null;
+            Object.DestroyImmediate(mesh);
+        }
     }
 
     [Test]

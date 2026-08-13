@@ -468,7 +468,9 @@ namespace UnityPlanet.IcePlanet
                     scene.name,
                     "star",
                     System.StringComparison.Ordinal)
-                || !PlanetOrbitChapterSelectionContext.HasSelection)
+                || !PlanetOrbitChapterSelectionContext.HasSelection
+                || PlanetOrbitChapterSelectionContext.EnvironmentKind ==
+                   PlanetMissionEnvironmentKind.Urban)
             {
                 return;
             }

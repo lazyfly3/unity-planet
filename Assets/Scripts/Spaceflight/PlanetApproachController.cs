@@ -86,6 +86,8 @@ public sealed class PlanetApproachController : MonoBehaviour
     Mesh runtimePlanetMesh;
     Material runtimePlanetMaterial;
     Rigidbody celestialBody;
+    KeyboardMouseFlightInput approachFlightInput;
+    bool restoreCoupledToggleHotkey;
     double approachStartUniverseTime;
 
     public PlanetApproachFlightPhase Phase => phase;
@@ -177,6 +179,13 @@ public sealed class PlanetApproachController : MonoBehaviour
         landingAssist = false;
         landingGear.Configure(shipBody, celestialBodyRoot.position);
         landingGear.SetDeployed(false);
+        approachFlightInput = ifcs.FlightInput;
+        if (approachFlightInput != null)
+        {
+            restoreCoupledToggleHotkey =
+                approachFlightInput.CoupledToggleHotkeyEnabled;
+            approachFlightInput.CoupledToggleHotkeyEnabled = false;
+        }
         ifcs.ControlsEnabled = true;
         ifcs.LinearControlEnabled = true;
         ifcs.SetAssistMode(SpacecraftAssistMode.Coupled);
@@ -208,7 +217,7 @@ public sealed class PlanetApproachController : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.V))
             attitudeAssist = (PlanetAttitudeAssist)(((int)attitudeAssist + 1) % 4);
-        if (Input.GetKeyDown(KeyCode.L))
+        if (Input.GetKeyDown(KeyCode.C) || Input.GetKeyDown(KeyCode.L))
             SetAutomaticLanding(!landingAssist);
         if (Input.GetKeyDown(KeyCode.G) && landingGear != null)
             landingGear.SetDeployed(!landingGear.Deployed);
@@ -295,11 +304,22 @@ public sealed class PlanetApproachController : MonoBehaviour
             verticalSpeed += Mathf.Tan(climbAngle * Mathf.Deg2Rad) * targetAirspeed;
         if (landingAssist)
         {
-            float minimumDescent = clearance < 35f ? -1.2f : clearance < 100f ? -3f : -8f;
-            verticalSpeed = Mathf.Max(verticalSpeed, minimumDescent);
+            targetAirspeed = Mathf.MoveTowards(
+                targetAirspeed,
+                0f,
+                airspeedChangeRate * 2.4f * Time.fixedDeltaTime);
+            verticalSpeed = clearance < 4f
+                ? -0.35f
+                : clearance < 35f
+                    ? -1.2f
+                    : clearance < 100f
+                        ? -3f
+                        : -8f;
         }
 
-        float sideSpeed = command.translation.x * (vtol ? 10f : 5f);
+        float sideSpeed = landingAssist
+            ? 0f
+            : command.translation.x * (vtol ? 10f : 5f);
         if (landingGear.Deployed && clearance < 55f)
             targetAirspeed = Mathf.Min(targetAirspeed, Mathf.Lerp(5f, 18f, Mathf.Clamp01(clearance / 55f)));
         Vector3 targetVelocity = atmosphereVelocity
@@ -313,8 +333,29 @@ public sealed class PlanetApproachController : MonoBehaviour
             : (cruiseForward + radialUp * Mathf.Tan(climbAngle * Mathf.Deg2Rad)).normalized;
         float bank = vtol ? command.roll * 20f : command.vjoy.y * maximumAutomaticBank + command.roll * 24f;
         Vector3 desiredUp = Quaternion.AngleAxis(bank, desiredForward) * radialUp;
-        if (landingAssist || attitudeAssist == PlanetAttitudeAssist.SurfaceLevel)
-            desiredUp = Vector3.Slerp(desiredUp, radialUp, landingAssist ? 0.82f : 0.35f).normalized;
+        if (landingAssist)
+        {
+            Vector3 landingUp = landingSiteScanner != null &&
+                                landingSiteScanner.HasGround &&
+                                landingSiteScanner.GroundNormal.sqrMagnitude > 0.001f
+                ? landingSiteScanner.GroundNormal.normalized
+                : radialUp;
+            if (Vector3.Dot(landingUp, radialUp) < 0.5f)
+                landingUp = radialUp;
+            desiredForward = Vector3.ProjectOnPlane(
+                cruiseForward,
+                landingUp).normalized;
+            if (desiredForward.sqrMagnitude < 0.001f)
+                desiredForward = BuildTangent(landingUp);
+            desiredUp = landingUp;
+        }
+        else if (attitudeAssist == PlanetAttitudeAssist.SurfaceLevel)
+        {
+            desiredUp = Vector3.Slerp(
+                desiredUp,
+                radialUp,
+                0.35f).normalized;
+        }
         ifcs.SetExternalWorldAttitudeTarget(Quaternion.LookRotation(desiredForward, desiredUp));
     }
 
@@ -480,6 +521,8 @@ public sealed class PlanetApproachController : MonoBehaviour
         landingAssist = enabled;
         if (ifcs == null)
             return;
+        if (enabled && landingGear != null)
+            landingGear.SetDeployed(true);
         ifcs.ControlsEnabled = true;
         ifcs.LinearControlEnabled = true;
         ifcs.SetAssistMode(SpacecraftAssistMode.Coupled);
@@ -578,7 +621,7 @@ public sealed class PlanetApproachController : MonoBehaviour
             tangentSpeed = Vector3.ProjectOnPlane(relative, up).magnitude;
         }
         if (phaseText != null)
-            phaseText.text = $"飞行阶段  {phase}\nL 着陆辅助  {(landingAssist ? "开启" : "关闭")}";
+            phaseText.text = $"飞行阶段  {phase}\nC 自动着陆  {(landingAssist ? "开启" : "关闭")}";
         if (orbitText != null)
             orbitText.text =
                 $"雷达高度 {SpaceflightUnitFormatter.FormatAltitude(clearance)}\n" +
@@ -652,6 +695,9 @@ public sealed class PlanetApproachController : MonoBehaviour
 
     void OnDestroy()
     {
+        if (approachFlightInput != null)
+            approachFlightInput.CoupledToggleHotkeyEnabled =
+                restoreCoupledToggleHotkey;
         if (planetLod != null)
             planetLod.sharedMesh = null;
         if (landingCollision != null)

@@ -35,6 +35,7 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
     public event Action Rebuilt;
     public IReadOnlyDictionary<string, GridModuleView> Views => views;
     public GridAssemblyModel Model => model;
+    public bool LastRebuildWasRemovalOnly { get; private set; }
     public bool PresentationVisible =>
         presentationVisible && presentationBlockers.Count == 0;
 
@@ -130,6 +131,7 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
         // Removal keeps every surviving view's pose, authored visual, tint and
         // visibility intact. Only mass/inertia and interested runtime systems
         // need refreshing; hierarchy scans and renderer retints are redundant.
+        LastRebuildWasRemovalOnly = true;
         assembly?.Recalculate();
         Rebuilt?.Invoke();
         return true;
@@ -139,6 +141,7 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
         IReadOnlyList<GridModuleRecord> records,
         GridAssemblyValidation validation)
     {
+        LastRebuildWasRemovalOnly = false;
         var current = records.ToDictionary(
             record => record.RuntimeId,
             StringComparer.Ordinal);
@@ -285,6 +288,7 @@ public sealed class GridAssemblyPresenter : MonoBehaviour
         IReadOnlyList<GridModuleRecord> records,
         GridAssemblyValidation validation)
     {
+        LastRebuildWasRemovalOnly = false;
         RemoveViewInstances(
             GetComponentsInChildren<GridModuleView>(true)
                 .Where(view =>
@@ -1212,6 +1216,12 @@ public sealed class GridFlightBridge : MonoBehaviour,
                     ?? gameObject.AddComponent<
                         UnityPlanet.ModularAssembly.RobocraftMotionCoordinator>();
         motionRc1.Configure(body, assembly);
+        UnityPlanet.ModularAssembly.PlayerModularLandingAssist landingAssist =
+            GetComponent<UnityPlanet.ModularAssembly.
+                PlayerModularLandingAssist>()
+            ?? gameObject.AddComponent<UnityPlanet.ModularAssembly.
+                PlayerModularLandingAssist>();
+        landingAssist.Configure(body, motionRc1);
         buildPosition = body.position;
         buildRotation = body.rotation;
         spawnPosition = buildPosition;
@@ -2102,23 +2112,32 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
 
     public bool LoadCanonicalForBuild(out string message)
     {
+        bool loadedDefault = false;
         if (!store.TryLoad(out ModularBlueprintData blueprint, out string error))
         {
-            message = string.IsNullOrEmpty(error)
-                ? "没有已保存的模块蓝图，已创建空白设计。"
-                : error;
-            Status(message);
-            return string.IsNullOrEmpty(error);
+            if (!string.IsNullOrEmpty(error))
+            {
+                message = error;
+                Status(message);
+                return false;
+            }
+
+            blueprint = PlayerDefaultModularBlueprint.Create();
+            loadedDefault = true;
         }
         if (!model.RestoreBlueprint(blueprint, out error))
         {
-            message = "载入失败：" + error;
+            message = loadedDefault
+                ? "默认飞船载入失败：" + error
+                : "载入失败：" + error;
             Status(message);
             return false;
         }
         history.Clear();
         selectedRuntimeId = string.Empty;
-        message = "已自动载入模块蓝图。";
+        message = loadedDefault
+            ? "当前存档没有飞船蓝图，已载入默认飞船。"
+            : "已自动载入模块蓝图。";
         Status(message);
         return true;
     }

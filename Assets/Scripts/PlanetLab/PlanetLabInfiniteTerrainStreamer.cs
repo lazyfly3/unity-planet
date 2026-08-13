@@ -79,6 +79,7 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
     int chunkResolution = PlanetLabPlanarSettings.InfiniteChunkResolution;
     float chunkSize = PlanetLabPlanarSettings.InfiniteChunkSize;
     bool oceanEnabled;
+    bool flatCombatSurface;
     bool configured;
     Vector2Int centerCoordinate = new Vector2Int(int.MinValue, int.MinValue);
     int createdChunkCount;
@@ -106,6 +107,7 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
     public double GlobalOriginZ => globalOriginZ;
     public FinitePlanetCombatTerrainPlan CombatTerrainPlan =>
         combatTerrainPlan;
+    public bool UsesFlatCombatSurface => flatCombatSurface;
 
     public event Action<Vector2Int> ChunkActivated;
     public event Action<Vector2Int> ChunkRecycled;
@@ -145,7 +147,8 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         int valueViewRadius = PlanetLabPlanarSettings.InfiniteViewRadius,
         int valueChunkResolution = PlanetLabPlanarSettings.InfiniteChunkResolution,
         float valueChunkSize = PlanetLabPlanarSettings.InfiniteChunkSize,
-        FinitePlanetCombatTerrainPlan valueCombatTerrainPlan = null)
+        FinitePlanetCombatTerrainPlan valueCombatTerrainPlan = null,
+        bool valueFlatCombatSurface = false)
     {
         definition = valueDefinition
             ?? throw new ArgumentNullException(nameof(valueDefinition));
@@ -155,7 +158,8 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         target = valueTarget;
         terrainMaterial = valueTerrainMaterial;
         oceanMaterial = valueOceanMaterial;
-        oceanEnabled = valueOceanEnabled;
+        flatCombatSurface = valueFlatCombatSurface;
+        oceanEnabled = valueOceanEnabled && !flatCombatSurface;
         combatTerrainPlan = valueCombatTerrainPlan;
         viewRadius = Mathf.Clamp(valueViewRadius, 1, 4);
         chunkResolution = Mathf.Clamp(valueChunkResolution, 8, 64);
@@ -174,7 +178,16 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
             ?? new PlanetLowPolyVisualProfile();
         seaHeight = visual.oceanLevel
             * Mathf.Max(1f, celestial.maximumTerrainElevation);
-        EnsureOceanMesh();
+        if (flatCombatSurface)
+        {
+            if (oceanMesh != null)
+                DestroyTransient(oceanMesh);
+            oceanMesh = null;
+        }
+        else
+        {
+            EnsureOceanMesh();
+        }
         configured = true;
         RecycleActiveChunks();
         buildQueue.Clear();
@@ -214,7 +227,7 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
     {
         terrainMaterial = valueTerrainMaterial;
         oceanMaterial = valueOceanMaterial;
-        oceanEnabled = valueOceanEnabled;
+        oceanEnabled = valueOceanEnabled && !flatCombatSurface;
         foreach (Chunk chunk in activeChunks.Values)
             ApplyChunkAppearance(chunk);
         foreach (Chunk chunk in pooledChunks)
@@ -223,6 +236,8 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
 
     public float SampleHeight(float worldX, float worldZ)
     {
+        if (flatCombatSurface && combatTerrainPlan != null)
+            return combatTerrainPlan.BaseGroundHeight;
         return definition == null
             ? 0f
             : SampleInfiniteHeight(
@@ -452,17 +467,28 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         chunk.root.transform.localRotation = Quaternion.identity;
         chunk.root.transform.localScale = Vector3.one;
 
-        BuildInfiniteChunkMesh(
-            definition,
-            anchorDirection,
-            east,
-            north,
-            coordinate,
-            chunkSize,
-            chunkResolution,
-            chunk.terrainMesh,
-            chunk.buffers,
-            combatTerrainPlan);
+        if (flatCombatSurface && combatTerrainPlan != null)
+        {
+            BuildFlatCombatChunkMesh(
+                coordinate,
+                chunkSize,
+                combatTerrainPlan.BaseGroundHeight,
+                chunk.terrainMesh);
+        }
+        else
+        {
+            BuildInfiniteChunkMesh(
+                definition,
+                anchorDirection,
+                east,
+                north,
+                coordinate,
+                chunkSize,
+                chunkResolution,
+                chunk.terrainMesh,
+                chunk.buffers,
+                combatTerrainPlan);
+        }
         chunk.terrainFilter.sharedMesh = chunk.terrainMesh;
         chunk.terrainCollider.sharedMesh = null;
         chunk.terrainCollider.sharedMesh = chunk.terrainMesh;
@@ -778,8 +804,7 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
 
         Mesh mesh = reuse != null ? reuse : new Mesh();
         mesh.Clear();
-        if (reuse == null)
-            mesh.name = "PlanetLabInfiniteTerrainChunk";
+        mesh.name = "PlanetLabInfiniteTerrainChunk";
         mesh.hideFlags = HideFlags.HideAndDontSave;
         if (vertexCount > 65535)
             mesh.indexFormat = IndexFormat.UInt32;
@@ -788,6 +813,52 @@ public sealed class PlanetLabInfiniteTerrainStreamer : MonoBehaviour
         mesh.colors = colors;
         mesh.uv = uvs;
         mesh.triangles = triangles;
+        mesh.RecalculateBounds();
+        return mesh;
+    }
+
+    public static Mesh BuildFlatCombatChunkMesh(
+        Vector2Int coordinate,
+        float size,
+        float groundHeight,
+        Mesh reuse = null)
+    {
+        size = Mathf.Clamp(size, 32f, 512f);
+        float half = size * 0.5f;
+        Mesh mesh = reuse != null ? reuse : new Mesh();
+        mesh.Clear();
+        mesh.name = "UrbanFlatReadinessChunk";
+        mesh.hideFlags = HideFlags.HideAndDontSave;
+        mesh.indexFormat = IndexFormat.UInt16;
+        mesh.vertices = new[]
+        {
+            new Vector3(-half, groundHeight, -half),
+            new Vector3(half, groundHeight, -half),
+            new Vector3(-half, groundHeight, half),
+            new Vector3(half, groundHeight, half)
+        };
+        mesh.normals = new[]
+        {
+            Vector3.up,
+            Vector3.up,
+            Vector3.up,
+            Vector3.up
+        };
+        mesh.colors = new[]
+        {
+            Color.white,
+            Color.white,
+            Color.white,
+            Color.white
+        };
+        mesh.uv = new[]
+        {
+            new Vector2(coordinate.x, coordinate.y),
+            new Vector2(coordinate.x + 1f, coordinate.y),
+            new Vector2(coordinate.x, coordinate.y + 1f),
+            new Vector2(coordinate.x + 1f, coordinate.y + 1f)
+        };
+        mesh.triangles = new[] { 0, 2, 1, 1, 2, 3 };
         mesh.RecalculateBounds();
         return mesh;
     }

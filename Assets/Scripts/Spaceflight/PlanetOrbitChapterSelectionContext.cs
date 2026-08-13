@@ -38,7 +38,7 @@ public static class PlanetOrbitChapterSelectionContext
             missionName,
             landingDirection,
             missionSeed,
-            PlanetMissionEnvironmentKind.Natural,
+            PlanetMissionEnvironmentKind.Urban,
             0);
     }
 
@@ -76,7 +76,10 @@ public static class PlanetOrbitChapterSelectionContext
             ? landingDirection.normalized
             : Vector3.up;
         MissionSeed = missionSeed;
-        EnvironmentKind = environmentKind;
+        // Natural chapter maps were retired. Canonicalizing here also migrates
+        // old callers or stale serialized values before the loading scene can
+        // choose a battlefield implementation.
+        EnvironmentKind = PlanetMissionEnvironmentKind.Urban;
         PlanetDifficultyIndex = Mathf.Max(0, planetDifficultyIndex);
     }
 
@@ -87,7 +90,7 @@ public static class PlanetOrbitChapterSelectionContext
         MissionName = string.Empty;
         LandingDirection = Vector3.up;
         MissionSeed = 0;
-        EnvironmentKind = PlanetMissionEnvironmentKind.Natural;
+        EnvironmentKind = PlanetMissionEnvironmentKind.Urban;
         PlanetDifficultyIndex = 0;
     }
 }

@@ -60,6 +60,7 @@ namespace UnityPlanet.CityPcg
         string stableId = string.Empty;
         float maximumIntegrity;
         float integrity;
+        float hiddenTopplingFatigue;
         float accumulatedChipDamage;
         float lastCollapseCutHeight;
         Vector3 lastCollapseImpactPoint;
@@ -110,9 +111,13 @@ namespace UnityPlanet.CityPcg
 
         public bool IsUrbanDestroyed => collapsed;
         public bool IsCollapsed => collapsed;
+        public float CurrentIntegrity => Mathf.Max(
+            0f,
+            integrity - hiddenTopplingFatigue);
+        public float MaximumIntegrity => maximumIntegrity;
         public float Integrity01 => maximumIntegrity <= 0.01f
             ? 0f
-            : Mathf.Clamp01(integrity / maximumIntegrity);
+            : Mathf.Clamp01(CurrentIntegrity / maximumIntegrity);
         public Vector3 DesignSize => designSize;
         public string StableId => stableId;
         public int BreachCount => breachCount;
@@ -154,6 +159,7 @@ namespace UnityPlanet.CityPcg
                 140f,
                 620f);
             integrity = maximumIntegrity;
+            hiddenTopplingFatigue = 0f;
             originalRenderers = GetComponentsInChildren<Renderer>(true);
             originalColliders = GetComponentsInChildren<Collider>(true);
             facadeMaterial = ResolveFacadeMaterial(originalRenderers);
@@ -334,6 +340,96 @@ namespace UnityPlanet.CityPcg
             if (CountActiveCells() == 0)
                 collapsed = true;
             return true;
+        }
+
+        internal bool ApplyTopplingImpact(
+            Vector3 point,
+            Vector3 direction,
+            float impactSpeed,
+            float fallingMass,
+            float contactRadius,
+            float damage,
+            GameObject source)
+        {
+            if (!configured || collapsed || coordinator == null)
+                return false;
+
+            Vector3 safeDirection = direction.sqrMagnitude > 0.001f
+                ? direction.normalized
+                : Vector3.down;
+            float safeSpeed = Mathf.Max(0f, impactSpeed);
+            float safeMass = Mathf.Max(1f, fallingMass);
+            float impulse = safeMass * Mathf.Max(safeSpeed, 1f);
+            var request = new UrbanDamageRequest(
+                point,
+                -safeDirection,
+                safeDirection,
+                Mathf.Max(0f, damage),
+                Mathf.Clamp(contactRadius, 3f, 14f),
+                impulse,
+                UrbanDamageKind.HighSpeedImpact,
+                source);
+
+            // Tower-to-tower contact deliberately bypasses the ordinary facade
+            // breach pipeline.  It only accumulates hidden structural fatigue;
+            // no hole shader, cavity, debris or impact VFX is spawned here.
+            float hiddenDamage = Mathf.Clamp(
+                damage * 0.12f,
+                4f,
+                maximumIntegrity * 0.18f);
+            hiddenTopplingFatigue = Mathf.Min(
+                maximumIntegrity,
+                hiddenTopplingFatigue + hiddenDamage);
+
+            Bounds bounds = DestructionBounds;
+            float targetMass = Mathf.Clamp(
+                bounds.size.x * bounds.size.y * bounds.size.z * 0.0025f,
+                120f,
+                2200f);
+            float impactEnergy = 0.5f * safeMass * safeSpeed * safeSpeed;
+            float height01 = Mathf.InverseLerp(bounds.min.y, bounds.max.y, point.y);
+            float leverageFactor = Mathf.Lerp(1.18f, 0.72f, height01);
+            float integrityFactor = Mathf.Lerp(0.48f, 1f, Integrity01);
+            float collapseThreshold = 0.5f * targetMass * 38f * 38f *
+                                      leverageFactor * integrityFactor;
+            if (safeSpeed < 18f ||
+                (impactEnergy < collapseThreshold && CurrentIntegrity > 0.01f))
+                return true;
+
+            CollapseFromTopplingImpact(request, bounds);
+            return true;
+        }
+
+        void CollapseFromTopplingImpact(
+            in UrbanDamageRequest request,
+            Bounds collapseBounds)
+        {
+            if (collapsed || coordinator == null)
+                return;
+
+            lastCollapseImpactPoint = request.point;
+            lastCollapseCutHeight = Mathf.Lerp(
+                collapseBounds.min.y,
+                collapseBounds.max.y,
+                0.10f);
+            lastCollapseWasEnergyBlade = false;
+            lastCollapseDirection = Vector3.ProjectOnPlane(
+                request.direction,
+                Vector3.up).normalized;
+            if (lastCollapseDirection.sqrMagnitude < 0.001f)
+                lastCollapseDirection = transform.forward;
+
+            Material collapseFacade = ResolveFacadeMaterialAt(request.point);
+            bool replacementReady = coordinator.SpawnCollapse(
+                this,
+                request.point,
+                lastCollapseDirection,
+                collapseFacade,
+                stableHash ^ breachCount * 19349663 ^ 83492791);
+            if (!replacementReady)
+                return;
+
+            FinalizeCollapse(collapseBounds);
         }
 
         List<StructuralCell> DamageStructuralCells(
@@ -844,6 +940,11 @@ namespace UnityPlanet.CityPcg
             if (!replacementReady)
                 return;
 
+            FinalizeCollapse(collapseBounds);
+        }
+
+        void FinalizeCollapse(Bounds collapseBounds)
+        {
             collapsed = true;
             pendingGroups.Clear();
             for (int index = 0; index < originalRenderers.Length; index++)

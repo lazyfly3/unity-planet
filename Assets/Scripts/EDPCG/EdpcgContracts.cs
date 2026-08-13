@@ -106,6 +106,14 @@ namespace UnityPlanet.EDPCG
         RequiresRestart
     }
 
+    public enum EdpcgIntegrationMode
+    {
+        Legacy = 0,
+        ObserveOnly = 1,
+        TacticalAssignments = 2,
+        PressureV3Control = 3
+    }
+
     public enum EdpcgRuntimeChangeState
     {
         Draft,
@@ -197,6 +205,16 @@ namespace UnityPlanet.EDPCG
         public float environmentalPursuitPressure;
         public float playerStrain;
         public float playerDamageAssist;
+        public float observedCombatPressure;
+        public float observedFirePressure;
+        public float observedInterceptPressure;
+        public float observedDisplacementPressure;
+        public float observedNetEnvironmentPressure;
+        public float observedPlayerRisk;
+        public float systemHealthIssueRatio;
+        public int pressureDirectionCount;
+        public int pressureDirectionMask;
+        public bool environmentObservationAvailable;
         public int rosterCount;
         public int unspawnedCount;
         public int queuedCount;
@@ -206,8 +224,12 @@ namespace UnityPlanet.EDPCG
         public int attackTokensUsed;
         public int suicideCommitCount;
         public int rangedFireLaneCount;
+        public int pursuingThreatCount;
+        public int closeApproachThreatCount;
         public int navigationRecoveryCount;
         public int environmentalPursuitCount;
+        public int pressureAssistLevel;
+        public int pressureBrakeLevel;
         public int resolvedCount;
         public string activeTacticalAreaId = string.Empty;
         public EdpcgTacticalAreaKind activeTacticalAreaKind;
@@ -259,6 +281,11 @@ namespace UnityPlanet.EDPCG
         public int priority;
         public int direction;
         public int waypointIndex;
+        public bool hasTargetProgress;
+        public int targetSegmentIndex = -1;
+        public float targetSegmentT;
+        public Vector3 targetWorldPosition;
+        public string targetStableId = string.Empty;
     }
 
     [Serializable]

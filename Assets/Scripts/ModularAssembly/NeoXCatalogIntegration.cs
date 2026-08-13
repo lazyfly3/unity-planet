@@ -83,6 +83,34 @@ namespace UnityPlanet.ModularAssembly
                 false);
         }
 
+        /// <summary>
+        /// Replaces fallback views after a genuine full runtime rebuild without
+        /// reintroducing the expensive per-hit rebuild tracking used before the
+        /// removal-only presenter path. Ordinary combat removals retain their
+        /// surviving authored views and return immediately here.
+        /// </summary>
+        public void RefreshRuntimeViewsIfNeeded()
+        {
+            if (presenter == null)
+                return;
+            foreach (GridModuleView view in presenter.Views.Values)
+            {
+                string moduleId = view?.Record?.Definition?.ModuleId;
+                if (view == null || string.IsNullOrEmpty(moduleId) ||
+                    !moduleId.StartsWith(
+                        ModulePrefix,
+                        StringComparison.OrdinalIgnoreCase) ||
+                    !recordsByModuleId.ContainsKey(moduleId) ||
+                    view.GetComponent<NeoXBehaviorModule>() != null)
+                {
+                    continue;
+                }
+
+                UpgradeViews();
+                return;
+            }
+        }
+
         private void OnDestroy()
         {
             if (presenter != null)

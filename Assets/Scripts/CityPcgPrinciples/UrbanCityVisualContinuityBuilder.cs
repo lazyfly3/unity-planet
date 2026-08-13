@@ -13,6 +13,10 @@ namespace UnityPlanet.CityPcg
     {
         const string RootName = "BackgroundCityContinuity_VisualOnly";
         const int GroundSegmentCount = 40;
+        const float FarSkylineMaximumOutsideDistance =
+            AirCombatCityPcgLab.VisualBackgroundMaximumOutsideDistance;
+        const float FarSkylineMaximumBuildingHeight =
+            AirCombatCityPcgLab.VisualBackgroundMaximumBuildingHeight;
 
         struct EdgeFrame
         {
@@ -644,7 +648,8 @@ namespace UnityPlanet.CityPcg
             float half = settings.mapSize * 0.5f;
             const float GridStep = 250f;
             const float MinimumOutsideDistance = 1420f;
-            const float MaximumOutsideDistance = 3200f;
+            const float MaximumOutsideDistance =
+                FarSkylineMaximumOutsideDistance;
             float outerHalf = half + MaximumOutsideDistance;
             int gridRadius = Mathf.CeilToInt(outerHalf / GridStep);
             for (int gridX = -gridRadius; gridX <= gridRadius; gridX++)
@@ -701,7 +706,10 @@ namespace UnityPlanet.CityPcg
                         1.48f,
                         Hash01(seed, gridZ, gridX, 598));
                 }
-                height = Mathf.Clamp(height, 72f, 470f);
+                height = Mathf.Clamp(
+                    height,
+                    72f,
+                    FarSkylineMaximumBuildingHeight);
                 float yaw = Mathf.Round(
                     Hash01(seed, gridX, gridZ, 599) * 3f) * 90f +
                     Mathf.Lerp(

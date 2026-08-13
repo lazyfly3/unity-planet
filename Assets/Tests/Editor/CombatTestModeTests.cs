@@ -9,10 +9,36 @@ using UnityEngine;
 using UnityPlanet.CityPcg;
 using UnityPlanet.ModularAssembly;
 using UnityPlanet.SpaceStation.Enhancement;
+using UnityPlanet.SpaceStation.Skills;
 using Object = UnityEngine.Object;
 
 public sealed class CombatTestModeTests
 {
+    [TestCase(4)]
+    [TestCase(8)]
+    [TestCase(16)]
+    [TestCase(28)]
+    public void HordeSpawnCompositionKeepsRangedCraftAsTheMajority(
+        int activeCap)
+    {
+        int suicideMaximum =
+            HordeSpawnCompositionPolicy.MaximumInterceptors(activeCap);
+        int rangedTarget = HordeSpawnCompositionPolicy.TargetStrikers(activeCap) +
+                           HordeSpawnCompositionPolicy.TargetGunships(activeCap);
+        Assert.That(suicideMaximum, Is.LessThan(activeCap * 0.5f));
+        Assert.That(rangedTarget, Is.GreaterThan(suicideMaximum));
+    }
+
+    [Test]
+    public void PathStarvedEnemyKeepsOnlyPresencePressure()
+    {
+        float actionable = HordeCombatPressurePolicy.EffectiveThreatCost(3, true);
+        float pathStarved = HordeCombatPressurePolicy.EffectiveThreatCost(3, false);
+        Assert.That(actionable, Is.EqualTo(3f));
+        Assert.That(pathStarved, Is.EqualTo(0.6f).Within(0.0001f));
+        Assert.That(pathStarved, Is.LessThan(actionable));
+    }
+
     [Test]
     public void HordeReengagementStartsAfterLostContactOrHardDistance()
     {
@@ -396,6 +422,22 @@ public sealed class CombatTestModeTests
             Assert.That(
                 graph.MaximumIntegrity(weaponId),
                 Is.EqualTo(78f).Within(0.0001f));
+
+            graph.ConfigureIntegrityMultipliers(
+                1.3f,
+                1.3f,
+                1.3f,
+                10f);
+            Assert.That(
+                graph.MaximumIntegrity(coreRecord.RuntimeId),
+                Is.EqualTo(130f).Within(0.0001f));
+            Assert.That(
+                graph.MaximumIntegrity(structureId),
+                Is.EqualTo(104f).Within(0.0001f));
+            Assert.That(
+                graph.MaximumIntegrity(weaponId),
+                Is.EqualTo(600f).Within(0.0001f),
+                "An explicit weapon multiplier must not raise other categories.");
         }
         finally
         {
@@ -471,6 +513,7 @@ public sealed class CombatTestModeTests
             }
             AssertBalancedBossThrusterPairs(low);
             AssertBalancedBossThrusterPairs(high);
+            AssertBossThrusterTorqueLeverCoverage(high);
             Assert.That(low.Model.CalculateMetrics().localCenterOfMass.magnitude,
                 Is.LessThan(0.0001f));
             Assert.That(high.Model.CalculateMetrics().localCenterOfMass.magnitude,
@@ -499,11 +542,189 @@ public sealed class CombatTestModeTests
                 Is.EqualTo(Vector3.one * 5f));
             Assert.That(view.transform.localPosition,
                 Is.EqualTo(GridAssemblyModel.ModuleCenter(sample) * 5f));
+
+            GameObject oversizedFallback = CreateRoot(
+                "OversizedFallbackCollider",
+                Vector3.zero);
+            oversizedFallback.transform.SetParent(view.transform, false);
+            oversizedFallback.AddComponent<BoxCollider>().size =
+                Vector3.one * 1.6f;
+            ModularBossModuleColliderPolicy.Apply(view);
+            Collider[] liveColliders = view
+                .GetComponentsInChildren<Collider>(true)
+                .Where(collider => collider.enabled && !collider.isTrigger)
+                .ToArray();
+            Assert.That(liveColliders, Has.Length.EqualTo(1));
+            Assert.That(liveColliders[0].transform, Is.EqualTo(view.transform));
+            Assert.That(
+                ((BoxCollider)liveColliders[0]).center,
+                Is.EqualTo(Vector3.zero));
+            Assert.That(
+                ((BoxCollider)liveColliders[0]).size,
+                Is.EqualTo((Vector3)sample.Definition.Footprint));
         }
         finally
         {
             foreach (GridModuleDefinition definition in definitions)
                 Object.DestroyImmediate(definition);
+        }
+    }
+
+    [Test]
+    public void NeoXVisualNormalizationIsIndependentOfVehicleWorldRotation()
+    {
+        GameObject parent = CreateRoot(
+            "RotatedNeoXNormalizationParent",
+            new Vector3(13f, -7f, 29f));
+        parent.transform.rotation = Quaternion.Euler(19f, 37f, 11f);
+        GameObject instance = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        roots.Add(instance);
+        instance.name = "NeoXNormalizationCube";
+        instance.transform.SetParent(parent.transform, false);
+
+        var record = new ModularContentRecord
+        {
+            sourceId = "test:rotation-independent-cube",
+            neoXId = "rotation_independent_cube",
+            footprint = new[] { 1, 1, 1 },
+            visualEuler = new[] { 0f, 0f, 0f },
+            visualOffset = new[] { 0f, 0f, 0f },
+            visualScale = 1f,
+            mountMode = "Center"
+        };
+        MethodInfo normalize = typeof(ModularContentService).GetMethod(
+            "NormalizeVisual",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.That(normalize, Is.Not.Null);
+        normalize.Invoke(null, new object[] { instance, record });
+
+        Renderer renderer = instance.GetComponent<Renderer>();
+        Bounds localBounds = renderer.localBounds;
+        Matrix4x4 rendererToParent =
+            parent.transform.worldToLocalMatrix *
+            renderer.transform.localToWorldMatrix;
+        Bounds measured = default;
+        bool initialized = false;
+        for (int corner = 0; corner < 8; corner++)
+        {
+            Vector3 point = rendererToParent.MultiplyPoint3x4(new Vector3(
+                (corner & 1) == 0
+                    ? localBounds.min.x
+                    : localBounds.max.x,
+                (corner & 2) == 0
+                    ? localBounds.min.y
+                    : localBounds.max.y,
+                (corner & 4) == 0
+                    ? localBounds.min.z
+                    : localBounds.max.z));
+            if (!initialized)
+            {
+                measured = new Bounds(point, Vector3.zero);
+                initialized = true;
+            }
+            else
+                measured.Encapsulate(point);
+        }
+
+        Assert.That(instance.transform.localScale.x, Is.EqualTo(1f).Within(0.001f));
+        Assert.That(instance.transform.localScale.y, Is.EqualTo(1f).Within(0.001f));
+        Assert.That(instance.transform.localScale.z, Is.EqualTo(1f).Within(0.001f));
+        Assert.That(measured.size.x, Is.EqualTo(1f).Within(0.001f));
+        Assert.That(measured.size.y, Is.EqualTo(1f).Within(0.001f));
+        Assert.That(measured.size.z, Is.EqualTo(1f).Within(0.001f));
+    }
+
+    [Test]
+    public void ModularBossPcgBuildsTieredNonCubicArchetypesAcrossSeeds()
+    {
+        GridModuleDefinition[] definitions = CreateBossDefinitions();
+        try
+        {
+            int[] seeds = { 11, 7319, 98731 };
+            ModularBossBuildResult spearhead = null;
+            ModularBossBuildResult hammerhead = null;
+            ModularBossBuildResult citadel = null;
+            for (int tier = 0; tier < 6; tier++)
+            foreach (int seed in seeds)
+            {
+                Assert.That(ModularBossPcgGenerator.TryBuild(
+                        definitions,
+                        tier,
+                        seed,
+                        out ModularBossBuildResult build,
+                        out string error),
+                    Is.True,
+                    $"tier={tier}, seed={seed}: {error}");
+                Assert.That(build.Model.Validate().IsValid, Is.True);
+                AssertCentrallySymmetricBossHull(build);
+                AssertNonCubicBossHull(build);
+                if (seed != 7319)
+                    continue;
+                if (tier == 0)
+                    spearhead = build;
+                else if (tier == 2)
+                    hammerhead = build;
+                else if (tier == 5)
+                    citadel = build;
+            }
+
+            Assert.That(spearhead, Is.Not.Null);
+            Assert.That(hammerhead, Is.Not.Null);
+            Assert.That(citadel, Is.Not.Null);
+            Assert.That(spearhead.HullArchetype,
+                Is.EqualTo(ModularBossHullArchetype.Spearhead));
+            Assert.That(hammerhead.HullArchetype,
+                Is.EqualTo(ModularBossHullArchetype.Hammerhead));
+            Assert.That(citadel.HullArchetype,
+                Is.EqualTo(ModularBossHullArchetype.Citadel));
+
+            Vector3Int spearSpan = ResolveBossHullSpan(spearhead);
+            Vector3Int hammerSpan = ResolveBossHullSpan(hammerhead);
+            Vector3Int citadelSpan = ResolveBossHullSpan(citadel);
+            Assert.That(spearSpan.z, Is.GreaterThan(spearSpan.x));
+            Assert.That(hammerSpan.x, Is.GreaterThan(hammerSpan.y));
+            Assert.That(citadelSpan.y, Is.GreaterThan(citadelSpan.z));
+
+            Assert.That(ModularBossPcgGenerator.TryBuild(
+                    definitions,
+                    0,
+                    7320,
+                    out ModularBossBuildResult alternate,
+                    out string alternateError),
+                Is.True,
+                alternateError);
+            CollectionAssert.AreNotEquivalent(
+                ResolveBossStructureCells(spearhead).ToArray(),
+                ResolveBossStructureCells(alternate).ToArray(),
+                "The seed must change the connected hull, not only equipment mounts.");
+        }
+        finally
+        {
+            foreach (GridModuleDefinition definition in definitions)
+                Object.DestroyImmediate(definition);
+        }
+    }
+
+    [Test]
+    public void ModularBossFunctionalHarnessIsCollisionFreeAndPassesEveryTier()
+    {
+        GameObject root = CreateRoot("BossFunctionalHarness", Vector3.zero);
+        ModularBossFunctionalTestHarness harness =
+            root.AddComponent<ModularBossFunctionalTestHarness>();
+        for (int tier = 0; tier < 6; tier++)
+        {
+            harness.ConfigurePreview(tier, 7319 + tier * 101, true);
+            Assert.That(harness.AllChecksPassed, Is.True,
+                $"tier={tier}: {harness.LastReport}");
+            Assert.That(harness.CurrentBuild, Is.Not.Null);
+            Assert.That(harness.PreviewBounds.size.sqrMagnitude,
+                Is.GreaterThan(1f));
+            Assert.That(root.GetComponentsInChildren<Collider>(true),
+                Is.Empty,
+                "The scene viewer must never join city/trap physics.");
+            Assert.That(root.GetComponentsInChildren<LineRenderer>(true).Length,
+                Is.EqualTo(3),
+                "The dynamically-sized shield is represented by three axes.");
         }
     }
 
@@ -791,6 +1012,26 @@ public sealed class CombatTestModeTests
     }
 
     [Test]
+    public void ModularBossHealthyClimbReservesInstalledLiftAuthority()
+    {
+        float hover =
+            ModularBossCombatPolicy.ResolveGravitySupportedVerticalInput(0f);
+        float climb =
+            ModularBossCombatPolicy.ResolveGravitySupportedVerticalInput(30f);
+
+        Assert.That(hover,
+            Is.EqualTo(ModularBossCombatPolicy.HealthyFlightHoverInput)
+                .Within(0.001f));
+        Assert.That(climb, Is.EqualTo(1f).Within(0.001f));
+        Assert.That(
+            ModularBossCombatPolicy.ResolveClimbPlanarInputScale(climb),
+            Is.EqualTo(0.32f).Within(0.001f));
+        Assert.That(
+            ModularBossCombatPolicy.ResolveClimbPlanarInputScale(hover),
+            Is.GreaterThan(0.32f).And.LessThan(1f));
+    }
+
+    [Test]
     public void ModularBossReadabilityInitializesUnityObjectsAfterConstruction()
     {
         GameObject root = CreateRoot(
@@ -924,20 +1165,79 @@ public sealed class CombatTestModeTests
     }
 
     [Test]
-    public void ModularBossMissionAlwaysRequiresAnUrbanBattlefield()
+    public void EveryFormalMissionAlwaysRequiresAnUrbanBattlefield()
     {
-        FinitePlanetMissionRules boss =
-            FinitePlanetMissionRules.Resolve("modular_boss", 5);
-        Assert.That(boss.RequiresUrbanEnvironment, Is.True);
+        string[] missionIds =
+        {
+            "abandoned_mine",
+            "wind_canyon",
+            "industrial_outpost",
+            "modular_boss",
+            "future_formal_mission"
+        };
 
-        for (int seed = -7; seed <= 7; seed++)
+        foreach (string missionId in missionIds)
         {
             Assert.That(
-                PlanetMissionEnvironmentResolver.Resolve(
-                    seed,
-                    "planet-" + seed,
-                    "modular_boss"),
+                FinitePlanetMissionRules.Resolve(missionId, 5)
+                    .RequiresUrbanEnvironment,
+                Is.True,
+                missionId);
+
+            for (int seed = -7; seed <= 7; seed++)
+            {
+                Assert.That(
+                    PlanetMissionEnvironmentResolver.Resolve(
+                        seed,
+                        "planet-" + seed,
+                        missionId),
+                    Is.EqualTo(PlanetMissionEnvironmentKind.Urban),
+                    missionId + " seed " + seed);
+            }
+        }
+
+        Assert.That(
+            PlanetMissionEnvironmentResolver.GetDisplayName(
+                PlanetMissionEnvironmentKind.Natural),
+            Is.EqualTo("城市城区"));
+    }
+
+    [Test]
+    public void LegacyNaturalChapterSelectionIsCanonicalizedToUrban()
+    {
+        try
+        {
+            PlanetOrbitChapterSelectionContext.Set(
+                "legacy-planet",
+                "abandoned_mine",
+                "旧存档任务",
+                Vector3.forward,
+                7319,
+                PlanetMissionEnvironmentKind.Natural,
+                3);
+
+            Assert.That(
+                PlanetOrbitChapterSelectionContext.EnvironmentKind,
                 Is.EqualTo(PlanetMissionEnvironmentKind.Urban));
+            Assert.That(
+                PlanetOrbitChapterSelectionContext.HasSelection,
+                Is.True);
+            Assert.That(
+                PlanetOrbitChapterSelectionContext.MissionId,
+                Is.EqualTo("abandoned_mine"));
+            Assert.That(
+                PlanetOrbitChapterSelectionContext.LandingDirection,
+                Is.EqualTo(Vector3.forward));
+            Assert.That(
+                PlanetOrbitChapterSelectionContext.PlanetDifficultyIndex,
+                Is.EqualTo(3));
+            Assert.That(
+                PlanetOrbitChapterSelectionContext.MissionSeed,
+                Is.EqualTo(7319));
+        }
+        finally
+        {
+            PlanetOrbitChapterSelectionContext.Clear();
         }
     }
 
@@ -1054,6 +1354,190 @@ public sealed class CombatTestModeTests
     }
 
     [Test]
+    public void ModularBossNavigationRejectsGenericSolidVolumesAndCorridors()
+    {
+        GameObject bossObject = new GameObject("BossNavigationProbeTest");
+        GameObject obstacleObject = GameObject.CreatePrimitive(
+            PrimitiveType.Cube);
+        obstacleObject.name = "GenericCombinedCitySolid";
+        try
+        {
+            ModularBossCombatRuntime runtime =
+                bossObject.AddComponent<ModularBossCombatRuntime>();
+            const BindingFlags Flags = BindingFlags.Instance |
+                                       BindingFlags.NonPublic;
+            MethodInfo volumeClear = typeof(ModularBossCombatRuntime)
+                .GetMethod("IsNavigationVolumeClear", Flags);
+            MethodInfo corridorClear = typeof(ModularBossCombatRuntime)
+                .GetMethod("IsNavigationCorridorClear", Flags);
+            Assert.That(volumeClear, Is.Not.Null);
+            Assert.That(corridorClear, Is.Not.Null);
+
+            obstacleObject.transform.position = Vector3.zero;
+            obstacleObject.transform.localScale = new Vector3(4f, 4f, 4f);
+            Physics.SyncTransforms();
+            Assert.That(
+                (bool)volumeClear.Invoke(
+                    runtime,
+                    new object[] { Vector3.zero, Vector3.one }),
+                Is.False,
+                "A solid combined/world collider must not be recorded as " +
+                "a safe Boss navigation point.");
+
+            obstacleObject.transform.position = new Vector3(0f, 0f, 8f);
+            obstacleObject.transform.localScale = new Vector3(4f, 4f, 2f);
+            Physics.SyncTransforms();
+            Assert.That(
+                (bool)corridorClear.Invoke(
+                    runtime,
+                    new object[]
+                    {
+                        Vector3.zero,
+                        new Vector3(0f, 0f, 16f),
+                        Vector3.one
+                    }),
+                Is.False,
+                "A clear destination behind a solid wall is not a valid " +
+                "backtrack route.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(obstacleObject);
+            Object.DestroyImmediate(bossObject);
+        }
+    }
+
+    [Test]
+    public void ModularBossNavigationCanExitItsCurrentOverlap()
+    {
+        GameObject bossObject = new GameObject("BossOverlapEscapeTest");
+        GameObject obstacleObject = GameObject.CreatePrimitive(
+            PrimitiveType.Cube);
+        obstacleObject.name = "SourceOverlapObstacle";
+        try
+        {
+            ModularBossCombatRuntime runtime =
+                bossObject.AddComponent<ModularBossCombatRuntime>();
+            // A legal high-tier Boss can have hundreds of module colliders.
+            // They must be filterable without overflowing the navigation
+            // query and turning every escape route into a false blockage.
+            for (int index = 0; index < 320; index++)
+            {
+                GameObject module = new GameObject("BossModuleCollider");
+                module.transform.SetParent(bossObject.transform, false);
+                module.AddComponent<BoxCollider>().size = Vector3.one * 0.2f;
+            }
+            obstacleObject.transform.position = Vector3.zero;
+            obstacleObject.transform.localScale = new Vector3(4f, 4f, 4f);
+            Physics.SyncTransforms();
+
+            const BindingFlags Flags = BindingFlags.Instance |
+                                       BindingFlags.NonPublic;
+            MethodInfo corridorClear = typeof(ModularBossCombatRuntime)
+                .GetMethod("IsNavigationCorridorClear", Flags);
+            Assert.That(corridorClear, Is.Not.Null);
+            Assert.That(
+                (bool)corridorClear.Invoke(
+                    runtime,
+                    new object[]
+                    {
+                        Vector3.zero,
+                        new Vector3(0f, 0f, -12f),
+                        Vector3.one
+                    }),
+                Is.True,
+                "The collider already trapping the Boss must not prevent it " +
+                "from following its recorded entry route back out.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(obstacleObject);
+            Object.DestroyImmediate(bossObject);
+        }
+    }
+
+    [Test]
+    public void ModularBossEscapeUsesSideLaneWhenUpwardLanesAreClosed()
+    {
+        GameObject bossObject = new GameObject("BossSideEscapeTest");
+        GameObject roofObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        roofObject.name = "LowEscapeRoof";
+        try
+        {
+            ModularBossCombatRuntime runtime =
+                bossObject.AddComponent<ModularBossCombatRuntime>();
+            VehicleStructureGraph graph =
+                bossObject.AddComponent<VehicleStructureGraph>();
+            roofObject.transform.position = new Vector3(0f, 4f, 0f);
+            roofObject.transform.localScale = new Vector3(80f, 2f, 80f);
+            Physics.SyncTransforms();
+
+            const BindingFlags Flags = BindingFlags.Instance |
+                                       BindingFlags.NonPublic;
+            typeof(ModularBossCombatRuntime)
+                .GetField("structureGraph", Flags)
+                ?.SetValue(runtime, graph);
+            MethodInfo resolveEscape = typeof(ModularBossCombatRuntime)
+                .GetMethod("TryResolveVerticalEscapeDirection", Flags);
+            Assert.That(resolveEscape, Is.Not.Null);
+            object[] arguments = { Vector3.zero };
+            Assert.That(
+                (bool)resolveEscape.Invoke(runtime, arguments),
+                Is.True);
+            Vector3 direction = (Vector3)arguments[0];
+            Assert.That(Mathf.Abs(direction.y), Is.LessThan(0.2f),
+                "A roofed-in Boss should take an open side lane instead of " +
+                "repeating an impossible upward command.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(roofObject);
+            Object.DestroyImmediate(bossObject);
+        }
+    }
+
+    [Test]
+    public void ModularBossMuzzleProbeRecognizesWorldOcclusion()
+    {
+        GameObject bossObject = new GameObject("BossMuzzleProbeTest");
+        GameObject obstacleObject = GameObject.CreatePrimitive(
+            PrimitiveType.Cube);
+        obstacleObject.name = "MuzzleBlockingCover";
+        try
+        {
+            ModularBossCombatRuntime runtime =
+                bossObject.AddComponent<ModularBossCombatRuntime>();
+            obstacleObject.transform.position = new Vector3(0f, 0f, 5f);
+            obstacleObject.transform.localScale = new Vector3(4f, 4f, 2f);
+            Physics.SyncTransforms();
+
+            const BindingFlags Flags = BindingFlags.Instance |
+                                       BindingFlags.NonPublic;
+            MethodInfo findBlocker = typeof(ModularBossCombatRuntime)
+                .GetMethod("TryFindWorldBlocker", Flags);
+            Assert.That(findBlocker, Is.Not.Null);
+            object[] arguments =
+            {
+                Vector3.zero,
+                new Vector3(0f, 0f, 10f),
+                null,
+                0f
+            };
+            Assert.That(
+                (bool)findBlocker.Invoke(runtime, arguments),
+                Is.True);
+            Assert.That(arguments[2], Is.EqualTo(
+                obstacleObject.GetComponent<Collider>()));
+            Assert.That((float)arguments[3], Is.GreaterThan(0f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(obstacleObject);
+            Object.DestroyImmediate(bossObject);
+        }
+    }
+
+    [Test]
     public void ModularBossCityHuntPolicyRewardsCoverAndReadableDodges()
     {
         Assert.That(ModularBossCombatPolicy.InitialSpawnDistance(0),
@@ -1061,13 +1545,18 @@ public sealed class CombatTestModeTests
         Assert.That(ModularBossCombatPolicy.InitialSpawnDistance(5),
             Is.EqualTo(270f).Within(0.001f));
         Assert.That(ModularBossCombatPolicy.PursuitForceMultiplier,
-            Is.EqualTo(1.18f).Within(0.001f));
+            Is.EqualTo(1.30f).Within(0.001f));
         Assert.That(ModularBossCombatPolicy.PlayerRamTelegraphSeconds,
-            Is.GreaterThanOrEqualTo(0.6f));
+            Is.GreaterThanOrEqualTo(0.48f));
         Assert.That(ModularBossCombatPolicy.PlayerRamChargeSeconds,
             Is.GreaterThan(ModularBossCombatPolicy.PlayerRamTelegraphSeconds));
         Assert.That(ModularBossCombatPolicy.CoverBreachDelay(0),
             Is.GreaterThan(ModularBossCombatPolicy.CoverBreachDelay(5)));
+        Assert.That(ModularBossCombatPolicy.CoverBreachDelay(0),
+            Is.LessThanOrEqualTo(3f),
+            "Even the first Boss must answer persistent cover promptly.");
+        Assert.That(ModularBossCombatPolicy.MaximumTurnRate,
+            Is.GreaterThan(ModularBossCombatPolicy.MinimumTurnRate));
 
         const float baseSpread = 0.02f;
         float openSky = ModularBossCombatPolicy.ResolveWeaponSpread(
@@ -1092,6 +1581,250 @@ public sealed class CombatTestModeTests
             Is.EqualTo(2));
         Assert.That(ModularBossCombatPolicy.ResolveBossCollisionModuleLoss(52f),
             Is.EqualTo(3));
+    }
+
+    [Test]
+    public void ModularBossStrengthStartsAtFirstBossAndIncreasesEveryTier()
+    {
+        float previousShield = 0f;
+        float previousEffectiveShield = 0f;
+        float previousStructure = 0f;
+        float previousCore = 0f;
+        float previousSystem = 0f;
+        float previousWeaponDamage = 0f;
+        float previousWeaponIntegrity = 0f;
+
+        for (int tier = 0; tier < 6; tier++)
+        {
+            float shield =
+                ModularBossCombatPolicy.ResolveShieldCapacity(tier);
+            int rechargeCount =
+                ModularBossCombatPolicy.ResolveShieldRechargeCount(tier);
+            float effectiveShield = shield *
+                (1f + rechargeCount *
+                 ModularBossCombatPolicy.ShieldRechargeFraction);
+            ModularBossGenerationProfile profile =
+                ModularBossGenerationProfile.ForTier(tier);
+            float weaponDamage = ModularBossCombatPolicy.
+                ResolveBossWeaponDamageMultiplier(tier);
+
+            Assert.That(shield, Is.GreaterThan(previousShield),
+                $"Tier {tier} shield must exceed the previous Boss tier.");
+            Assert.That(effectiveShield,
+                Is.GreaterThan(previousEffectiveShield),
+                $"Tier {tier} total shield budget must increase.");
+            Assert.That(profile.StructureIntegrityMultiplier,
+                Is.GreaterThan(previousStructure));
+            Assert.That(profile.CoreIntegrityMultiplier,
+                Is.GreaterThan(previousCore));
+            Assert.That(profile.SystemIntegrityMultiplier,
+                Is.GreaterThan(previousSystem));
+            Assert.That(profile.WeaponIntegrityMultiplier,
+                Is.GreaterThan(previousWeaponIntegrity));
+            Assert.That(profile.WeaponIntegrityMultiplier,
+                Is.GreaterThan(profile.SystemIntegrityMultiplier),
+                "Boss weapons need independent anti-dismantle durability.");
+            Assert.That(weaponDamage, Is.GreaterThan(previousWeaponDamage),
+                $"Tier {tier} weapon damage must exceed the previous Boss tier.");
+
+            previousShield = shield;
+            previousEffectiveShield = effectiveShield;
+            previousStructure = profile.StructureIntegrityMultiplier;
+            previousCore = profile.CoreIntegrityMultiplier;
+            previousSystem = profile.SystemIntegrityMultiplier;
+            previousWeaponDamage = weaponDamage;
+            previousWeaponIntegrity = profile.WeaponIntegrityMultiplier;
+        }
+
+        Assert.That(ModularBossCombatPolicy.ResolveShieldCapacity(0),
+            Is.EqualTo(10000f).Within(0.001f));
+        Assert.That(ModularBossGenerationProfile.ForTier(0)
+                .CoreIntegrityMultiplier,
+            Is.EqualTo(3f).Within(0.001f));
+        Assert.That(ModularBossCombatPolicy.
+                ResolveBossWeaponDamageMultiplier(0),
+            Is.EqualTo(1.35f).Within(0.001f));
+        Assert.That(ModularBossCombatPolicy.
+                ResolveBossWeaponDamageMultiplier(5),
+            Is.EqualTo(1.80f).Within(0.001f));
+        Assert.That(ModularBossGenerationProfile.ForTier(0)
+                .WeaponIntegrityMultiplier,
+            Is.EqualTo(10f).Within(0.001f));
+        Assert.That(ModularBossGenerationProfile.ForTier(5)
+                .WeaponIntegrityMultiplier,
+            Is.EqualTo(26f).Within(0.001f));
+        Assert.That(18f * ModularBossCombatPolicy.
+                ResolveBossWeaponDamageMultiplier(5),
+            Is.EqualTo(32.4f).Within(0.001f),
+            "Even the final Boss machine gun should require multiple hits per module.");
+        Assert.That(ModularBossCombatPolicy.ResolveBuildingShieldDamageFraction(
+                14f),
+            Is.EqualTo(0.30f).Within(0.001f));
+        Assert.That(ModularBossCombatPolicy.ResolveBuildingShieldDamageFraction(
+                52f),
+            Is.EqualTo(0.40f).Within(0.001f));
+        Assert.That(ModularBossCombatPolicy.ResolveBridgeShieldDamageFraction(
+                8f),
+            Is.EqualTo(0.45f).Within(0.001f));
+        Assert.That(ModularBossCombatPolicy.ResolveBridgeShieldDamageFraction(
+                40f),
+            Is.EqualTo(0.60f).Within(0.001f));
+    }
+
+    [Test]
+    public void ModularBossWeaponlessPhaseClosesInsideRamAuthorizationRange()
+    {
+        for (int tier = 0; tier < 6; tier++)
+        {
+            ModularBossGenerationProfile profile =
+                ModularBossGenerationProfile.ForTier(tier);
+            float armed = ModularBossCombatPolicy.
+                ResolvePreferredCombatRadius(
+                    profile.PreferredCombatRadius,
+                    tier,
+                    1);
+            float weaponless = ModularBossCombatPolicy.
+                ResolvePreferredCombatRadius(
+                    profile.PreferredCombatRadius,
+                    tier,
+                    0);
+            Assert.That(armed,
+                Is.EqualTo(profile.PreferredCombatRadius).Within(0.001f));
+            Assert.That(weaponless,
+                Is.LessThan(ModularBossCombatPolicy.PlayerRamDistance(tier)),
+                $"Tier {tier} must close far enough to authorize a ram.");
+        }
+    }
+
+    [Test]
+    public void ModularBossRecoveryKeepsSelectedDownwardEscapeDirection()
+    {
+        float downward = ModularBossCombatPolicy.
+            ResolveRecoveryEscapeVerticalInput(-1f, 0f, 1f, false);
+        float lateral = ModularBossCombatPolicy.
+            ResolveRecoveryEscapeVerticalInput(0f, 0f, 1f, false);
+        Assert.That(downward, Is.LessThan(0f),
+            "A clear downward exit must not be clamped back to lift.");
+        Assert.That(lateral, Is.GreaterThan(0f),
+            "A side exit still needs ordinary gravity support.");
+    }
+
+    [Test]
+    public void ModularBossBridgeShieldDamageRequiresANewFastImpact()
+    {
+        Assert.That(ModularBossCombatPolicy.ShouldApplyBridgeShieldImpact(
+            true, 12f), Is.True);
+        Assert.That(ModularBossCombatPolicy.ShouldApplyBridgeShieldImpact(
+            false, 12f), Is.False,
+            "Continuous collision stay must not drain the shield again.");
+        Assert.That(ModularBossCombatPolicy.ShouldApplyBridgeShieldImpact(
+            true, 2f), Is.False,
+            "Resting or sliding contact is not another bridge impact.");
+    }
+
+    [Test]
+    public void ModularBossFreezePausesStateDeadlinesAndSuppressesWeapons()
+    {
+        GameObject root = new GameObject("BossFreezeContractTest");
+        try
+        {
+            ModularBossCombatRuntime runtime =
+                root.AddComponent<ModularBossCombatRuntime>();
+            const BindingFlags Flags = BindingFlags.Instance |
+                                       BindingFlags.NonPublic;
+            FieldInfo stateEndsAt = typeof(ModularBossCombatRuntime)
+                .GetField("stateEndsAt", Flags);
+            FieldInfo freezeStartedAt = typeof(ModularBossCombatRuntime)
+                .GetField("temporaryFreezeStartedAt", Flags);
+            MethodInfo shiftDeadlines = typeof(ModularBossCombatRuntime)
+                .GetMethod("ShiftFreezeSensitiveTimes", Flags);
+            Assert.That(stateEndsAt, Is.Not.Null);
+            Assert.That(freezeStartedAt, Is.Not.Null);
+            Assert.That(shiftDeadlines, Is.Not.Null);
+            stateEndsAt.SetValue(runtime, Time.time + 2f);
+            float before = (float)stateEndsAt.GetValue(runtime);
+
+            runtime.SetTemporarilyFrozen(true);
+            Assert.That(runtime.IsTemporarilyFrozen, Is.True);
+            Assert.That(runtime.WeaponsSuppressed, Is.True);
+            shiftDeadlines.Invoke(runtime, new object[] { 1f });
+            freezeStartedAt.SetValue(runtime, -1f);
+            runtime.SetTemporarilyFrozen(false);
+
+            Assert.That(runtime.IsTemporarilyFrozen, Is.False);
+            Assert.That((float)stateEndsAt.GetValue(runtime),
+                Is.GreaterThanOrEqualTo(before + 0.99f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
+    }
+
+    [Test]
+    public void ModularBossThawClearsStoredRamVelocity()
+    {
+        GameObject root = new GameObject("BossFreezeVelocityTest");
+        try
+        {
+            Rigidbody body = root.AddComponent<Rigidbody>();
+            ModularBossCombatRuntime runtime =
+                root.AddComponent<ModularBossCombatRuntime>();
+            const BindingFlags Flags = BindingFlags.Instance |
+                                       BindingFlags.NonPublic;
+            typeof(ModularBossCombatRuntime)
+                .GetField("combatActive", Flags)
+                ?.SetValue(runtime, true);
+            body.velocity = new Vector3(0f, 0f, 48f);
+            TemporaryEnemyFreeze freeze =
+                root.AddComponent<TemporaryEnemyFreeze>();
+            freeze.FreezeFor(4f);
+            Assert.That(body.isKinematic, Is.True);
+            Assert.That(runtime.IsTemporarilyFrozen, Is.True);
+
+            MethodInfo restore = typeof(TemporaryEnemyFreeze)
+                .GetMethod("Restore", Flags);
+            Assert.That(restore, Is.Not.Null);
+            restore.Invoke(freeze, null);
+
+            Assert.That(body.isKinematic, Is.False);
+            Assert.That(body.velocity.sqrMagnitude, Is.Zero.Within(0.001f),
+                "A thawed Boss must rebuild motion through RC3, not restore " +
+                "an old charge velocity.");
+            Assert.That(runtime.IsTemporarilyFrozen, Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
+    }
+
+    [Test]
+    public void ModularBossRemembersGenericSolidWorldCollision()
+    {
+        GameObject bossObject = new GameObject("BossGenericCollisionTest");
+        GameObject solidObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        try
+        {
+            ModularBossCombatRuntime runtime =
+                bossObject.AddComponent<ModularBossCombatRuntime>();
+            const BindingFlags Flags = BindingFlags.Instance |
+                                       BindingFlags.NonPublic;
+            MethodInfo accepts = typeof(ModularBossCombatRuntime)
+                .GetMethod("IsGenericBlockingWorldCollider", Flags);
+            Assert.That(accepts, Is.Not.Null);
+            Assert.That((bool)accepts.Invoke(
+                runtime,
+                new object[] { solidObject.GetComponent<Collider>() }),
+                Is.True,
+                "Combined city/test solids without Urban components still " +
+                "need to refresh the escape watchdog.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(solidObject);
+            Object.DestroyImmediate(bossObject);
+        }
     }
 
     [Test]
@@ -1188,6 +1921,313 @@ public sealed class CombatTestModeTests
                 .Within(0.001f));
         Assert.That(ModularBossCombatPolicy.ResolveDamagedMobility(24, 24),
             Is.EqualTo(1f).Within(0.001f));
+    }
+
+    [Test]
+    public void ModularBossEmergencyAssistDoesNotRequestGravityTwice()
+    {
+        float healthyHover = ModularBossCombatPolicy.
+            ResolveAltitudeVerticalInput(0f, 0f, 1f, false);
+        float assistedHover = ModularBossCombatPolicy.
+            ResolveAltitudeVerticalInput(0f, 0f, 1f, true);
+        float assistedRecovery = ModularBossCombatPolicy.
+            ResolveAltitudeVerticalInput(0f, -6f, 1f, true);
+
+        Assert.That(healthyHover,
+            Is.EqualTo(ModularBossCombatPolicy.HealthyFlightHoverInput)
+                .Within(0.001f));
+        Assert.That(assistedHover, Is.Zero.Within(0.001f),
+            "Training core authority already supplies gravity support.");
+        Assert.That(assistedRecovery, Is.GreaterThan(0f),
+            "A damaged Boss must still arrest a real downward velocity.");
+        Assert.That(ModularBossCombatPolicy.RequiresAltitudeReturn(-44f),
+            Is.False);
+        Assert.That(ModularBossCombatPolicy.RequiresAltitudeReturn(-46f),
+            Is.True,
+            "Special Boss states must not climb indefinitely above a low player.");
+        Assert.That(ModularBossCombatPolicy.RequiresAltitudeReturn(-20f, 12f),
+            Is.True,
+            "Upward momentum must trigger the return before the hull overshoots.");
+    }
+
+    [Test]
+    public void ModularBossBuildingRamAlwaysTargetsAVisibleFacade()
+    {
+        Bounds building = new Bounds(
+            new Vector3(100f, 75f, 200f),
+            new Vector3(80f, 150f, 60f));
+        Bounds bossBelow = new Bounds(
+            new Vector3(100f, -20f, 200f),
+            new Vector3(45f, 35f, 55f));
+        Vector3 point = ModularBossCombatPolicy.
+            ResolveBuildingFacadeBreachPoint(building, bossBelow);
+
+        Assert.That(point.y,
+            Is.GreaterThanOrEqualTo(building.min.y + 4f));
+        Assert.That(point.y,
+            Is.LessThanOrEqualTo(building.max.y - 4f));
+        Assert.That(point.y - bossBelow.extents.y,
+            Is.GreaterThanOrEqualTo(building.min.y));
+        Assert.That(point.y + bossBelow.extents.y,
+            Is.LessThanOrEqualTo(building.max.y));
+        bool onSideWall =
+            Mathf.Abs(point.x - building.min.x) < 0.001f ||
+            Mathf.Abs(point.x - building.max.x) < 0.001f ||
+            Mathf.Abs(point.z - building.min.z) < 0.001f ||
+            Mathf.Abs(point.z - building.max.z) < 0.001f;
+        Assert.That(onSideWall, Is.True,
+            "A Boss projected inside the footprint must not target the floor or roof.");
+    }
+
+    [Test]
+    public void ModularBossBuildingRamStagesOutsideBeforeChargingFacade()
+    {
+        Bounds building = new Bounds(
+            new Vector3(100f, 75f, 200f),
+            new Vector3(80f, 150f, 60f));
+        Bounds bossAboveRoof = new Bounds(
+            new Vector3(100f, 190f, 200f),
+            new Vector3(60f, 80f, 70f));
+        Vector3 facade = ModularBossCombatPolicy.
+            ResolveBuildingFacadeBreachPoint(building, bossAboveRoof);
+        float verticalTolerance = ModularBossCombatPolicy.
+            ResolveCoverBreachVerticalTolerance(bossAboveRoof);
+        Assert.That(
+            facade.y + bossAboveRoof.extents.y + verticalTolerance,
+            Is.LessThanOrEqualTo(building.max.y - 3.99f),
+            "Every charge-authorized height must keep the hull below the roof edge.");
+        Vector3 staging = ModularBossCombatPolicy.
+            ResolveBuildingFacadeStagingPoint(
+                building,
+                bossAboveRoof,
+                facade);
+        Vector3 normal = ModularBossCombatPolicy.
+            ResolveBuildingFacadeNormal(building, facade);
+
+        Assert.That(Vector3.Dot(
+                staging - facade,
+                normal),
+            Is.GreaterThanOrEqualTo(
+                ModularBossCombatPolicy.CoverBreachStandoff +
+                Mathf.Min(bossAboveRoof.extents.x,
+                          bossAboveRoof.extents.z)));
+        Assert.That(staging.x < building.min.x ||
+                    staging.x > building.max.x ||
+                    staging.z < building.min.z ||
+                    staging.z > building.max.z,
+            Is.True,
+            "The charge launch point must be outside the roof footprint.");
+        Bounds roofHeightAtStaging = new Bounds(
+            new Vector3(staging.x, bossAboveRoof.center.y, staging.z),
+            bossAboveRoof.size);
+        Assert.That(ModularBossCombatPolicy.IsCoverBreachStaged(
+                roofHeightAtStaging,
+                staging),
+            Is.False,
+            "A Boss still above the roof is not aligned merely because its planar position is valid.");
+        Assert.That(ModularBossCombatPolicy.IsFacadeImpactNormal(
+                Vector3.up,
+                Vector3.up),
+            Is.False,
+            "Roof contact must never count as a building ram.");
+        Assert.That(ModularBossCombatPolicy.IsFacadeImpactNormal(
+                Vector3.right,
+                Vector3.up),
+            Is.True);
+        Vector3 inward = (facade - staging).normalized;
+        Assert.That(ModularBossCombatPolicy.
+                IsCoverBreachLaunchVelocityReady(
+                    inward * 8f,
+                    facade,
+                    staging),
+            Is.True);
+        Assert.That(ModularBossCombatPolicy.
+                IsCoverBreachLaunchVelocityReady(
+                    -inward * 30f,
+                    facade,
+                    staging),
+            Is.False,
+            "A hull still drifting away from the facade must brake before charge authorization.");
+
+        Bounds diagonalBoss = new Bounds(
+            new Vector3(30f, 190f, 270f),
+            bossAboveRoof.size);
+        Vector3 diagonalFacade = ModularBossCombatPolicy.
+            ResolveBuildingFacadeBreachPoint(building, diagonalBoss);
+        int boundaryAxes = 0;
+        if (Mathf.Abs(diagonalFacade.x - building.min.x) < 0.001f ||
+            Mathf.Abs(diagonalFacade.x - building.max.x) < 0.001f)
+            boundaryAxes++;
+        if (Mathf.Abs(diagonalFacade.z - building.min.z) < 0.001f ||
+            Mathf.Abs(diagonalFacade.z - building.max.z) < 0.001f)
+            boundaryAxes++;
+        Assert.That(boundaryAxes, Is.EqualTo(1),
+            "A diagonal approach must select one facade, never a building corner.");
+        bool diagonalOnXFace =
+            Mathf.Abs(diagonalFacade.x - building.min.x) < 0.001f ||
+            Mathf.Abs(diagonalFacade.x - building.max.x) < 0.001f;
+        if (diagonalOnXFace)
+        {
+            float requiredMargin = Mathf.Min(
+                building.extents.z - 4f,
+                diagonalBoss.extents.z + 4f);
+            Assert.That(diagonalFacade.z,
+                Is.InRange(
+                    building.min.z + requiredMargin,
+                    building.max.z - requiredMargin));
+        }
+        else
+        {
+            float requiredMargin = Mathf.Min(
+                building.extents.x - 4f,
+                diagonalBoss.extents.x + 4f);
+            Assert.That(diagonalFacade.x,
+                Is.InRange(
+                    building.min.x + requiredMargin,
+                    building.max.x - requiredMargin));
+        }
+    }
+
+    [Test]
+    public void ModularBossBuildingRamEscapesAStalledStagingApproach()
+    {
+        float observedAt = 10f;
+        float beforeTimeout = observedAt +
+            ModularBossCombatPolicy.CoverBreachStallSeconds - 0.01f;
+        float atTimeout = observedAt +
+            ModularBossCombatPolicy.CoverBreachStallSeconds;
+
+        Assert.That(ModularBossCombatPolicy.
+                IsCoverBreachApproachStalled(
+                    false,
+                    observedAt,
+                    beforeTimeout),
+            Is.False);
+        Assert.That(ModularBossCombatPolicy.
+                IsCoverBreachApproachStalled(
+                    false,
+                    observedAt,
+                    atTimeout),
+            Is.True);
+        Assert.That(ModularBossCombatPolicy.
+                IsCoverBreachApproachStalled(
+                    true,
+                    observedAt,
+                    atTimeout + 10f),
+            Is.False,
+            "A Boss already at the launch point must be allowed to charge.");
+        Assert.That(ModularBossCombatPolicy.
+                ShouldApplyCoverBreachSeparationAssist(
+                    false,
+                    false,
+                    true,
+                    false),
+            Is.True,
+            "Fresh target-building contact must pull the hull back out before staging.");
+        Assert.That(ModularBossCombatPolicy.
+                ShouldApplyCoverBreachSeparationAssist(
+                    false,
+                    true,
+                    true,
+                    true),
+            Is.False,
+            "The bounded separation impulse must never be applied every physics tick.");
+        Assert.That(ModularBossCombatPolicy.CoverBreachStallSeconds,
+            Is.LessThan(ModularBossCombatPolicy.
+                CoverBreachApproachTimeoutSeconds));
+        Assert.That(ModularBossCombatPolicy.CoverBreachFailedRetrySeconds,
+            Is.LessThan(ModularBossCombatPolicy.
+                CoverBreachCooldownSeconds));
+    }
+
+    [Test]
+    public void ModularBossAggressionClosesForReadyRamsWithoutIgnoringCover()
+    {
+        for (int tier = 0; tier <= 5; tier++)
+        {
+            float gunRadius = ModularBossGenerationProfile.ForTier(tier).
+                PreferredCombatRadius;
+            float aggressiveRadius = ModularBossCombatPolicy.
+                ResolveTacticalCombatRadius(
+                    gunRadius,
+                    tier,
+                    true,
+                    false);
+            Assert.That(aggressiveRadius,
+                Is.LessThan(ModularBossCombatPolicy.PlayerRamDistance(tier)),
+                "A ready Boss must actively cross into ram authorization range.");
+            Assert.That(ModularBossCombatPolicy.ResolveTacticalCombatRadius(
+                    gunRadius,
+                    tier,
+                    true,
+                    true),
+                Is.EqualTo(gunRadius).Within(0.001f),
+                "Hard cover must route into demolition instead of a blind player ram.");
+        }
+    }
+
+    [Test]
+    public void ModularBossDemolitionUtilityTargetsThePlayersActualShelter()
+    {
+        float closeShelter = ModularBossCombatPolicy.ScorePlayerCoverBuilding(
+            2,
+            12f,
+            0.92f,
+            95f);
+        float broadForegroundTower = ModularBossCombatPolicy.
+            ScorePlayerCoverBuilding(
+                7,
+                150f,
+                0.25f,
+                25f);
+        Assert.That(closeShelter, Is.GreaterThan(broadForegroundTower),
+            "The Boss should demolish the cover pinning the player, not an unrelated large foreground tower.");
+
+        Assert.That(ModularBossCombatPolicy.
+                ShouldReconsiderCoverBreachTarget(
+                    false,
+                    false,
+                    10f,
+                    10f + ModularBossCombatPolicy.
+                        CoverBreachTargetReconsiderSeconds + 0.01f),
+            Is.True);
+        Assert.That(ModularBossCombatPolicy.
+                ShouldReconsiderCoverBreachTarget(
+                    false,
+                    true,
+                    10f,
+                    20f),
+            Is.False,
+            "A hull physically touching the target building must finish escaping instead of target-thrashing.");
+    }
+
+    [Test]
+    public void ModularBossBacktrackCannotBeExtendedBySidewaysMotion()
+    {
+        Bounds largeHull = new Bounds(
+            Vector3.zero,
+            new Vector3(42f, 56f, 38f));
+        float arrival = ModularBossCombatPolicy.
+            ResolveBacktrackArrivalDistance(largeHull, 20f);
+        Assert.That(arrival,
+            Is.GreaterThan(ModularBossCombatPolicy.BacktrackArrivalDistance),
+            "A large fast hull needs a reachable arrival volume instead of a tiny point target.");
+        Assert.That(arrival,
+            Is.LessThanOrEqualTo(ModularBossCombatPolicy.
+                BacktrackMaximumArrivalDistance));
+
+        Assert.That(ModularBossCombatPolicy.HasBacktrackTargetProgress(
+                50f,
+                49f),
+            Is.False,
+            "Small drift or sideways motion must not refresh the escape watchdog.");
+        Assert.That(ModularBossCombatPolicy.HasBacktrackTargetProgress(
+                50f,
+                47.9f),
+            Is.True,
+            "Only meaningful reduction in distance to the safe point counts as progress.");
+        Assert.That(ModularBossCombatPolicy.BacktrackStallSeconds,
+            Is.LessThan(ModularBossCombatPolicy.BacktrackEscapeSeconds));
     }
 
     [Test]
@@ -1291,6 +2331,102 @@ public sealed class CombatTestModeTests
         Assert.That(gunship.attackKind,
             Is.EqualTo(HordeEnemyAttackKind.Ranged));
         Assert.That(gunship.gunCount, Is.GreaterThan(0));
+    }
+
+    [TestCase(65f)]
+    [TestCase(104f)]
+    public void HordeRangedInterceptSolvesLongRangeLateralPlayerSpeed(
+        float playerSpeed)
+    {
+        Vector3 origin = Vector3.zero;
+        Vector3 targetPosition = Vector3.forward * 420f;
+        Vector3 targetVelocity = Vector3.right * playerSpeed;
+
+        bool solved = HordeRangedAimPolicy.TryResolveIntercept(
+            origin,
+            Vector3.zero,
+            targetPosition,
+            targetVelocity,
+            240f,
+            2.5f,
+            out Vector3 direction,
+            out Vector3 impactPoint,
+            out float flightSeconds);
+
+        Assert.That(solved, Is.True);
+        Assert.That(flightSeconds, Is.GreaterThan(0.8f),
+            "The long-range solution must not regress to the old 0.8-second lead cap.");
+        Assert.That(flightSeconds, Is.LessThanOrEqualTo(2.5f));
+        Assert.That(direction.magnitude, Is.EqualTo(1f).Within(0.0001f));
+        Vector3 projectileAtImpact =
+            origin + direction * 240f * flightSeconds;
+        Assert.That(Vector3.Distance(projectileAtImpact, impactPoint),
+            Is.LessThan(0.01f));
+        Assert.That(Vector3.Distance(
+                targetPosition + targetVelocity * flightSeconds,
+                impactPoint),
+            Is.LessThan(0.01f));
+    }
+
+    [Test]
+    public void HordeRangedInterceptCompensatesInheritedShooterVelocity()
+    {
+        Vector3 origin = Vector3.zero;
+        Vector3 shooterVelocity = Vector3.right * 55f;
+        Vector3 targetPosition = Vector3.forward * 300f;
+
+        bool solved = HordeRangedAimPolicy.TryResolveIntercept(
+            origin,
+            shooterVelocity,
+            targetPosition,
+            Vector3.zero,
+            240f,
+            2.5f,
+            out Vector3 direction,
+            out Vector3 impactPoint,
+            out float flightSeconds);
+
+        Assert.That(solved, Is.True);
+        Assert.That(direction.x, Is.LessThan(0f),
+            "The muzzle must aim against the shooter's inherited lateral velocity.");
+        Vector3 projectileAtImpact = origin +
+            (direction * 240f + shooterVelocity) * flightSeconds;
+        Assert.That(Vector3.Distance(projectileAtImpact, targetPosition),
+            Is.LessThan(0.01f));
+        Assert.That(Vector3.Distance(impactPoint, targetPosition),
+            Is.LessThan(0.01f));
+    }
+
+    [Test]
+    public void HordeRangedInterceptUnsolvableTargetReturnsFiniteOutputs()
+    {
+        bool solved = HordeRangedAimPolicy.TryResolveIntercept(
+            Vector3.zero,
+            Vector3.zero,
+            Vector3.forward * 100f,
+            Vector3.forward * 300f,
+            240f,
+            2.5f,
+            out Vector3 direction,
+            out Vector3 impactPoint,
+            out float flightSeconds);
+
+        Assert.That(solved, Is.False);
+        Assert.That(float.IsNaN(direction.x) ||
+                    float.IsNaN(direction.y) ||
+                    float.IsNaN(direction.z), Is.False);
+        Assert.That(float.IsInfinity(direction.x) ||
+                    float.IsInfinity(direction.y) ||
+                    float.IsInfinity(direction.z), Is.False);
+        Assert.That(float.IsNaN(impactPoint.x) ||
+                    float.IsNaN(impactPoint.y) ||
+                    float.IsNaN(impactPoint.z), Is.False);
+        Assert.That(float.IsInfinity(impactPoint.x) ||
+                    float.IsInfinity(impactPoint.y) ||
+                    float.IsInfinity(impactPoint.z), Is.False);
+        Assert.That(float.IsNaN(flightSeconds) ||
+                    float.IsInfinity(flightSeconds), Is.False);
+        Assert.That(flightSeconds, Is.Zero);
     }
 
     [Test]
@@ -1413,6 +2549,39 @@ public sealed class CombatTestModeTests
 
         Assert.That(preferred, Is.EqualTo(3));
         Assert.That(retry, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void HordeWaitsForEveryPcgIngressBeforeUsingSafeAdaptiveFallback()
+    {
+        Assert.That(
+            HordeCombatDirector.ShouldUseAdaptiveSpawnFallback(0, 6),
+            Is.False);
+        Assert.That(
+            HordeCombatDirector.ShouldUseAdaptiveSpawnFallback(5, 6),
+            Is.False);
+        Assert.That(
+            HordeCombatDirector.ShouldUseAdaptiveSpawnFallback(6, 6),
+            Is.True);
+        Assert.That(
+            HordeCombatDirector.ShouldUseAdaptiveSpawnFallback(30, 6),
+            Is.True);
+        Assert.That(
+            HordeCombatDirector.ShouldUseAdaptiveSpawnFallback(0, 0),
+            Is.True);
+
+        var directions = new HashSet<int>();
+        for (int sample = 0; sample < 8; sample++)
+        {
+            directions.Add(
+                HordeCombatDirector.ResolveAdaptiveSpawnDirectionStep(
+                    6,
+                    sample));
+        }
+        CollectionAssert.AreEquivalent(
+            new[] { 0, 1, 2, 3, 4, 5, 6, 7 },
+            directions,
+            "安全兜底必须扫描完整八方向，不能被原始战术扇区锁死。");
     }
 
     [Test]
@@ -1555,14 +2724,16 @@ public sealed class CombatTestModeTests
     [Test]
     public void NavigationBuildsBoundedThreeDimensionalGraph()
     {
+        Vector3 isolatedCenter = new Vector3(20000f, 0f, 20000f);
         GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
         roots.Add(ground);
         ground.name = "NavigationGround";
+        ground.transform.position = isolatedCenter;
         ground.transform.localScale = new Vector3(100f, 1f, 100f);
         Physics.SyncTransforms();
         var navigation = new HordeAirNavigationService();
         IEnumerator build = navigation.Build(
-            Vector3.zero,
+            isolatedCenter,
             600f,
             null,
             null);
@@ -1578,11 +2749,156 @@ public sealed class CombatTestModeTests
             Is.InRange(12, 144));
         var path = new List<Vector3>();
         Assert.That(navigation.FindPath(
-            new Vector3(-100f, 80f, -100f),
-            new Vector3(100f, 80f, 100f),
+            isolatedCenter + new Vector3(-100f, 80f, -100f),
+            isolatedCenter + new Vector3(100f, 80f, 100f),
             path),
             Is.True);
         Assert.That(path.Count, Is.GreaterThan(0));
+    }
+
+    [Test]
+    public void HordeGroundSamplingDoesNotTreatBuildingRoofAsTerrain()
+    {
+        Vector3 isolatedCenter = new Vector3(22000f, 0f, 22000f);
+        GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        roots.Add(ground);
+        ground.name = "NavigationGround";
+        ground.transform.position = isolatedCenter + Vector3.down;
+        ground.transform.localScale = new Vector3(1200f, 2f, 1200f);
+        GameObject building = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        roots.Add(building);
+        building.name = "NavigationBuilding";
+        building.transform.position = isolatedCenter + Vector3.up * 30f;
+        building.transform.localScale = new Vector3(40f, 60f, 40f);
+        Physics.SyncTransforms();
+
+        var navigation = new HordeAirNavigationService();
+        IEnumerator build = navigation.Build(
+            isolatedCenter,
+            600f,
+            null,
+            null);
+        while (build.MoveNext())
+        {
+        }
+
+        Assert.That(
+            navigation.TrySampleGround(
+                isolatedCenter.x,
+                isolatedCenter.z,
+                out float sampledGround),
+            Is.True);
+        Assert.That(sampledGround, Is.EqualTo(0f).Within(0.05f),
+            "A roof above the flat ground must not lift the navigation graph.");
+    }
+
+    [Test]
+    public void GroundedPlayerBallisticLineIsIndependentFromHullCorridor()
+    {
+        Vector3 isolatedCenter = new Vector3(26000f, 0f, 26000f);
+        GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        roots.Add(ground);
+        ground.name = "NavigationGround";
+        ground.transform.position = isolatedCenter + Vector3.down;
+        ground.transform.localScale = new Vector3(200f, 2f, 200f);
+        Physics.SyncTransforms();
+
+        var navigation = new HordeAirNavigationService();
+        Vector3 muzzle = isolatedCenter + new Vector3(-50f, 6f, 0f);
+        Vector3 groundedTarget = isolatedCenter + Vector3.up;
+        Assert.That(
+            navigation.HasStaticClearCorridor(muzzle, groundedTarget),
+            Is.False,
+            "The five-metre enemy hull must remain blocked by the ground.");
+        Assert.That(
+            navigation.HasStaticClearBallisticLine(muzzle, groundedTarget),
+            Is.True,
+            "A thin projectile line to the landed vehicle must stay valid.");
+
+        GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        roots.Add(wall);
+        wall.name = "NavigationWall";
+        wall.transform.position =
+            isolatedCenter + new Vector3(-25f, 4f, 0f);
+        wall.transform.localScale = new Vector3(2f, 8f, 12f);
+        Physics.SyncTransforms();
+        Assert.That(
+            navigation.HasStaticClearBallisticLine(muzzle, groundedTarget),
+            Is.False,
+            "Separating projectile LOS must not permit firing through buildings.");
+    }
+
+    [Test]
+    public void GroundedPlayerGetsReachableOrdinaryEnemyAttackAnchor()
+    {
+        Vector3 isolatedCenter = new Vector3(24000f, 0f, 24000f);
+        GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        roots.Add(ground);
+        ground.name = "NavigationGround";
+        ground.transform.position = isolatedCenter + Vector3.down;
+        ground.transform.localScale = new Vector3(1200f, 2f, 1200f);
+        Physics.SyncTransforms();
+
+        var navigation = new HordeAirNavigationService();
+        IEnumerator build = navigation.Build(
+            isolatedCenter,
+            600f,
+            null,
+            null);
+        while (build.MoveNext())
+        {
+        }
+        var path = new List<Vector3>();
+        Vector3 player = isolatedCenter + Vector3.up;
+
+        Assert.That(
+            navigation.TryFindGroundedCombatApproachPath(
+                isolatedCenter + new Vector3(-220f, 70f, 0f),
+                player,
+                HordeEnemyProfile.ForRole(HordeEnemyRole.Striker),
+                0,
+                path,
+                out Vector3 approach),
+            Is.True);
+        Assert.That(path, Is.Not.Empty);
+        Assert.That(approach.y, Is.GreaterThanOrEqualTo(24f));
+        Assert.That(
+            Vector3.ProjectOnPlane(approach - player, Vector3.up).magnitude,
+            Is.InRange(85f, 120f));
+        Assert.That(
+            navigation.HasStaticClearBallisticLine(approach, player),
+            Is.True);
+    }
+
+    [Test]
+    public void GroundedPlayerSuicideApproachStaysHullClearOfGround()
+    {
+        Vector3 isolatedCenter = new Vector3(28000f, 0f, 28000f);
+        GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        roots.Add(ground);
+        ground.name = "NavigationGround";
+        ground.transform.position = isolatedCenter + Vector3.down;
+        ground.transform.localScale = new Vector3(300f, 2f, 300f);
+        Physics.SyncTransforms();
+
+        var navigation = new HordeAirNavigationService();
+        Vector3 player = isolatedCenter + Vector3.up;
+        Vector3 safeApproach =
+            navigation.ResolveSafePlayerApproachPoint(player);
+
+        Assert.That(safeApproach.y, Is.EqualTo(7f).Within(0.05f));
+        Assert.That(
+            navigation.HasStaticClearCorridor(
+                isolatedCenter + new Vector3(-35f, 18f, 0f),
+                safeApproach),
+            Is.True);
+        Assert.That(
+            navigation.HasStaticClearCorridor(
+                isolatedCenter + new Vector3(-35f, 18f, 0f),
+                player),
+            Is.False,
+            "The safe intercept point fixes the ground collision without " +
+            "allowing the enemy hull to pass through the terrain.");
     }
 
     [Test]
@@ -1757,6 +3073,44 @@ public sealed class CombatTestModeTests
         }
     }
 
+    static void AssertBossThrusterTorqueLeverCoverage(
+        ModularBossBuildResult build)
+    {
+        Dictionary<string, GridModuleRecord> records =
+            build.Model.Records.ToDictionary(record => record.RuntimeId);
+        foreach (ModularBossThrusterDirection direction in
+                 Enum.GetValues(typeof(ModularBossThrusterDirection)))
+        {
+            Vector3 forceDirection = BossDirectionVector(direction);
+            Vector3 firstTangent = Mathf.Abs(forceDirection.x) > 0.5f
+                ? Vector3.up
+                : Vector3.right;
+            Vector3 secondTangent = Vector3.Cross(
+                forceDirection,
+                firstTangent).normalized;
+            float firstLever = 0f;
+            float secondLever = 0f;
+            foreach (KeyValuePair<string, ModularBossThrusterDirection> item in
+                     build.ThrusterDirections)
+            {
+                if (item.Value != direction)
+                    continue;
+                Vector3 center =
+                    GridAssemblyModel.ModuleCenter(records[item.Key]);
+                firstLever = Mathf.Max(
+                    firstLever,
+                    Mathf.Abs(Vector3.Dot(center, firstTangent)));
+                secondLever = Mathf.Max(
+                    secondLever,
+                    Mathf.Abs(Vector3.Dot(center, secondTangent)));
+            }
+            Assert.That(firstLever, Is.GreaterThan(0.9f),
+                direction + " must retain its first rotation lever arm.");
+            Assert.That(secondLever, Is.GreaterThan(0.9f),
+                direction + " must retain its second rotation lever arm.");
+        }
+    }
+
     static Vector3 BossDirectionVector(
         ModularBossThrusterDirection direction)
     {
@@ -1775,6 +3129,49 @@ public sealed class CombatTestModeTests
             default:
                 return Vector3.back;
         }
+    }
+
+    static HashSet<Vector3Int> ResolveBossStructureCells(
+        ModularBossBuildResult build)
+    {
+        return new HashSet<Vector3Int>(build.Model.Records
+            .Where(record => record.Definition.Category ==
+                             GridModuleCategory.Structure)
+            .SelectMany(record => build.Model.GetCells(record)));
+    }
+
+    static Vector3Int ResolveBossHullSpan(ModularBossBuildResult build)
+    {
+        HashSet<Vector3Int> cells = ResolveBossStructureCells(build);
+        return new Vector3Int(
+            cells.Max(cell => cell.x) - cells.Min(cell => cell.x) + 1,
+            cells.Max(cell => cell.y) - cells.Min(cell => cell.y) + 1,
+            cells.Max(cell => cell.z) - cells.Min(cell => cell.z) + 1);
+    }
+
+    static void AssertCentrallySymmetricBossHull(
+        ModularBossBuildResult build)
+    {
+        HashSet<Vector3Int> cells = ResolveBossStructureCells(build);
+        foreach (Vector3Int cell in cells)
+        {
+            Assert.That(cells.Contains(new Vector3Int(
+                    -1 - cell.x,
+                    -1 - cell.y,
+                    -1 - cell.z)),
+                Is.True,
+                $"Missing central mirror for hull cell {cell}.");
+        }
+    }
+
+    static void AssertNonCubicBossHull(ModularBossBuildResult build)
+    {
+        Vector3Int span = ResolveBossHullSpan(build);
+        int boundingVolume = span.x * span.y * span.z;
+        Assert.That(
+            boundingVolume,
+            Is.GreaterThan(build.StructureModuleCount + 8),
+            "A generated hull must not fill its entire bounding cube.");
     }
 
     static GridModuleDefinition[] CreateBossDefinitions()

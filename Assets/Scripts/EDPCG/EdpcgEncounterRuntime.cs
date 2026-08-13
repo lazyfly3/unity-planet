@@ -24,6 +24,16 @@ namespace UnityPlanet.EDPCG
             public Rigidbody body;
         }
 
+        sealed class PendingGridRouteTarget
+        {
+            public string stableId = string.Empty;
+            public string routeId = string.Empty;
+            public int segmentIndex = -1;
+            public float segmentT;
+            public Vector3 routeEntryWorldPosition;
+            public Vector3 destinationWorldPosition;
+        }
+
         const float TelemetryInterval = 0.1f;
         const float PressureEpsilon = 0.001f;
 
@@ -43,6 +53,10 @@ namespace UnityPlanet.EDPCG
                     StringComparer.Ordinal);
         readonly List<string> environmentalCleanupIds =
             new List<string>(16);
+        readonly Dictionary<string, PendingGridRouteTarget>
+            pendingGridRouteTargets =
+                new Dictionary<string, PendingGridRouteTarget>(
+                    StringComparer.Ordinal);
 
         HordeCombatDirector director;
         Rigidbody playerBody;
@@ -50,7 +64,17 @@ namespace UnityPlanet.EDPCG
         EdpcgDifficultyProfile profile;
         EdpcgTierSettings settings;
         EdpcgTierSettings baselineSettings;
+        EdpcgCityTacticalChallengeProfile cityChallengeProfile;
+        EdpcgCityTacticalChallengeSettings cityChallengeSettings;
+        FinitePlanetUrbanCombatRuntime urbanRuntime;
         EdpcgCityTacticalRuntimeMap tacticalMap;
+        readonly EdpcgGridFireAnalysis[] gridFireAnalyses =
+            new EdpcgGridFireAnalysis[3];
+        EdpcgGridFireAnalysis activeGridFireAnalysis;
+        EdpcgGridFireCell activeGridFireCell;
+        EdpcgCityTacticalChallengeReport cityChallengeReport;
+        string gridCellCandidateId = string.Empty;
+        float gridCellCandidateSince;
         EdpcgRouteReservationService reservations;
         EdpcgTelemetryRecorder recorder;
         EdpcgPressureSample currentSample = new EdpcgPressureSample();
@@ -69,11 +93,24 @@ namespace UnityPlanet.EDPCG
         int attackTokensUsed;
         int suicideCommitCount;
         int rangedFireLaneCount;
+        int pursuingThreatCount;
+        int closeApproachThreatCount;
         int navigationRecoveryCount;
-        int activeThreatCost;
+        float activeThreatCost;
+        int pressureDirectionCount;
+        int pressureDirectionMask;
         int changeSequence;
         int rosterSeed;
         int citySeed;
+        int pressureAssistLevel;
+        int pressureBrakeLevel;
+        float lowPressureControlSeconds;
+        float highPressureControlSeconds;
+        float pressureControlReleaseSeconds;
+        int facilityAssaultSpawnUrgency;
+        float nextFacilityAssaultObjectiveAlertAt;
+        readonly HashSet<int> destroyedFacilityAssaultObjectives =
+            new HashSet<int>();
         string missionId = string.Empty;
         bool configured;
         bool running;
@@ -81,8 +118,24 @@ namespace UnityPlanet.EDPCG
         public EdpcgDifficultyProfile Profile => profile;
         public EdpcgTierSettings Settings => settings;
         public EdpcgTierSettings BaselineSettings => baselineSettings;
+        public EdpcgCityTacticalChallengeProfile CityChallengeProfile =>
+            cityChallengeProfile;
+        public EdpcgCityTacticalChallengeSettings CityChallengeSettings =>
+            cityChallengeSettings;
+        public EdpcgGridFireAnalysis ActiveGridFireAnalysis =>
+            activeGridFireAnalysis;
+        public EdpcgGridFireCell ActiveGridFireCell => activeGridFireCell;
+        public EdpcgCityTacticalChallengeReport CityChallengeReport =>
+            cityChallengeReport;
+        public float ActiveGridCellDwellSeconds => activeGridFireCell != null
+            ? Mathf.Max(0f, elapsed - gridCellCandidateSince)
+            : 0f;
         public EdpcgCityTacticalRuntimeMap TacticalMap => tacticalMap;
         public EdpcgRouteReservationService Reservations => reservations;
+        public FinitePlanetUrbanCombatRuntime UrbanRuntime => urbanRuntime;
+        public Vector3 PlayerWorldCenter => playerBody != null
+            ? playerBody.worldCenterOfMass
+            : Vector3.zero;
         public EdpcgTelemetryRecorder Recorder => recorder;
         public IReadOnlyList<EdpcgRosterMember> Roster => roster;
         public EdpcgPressureSample CurrentSample => currentSample;
@@ -99,6 +152,18 @@ namespace UnityPlanet.EDPCG
         public int UnresolvedCount => Mathf.Max(0, roster.Count - ResolvedCount);
         public int EnvironmentalPursuitCount =>
             environmentalCommitments.Count;
+        /// <summary>
+        /// A bounded, one-wave scheduling hint raised only by the formal
+        /// industrial-outpost objective. The horde director may use this to
+        /// bring its next scheduling check forward; all normal population,
+        /// hard-pressure, fixed-roster and spawn-position gates still apply.
+        /// </summary>
+        public int SpawnUrgency =>
+            EdpcgFacilityAssaultPacingPolicy.Applies(missionId)
+                ? facilityAssaultSpawnUrgency
+                : 0;
+        public int FacilityAssaultDestroyedObjectiveCount =>
+            destroyedFacilityAssaultObjectives.Count;
         public bool IsRosterResolved => roster.Count > 0 &&
                                         ResolvedCount >= roster.Count;
         public bool CompletionQuotaMet => settings != null &&
@@ -114,22 +179,8 @@ namespace UnityPlanet.EDPCG
             {
                 if (settings == null)
                     return 1;
-                float multiplier = phase == EdpcgEncounterPhase.Preview
-                    ? 0.45f
-                    : phase == EdpcgEncounterPhase.Engage
-                        ? 0.82f
-                        : phase == EdpcgEncounterPhase.Peak ? 1f : 0.58f;
-                int cap = Mathf.CeilToInt(settings.populationCap * multiplier);
-                if (currentSample.actualPressure <
-                    currentSample.targetPressureMinimum - 0.08f)
-                {
-                    cap++;
-                }
-                else if (currentSample.actualPressure >
-                         currentSample.targetPressureMaximum + 0.04f)
-                {
-                    cap -= 2;
-                }
+                int cap = BasePopulationCapForPressure() +
+                          pressureAssistLevel - pressureBrakeLevel * 2;
                 return Mathf.Clamp(cap, 1, settings.populationCap);
             }
         }
@@ -140,13 +191,13 @@ namespace UnityPlanet.EDPCG
             {
                 if (settings == null)
                     return 1;
-                int cap = Mathf.Min(settings.engagementCap, PopulationCap);
-                if (phase == EdpcgEncounterPhase.Preview ||
-                    phase == EdpcgEncounterPhase.Recover)
-                {
-                    cap = Mathf.CeilToInt(cap * 0.55f);
-                }
-                return Mathf.Max(1, cap);
+                int cap = BaseEngagementCapForPressure();
+                cap += Mathf.CeilToInt(pressureAssistLevel * 0.5f) -
+                       pressureBrakeLevel;
+                return Mathf.Clamp(
+                    cap,
+                    1,
+                    Mathf.Min(settings.engagementCap, PopulationCap));
             }
         }
 
@@ -156,19 +207,53 @@ namespace UnityPlanet.EDPCG
             {
                 if (settings == null)
                     return 1;
-                int cap = settings.attackTokenCap;
-                if (phase == EdpcgEncounterPhase.Preview ||
-                    phase == EdpcgEncounterPhase.Recover)
-                {
-                    cap = 1;
-                }
-                if (currentSample.actualPressure >
-                    currentSample.targetPressureMaximum)
-                {
-                    cap--;
-                }
+                int cap = BaseAttackTokenCapForPressure();
+                cap += pressureAssistLevel / 2 - pressureBrakeLevel;
                 return Mathf.Clamp(cap, 1, settings.attackTokenCap);
             }
+        }
+
+        int BasePopulationCapForPressure()
+        {
+            if (settings == null)
+                return 1;
+            float multiplier = phase == EdpcgEncounterPhase.Preview
+                ? 0.45f
+                : phase == EdpcgEncounterPhase.Engage
+                    ? 0.82f
+                    : phase == EdpcgEncounterPhase.Peak ? 1f : 0.58f;
+            return Mathf.Clamp(
+                Mathf.CeilToInt(settings.populationCap * multiplier),
+                1,
+                settings.populationCap);
+        }
+
+        int BaseEngagementCapForPressure()
+        {
+            if (settings == null)
+                return 1;
+            int cap = Mathf.Min(
+                settings.engagementCap,
+                BasePopulationCapForPressure());
+            if (phase == EdpcgEncounterPhase.Preview ||
+                phase == EdpcgEncounterPhase.Recover)
+            {
+                cap = Mathf.CeilToInt(cap * 0.55f);
+            }
+            return Mathf.Clamp(
+                cap,
+                1,
+                Mathf.Min(settings.engagementCap, settings.populationCap));
+        }
+
+        int BaseAttackTokenCapForPressure()
+        {
+            if (settings == null)
+                return 1;
+            return phase == EdpcgEncounterPhase.Preview ||
+                   phase == EdpcgEncounterPhase.Recover
+                ? 1
+                : settings.attackTokenCap;
         }
 
         public int StrategyLevel
@@ -182,16 +267,9 @@ namespace UnityPlanet.EDPCG
                     : phase == EdpcgEncounterPhase.Engage
                         ? 1
                         : phase == EdpcgEncounterPhase.Peak ? 2 : 0;
-                if (currentSample.actualPressure <
-                    currentSample.targetPressureMinimum - 0.06f)
-                {
+                if (pressureAssistLevel > 0)
                     level++;
-                }
-                if (currentSample.actualPressure >
-                    currentSample.targetPressureMaximum)
-                {
-                    level--;
-                }
+                level -= pressureBrakeLevel;
                 return Mathf.Clamp(level, 0, settings.maximumStrategyLevel);
             }
         }
@@ -205,16 +283,11 @@ namespace UnityPlanet.EDPCG
                 float multiplier = phase == EdpcgEncounterPhase.Recover
                     ? 1.75f
                     : phase == EdpcgEncounterPhase.Preview ? 1.35f : 1f;
-                if (currentSample.actualPressure >
-                    currentSample.targetPressureMaximum)
-                {
-                    multiplier *= 1.35f;
-                }
-                else if (currentSample.actualPressure <
-                         currentSample.targetPressureMinimum)
-                {
-                    multiplier *= 0.82f;
-                }
+                multiplier *= Mathf.Pow(0.78f, pressureAssistLevel);
+                multiplier *= Mathf.Pow(1.25f, pressureBrakeLevel);
+                multiplier *=
+                    EdpcgFacilityAssaultPacingPolicy.SpawnIntervalMultiplier(
+                        missionId);
                 return Mathf.Max(0.25f,
                     settings.spawnIntervalSeconds * multiplier);
             }
@@ -233,14 +306,63 @@ namespace UnityPlanet.EDPCG
             director = combatDirector;
             playerBody = targetPlayerBody;
             playerGraph = targetPlayerGraph;
+            urbanRuntime = urban;
+            cityChallengeProfile =
+                EdpcgCityTacticalChallengeProfile.LoadOrCreateMemoryDefault();
             profile = difficultyProfile ??
+                      cityChallengeProfile.ordinaryEnemyProfile ??
                       EdpcgDifficultyProfile.LoadOrCreateMemoryDefault();
             settings = profile.Resolve(zeroBasedPlanetTier);
-            baselineSettings = settings.ValidatedCopy();
             missionId = targetMissionId ?? string.Empty;
+            // Resolve() returns a session copy. Applying the facility policy to
+            // that copy cannot mutate the shared difficulty asset or its
+            // integrationMode, and all other missions remain byte-for-byte on
+            // their authored settings.
+            EdpcgFacilityAssaultPacingPolicy.ApplySessionSettings(
+                missionId,
+                settings);
+            baselineSettings = settings.ValidatedCopy();
+            cityChallengeSettings = cityChallengeProfile.Resolve(
+                zeroBasedPlanetTier);
             citySeed = deterministicSeed;
             rosterSeed = deterministicSeed ^ unchecked((int)0x45D9F3B);
             tacticalMap = EdpcgCityTacticalRuntimeMap.Build(urban);
+            float actualShipWidth = ResolvePlayerShipWidth(targetPlayerBody);
+            EdpcgAirThreatAnalysisOptions threatOptions =
+                EdpcgAirThreatAnalysisOptions.CreateDefault(
+                    urban != null ? urban.CitySettings : null,
+                    zeroBasedPlanetTier);
+            threatOptions.tierSettings = settings;
+            threatOptions.challengeSettings = cityChallengeSettings;
+            bool buildRuntimeThreatDomain = urban != null &&
+                cityChallengeSettings != null &&
+                cityChallengeSettings.enableOrdinaryRangedReposition;
+            for (int layer = 0; layer < gridFireAnalyses.Length; layer++)
+            {
+                gridFireAnalyses[layer] = buildRuntimeThreatDomain
+                    ? EdpcgGridFireAnalyzer.Build(
+                        urban,
+                        (EdpcgFireAnalysisAltitudeLayer)layer,
+                        actualShipWidth,
+                        threatOptions)
+                    : null;
+            }
+            if (buildRuntimeThreatDomain)
+            {
+                EdpcgGridFireAnalyzer.LinkAltitudeLayers(
+                    gridFireAnalyses[0],
+                    gridFireAnalyses[1],
+                    gridFireAnalyses[2],
+                    urban.RuntimeGeometrySnapshot,
+                    threatOptions);
+            }
+            cityChallengeReport =
+                EdpcgCityTacticalChallengeEvaluator.Evaluate(
+                    cityChallengeSettings,
+                    gridFireAnalyses[0],
+                    gridFireAnalyses[1],
+                    gridFireAnalyses[2],
+                    tacticalMap);
             reservations = new EdpcgRouteReservationService(tacticalMap);
             recorder = new EdpcgTelemetryRecorder();
             configured = director != null && playerBody != null &&
@@ -256,6 +378,7 @@ namespace UnityPlanet.EDPCG
             BuildRoster();
             recorder.Clear();
             reservations.Clear();
+            pendingGridRouteTargets.Clear();
             ClearEnvironmentalTrapCommitments();
             originalValues.Clear();
             elapsed = 0f;
@@ -263,10 +386,22 @@ namespace UnityPlanet.EDPCG
             smoothedPressure = 0f;
             previousRawPressure = 0f;
             pressureVelocity = 0f;
+            pressureAssistLevel = 0;
+            pressureBrakeLevel = 0;
+            lowPressureControlSeconds = 0f;
+            highPressureControlSeconds = 0f;
+            pressureControlReleaseSeconds = 0f;
+            facilityAssaultSpawnUrgency = 0;
+            nextFacilityAssaultObjectiveAlertAt = 0f;
+            destroyedFacilityAssaultObjectives.Clear();
             activeArea = null;
             areaCandidate = null;
             areaCandidateSince = 0f;
             areaExitedSince = -1f;
+            activeGridFireAnalysis = null;
+            activeGridFireCell = null;
+            gridCellCandidateId = string.Empty;
+            gridCellCandidateSince = 0f;
             phase = EdpcgEncounterPhase.Preview;
             currentSample = new EdpcgPressureSample
             {
@@ -296,7 +431,119 @@ namespace UnityPlanet.EDPCG
             running = false;
             ClearEnvironmentalTrapCommitments();
             reservations?.Clear();
+            pendingGridRouteTargets.Clear();
+            facilityAssaultSpawnUrgency = 0;
+            destroyedFacilityAssaultObjectives.Clear();
             EdpcgRuntimeRegistry.Unregister(this);
+        }
+
+        /// <summary>
+        /// Reports real damage to an industrial-outpost objective. This does
+        /// not add pressure and cannot create an enemy. It only releases one
+        /// bounded pressure-assist step and raises a scheduling hint, with a
+        /// deterministic cooldown so automatic weapons cannot request a wave
+        /// every frame.
+        /// </summary>
+        public bool NotifyFacilityAssaultObjectiveDamaged()
+        {
+            if (!running || settings == null ||
+                !EdpcgFacilityAssaultPacingPolicy.Applies(missionId) ||
+                elapsed < nextFacilityAssaultObjectiveAlertAt)
+            {
+                return false;
+            }
+
+            nextFacilityAssaultObjectiveAlertAt = elapsed +
+                EdpcgFacilityAssaultPacingPolicy.ObjectiveAlertCooldownSeconds;
+            facilityAssaultSpawnUrgency =
+                EdpcgFacilityAssaultPacingPolicy.MergeSpawnUrgency(
+                    facilityAssaultSpawnUrgency,
+                    1);
+            pressureAssistLevel =
+                EdpcgFacilityAssaultPacingPolicy.ResolveAssistFloor(
+                    pressureAssistLevel,
+                    1,
+                    settings.maximumPressureAssistSteps);
+            recorder?.RecordEvent(
+                elapsed,
+                EdpcgTelemetryEventKind.StateChanged,
+                "facility-objective-damaged");
+            return true;
+        }
+
+        /// <summary>
+        /// Reports destruction of one industrial-outpost objective. Supplying
+        /// its stable objective index makes duplicate callbacks idempotent.
+        /// The no-argument form remains available for simple callers.
+        /// </summary>
+        public bool NotifyFacilityAssaultObjectiveDestroyed(
+            int objectiveIndex = -1)
+        {
+            if (!running || settings == null ||
+                !EdpcgFacilityAssaultPacingPolicy.Applies(missionId))
+            {
+                return false;
+            }
+            if (objectiveIndex >= 0 &&
+                !destroyedFacilityAssaultObjectives.Add(objectiveIndex))
+            {
+                return false;
+            }
+            if (objectiveIndex < 0)
+            {
+                int anonymousIndex = 0;
+                while (destroyedFacilityAssaultObjectives.Contains(
+                           anonymousIndex))
+                {
+                    anonymousIndex++;
+                }
+                destroyedFacilityAssaultObjectives.Add(anonymousIndex);
+            }
+
+            nextFacilityAssaultObjectiveAlertAt = Mathf.Max(
+                nextFacilityAssaultObjectiveAlertAt,
+                elapsed +
+                EdpcgFacilityAssaultPacingPolicy.ObjectiveAlertCooldownSeconds);
+            facilityAssaultSpawnUrgency =
+                EdpcgFacilityAssaultPacingPolicy.MergeSpawnUrgency(
+                    facilityAssaultSpawnUrgency,
+                    2);
+            pressureAssistLevel =
+                EdpcgFacilityAssaultPacingPolicy.ResolveAssistFloor(
+                    pressureAssistLevel,
+                    2,
+                    settings.maximumPressureAssistSteps);
+            recorder?.RecordEvent(
+                elapsed,
+                EdpcgTelemetryEventKind.StateChanged,
+                "facility-objective-destroyed:" +
+                objectiveIndex.ToString(CultureInfo.InvariantCulture));
+            return true;
+        }
+
+        /// <summary>
+        /// Atomically consumes the current facility scheduling hint. Consumers
+        /// should only advance their next scheduling check; ShouldSpawn and the
+        /// existing director gates remain the authority for actual spawning.
+        /// </summary>
+        public bool TryConsumeSpawnUrgency(out int urgency)
+        {
+            urgency = 0;
+            if (!running ||
+                !EdpcgFacilityAssaultPacingPolicy.Applies(missionId) ||
+                facilityAssaultSpawnUrgency <= 0)
+            {
+                return false;
+            }
+
+            urgency = facilityAssaultSpawnUrgency;
+            facilityAssaultSpawnUrgency = 0;
+            recorder?.RecordEvent(
+                elapsed,
+                EdpcgTelemetryEventKind.StateChanged,
+                "facility-spawn-urgency-consumed:" +
+                urgency.ToString(CultureInfo.InvariantCulture));
+            return true;
         }
 
         void ClearEnvironmentalTrapCommitments()
@@ -326,6 +573,16 @@ namespace UnityPlanet.EDPCG
             if (nextPhase != phase)
             {
                 phase = nextPhase;
+                lowPressureControlSeconds = 0f;
+                highPressureControlSeconds = 0f;
+                pressureControlReleaseSeconds = 0f;
+                if (phase == EdpcgEncounterPhase.Preview ||
+                    phase == EdpcgEncounterPhase.Recover)
+                {
+                    pressureAssistLevel = Mathf.Min(
+                        pressureAssistLevel,
+                        1);
+                }
                 recorder.RecordEvent(
                     elapsed,
                     EdpcgTelemetryEventKind.PhaseChanged,
@@ -335,6 +592,8 @@ namespace UnityPlanet.EDPCG
             reservations.ReleaseExpired(Time.time);
             ReconcileEnvironmentalTrapState();
             UpdateAreaState();
+            UpdateGridFireState();
+            UpdatePressureControl(safeDelta);
             UpdatePressure(safeDelta);
             if (elapsed + PressureEpsilon >= nextTelemetryAt)
             {
@@ -350,17 +609,102 @@ namespace UnityPlanet.EDPCG
             int currentSuicideCommits,
             int currentRangedFireLanes,
             int currentNavigationRecoveries,
-            int currentActiveThreatCost)
+            float currentActiveThreatCost)
+        {
+            UpdateDirectorSnapshot(
+                currentActiveCount,
+                currentEngagementCount,
+                currentAttackTokens,
+                currentSuicideCommits,
+                currentRangedFireLanes,
+                currentNavigationRecoveries,
+                currentActiveThreatCost,
+                0,
+                0,
+                0,
+                0);
+        }
+
+        public void UpdateDirectorSnapshot(
+            int currentActiveCount,
+            int currentEngagementCount,
+            int currentAttackTokens,
+            int currentSuicideCommits,
+            int currentRangedFireLanes,
+            int currentNavigationRecoveries,
+            float currentActiveThreatCost,
+            int currentPressureDirectionCount)
+        {
+            UpdateDirectorSnapshot(
+                currentActiveCount,
+                currentEngagementCount,
+                currentAttackTokens,
+                currentSuicideCommits,
+                currentRangedFireLanes,
+                currentNavigationRecoveries,
+                currentActiveThreatCost,
+                currentPressureDirectionCount,
+                0,
+                0,
+                0);
+        }
+
+        public void UpdateDirectorSnapshot(
+            int currentActiveCount,
+            int currentEngagementCount,
+            int currentAttackTokens,
+            int currentSuicideCommits,
+            int currentRangedFireLanes,
+            int currentNavigationRecoveries,
+            float currentActiveThreatCost,
+            int currentPressureDirectionCount,
+            int currentPressureDirectionMask)
+        {
+            UpdateDirectorSnapshot(
+                currentActiveCount,
+                currentEngagementCount,
+                currentAttackTokens,
+                currentSuicideCommits,
+                currentRangedFireLanes,
+                currentNavigationRecoveries,
+                currentActiveThreatCost,
+                currentPressureDirectionCount,
+                currentPressureDirectionMask,
+                0,
+                0);
+        }
+
+        public void UpdateDirectorSnapshot(
+            int currentActiveCount,
+            int currentEngagementCount,
+            int currentAttackTokens,
+            int currentSuicideCommits,
+            int currentRangedFireLanes,
+            int currentNavigationRecoveries,
+            float currentActiveThreatCost,
+            int currentPressureDirectionCount,
+            int currentPressureDirectionMask,
+            int currentPursuingThreatCount,
+            int currentCloseApproachThreatCount)
         {
             activeCount = Mathf.Max(0, currentActiveCount);
             engagementCount = Mathf.Max(0, currentEngagementCount);
             attackTokensUsed = Mathf.Max(0, currentAttackTokens);
             suicideCommitCount = Mathf.Max(0, currentSuicideCommits);
             rangedFireLaneCount = Mathf.Max(0, currentRangedFireLanes);
+            pursuingThreatCount = Mathf.Max(0, currentPursuingThreatCount);
+            closeApproachThreatCount = Mathf.Max(
+                0,
+                currentCloseApproachThreatCount);
             navigationRecoveryCount = Mathf.Max(
                 0,
                 currentNavigationRecoveries);
             activeThreatCost = Mathf.Max(0, currentActiveThreatCost);
+            pressureDirectionCount = Mathf.Clamp(
+                currentPressureDirectionCount,
+                0,
+                8);
+            pressureDirectionMask = currentPressureDirectionMask & 0xFF;
         }
 
         public bool TryReserveNextRosterMember(
@@ -795,11 +1139,29 @@ namespace UnityPlanet.EDPCG
             {
                 return false;
             }
-            if (!tacticalMap.TrySelectRoleDestination(
+            bool resolvedByGrid = TryResolveGridPressureDestination(
+                    enemy,
+                    intent,
+                    out destination,
+                    out areaId,
+                    out routeId);
+            PendingGridRouteTarget gridTarget = null;
+            if (resolvedByGrid)
+            {
+                pendingGridRouteTargets.TryGetValue(
+                    enemy.RosterMemberId, out gridTarget);
+            }
+            else
+            {
+                pendingGridRouteTargets.Remove(enemy.RosterMemberId);
+            }
+            if (!resolvedByGrid && !tacticalMap.TrySelectRoleDestination(
                     enemy.Role,
                     enemy.RosterIndex,
                     playerBody.worldCenterOfMass,
                     intent,
+                    settings.integrationMode >=
+                    EdpcgIntegrationMode.TacticalAssignments,
                     out destination,
                     out areaId,
                     out routeId))
@@ -809,16 +1171,104 @@ namespace UnityPlanet.EDPCG
             if (!string.IsNullOrEmpty(routeId) &&
                 tacticalMap.TryGetRoute(routeId, out EdpcgRuntimeRoute route))
             {
-                reservations.ReleaseOwner(enemy.RosterMemberId);
-                if (reservations.TryReserve(
+                if (reservations.TryGetOwnerReservation(
+                        enemy.RosterMemberId,
+                        out EdpcgRouteReservation existing) &&
+                    string.Equals(
+                        existing.routeId,
+                        routeId,
+                        StringComparison.Ordinal) &&
+                    ReservationMatchesGridTarget(existing, gridTarget))
+                {
+                    float remaining = gridTarget != null
+                        ? EstimateTargetedRouteSeconds(
+                            route, enemy.BodyPosition, gridTarget,
+                            enemy.Profile != null
+                                ? enemy.Profile.maximumSpeed
+                                : 48f,
+                            settings.semanticReplanSeconds)
+                        : route.EstimatedTravelSeconds;
+                    reservations.Renew(
+                        existing.reservationId,
+                        Time.time,
+                        settings.reservationLeaseSeconds,
+                        remaining);
+                    reservationId = existing.reservationId;
+                }
+                else
+                {
+                    reservations.ReleaseOwner(enemy.RosterMemberId);
+                }
+                int direction = 1;
+                if (gridTarget != null && route.AllowReverse &&
+                    route.Points != null && route.Points.Length >= 2)
+                {
+                    ProjectRouteProgress(
+                        route.Points,
+                        enemy.BodyPosition,
+                        out _, out _, out float currentProgress);
+                    float targetProgress = RouteProgressDistance(
+                        route.Points,
+                        gridTarget.segmentIndex,
+                        gridTarget.segmentT);
+                    direction = currentProgress <= targetProgress ? 1 : -1;
+                }
+                else if (route.AllowReverse && route.Points != null &&
+                         route.Points.Length >= 2)
+                {
+                    float startDistance = Vector3.Distance(
+                        enemy.BodyPosition,
+                        route.Points[0]);
+                    float endDistance = Vector3.Distance(
+                        enemy.BodyPosition,
+                        route.Points[route.Points.Length - 1]);
+                    direction = startDistance <= endDistance ? 1 : -1;
+                }
+                if (!string.IsNullOrEmpty(reservationId))
+                {
+                    recorder.RecordEvent(
+                        elapsed,
+                        EdpcgTelemetryEventKind.PathRequested,
+                        intent + ":reuse-reservation",
+                        enemy.RosterMemberId,
+                        enemy.BodyPosition,
+                        0f,
+                        areaId,
+                        routeId);
+                    return true;
+                }
+                float travelSeconds = gridTarget != null
+                    ? EstimateTargetedRouteSeconds(
+                        route, enemy.BodyPosition, gridTarget,
+                        enemy.Profile != null
+                            ? enemy.Profile.maximumSpeed
+                            : 48f,
+                        settings.semanticReplanSeconds)
+                    : route.EstimatedTravelSeconds;
+                bool reserved = gridTarget != null
+                    ? reservations.TryReserveToProgress(
                         enemy.RosterMemberId,
                         routeId,
                         Time.time,
-                        route.EstimatedTravelSeconds,
+                        travelSeconds,
                         settings.reservationLeaseSeconds,
                         intent == EdpcgPathIntent.BreakContact ? 2 : 1,
-                        1,
-                        out reservationId))
+                        direction,
+                        gridTarget.segmentIndex,
+                        gridTarget.segmentT,
+                        gridTarget.routeEntryWorldPosition,
+                        gridTarget.stableId,
+                        out reservationId)
+                    : reservations.TryReserve(
+                        enemy.RosterMemberId,
+                        routeId,
+                        Time.time,
+                        travelSeconds,
+                        settings.reservationLeaseSeconds,
+                        intent == EdpcgPathIntent.BreakContact ? 2 : 1,
+                        direction,
+                        out reservationId);
+                if (reserved)
                 {
                     recorder.RecordEvent(
                         elapsed,
@@ -830,7 +1280,7 @@ namespace UnityPlanet.EDPCG
                         areaId,
                         routeId);
                 }
-                else if (tacticalMap.TryGetRoute(
+                else if (gridTarget == null && tacticalMap.TryGetRoute(
                              route.FallbackRouteId,
                              out EdpcgRuntimeRoute fallback) &&
                          reservations.TryReserve(
@@ -848,8 +1298,15 @@ namespace UnityPlanet.EDPCG
                 else
                 {
                     routeId = string.Empty;
+                    if (gridTarget != null)
+                    {
+                        pendingGridRouteTargets.Remove(
+                            enemy.RosterMemberId);
+                        return false;
+                    }
                 }
             }
+            pendingGridRouteTargets.Remove(enemy.RosterMemberId);
             recorder.RecordEvent(
                 elapsed,
                 EdpcgTelemetryEventKind.PathRequested,
@@ -860,6 +1317,223 @@ namespace UnityPlanet.EDPCG
                 areaId,
                 routeId);
             return true;
+        }
+
+        bool TryResolveGridPressureDestination(
+            HordeEnemyVehicle enemy,
+            EdpcgPathIntent intent,
+            out Vector3 destination,
+            out string areaId,
+            out string routeId)
+        {
+            destination = Vector3.zero;
+            areaId = string.Empty;
+            routeId = string.Empty;
+            if (enemy == null || cityChallengeSettings == null ||
+                !cityChallengeSettings.enableOrdinaryRangedReposition ||
+                settings == null ||
+                settings.integrationMode <
+                EdpcgIntegrationMode.TacticalAssignments ||
+                activeGridFireCell == null || !activeGridFireCell.flyable ||
+                elapsed - gridCellCandidateSince <
+                cityChallengeSettings.playerCellDwellSeconds)
+            {
+                return false;
+            }
+            if (intent != EdpcgPathIntent.Probe &&
+                intent != EdpcgPathIntent.MaskedFlank &&
+                intent != EdpcgPathIntent.RangedPerch &&
+                intent != EdpcgPathIntent.Suppress &&
+                intent != EdpcgPathIntent.MaskedHold)
+            {
+                return false;
+            }
+            EdpcgGridFireSourceKind desiredKind;
+            if (enemy.Role == HordeEnemyRole.Striker)
+            {
+                if (!cityChallengeSettings.allowStrikerReposition)
+                    return false;
+                desiredKind = EdpcgGridFireSourceKind.Striker;
+            }
+            else if (enemy.Role == HordeEnemyRole.Gunship)
+            {
+                if (!cityChallengeSettings.allowGunshipReposition)
+                    return false;
+                desiredKind = EdpcgGridFireSourceKind.Gunship;
+            }
+            else
+            {
+                // Interceptors remain governed by their suicide approach and
+                // environmental-trap commitment. They are never a gunline.
+                return false;
+            }
+
+            if (activeGridFireCell.safeExitCount <
+                    cityChallengeSettings.minimumSafeExitCount ||
+                activeGridFireCell.pressureScore >
+                    cityChallengeSettings.maximumAcceptedCellPressure)
+            {
+                return false;
+            }
+
+            Vector3 livePlayerPosition = playerBody != null
+                ? playerBody.worldCenterOfMass
+                : activeGridFireCell.worldSamplePosition;
+            int sector = SelectAllowedPressureSector(
+                activeGridFireCell,
+                desiredKind,
+                livePlayerPosition);
+            if (sector < 0)
+                return false;
+            int matchCount = 0;
+            for (int index = 0;
+                 index < activeGridFireCell.fireWindows.Count;
+                 index++)
+            {
+                EdpcgAirFireWindow window =
+                    activeGridFireCell.fireWindows[index];
+                if (IsRuntimeUsableFireWindow(window, desiredKind, sector,
+                        livePlayerPosition))
+                {
+                    matchCount++;
+                }
+            }
+            if (matchCount == 0)
+                return false;
+            int selected = PositiveModulo(
+                enemy.RosterIndex * 31 + (int)intent * 7,
+                matchCount);
+            for (int index = 0;
+                 index < activeGridFireCell.fireWindows.Count;
+                 index++)
+            {
+                EdpcgAirFireWindow window =
+                    activeGridFireCell.fireWindows[index];
+                if (!IsRuntimeUsableFireWindow(
+                        window, desiredKind, sector,
+                        livePlayerPosition) || selected-- != 0)
+                {
+                    continue;
+                }
+                if (director == null || playerBody == null ||
+                    !director.HasLineOfTravel(
+                        window.routeEntryWorldPosition,
+                        window.firingWorldPosition) ||
+                    !director.HasLineOfTravel(
+                        window.firingWorldPosition,
+                        playerBody.worldCenterOfMass))
+                {
+                    continue;
+                }
+                destination = window.firingWorldPosition;
+                areaId = activeGridFireCell.stableId;
+                routeId = window.routeId;
+                pendingGridRouteTargets[enemy.RosterMemberId] =
+                    new PendingGridRouteTarget
+                    {
+                        stableId = window.stableId,
+                        routeId = window.routeId,
+                        segmentIndex = window.routeSegmentIndex,
+                        segmentT = window.routeSegmentT,
+                        routeEntryWorldPosition =
+                            window.routeEntryWorldPosition,
+                        destinationWorldPosition =
+                            window.firingWorldPosition
+                    };
+                return true;
+            }
+            return false;
+        }
+
+        static bool IsRuntimeUsableFireWindow(
+            EdpcgAirFireWindow window,
+            EdpcgGridFireSourceKind kind,
+            int sector,
+            Vector3 livePlayerPosition)
+        {
+            return window != null && window.authorizedByTier &&
+                   // Narrow building-gap anchors stay diagnostic until the
+                   // real enemy movement controller validates turning,
+                   // braking and loiter volume. Existing enemies may still
+                   // naturally fire while passing a gap.
+                   !window.throughBuildingGap &&
+                   window.robustHullClear &&
+                   window.navigationCorridorClear &&
+                   window.aiPermissionCorridorClear &&
+                   window.projectileCorridorClear &&
+                   !string.IsNullOrEmpty(window.routeId) &&
+                   window.routeSegmentIndex >= 0 &&
+                   window.sourceKind == kind &&
+                   window.azimuthSector == sector &&
+                   Vector3.Distance(
+                       window.firingWorldPosition,
+                       livePlayerPosition) <= 420f &&
+                   EdpcgThreatDirectionUtility.HorizontalSector(
+                       livePlayerPosition,
+                       window.firingWorldPosition) == sector;
+        }
+
+        int SelectAllowedPressureSector(
+            EdpcgGridFireCell cell,
+            EdpcgGridFireSourceKind kind,
+            Vector3 livePlayerPosition)
+        {
+            int availableMask = 0;
+            for (int index = 0; index < cell.fireWindows.Count; index++)
+            {
+                EdpcgAirFireWindow window = cell.fireWindows[index];
+                if (window != null && window.authorizedByTier &&
+                    !window.throughBuildingGap &&
+                    window.robustHullClear &&
+                    window.navigationCorridorClear &&
+                    window.aiPermissionCorridorClear &&
+                    window.projectileCorridorClear &&
+                    !string.IsNullOrEmpty(window.routeId) &&
+                    window.routeSegmentIndex >= 0 &&
+                    window.sourceKind == kind &&
+                    Vector3.Distance(window.firingWorldPosition,
+                        livePlayerPosition) <= 420f)
+                {
+                    int liveSector =
+                        EdpcgThreatDirectionUtility.HorizontalSector(
+                            livePlayerPosition,
+                            window.firingWorldPosition);
+                    availableMask |= 1 << liveSector;
+                }
+            }
+            if (availableMask == 0)
+                return -1;
+
+            int liveMask = pressureDirectionMask & availableMask;
+            int maximumDirections = Mathf.Clamp(
+                cityChallengeSettings.maximumPressureDirections, 1, 3);
+            if (pressureDirectionCount >= maximumDirections)
+                return FirstSector(liveMask);
+
+            // Admit at most one new direction at a time. Every ranged enemy
+            // asked during the same director snapshot receives that same
+            // sector, preventing one frame from creating a 360-degree fan.
+            int newMask = availableMask & ~pressureDirectionMask;
+            int newSector = FirstSector(newMask);
+            return newSector >= 0 ? newSector : FirstSector(liveMask);
+        }
+
+        static int FirstSector(int mask)
+        {
+            for (int sector = 0; sector < 8; sector++)
+            {
+                if ((mask & (1 << sector)) != 0)
+                    return sector;
+            }
+            return -1;
+        }
+
+        static int PositiveModulo(int value, int modulus)
+        {
+            if (modulus <= 0)
+                return 0;
+            int result = value % modulus;
+            return result < 0 ? result + modulus : result;
         }
 
         public bool TryGetReservedRouteWaypoints(
@@ -897,12 +1571,20 @@ namespace UnityPlanet.EDPCG
             {
                 return false;
             }
-            if (!route.AllowReverse)
+            if (selected.hasTargetProgress)
             {
-                int waypointIndex = Mathf.Clamp(
-                    selected.waypointIndex,
-                    0,
-                    route.Points.Length - 1);
+                return BuildTargetedRouteWaypoints(
+                    selected, route, start, output);
+            }
+            int direction = route.AllowReverse
+                ? (selected.direction < 0 ? -1 : 1)
+                : 1;
+            int waypointIndex = Mathf.Clamp(
+                selected.waypointIndex,
+                0,
+                route.Points.Length - 1);
+            if (direction > 0)
+            {
                 while (waypointIndex < route.Points.Length - 1 &&
                        Vector3.Distance(
                            start,
@@ -919,21 +1601,184 @@ namespace UnityPlanet.EDPCG
                 }
                 return output.Count > 0;
             }
-            bool forward = Vector3.Distance(start, route.Points[0]) <=
-                           Vector3.Distance(
-                               start,
-                               route.Points[route.Points.Length - 1]);
-            if (forward)
+            while (waypointIndex > 0 &&
+                   Vector3.Distance(start, route.Points[waypointIndex]) < 18f)
             {
-                for (int index = 0; index < route.Points.Length; index++)
-                    output.Add(route.Points[index]);
+                waypointIndex--;
             }
-            else
+            selected.waypointIndex = waypointIndex;
+            for (int index = waypointIndex; index >= 0; index--)
             {
-                for (int index = route.Points.Length - 1; index >= 0; index--)
-                    output.Add(route.Points[index]);
+                output.Add(route.Points[index]);
             }
+            return output.Count > 0;
+        }
+
+        static bool BuildTargetedRouteWaypoints(
+            EdpcgRouteReservation reservation,
+            EdpcgRuntimeRoute route,
+            Vector3 start,
+            List<Vector3> output)
+        {
+            int targetSegment = Mathf.Clamp(
+                reservation.targetSegmentIndex,
+                0,
+                route.Points.Length - 2);
+            float targetT = Mathf.Clamp01(reservation.targetSegmentT);
+            Vector3 target = Vector3.Lerp(
+                route.Points[targetSegment],
+                route.Points[targetSegment + 1],
+                targetT);
+            ProjectRouteProgress(
+                route.Points,
+                start,
+                out int currentSegment,
+                out _,
+                out float currentProgress);
+            float targetProgress = RouteProgressDistance(
+                route.Points, targetSegment, targetT);
+            if (Mathf.Abs(targetProgress - currentProgress) <= 8f)
+            {
+                output.Add(target);
+                reservation.waypointIndex = targetSegment;
+                return true;
+            }
+
+            if (currentProgress < targetProgress)
+            {
+                int lastVertex = targetT <= 0.001f
+                    ? targetSegment
+                    : targetSegment + 1;
+                for (int index = currentSegment + 1;
+                     index <= lastVertex && index < route.Points.Length;
+                     index++)
+                {
+                    if (index == targetSegment + 1 && targetT < 0.999f)
+                        break;
+                    output.Add(route.Points[index]);
+                }
+                if (output.Count == 0 ||
+                    Vector3.Distance(output[output.Count - 1], target) > 0.5f)
+                {
+                    output.Add(target);
+                }
+                reservation.direction = 1;
+                reservation.waypointIndex = targetSegment;
+                return true;
+            }
+
+            for (int index = currentSegment;
+                 index > targetSegment && index >= 0;
+                 index--)
+            {
+                output.Add(route.Points[index]);
+            }
+            if (output.Count == 0 ||
+                Vector3.Distance(output[output.Count - 1], target) > 0.5f)
+            {
+                output.Add(target);
+            }
+            reservation.direction = -1;
+            reservation.waypointIndex = targetSegment + 1;
             return true;
+        }
+
+        static bool ReservationMatchesGridTarget(
+            EdpcgRouteReservation reservation,
+            PendingGridRouteTarget target)
+        {
+            if (reservation == null)
+                return false;
+            if (target == null)
+                return !reservation.hasTargetProgress;
+            return reservation.hasTargetProgress &&
+                   reservation.targetSegmentIndex == target.segmentIndex &&
+                   Mathf.Abs(reservation.targetSegmentT - target.segmentT) <=
+                   0.001f &&
+                   string.Equals(
+                       reservation.targetStableId,
+                       target.stableId,
+                       StringComparison.Ordinal);
+        }
+
+        static float EstimateTargetedRouteSeconds(
+            EdpcgRuntimeRoute route,
+            Vector3 start,
+            PendingGridRouteTarget target,
+            float maximumSpeed,
+            float minimumOccupancySeconds)
+        {
+            if (route?.Points == null || route.Points.Length < 2 ||
+                target == null)
+            {
+                return route?.EstimatedTravelSeconds ?? 0.5f;
+            }
+            ProjectRouteProgress(
+                route.Points, start, out _, out _, out float currentProgress);
+            float targetProgress = RouteProgressDistance(
+                route.Points, target.segmentIndex, target.segmentT);
+            float routeDistance = Mathf.Abs(targetProgress - currentProgress);
+            float offRouteDistance = Vector3.Distance(
+                target.routeEntryWorldPosition,
+                target.destinationWorldPosition);
+            return Mathf.Max(
+                Mathf.Max(0.25f, minimumOccupancySeconds + 0.35f),
+                (routeDistance + offRouteDistance) /
+                Mathf.Max(10f, maximumSpeed) + 0.5f);
+        }
+
+        static void ProjectRouteProgress(
+            Vector3[] points,
+            Vector3 position,
+            out int segmentIndex,
+            out float segmentT,
+            out float progressDistance)
+        {
+            segmentIndex = 0;
+            segmentT = 0f;
+            progressDistance = 0f;
+            if (points == null || points.Length < 2)
+                return;
+            float bestSqrDistance = float.PositiveInfinity;
+            float cumulative = 0f;
+            for (int index = 0; index < points.Length - 1; index++)
+            {
+                Vector3 segment = points[index + 1] - points[index];
+                float length = segment.magnitude;
+                float amount = length <= 0.001f
+                    ? 0f
+                    : Mathf.Clamp01(Vector3.Dot(
+                        position - points[index], segment) /
+                        (length * length));
+                Vector3 projected = points[index] + segment * amount;
+                float sqrDistance = (position - projected).sqrMagnitude;
+                if (sqrDistance < bestSqrDistance)
+                {
+                    bestSqrDistance = sqrDistance;
+                    segmentIndex = index;
+                    segmentT = amount;
+                    progressDistance = cumulative + length * amount;
+                }
+                cumulative += length;
+            }
+        }
+
+        static float RouteProgressDistance(
+            Vector3[] points,
+            int segmentIndex,
+            float segmentT)
+        {
+            if (points == null || points.Length < 2)
+                return 0f;
+            int targetSegment = Mathf.Clamp(
+                segmentIndex, 0, points.Length - 2);
+            float distance = 0f;
+            for (int index = 0; index < targetSegment; index++)
+                distance += Vector3.Distance(points[index], points[index + 1]);
+            distance += Vector3.Distance(
+                points[targetSegment], points[targetSegment + 1]) *
+                Mathf.Clamp01(segmentT);
+            return distance;
         }
 
         public bool CanGrantAttack(HordeEnemyVehicle enemy)
@@ -1153,16 +1998,109 @@ namespace UnityPlanet.EDPCG
             }
         }
 
+        void UpdatePressureControl(float deltaTime)
+        {
+            if (settings == null || deltaTime <= 0f)
+                return;
+            settings.ResolveTargetBand(
+                phase,
+                out float targetMinimum,
+                out float targetMaximum);
+            float tolerance = settings.pressureTargetTolerance;
+            int maximumAssist = phase == EdpcgEncounterPhase.Preview ||
+                                phase == EdpcgEncounterPhase.Recover
+                ? 1
+                : settings.maximumPressureAssistSteps;
+            float authoredStepSeconds = settings.pressureControlStepSeconds *
+                                        (phase == EdpcgEncounterPhase.Preview
+                                            ? 1.5f
+                                            : 1f);
+            float lowPressureStepSeconds =
+                EdpcgFacilityAssaultPacingPolicy.LowPressureStepSeconds(
+                    missionId,
+                    authoredStepSeconds);
+
+            if (smoothedPressure < targetMinimum - tolerance)
+            {
+                highPressureControlSeconds = 0f;
+                pressureControlReleaseSeconds = 0f;
+                lowPressureControlSeconds += deltaTime;
+                while (lowPressureControlSeconds >=
+                       lowPressureStepSeconds &&
+                       (pressureBrakeLevel > 0 ||
+                        pressureAssistLevel < maximumAssist))
+                {
+                    lowPressureControlSeconds -= lowPressureStepSeconds;
+                    if (pressureBrakeLevel > 0)
+                        pressureBrakeLevel--;
+                    else
+                        pressureAssistLevel++;
+                }
+                return;
+            }
+
+            lowPressureControlSeconds = 0f;
+            if (smoothedPressure > targetMaximum + tolerance)
+            {
+                pressureControlReleaseSeconds = 0f;
+                highPressureControlSeconds += deltaTime;
+                while (highPressureControlSeconds >= authoredStepSeconds &&
+                       (pressureAssistLevel > 0 || pressureBrakeLevel < 2))
+                {
+                    highPressureControlSeconds -= authoredStepSeconds;
+                    if (pressureAssistLevel > 0)
+                        pressureAssistLevel--;
+                    else
+                        pressureBrakeLevel++;
+                }
+                return;
+            }
+
+            highPressureControlSeconds = 0f;
+            pressureControlReleaseSeconds += deltaTime;
+            if (pressureControlReleaseSeconds <
+                settings.pressureControlReleaseSeconds)
+            {
+                return;
+            }
+            pressureControlReleaseSeconds = 0f;
+            if (pressureBrakeLevel > 0)
+                pressureBrakeLevel--;
+            else if (pressureAssistLevel > 0)
+                pressureAssistLevel--;
+        }
+
         void UpdatePressure(float deltaTime)
         {
-            float populationDenominator = Mathf.Max(1f, settings.populationCap);
+            CountRosterStates(
+                out int unspawned,
+                out int queued,
+                out int spawnRecovery,
+                out int rosterActive,
+                out int rosterNavigationRecovery);
+            // Measure against the phase budget before assistance/braking.
+            // Using the already-braked cap as a denominator creates a false
+            // positive loop: brake -> smaller cap -> higher pressure -> brake.
+            int dynamicPopulationCap = BasePopulationCapForPressure();
+            int dynamicEngagementCap = BaseEngagementCapForPressure();
+            int dynamicAttackTokenCap = BaseAttackTokenCapForPressure();
+            float populationDenominator = Mathf.Max(1f, dynamicPopulationCap);
             float threatDenominator = Mathf.Max(
                 1f,
-                settings.populationCap * 1.5f);
+                dynamicPopulationCap * 1.5f);
+            float pursuingThreat = Mathf.Clamp01(
+                pursuingThreatCount / Mathf.Max(1f, dynamicEngagementCap));
+            float closeApproachThreat = Mathf.Clamp01(
+                closeApproachThreatCount /
+                Mathf.Max(1f, dynamicEngagementCap));
             float enemyThreat = Mathf.Clamp01(
-                activeThreatCost / threatDenominator * 0.58f +
-                engagementCount / Mathf.Max(1f, settings.engagementCap) * 0.24f +
-                attackTokensUsed / Mathf.Max(1f, settings.attackTokenCap) * 0.18f);
+                activeThreatCost / threatDenominator * 0.30f +
+                pursuingThreat * 0.27f +
+                closeApproachThreat * 0.18f +
+                engagementCount /
+                    Mathf.Max(1f, dynamicEngagementCap) * 0.10f +
+                attackTokensUsed /
+                    Mathf.Max(1f, dynamicAttackTokenCap) * 0.15f);
             float suicideNavigation = Mathf.Clamp01(
                 suicideCommitCount /
                 Mathf.Max(1f, settings.suicideCommitCap));
@@ -1171,12 +2109,11 @@ namespace UnityPlanet.EDPCG
                 Mathf.Max(1f, settings.rangedFireLaneCap));
             float environmentalPursuit = Mathf.Clamp01(
                 environmentalCommitments.Count /
-                Mathf.Max(1f, settings.engagementCap));
+                Mathf.Max(1f, dynamicEngagementCap));
             float navigation = Mathf.Clamp01(
-                navigationRecoveryCount / populationDenominator * 0.45f +
-                suicideNavigation * 0.30f +
-                rangedNavigation * 0.25f +
-                environmentalPursuit * 0.35f);
+                suicideNavigation * 0.42f +
+                rangedNavigation * 0.42f +
+                environmentalPursuit * 0.16f);
             float healthStrain = playerGraph != null
                 ? 1f - Mathf.Clamp01(playerGraph.OverallHealthRatio)
                 : 0f;
@@ -1207,6 +2144,26 @@ namespace UnityPlanet.EDPCG
                 navigation * settings.navigationWeight +
                 environment * settings.environmentWeight +
                 playerStrain * settings.playerStrainWeight);
+
+            // Observation-only pressure separates real combat exposure from
+            // navigation/system failures. It deliberately does not feed any
+            // spawn, token, strategy or trap-commit gate while Legacy remains
+            // the active integration mode.
+            float observedFire = rangedNavigation;
+            float observedIntercept = suicideNavigation;
+            float observedDisplacement = Mathf.Clamp01(
+                pressureDirectionCount /
+                Mathf.Max(1f, settings.pressureDirectionCap));
+            float observedCombat = Mathf.Clamp01(
+                observedFire * 0.45f +
+                observedIntercept * 0.30f +
+                observedDisplacement * 0.25f);
+            float systemHealthIssue = Mathf.Clamp01(
+                Mathf.Max(
+                    navigationRecoveryCount,
+                    rosterNavigationRecovery) /
+                populationDenominator * 0.70f +
+                spawnRecovery / Mathf.Max(1f, roster.Count) * 0.30f);
             float smoothing = 1f - Mathf.Exp(
                 -Mathf.Max(0f, deltaTime) /
                 Mathf.Max(0.05f, settings.pressureSmoothingSeconds));
@@ -1224,12 +2181,6 @@ namespace UnityPlanet.EDPCG
                 phase,
                 out float targetMinimum,
                 out float targetMaximum);
-            CountRosterStates(
-                out int unspawned,
-                out int queued,
-                out int spawnRecovery,
-                out int rosterActive,
-                out int rosterNavigationRecovery);
             currentSample = new EdpcgPressureSample
             {
                 missionTime = elapsed,
@@ -1249,13 +2200,23 @@ namespace UnityPlanet.EDPCG
                 committedNavigationPressure = Mathf.Clamp01(
                     Mathf.Max(
                         attackTokensUsed /
-                        Mathf.Max(1f, settings.attackTokenCap),
+                        Mathf.Max(1f, dynamicAttackTokenCap),
                         environmentalPursuit)),
                 environmentalPursuitPressure = environmentalPursuit,
                 playerStrain = playerStrain,
                 playerDamageAssist = Mathf.Clamp01(
                     Mathf.InverseLerp(0.55f, 0.85f, smoothedPressure) *
                     playerStrain),
+                observedCombatPressure = observedCombat,
+                observedFirePressure = observedFire,
+                observedInterceptPressure = observedIntercept,
+                observedDisplacementPressure = observedDisplacement,
+                observedNetEnvironmentPressure = 0f,
+                observedPlayerRisk = playerStrain,
+                systemHealthIssueRatio = systemHealthIssue,
+                pressureDirectionCount = pressureDirectionCount,
+                pressureDirectionMask = pressureDirectionMask,
+                environmentObservationAvailable = false,
                 rosterCount = roster.Count,
                 unspawnedCount = unspawned,
                 queuedCount = queued,
@@ -1265,11 +2226,15 @@ namespace UnityPlanet.EDPCG
                 attackTokensUsed = attackTokensUsed,
                 suicideCommitCount = suicideCommitCount,
                 rangedFireLaneCount = rangedFireLaneCount,
+                pursuingThreatCount = pursuingThreatCount,
+                closeApproachThreatCount = closeApproachThreatCount,
                 navigationRecoveryCount = Mathf.Max(
                     navigationRecoveryCount,
                     rosterNavigationRecovery),
                 environmentalPursuitCount =
                     environmentalCommitments.Count,
+                pressureAssistLevel = pressureAssistLevel,
+                pressureBrakeLevel = pressureBrakeLevel,
                 resolvedCount = ResolvedCount,
                 activeTacticalAreaId = activeArea != null
                     ? activeArea.StableId
@@ -1326,6 +2291,77 @@ namespace UnityPlanet.EDPCG
                     areaExitedSince = -1f;
                 }
             }
+        }
+
+        void UpdateGridFireState()
+        {
+            if (playerBody == null)
+                return;
+            EdpcgGridFireAnalysis analysis = ResolveNearestGridFireLayer(
+                playerBody.worldCenterOfMass.y);
+            EdpcgGridFireCell candidate = analysis != null
+                ? analysis.FindNearestCell(playerBody.worldCenterOfMass)
+                : null;
+            string candidateId = candidate != null
+                ? analysis.altitudeLayer + ":" + candidate.stableId
+                : string.Empty;
+            if (!string.Equals(candidateId, gridCellCandidateId,
+                    StringComparison.Ordinal))
+            {
+                gridCellCandidateId = candidateId;
+                gridCellCandidateSince = elapsed;
+            }
+            activeGridFireAnalysis = analysis;
+            activeGridFireCell = candidate;
+        }
+
+        EdpcgGridFireAnalysis ResolveNearestGridFireLayer(float playerWorldY)
+        {
+            EdpcgGridFireAnalysis best = null;
+            float bestDistance = float.PositiveInfinity;
+            for (int index = 0; index < gridFireAnalyses.Length; index++)
+            {
+                EdpcgGridFireAnalysis candidate = gridFireAnalyses[index];
+                if (candidate == null || !candidate.IsUsable ||
+                    candidate.cells.Count == 0)
+                {
+                    continue;
+                }
+                float distance = Mathf.Abs(
+                    candidate.cells[0].worldSamplePosition.y - playerWorldY);
+                if (distance >= bestDistance)
+                    continue;
+                best = candidate;
+                bestDistance = distance;
+            }
+            return best;
+        }
+
+        static float ResolvePlayerShipWidth(Rigidbody body)
+        {
+            if (body == null)
+                return 18f;
+            Collider[] colliders = body.GetComponentsInChildren<Collider>(true);
+            bool initialized = false;
+            Bounds bounds = default(Bounds);
+            for (int index = 0; index < colliders.Length; index++)
+            {
+                Collider collider = colliders[index];
+                if (collider == null || !collider.enabled || collider.isTrigger)
+                    continue;
+                if (!initialized)
+                {
+                    bounds = collider.bounds;
+                    initialized = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(collider.bounds);
+                }
+            }
+            return initialized
+                ? Mathf.Clamp(Mathf.Max(bounds.size.x, bounds.size.z), 4f, 250f)
+                : 18f;
         }
 
         void ApplyPendingChangesAtSafeBoundary(string reason)
@@ -1513,6 +2549,127 @@ namespace UnityPlanet.EDPCG
         {
             if (running)
                 EndSession();
+        }
+    }
+
+    /// <summary>
+    /// Pure mission overlay for the formal industrial-outpost encounter.
+    /// Keeping this separate from EdpcgDifficultyProfile prevents one mission
+    /// from rewriting the six shared difficulty tiers or their integration
+    /// mode. The methods are deterministic and can be covered without a scene
+    /// or a running HordeCombatDirector.
+    /// </summary>
+    public static class EdpcgFacilityAssaultPacingPolicy
+    {
+        public const string FormalMissionId = "industrial_outpost";
+        public const float MaximumPreviewSeconds = 3f;
+        public const float FacilitySpawnIntervalMultiplier = 0.72f;
+        public const float FacilityLowPressureStepSeconds = 1.5f;
+        public const float FacilityCloseApproachDistance = 320f;
+        public const float ObjectiveAlertCooldownSeconds = 3f;
+        public const float OpeningSeconds = 3f;
+        public const int OpeningEnemyCount = 2;
+        public const int MaximumSpawnUrgency = 2;
+
+        public static bool Applies(string missionId)
+        {
+            return string.Equals(
+                missionId,
+                FormalMissionId,
+                StringComparison.Ordinal);
+        }
+
+        public static void ApplySessionSettings(
+            string missionId,
+            EdpcgTierSettings sessionSettings)
+        {
+            if (!Applies(missionId) || sessionSettings == null)
+                return;
+
+            sessionSettings.previewSeconds = Mathf.Min(
+                sessionSettings.previewSeconds,
+                MaximumPreviewSeconds);
+            sessionSettings.closeApproachDistance =
+                FacilityCloseApproachDistance;
+            // Deliberately do not touch integrationMode. The profile resolver
+            // owns migration and the session already runs the existing pressure
+            // controller regardless of its tactical-assignment presentation.
+        }
+
+        public static float SpawnIntervalMultiplier(string missionId)
+        {
+            return Applies(missionId)
+                ? FacilitySpawnIntervalMultiplier
+                : 1f;
+        }
+
+        public static float LowPressureStepSeconds(
+            string missionId,
+            float authoredStepSeconds)
+        {
+            float safeAuthored = Mathf.Max(0.01f, authoredStepSeconds);
+            return Applies(missionId)
+                ? Mathf.Min(safeAuthored, FacilityLowPressureStepSeconds)
+                : safeAuthored;
+        }
+
+        public static float ResolveOpeningSeconds(
+            string missionId,
+            float authoredSeconds)
+        {
+            return Applies(missionId)
+                ? OpeningSeconds
+                : Mathf.Max(0f, authoredSeconds);
+        }
+
+        public static int ResolveOpeningEnemyCount(
+            string missionId,
+            int authoredCount)
+        {
+            return Applies(missionId)
+                ? OpeningEnemyCount
+                : Mathf.Max(0, authoredCount);
+        }
+
+        public static int ResolveThreatBudget(
+            string missionId,
+            int phase,
+            int authoredBudget)
+        {
+            if (!Applies(missionId))
+                return Mathf.Max(0, authoredBudget);
+            switch (phase)
+            {
+                case 1:
+                case 2:
+                    return 4;
+                case 3:
+                    return 4;
+                default:
+                    return 2;
+            }
+        }
+
+        public static int ResolveAssistFloor(
+            int currentAssist,
+            int requestedFloor,
+            int maximumAssist)
+        {
+            int safeMaximum = Mathf.Max(0, maximumAssist);
+            return Mathf.Clamp(
+                Mathf.Max(currentAssist, requestedFloor),
+                0,
+                safeMaximum);
+        }
+
+        public static int MergeSpawnUrgency(
+            int currentUrgency,
+            int requestedUrgency)
+        {
+            return Mathf.Clamp(
+                Mathf.Max(currentUrgency, requestedUrgency),
+                0,
+                MaximumSpawnUrgency);
         }
     }
 }

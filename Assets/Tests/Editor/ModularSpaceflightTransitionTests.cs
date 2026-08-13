@@ -67,6 +67,28 @@ public sealed class ModularSpaceflightTransitionTests
             Is.EqualTo("进入太空仓"));
     }
 
+    [Test]
+    public void InitialAssemblyCompletionEntersPostMissionFloorRoom()
+    {
+        SpaceStationFlowContext.BeginInitialAssembly();
+
+        SpaceStationFlowContext.CompleteInitialAssemblyReturn();
+
+        Assert.That(SpaceStationFlowContext.EnterStation(),
+            Is.EqualTo(SpaceStationSpawnLocation.Floor01Room));
+    }
+
+    [Test]
+    public void LaterAssemblyCompletionStillEntersDockingBay()
+    {
+        SpaceStationFlowContext.BeginAssemblyFromStation();
+
+        SpaceStationFlowContext.CompleteAssemblyReturn();
+
+        Assert.That(SpaceStationFlowContext.EnterStation(),
+            Is.EqualTo(SpaceStationSpawnLocation.DockingBay));
+    }
+
     [TestCase(false, false, false, SpacecraftBlueprintRoute.ModularAssembly)]
     [TestCase(false, true, false, SpacecraftBlueprintRoute.LegacyWorkshop)]
     [TestCase(true, true, false, SpacecraftBlueprintRoute.ModularAssembly)]

@@ -251,6 +251,36 @@ namespace UnityPlanet.ModularAssembly
                 1f,
                 "0.00");
 
+            DrawSection("Ctrl下降");
+            DrawSlider(
+                "descentResponse",
+                "下降响应时间（秒）",
+                ref tuning.descentResponseSeconds,
+                0.03f,
+                0.5f,
+                "0.000");
+            DrawSlider(
+                "descentAuthority",
+                "下降权限占比",
+                ref tuning.descentAuthorityFraction,
+                0.1f,
+                1f,
+                "0.00");
+            DrawSlider(
+                "descentWeight",
+                "组合移动时下降优先权",
+                ref tuning.descentInputWeight,
+                1f,
+                2f,
+                "0.00");
+            DrawSlider(
+                "minimumDescent",
+                "最低下降加速度",
+                ref tuning.minimumDescentAcceleration,
+                0.5f,
+                15f,
+                "0.0");
+
             DrawSection("松手急停与定点");
             DrawSlider(
                 "stopGain",
@@ -413,7 +443,10 @@ namespace UnityPlanet.ModularAssembly
                 }
                 valueBuffers[id] = entered;
                 if (!Mathf.Approximately(value, previous))
+                {
                     unsavedChanges = true;
+                    motion.RefreshArcadeTuningAuthority();
+                }
             }
         }
 
@@ -434,6 +467,7 @@ namespace UnityPlanet.ModularAssembly
         void ApplyPreset(ArcadeFlightTuningPreset preset)
         {
             tuning.ApplyPreset(preset);
+            motion.RefreshArcadeTuningAuthority();
             valueBuffers.Clear();
             unsavedChanges = true;
             Notify("预设已即时应用");
@@ -451,6 +485,7 @@ namespace UnityPlanet.ModularAssembly
             ArcadeFlightTuningProfile.ClearRuntimeOverrides();
             motion.ReloadArcadeFlightTuning(false);
             tuning = motion.RuntimeArcadeFlightTuning;
+            motion.RefreshArcadeTuningAuthority();
             valueBuffers.Clear();
             unsavedChanges = false;
             Notify("已恢复项目默认参数");

@@ -515,6 +515,97 @@ public sealed class VehicleRuntimeOptimizationTests
     }
 
     [Test]
+    public void ArcadeAssist_DescentUsesDedicatedResponseAndAuthority()
+    {
+        var tuning = ScriptableObject.CreateInstance<
+            ArcadeFlightTuningProfile>();
+        try
+        {
+            tuning.ResetToDefaults();
+            tuning.intentResponseSeconds = 0.24f;
+            tuning.intentAuthorityFraction = 0.55f;
+            tuning.descentResponseSeconds = 0.06f;
+            tuning.descentAuthorityFraction = 0.96f;
+
+            Vector3 descent = Vector3.down;
+            Assert.That(
+                TrainingFlightAssist.ResolveIntentResponseSeconds(
+                    descent,
+                    Vector3.up,
+                    tuning),
+                Is.EqualTo(0.06f).Within(0.0001f));
+            Assert.That(
+                TrainingFlightAssist.ResolveIntentAuthorityFraction(
+                    descent,
+                    Vector3.up,
+                    tuning),
+                Is.EqualTo(0.96f).Within(0.0001f));
+            Assert.That(
+                TrainingFlightAssist.ResolveIntentResponseSeconds(
+                    Vector3.forward,
+                    Vector3.up,
+                    tuning),
+                Is.EqualTo(0.24f).Within(0.0001f));
+            Assert.That(
+                TrainingFlightAssist.ResolveIntentAuthorityFraction(
+                    Vector3.forward,
+                    Vector3.up,
+                    tuning),
+                Is.EqualTo(0.55f).Within(0.0001f));
+
+            TrainingFlightAssistDemand demand =
+                TrainingFlightAssist.CalculateDemand(
+                    Vector3.zero,
+                    Vector3.zero,
+                    Vector3.zero,
+                    true,
+                    descent,
+                    18f,
+                    tuning,
+                    TrainingFlightAssist.ResolveIntentResponseSeconds(
+                        descent,
+                        Vector3.up,
+                        tuning));
+            Assert.That(
+                demand.intentAccelerationWorld.y,
+                Is.EqualTo(-300f).Within(0.001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(tuning);
+        }
+    }
+
+    [Test]
+    public void ArcadeAssist_DescentFallbackScalesWithVehicleMass()
+    {
+        var tuning = ScriptableObject.CreateInstance<
+            ArcadeFlightTuningProfile>();
+        try
+        {
+            tuning.ResetToDefaults();
+            tuning.minimumDescentAcceleration = 6f;
+
+            Assert.That(
+                TrainingFlightAssist.CalculateDescentAssistForce(
+                    1000f,
+                    3000f,
+                    tuning),
+                Is.EqualTo(6000f).Within(0.001f));
+            Assert.That(
+                TrainingFlightAssist.CalculateDescentAssistForce(
+                    100f,
+                    3000f,
+                    tuning),
+                Is.EqualTo(3000f).Within(0.001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(tuning);
+        }
+    }
+
+    [Test]
     public void ArcadeTuningProfile_DefaultResourceIsAvailable()
     {
         ArcadeFlightTuningProfile tuning =
@@ -527,6 +618,15 @@ public sealed class VehicleRuntimeOptimizationTests
         Assert.That(
             tuning.stopVelocityGain,
             Is.EqualTo(10f).Within(0.0001f));
+        Assert.That(
+            tuning.descentResponseSeconds,
+            Is.EqualTo(0.08f).Within(0.0001f));
+        Assert.That(
+            tuning.descentAuthorityFraction,
+            Is.EqualTo(1f).Within(0.0001f));
+        Assert.That(
+            tuning.minimumDescentAcceleration,
+            Is.EqualTo(6f).Within(0.0001f));
     }
 
     [Test]

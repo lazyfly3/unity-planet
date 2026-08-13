@@ -202,6 +202,26 @@ namespace UnityPlanet.ModularAssembly
             return MachineGun(sourceId);
         }
 
+        public static WeaponProfile CreatePlayerCoreDefenseWeapon()
+        {
+            WeaponProfile profile = Base(
+                "player_core_defense_weapon",
+                "核心防卫炮",
+                WeaponDeliveryKind.HitscanTracer,
+                10f,
+                6f,
+                900f,
+                450f,
+                0,
+                0f,
+                0f,
+                0f,
+                0,
+                new Color(0.18f, 0.86f, 1f));
+            profile.automaticFire = true;
+            return profile;
+        }
+
         static bool IsWeaponBehavior(GridModuleBehaviorKind kind)
         {
             return kind >= GridModuleBehaviorKind.KineticRapid &&
@@ -370,6 +390,8 @@ namespace UnityPlanet.ModularAssembly
         public GridModuleView View;
         public NeoXBehaviorModule Semantics;
         public WeaponProfile Profile;
+        public Transform MountTransform;
+        public bool IsBuiltIn;
         public int Group;
         public int Ammunition;
         public float Heat;
@@ -386,9 +408,25 @@ namespace UnityPlanet.ModularAssembly
             View = view;
             Semantics = semantics;
             Profile = profile;
+            MountTransform = view == null ? null : view.transform;
             Group = semantics == null
                 ? 1
                 : Mathf.Clamp(semantics.WeaponGroup, 1, 4);
+            Ammunition = profile.ammunition;
+        }
+
+        public WeaponRuntime(
+            Transform mountTransform,
+            WeaponProfile profile,
+            int group,
+            bool isBuiltIn)
+        {
+            View = null;
+            Semantics = null;
+            Profile = profile;
+            MountTransform = mountTransform;
+            IsBuiltIn = isBuiltIn;
+            Group = Mathf.Clamp(group, 1, 4);
             Ammunition = profile.ammunition;
         }
 
@@ -411,7 +449,7 @@ namespace UnityPlanet.ModularAssembly
         {
             get
             {
-                if (View == null || Profile == null ||
+                if (MountTransform == null || Profile == null ||
                     Overheated || ReloadEndsAt > 0f ||
                     Time.time < NextShotTime)
                     return false;
@@ -444,8 +482,14 @@ namespace UnityPlanet.ModularAssembly
         const float AutoAimRetainViewportRadius = 0.4f;
 
         readonly List<WeaponRuntime> weapons = new List<WeaponRuntime>();
+        readonly List<WeaponRuntime> builtInWeaponView =
+            new List<WeaponRuntime>(1);
         readonly RaycastHit[] aimHits = new RaycastHit[64];
-        readonly Collider[] autoAimOverlaps = new Collider[128];
+        // The broad scan remains a fallback for every damageable type. Formal
+        // Horde enemies and modular facilities are also visited through their
+        // bounded registries below, so dense static city colliders cannot make
+        // either target family disappear because this buffer was truncated.
+        readonly Collider[] autoAimOverlaps = new Collider[512];
         GridAssemblyPresenter presenter;
         IGridFlightSession flight;
         GridAssemblyModel model;
@@ -474,6 +518,8 @@ namespace UnityPlanet.ModularAssembly
         bool autoAimAllowed = true;
         bool manualAimRequiredForFire;
         string status = string.Empty;
+        bool playerCoreDefenseEnabled;
+        WeaponRuntime playerCoreDefenseWeapon;
 
         public int ActiveGroup => activeGroup;
         public bool IsAiming => flight != null &&
@@ -481,7 +527,13 @@ namespace UnityPlanet.ModularAssembly
                                 controlsEnabled &&
                                 Input.GetMouseButton(1);
         public VehicleStructureGraph StructureGraph => structureGraph;
-        public IReadOnlyList<WeaponRuntime> Weapons => weapons;
+        public IReadOnlyList<WeaponRuntime> Weapons =>
+            IsUsingBuiltInWeapon ? builtInWeaponView : weapons;
+        public bool IsUsingBuiltInWeapon =>
+            playerCoreDefenseEnabled &&
+            weapons.Count == 0 &&
+            playerCoreDefenseWeapon != null &&
+            (structureGraph == null || !structureGraph.IsVehicleDestroyed);
         public Transform AimCandidate => aimCandidate;
         public Transform LockedTarget => lockedTarget;
         public bool AutoAimEnabled => autoAimEnabled;
@@ -520,6 +572,20 @@ namespace UnityPlanet.ModularAssembly
         public void SetHudVisible(bool value)
         {
             drawHud = value;
+        }
+
+        public void EnablePlayerCoreDefenseWeapon()
+        {
+            if (playerCoreDefenseEnabled)
+                return;
+            playerCoreDefenseEnabled = true;
+            playerCoreDefenseWeapon = new WeaponRuntime(
+                transform,
+                WeaponProfileLibrary.CreatePlayerCoreDefenseWeapon(),
+                1,
+                true);
+            builtInWeaponView.Clear();
+            builtInWeaponView.Add(playerCoreDefenseWeapon);
         }
 
         public void Initialize(
@@ -687,8 +753,10 @@ namespace UnityPlanet.ModularAssembly
             if (lockedTarget != null)
                 aimPoint = ResolveTargetPoint(lockedTarget);
             muzzleBlocked = false;
-            status = string.Empty;
-            foreach (WeaponRuntime weapon in weapons)
+            status = IsUsingBuiltInWeapon
+                ? "核心防卫炮（内置）"
+                : string.Empty;
+            foreach (WeaponRuntime weapon in Weapons)
                 weapon.Tick(
                     Time.deltaTime,
                     weapon.Profile.automaticFire &&
@@ -834,6 +902,74 @@ namespace UnityPlanet.ModularAssembly
                 }
                 best = candidate;
                 bestScore = score;
+            }
+            IReadOnlyList<HordeEnemyVehicle> hordeEnemies =
+                HordeEnemyVehicle.ActiveCombatEnemies;
+            for (int index = 0; index < hordeEnemies.Count; index++)
+            {
+                HordeEnemyVehicle enemy = hordeEnemies[index];
+                if (enemy == null || !enemy.IsCombatCapable)
+                    continue;
+                Transform enemyTarget = NormalizeEnemyTarget(enemy.transform);
+                if (enemyTarget == null || enemyTarget == best ||
+                    !TryScoreAutoAimTarget(
+                        enemyTarget,
+                        AutoAimViewportRadius,
+                        out float enemyScore) ||
+                    enemyScore >= bestScore)
+                {
+                    continue;
+                }
+                best = enemyTarget;
+                bestScore = enemyScore;
+            }
+            IReadOnlyList<FinitePlanetFacilityAssaultObjective> facilities =
+                FinitePlanetFacilityAssaultObjective.ActiveObjectives;
+            for (int index = 0; index < facilities.Count; index++)
+            {
+                FinitePlanetFacilityAssaultObjective facility =
+                    facilities[index];
+                if (facility == null || facility.IsDestroyed)
+                {
+                    continue;
+                }
+                if (facility.CoreExposed && facility.Core != null)
+                {
+                    Transform coreTarget = facility.Core.transform;
+                    bool coreVisible = coreTarget == best;
+                    if (coreTarget != best &&
+                        TryScoreAutoAimTarget(
+                            coreTarget,
+                            AutoAimViewportRadius,
+                            out float coreScore))
+                    {
+                        coreVisible = true;
+                        if (coreScore < bestScore)
+                        {
+                            best = coreTarget;
+                            bestScore = coreScore;
+                        }
+                    }
+                    // A breached lane can face away from the current camera.
+                    // Keep the core as the preferred target when it is really
+                    // visible, but fall back to a live armor cell when another
+                    // side of the shell still blocks the muzzle line.
+                    if (coreVisible)
+                        continue;
+                }
+                if (facility.TryResolveNearestLiveArmorTarget(
+                        sceneCamera.transform.position,
+                        out Transform armorTarget) &&
+                    armorTarget != best &&
+                    TryScoreAutoAimTarget(
+                        armorTarget,
+                        AutoAimViewportRadius,
+                        out float armorScore) &&
+                    armorScore < bestScore)
+                {
+                    best = armorTarget;
+                    bestScore = armorScore;
+                }
             }
             cachedAutoAimTarget = best;
             return best;
@@ -983,7 +1119,7 @@ namespace UnityPlanet.ModularAssembly
 
         float ResolveRequiredLockSeconds()
         {
-            return Mathf.Clamp(weapons
+            return Mathf.Clamp(Weapons
                 .Where(item => item.Group == activeGroup &&
                                item.Profile.lockSeconds > 0f)
                 .Select(item => item.Profile.lockSeconds)
@@ -1043,7 +1179,7 @@ namespace UnityPlanet.ModularAssembly
                 return;
             }
 
-            foreach (WeaponRuntime weapon in weapons)
+            foreach (WeaponRuntime weapon in Weapons)
             {
                 if (weapon.Group != command.WeaponGroup ||
                     !(weapon.Profile.automaticFire
@@ -1059,14 +1195,24 @@ namespace UnityPlanet.ModularAssembly
                     status = "能源不足";
                     continue;
                 }
-                Vector3 muzzle = weapon.Semantics != null
-                    ? weapon.Semantics.WorldMuzzlePosition
-                    : weapon.View.transform.position +
-                      weapon.View.transform.forward * 0.8f;
-                Vector3 direction =
-                    (command.AimPoint - muzzle).normalized;
-                if (direction.sqrMagnitude < 0.5f)
-                    direction = weapon.View.transform.forward;
+                Transform mount = weapon.MountTransform;
+                Vector3 muzzle;
+                Vector3 direction;
+                if (weapon.IsBuiltIn)
+                {
+                    muzzle = ResolveBuiltInMuzzle(
+                        command.AimPoint,
+                        out direction);
+                }
+                else
+                {
+                    muzzle = weapon.Semantics != null
+                        ? weapon.Semantics.WorldMuzzlePosition
+                        : mount.position + mount.forward * 0.8f;
+                    direction = (command.AimPoint - muzzle).normalized;
+                    if (direction.sqrMagnitude < 0.5f)
+                        direction = mount.forward;
+                }
                 float spread = command.AimHeld ? 0.18f : 1.25f;
                 if (weapon.Profile.delivery ==
                     WeaponDeliveryKind.ContinuousBeam)
@@ -1075,7 +1221,7 @@ namespace UnityPlanet.ModularAssembly
                 if (WeaponDamageUtility.IsMuzzleBlocked(
                         muzzle,
                         direction,
-                        weapon.View.transform,
+                        mount,
                         transform))
                 {
                     muzzleBlocked = true;
@@ -1098,6 +1244,25 @@ namespace UnityPlanet.ModularAssembly
             }
         }
 
+        Vector3 ResolveBuiltInMuzzle(
+            Vector3 aimPoint,
+            out Vector3 direction)
+        {
+            Bounds bounds = structureGraph != null
+                ? structureGraph.ResolveVisualBounds()
+                : new Bounds(transform.position, Vector3.one * 4f);
+            direction = aimPoint - bounds.center;
+            if (direction.sqrMagnitude < 0.25f)
+                direction = transform.forward;
+            direction.Normalize();
+            float projectedExtent =
+                Mathf.Abs(direction.x) * bounds.extents.x +
+                Mathf.Abs(direction.y) * bounds.extents.y +
+                Mathf.Abs(direction.z) * bounds.extents.z;
+            return bounds.center +
+                   direction * (projectedExtent + 0.35f);
+        }
+
         void FireWeapon(
             WeaponRuntime weapon,
             Vector3 muzzle,
@@ -1111,7 +1276,7 @@ namespace UnityPlanet.ModularAssembly
                     direction,
                     profile.effectColor,
                     profile.muzzleEffect,
-                    weapon.View.transform);
+                    weapon.MountTransform);
             switch (profile.delivery)
             {
                 case WeaponDeliveryKind.HitscanTracer:
@@ -1576,7 +1741,10 @@ namespace UnityPlanet.ModularAssembly
     public static class WeaponDamageUtility
     {
         static readonly RaycastHit[] Hits = new RaycastHit[64];
-        static readonly Collider[] Overlaps = new Collider[128];
+        // A tier-6 assault can place 162 module colliders plus three cores.
+        // Keep shared non-alloc radial damage queries above that bounded
+        // mission maximum so the query cannot silently truncate one facility.
+        static readonly Collider[] Overlaps = new Collider[512];
 
         public static ISpaceDamageable FindDamageable(Transform start)
         {
@@ -3286,6 +3454,7 @@ namespace UnityPlanet.ModularAssembly
         float structureIntegrityMultiplier = 1f;
         float coreIntegrityMultiplier = 1f;
         float systemIntegrityMultiplier = 1f;
+        float weaponIntegrityMultiplier = 1f;
         int damageBatchDepth;
         Func<string, SpaceDamageInfo, SpaceDamageInfo> moduleDamageFilter;
 
@@ -3420,9 +3589,23 @@ namespace UnityPlanet.ModularAssembly
             float core,
             float systems)
         {
+            ConfigureIntegrityMultipliers(
+                structure,
+                core,
+                systems,
+                systems);
+        }
+
+        public void ConfigureIntegrityMultipliers(
+            float structure,
+            float core,
+            float systems,
+            float weapons)
+        {
             structureIntegrityMultiplier = Mathf.Max(0.1f, structure);
             coreIntegrityMultiplier = Mathf.Max(0.1f, core);
             systemIntegrityMultiplier = Mathf.Max(0.1f, systems);
+            weaponIntegrityMultiplier = Mathf.Max(0.1f, weapons);
             if (model != null && presenter != null)
                 RebuildGraph();
         }
@@ -3617,6 +3800,9 @@ namespace UnityPlanet.ModularAssembly
                 case GridModuleCategory.Structure:
                 case GridModuleCategory.Armor:
                     multiplier = structureIntegrityMultiplier;
+                    break;
+                case GridModuleCategory.KineticWeapon:
+                    multiplier = weaponIntegrityMultiplier;
                     break;
                 default:
                     multiplier = systemIntegrityMultiplier;

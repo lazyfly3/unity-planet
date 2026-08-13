@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace UnityPlanet.CityPcg
@@ -15,7 +16,6 @@ namespace UnityPlanet.CityPcg
         public Material laneMarking;
         public Material dangerLaneMarking;
         public Material repairCourtyard;
-        public Material parkSurface;
         public Material lowBuilding;
         public Material mediumBuilding;
         public Material highBuilding;
@@ -49,7 +49,6 @@ namespace UnityPlanet.CityPcg
         // Push the structural span through each facade so the visible deck,
         // collision proxy and bridge head all terminate inside real building
         // geometry rather than on an abstract lot boundary.
-        const float SkybridgeFacadeEmbed = 9f;
         // Road strips stop before a junction so sidewalks and markings do not
         // overlap inside it.  The junction surface must reclaim the exact same
         // shoulder or every T/cross intersection exposes a smaller paving
@@ -69,6 +68,8 @@ namespace UnityPlanet.CityPcg
         public const int MinimumCitySkybridges = 150;
         public const int BossCitySkybridgeTarget = 220;
         public const float TacticalChokeClearHeight = 14f;
+        public const float VisualBackgroundMaximumOutsideDistance = 3200f;
+        public const float VisualBackgroundMaximumBuildingHeight = 470f;
         // The default arcade ship is about 18 m wide and travels roughly 9 m
         // during its 0.16 s velocity-response window at design combat speed.
         // 34 m leaves a readable correction margin without admitting the Boss.
@@ -87,19 +88,19 @@ namespace UnityPlanet.CityPcg
         [SerializeField] NewGenUrbanBuildingCatalog buildingCatalog;
         [SerializeField] DarkCity2UrbanCatalog darkCity2Catalog;
         [SerializeField] GameObject roadJunctionPrefab;
-        [SerializeField] GameObject parkTreePrefab;
 
         [Header("NewGen Urban 装饰（运行时先标准化底面、朝向和包围盒）")]
         [SerializeField] GameObject rooftopMechanicalPrefab;
         [SerializeField] GameObject[] rooftopBillboardPrefabs =
             Array.Empty<GameObject>();
         [SerializeField] GameObject streetLightPrefab;
-        [SerializeField] GameObject parkPlanterPrefab;
 
         [Header("三、Scene 可读性")]
         [SerializeField] bool showSemanticGizmos = true;
         [SerializeField] bool showRuntimePanel = true;
         [SerializeField] bool keepBuildingColliders = true;
+        [Tooltip("关闭后只生成可玩城市与地面，不生成战斗边界外的低模城市背景。")]
+        [SerializeField] bool buildVisualBackground = true;
 
         [Header("城市建筑破坏（不作用于地面和玩家模块）")]
         [SerializeField] UrbanDestructionSettings destructionSettings =
@@ -114,8 +115,11 @@ namespace UnityPlanet.CityPcg
         Transform boundaryRoot;
         Transform connectionRoot;
         Transform decorationRoot;
+        Transform environmentalTrapPreviewRoot;
         Transform missionRoot;
         Transform validationRoot;
+        Material windPreviewRibbonMaterial;
+        Material windPreviewArrowMaterial;
         UrbanDestructionCoordinator destructionCoordinator;
         readonly System.Collections.Generic.List<GeneratedBuildingRecord>
             generatedBuildings =
@@ -129,10 +133,21 @@ namespace UnityPlanet.CityPcg
         readonly System.Collections.Generic.Dictionary<int, BuildingGeometryProfile>
             buildingGeometryProfiles =
                 new System.Collections.Generic.Dictionary<int, BuildingGeometryProfile>();
+        readonly System.Collections.Generic.List<BuiltBridgeSegment>
+            runtimeBuiltBridgeSegments =
+                new System.Collections.Generic.List<BuiltBridgeSegment>(160);
+        readonly System.Collections.Generic.List<BuiltCableSegment>
+            runtimeBuiltCableSegments =
+                new System.Collections.Generic.List<BuiltCableSegment>(32);
+        AirCombatCityRuntimeGeometrySnapshot runtimeGeometrySnapshot;
         int lastSkybridgeCandidateCount;
+        int lastIntraBlockSkybridgeCandidateCount;
+        int lastCrossBlockSkybridgeCandidateCount;
         int lastSkybridgeDegreeRejectCount;
         int lastSkybridgeCrossingRejectCount;
         int lastCrossRoadBlockSkybridgeCount;
+        int lastAerialCableCandidateCount;
+        int lastAerialCableCount;
         int lastDestructionBridgeCandidateBuildingCount;
         int runtimeDifficultyTier;
 
@@ -140,6 +155,9 @@ namespace UnityPlanet.CityPcg
         public CombatCityPcgDesignProfile DesignProfile => designProfile;
         public AirCombatCityPlan Plan => plan;
         public AirCombatCityReport Report => report;
+        public AirCombatCityRuntimeGeometrySnapshot RuntimeGeometrySnapshot =>
+            runtimeGeometrySnapshot;
+        public bool BuildsVisualBackground => buildVisualBackground;
         public bool HasValidPlan => report != null && report.valid;
         public string LastSummary => report == null
             ? "尚未生成"
@@ -147,11 +165,18 @@ namespace UnityPlanet.CityPcg
                 ? report.Summary
                 : report.Summary + " | 原因 " + report.failureReason;
         public int LastSkybridgeCandidateCount => lastSkybridgeCandidateCount;
+        public int LastIntraBlockSkybridgeCandidateCount =>
+            lastIntraBlockSkybridgeCandidateCount;
+        public int LastCrossBlockSkybridgeCandidateCount =>
+            lastCrossBlockSkybridgeCandidateCount;
         public int LastSkybridgeDegreeRejectCount => lastSkybridgeDegreeRejectCount;
         public int LastSkybridgeCrossingRejectCount =>
             lastSkybridgeCrossingRejectCount;
         public int LastCrossRoadBlockSkybridgeCount =>
             lastCrossRoadBlockSkybridgeCount;
+        public int LastAerialCableCandidateCount =>
+            lastAerialCableCandidateCount;
+        public int LastAerialCableCount => lastAerialCableCount;
         public int LastDestructionBridgeCandidateBuildingCount =>
             lastDestructionBridgeCandidateBuildingCount;
         public int LastSkybridgeCount => report?.skybridgeCount ?? 0;
@@ -168,6 +193,21 @@ namespace UnityPlanet.CityPcg
             AirCombatCityMission mission,
             int difficultyTier = 0)
         {
+            ConfigureRuntimeMission(
+                seed,
+                mission,
+                difficultyTier,
+                null);
+        }
+
+        public void ConfigureRuntimeMission(
+            int seed,
+            AirCombatCityMission mission,
+            int difficultyTier,
+            CombatCityPcgDesignProfile runtimeDesignProfile)
+        {
+            if (runtimeDesignProfile != null)
+                designProfile = runtimeDesignProfile;
             settings.mission = mission;
             runtimeDifficultyTier = Mathf.Clamp(difficultyTier, 0, 5);
             ApplyDifficultyProfile(mission, runtimeDifficultyTier);
@@ -224,6 +264,14 @@ namespace UnityPlanet.CityPcg
 
         void OnValidate()
         {
+            // The dedicated tuning window writes slider values continuously.
+            // Replanning the full city for every mouse-drag event makes the
+            // control hitch even though geometry is intentionally rebuilt only
+            // by the explicit Apply button. Keep automatic validation for all
+            // formal/runtime authoring objects, but let the isolated editor
+            // preview commit its accumulated parameters in one bounded pass.
+            if (GetComponent<CityPcgEditorPreviewOnly>() != null)
+                return;
             RebuildPlanOnly();
         }
 
@@ -248,11 +296,9 @@ namespace UnityPlanet.CityPcg
             AirCombatCityPalette targetPalette,
             NewGenUrbanBuildingCatalog targetBuildingCatalog = null,
             GameObject targetRoadJunctionPrefab = null,
-            GameObject targetParkTreePrefab = null,
             GameObject targetRooftopMechanicalPrefab = null,
             GameObject[] targetRooftopBillboardPrefabs = null,
             GameObject targetStreetLightPrefab = null,
-            GameObject targetParkPlanterPrefab = null,
             DarkCity2UrbanCatalog targetDarkCity2Catalog = null)
         {
             settings.seed = seed;
@@ -274,12 +320,10 @@ namespace UnityPlanet.CityPcg
             if (darkCity2Catalog != null && darkCity2Catalog.buildings != null)
                 buildingCatalog = darkCity2Catalog.buildings;
             roadJunctionPrefab = targetRoadJunctionPrefab;
-            parkTreePrefab = targetParkTreePrefab;
             rooftopMechanicalPrefab = targetRooftopMechanicalPrefab;
             rooftopBillboardPrefabs = targetRooftopBillboardPrefabs ??
                 Array.Empty<GameObject>();
             streetLightPrefab = targetStreetLightPrefab;
-            parkPlanterPrefab = targetParkPlanterPrefab;
             RebuildPlanOnly();
         }
 
@@ -292,6 +336,7 @@ namespace UnityPlanet.CityPcg
 
         void RebuildCurrentPlan()
         {
+            var totalBuildTimer = System.Diagnostics.Stopwatch.StartNew();
             ClearGenerated();
             if (plan == null)
                 return;
@@ -319,6 +364,14 @@ namespace UnityPlanet.CityPcg
             decorationRoot = CreateRoot(
                 generated.transform,
                 "04B_城市装饰层_楼顶设备_广告牌_路灯_花坛");
+            if (!Application.isPlaying &&
+                GetComponent<CityPcgEditorPreviewOnly>() != null)
+            {
+                environmentalTrapPreviewRoot = CreateRoot(
+                    generated.transform,
+                    "04D_环境陷阱预览_仅视觉无物理");
+                environmentalTrapPreviewRoot.gameObject.tag = "EditorOnly";
+            }
             missionRoot = CreateRoot(
                 generated.transform,
                 "05_任务层");
@@ -330,6 +383,7 @@ namespace UnityPlanet.CityPcg
                 UrbanDestructionCoordinator>();
             destructionCoordinator.Configure(destructionSettings);
 
+            double stageStarted = totalBuildTimer.Elapsed.TotalMilliseconds;
             BuildFlightRoutes();
             BuildRoads();
             BuildBuildings();
@@ -337,13 +391,41 @@ namespace UnityPlanet.CityPcg
             BuildBlockInfill();
             BuildTacticalCloseBuildingPairs();
             EnsureDestructionBridgeAnchors();
+            float geometryBuildMilliseconds = (float)(
+                totalBuildTimer.Elapsed.TotalMilliseconds - stageStarted);
+
+            stageStarted = totalBuildTimer.Elapsed.TotalMilliseconds;
             BuildSkybridges();
             BuildAerialCableLinks();
+            float connectionBuildMilliseconds = (float)(
+                totalBuildTimer.Elapsed.TotalMilliseconds - stageStarted);
+
+            stageStarted = totalBuildTimer.Elapsed.TotalMilliseconds;
             BuildUrbanDetails();
-            BuildBackgroundSkyline();
+            BuildEnvironmentalTrapPreview();
+            if (buildVisualBackground)
+                BuildBackgroundSkyline();
             BuildMissionLayer();
             BuildValidationLayer();
             HideGeneratedDebugPresentation();
+            float presentationBuildMilliseconds = (float)(
+                totalBuildTimer.Elapsed.TotalMilliseconds - stageStarted);
+
+            BuildRuntimeGeometrySnapshot(
+                generated,
+                geometryBuildMilliseconds,
+                connectionBuildMilliseconds,
+                presentationBuildMilliseconds);
+
+            // The dedicated tuning scene persists only its parameters and
+            // terrain. Rebuilding the same generated hierarchy on load keeps
+            // the scene reviewable without serializing hundreds of thousands
+            // of generated YAML lines into the user's trap scene.
+            if (!Application.isPlaying &&
+                GetComponent<CityPcgEditorPreviewOnly>() != null)
+            {
+                MarkEditorPreviewHierarchyTransient(generated.transform);
+            }
 
             UrbanCityGlowRuntime cityGlow =
                 generated.GetComponent<UrbanCityGlowRuntime>() ??
@@ -360,6 +442,155 @@ namespace UnityPlanet.CityPcg
             if (Application.isPlaying)
                 ApplySafeRuntimeStaticBatching(generated);
 
+            if (runtimeGeometrySnapshot != null)
+            {
+                runtimeGeometrySnapshot.totalBuildMilliseconds =
+                    (float)totalBuildTimer.Elapsed.TotalMilliseconds;
+            }
+
+        }
+
+        void BuildRuntimeGeometrySnapshot(
+            GameObject generated,
+            float geometryBuildMilliseconds,
+            float connectionBuildMilliseconds,
+            float presentationBuildMilliseconds)
+        {
+            var snapshotTimer = System.Diagnostics.Stopwatch.StartNew();
+            var buildingGeometry = new AirCombatRuntimeBuildingGeometry[
+                generatedBuildings.Count];
+            for (int index = 0; index < generatedBuildings.Count; index++)
+            {
+                GeneratedBuildingRecord source = generatedBuildings[index];
+                AirCombatBuildingLot lot = source != null ? source.lot : null;
+                buildingGeometry[index] = new AirCombatRuntimeBuildingGeometry
+                {
+                    stableId = lot?.stableId ?? string.Empty,
+                    localBounds = ResolveActualBuildingBounds(source),
+                    band = lot != null ? lot.band : AirCombatBuildingBand.Low,
+                    archetype = lot != null
+                        ? lot.archetype
+                        : AirCombatBuildingArchetype.LowBlock,
+                    clusterId = lot?.clusterId ?? 0,
+                    destructible = source?.destructible != null
+                };
+            }
+
+            var bridgeGeometry = new AirCombatRuntimeConnectionGeometry[
+                runtimeBuiltBridgeSegments.Count];
+            for (int index = 0;
+                 index < runtimeBuiltBridgeSegments.Count;
+                 index++)
+            {
+                BuiltBridgeSegment source = runtimeBuiltBridgeSegments[index];
+                Vector3 start = source.start;
+                Vector3 end = source.end;
+                start.y = source.centerY;
+                end.y = source.centerY;
+                bridgeGeometry[index] = new AirCombatRuntimeConnectionGeometry
+                {
+                    localStart = start,
+                    localEnd = end
+                };
+            }
+
+            var cableGeometry = new AirCombatRuntimeConnectionGeometry[
+                runtimeBuiltCableSegments.Count];
+            for (int index = 0;
+                 index < runtimeBuiltCableSegments.Count;
+                 index++)
+            {
+                BuiltCableSegment source = runtimeBuiltCableSegments[index];
+                cableGeometry[index] = new AirCombatRuntimeConnectionGeometry
+                {
+                    localStart = source.start,
+                    localEnd = source.end
+                };
+            }
+
+            int routeCount = plan?.routes?.Count ?? 0;
+            var routeGeometry = new AirCombatRuntimeRouteGeometry[routeCount];
+            for (int index = 0; index < routeCount; index++)
+            {
+                AirCombatFlightRoute source = plan.routes[index];
+                Vector3[] points = source?.points == null
+                    ? Array.Empty<Vector3>()
+                    : (Vector3[])source.points.Clone();
+                routeGeometry[index] = new AirCombatRuntimeRouteGeometry
+                {
+                    stableId = source?.stableId ?? string.Empty,
+                    kind = source != null
+                        ? source.kind
+                        : AirCombatRouteKind.Main,
+                    width = source != null ? source.width : 0f,
+                    localPoints = points
+                };
+            }
+
+            int ingressCount = plan?.ingresses?.Count ?? 0;
+            var ingressGeometry = new AirCombatRuntimeIngressGeometry[
+                ingressCount];
+            for (int index = 0; index < ingressCount; index++)
+            {
+                AirCombatEnemyIngress source = plan.ingresses[index];
+                ingressGeometry[index] = new AirCombatRuntimeIngressGeometry
+                {
+                    stableId = source?.stableId ?? string.Empty,
+                    localPosition = source?.position ?? Vector3.zero,
+                    localTarget = source?.target ?? Vector3.zero,
+                    laneKind = source != null
+                        ? source.kind
+                        : AirCombatEnemyLaneKind.Ranged,
+                    warningSeconds = source != null
+                        ? Mathf.Max(0f, source.warningSeconds)
+                        : 0f
+                };
+            }
+
+            Collider[] colliders = generated != null
+                ? generated.GetComponentsInChildren<Collider>(true)
+                : Array.Empty<Collider>();
+            int triggerColliderCount = 0;
+            for (int index = 0; index < colliders.Length; index++)
+            {
+                if (colliders[index] != null && colliders[index].isTrigger)
+                    triggerColliderCount++;
+            }
+            AerialCableSlowHazard[] cableHazards = generated != null
+                ? generated.GetComponentsInChildren<AerialCableSlowHazard>(true)
+                : Array.Empty<AerialCableSlowHazard>();
+            int cableTriggerCount = 0;
+            for (int index = 0; index < cableHazards.Length; index++)
+            {
+                if (cableHazards[index] != null)
+                    cableTriggerCount += cableHazards[index].TriggerCount;
+            }
+
+            runtimeGeometrySnapshot =
+                new AirCombatCityRuntimeGeometrySnapshot
+                {
+                    requestedSeed = plan?.requestedSeed ?? settings.seed,
+                    resolvedSeed = plan?.resolvedSeed ?? settings.seed,
+                    plannedBuildingCount = plan?.buildings?.Count ?? 0,
+                    instantiatedBuildingCount = buildingGeometry.Length,
+                    colliderCount = colliders.Length,
+                    triggerColliderCount = triggerColliderCount,
+                    skybridgeCount = bridgeGeometry.Length,
+                    aerialCableCount = cableGeometry.Length,
+                    aerialCableTriggerCount = cableTriggerCount,
+                    geometryBuildMilliseconds = geometryBuildMilliseconds,
+                    connectionBuildMilliseconds =
+                        connectionBuildMilliseconds,
+                    presentationBuildMilliseconds =
+                        presentationBuildMilliseconds,
+                    snapshotBuildMilliseconds =
+                        (float)snapshotTimer.Elapsed.TotalMilliseconds,
+                    buildings = buildingGeometry,
+                    skybridges = bridgeGeometry,
+                    aerialCables = cableGeometry,
+                    routes = routeGeometry,
+                    ingresses = ingressGeometry
+                };
         }
 
         static void ApplySafeRuntimeStaticBatching(GameObject generated)
@@ -658,7 +889,6 @@ namespace UnityPlanet.CityPcg
 
             BuildRoadIntersections();
             BuildRecoveryCourtyardSurfaces();
-            BuildTacticalParkSurface();
         }
 
         void BuildSidewalkAndMarkingSegments(AirCombatRoadStrip road)
@@ -884,74 +1114,16 @@ namespace UnityPlanet.CityPcg
                     volume.center.x,
                     0.035f,
                     volume.center.z);
-                courtyard.transform.localScale = new Vector3(92f, 0.04f, 92f);
+                courtyard.transform.localScale = new Vector3(
+                    Mathf.Clamp(volume.size.x * 0.72f, 70f, 132f),
+                    0.04f,
+                    Mathf.Clamp(volume.size.z * 0.72f, 70f, 132f));
                 AssignMaterial(
                     courtyard,
                     palette.repairCourtyard != null
                         ? palette.repairCourtyard
                         : palette.cityBlockPaving);
             }
-        }
-
-        void BuildTacticalParkSurface()
-        {
-            for (int i = 0; i < plan.volumes.Count; i++)
-            {
-                AirCombatTacticalVolume volume = plan.volumes[i];
-                if (volume.kind != AirCombatVolumeKind.DangerPlaza)
-                    continue;
-                GameObject park = CreatePrimitive(
-                    PrimitiveType.Cube,
-                    roadRoot,
-                    "TacticalPark_高危开放公园",
-                    false);
-                park.transform.localPosition = new Vector3(
-                    volume.center.x,
-                    0.035f,
-                    volume.center.z);
-                park.transform.localScale = new Vector3(
-                    volume.size.x,
-                    0.04f,
-                    volume.size.z);
-                AssignMaterial(
-                    park,
-                    palette.parkSurface != null
-                        ? palette.parkSurface
-                        : palette.cityBlockPaving);
-
-                GameObject greeneryPrefab = parkPlanterPrefab != null
-                    ? parkPlanterPrefab
-                    : parkTreePrefab;
-                if (greeneryPrefab == null)
-                    continue;
-                const int TreeCountPerLongSide = 6;
-                for (int side = -1; side <= 1; side += 2)
-                for (int tree = 0; tree < TreeCountPerLongSide; tree++)
-                {
-                    float t = TreeCountPerLongSide == 1
-                        ? 0.5f
-                        : tree / (float)(TreeCountPerLongSide - 1);
-                    Vector3 position = new Vector3(
-                        volume.center.x + Mathf.Lerp(
-                            -volume.size.x * 0.42f,
-                            volume.size.x * 0.42f,
-                            t),
-                        0.07f,
-                        volume.center.z + side * volume.size.z * 0.38f);
-                    CreateNormalizedDecoration(
-                        greeneryPrefab,
-                        "ParkPlanter_NewGen_" + side + "_" + tree,
-                        position,
-                        ResolvePlanterYaw(side),
-                        new Vector3(8f, 12f, 8f));
-                }
-            }
-        }
-
-        static float ResolvePlanterYaw(int side)
-        {
-            // 两排树池沿公园长边整齐排列，并朝公园内部；这里不使用随机角度。
-            return side < 0 ? 0f : 180f;
         }
 
         GameObject CreateRoadStrip(
@@ -1126,6 +1298,365 @@ namespace UnityPlanet.CityPcg
             }
         }
 
+        void BuildEnvironmentalTrapPreview()
+        {
+            if (environmentalTrapPreviewRoot == null || plan == null)
+                return;
+            if (!TryResolvePlannedWindTrapGeometry(
+                    out string[] stableIds,
+                    out Vector3[] centers,
+                    out Vector3[] directions,
+                    out Vector3[] sizes))
+            {
+                return;
+            }
+            int previewCount = centers.Length;
+            Material ribbonMaterial = palette.longRangeRoute != null
+                ? palette.longRangeRoute
+                : palette.exposureVolume;
+            Material arrowMaterial = palette.dangerLaneMarking != null
+                ? palette.dangerLaneMarking
+                : ribbonMaterial;
+            windPreviewRibbonMaterial = CreateWindPreviewMaterial(
+                "WindPreview_Cyan_Unlit",
+                new Color(0.08f, 0.82f, 1f, 0.88f));
+            windPreviewArrowMaterial = CreateWindPreviewMaterial(
+                "WindPreview_Orange_Unlit",
+                new Color(1f, 0.28f, 0.025f, 1f));
+            if (windPreviewRibbonMaterial != null)
+                ribbonMaterial = windPreviewRibbonMaterial;
+            if (windPreviewArrowMaterial != null)
+                arrowMaterial = windPreviewArrowMaterial;
+            for (int index = 0; index < previewCount; index++)
+            {
+                BuildNaturalWindPreview(
+                    stableIds[index],
+                    centers[index],
+                    directions[index],
+                    sizes[index],
+                    index,
+                    ribbonMaterial,
+                    arrowMaterial);
+            }
+        }
+
+        bool TryResolvePlannedWindTrapGeometry(
+            out string[] stableIds,
+            out Vector3[] centers,
+            out Vector3[] directions,
+            out Vector3[] sizes)
+        {
+            stableIds = Array.Empty<string>();
+            centers = Array.Empty<Vector3>();
+            directions = Array.Empty<Vector3>();
+            sizes = Array.Empty<Vector3>();
+            Type directorType = Type.GetType(
+                "UnityPlanet.CityPcg.UrbanEnvironmentalFieldDirector, " +
+                "Assembly-CSharp");
+            if (directorType == null)
+                return false;
+            System.Reflection.MethodInfo resolver = directorType.GetMethod(
+                "ResolvePlannedWindTrapGeometry",
+                System.Reflection.BindingFlags.Public |
+                System.Reflection.BindingFlags.Static);
+            if (resolver == null)
+                return false;
+            object[] arguments =
+            {
+                plan,
+                settings.ValidatedCopy(),
+                null,
+                null,
+                null,
+                null
+            };
+            object result = resolver.Invoke(null, arguments);
+            int count = result is int resolvedCount ? resolvedCount : 0;
+            stableIds = arguments[2] as string[] ?? Array.Empty<string>();
+            centers = arguments[3] as Vector3[] ?? Array.Empty<Vector3>();
+            directions = arguments[4] as Vector3[] ?? Array.Empty<Vector3>();
+            sizes = arguments[5] as Vector3[] ?? Array.Empty<Vector3>();
+            return count > 0 && stableIds.Length == count &&
+                   centers.Length == count && directions.Length == count &&
+                   sizes.Length == count;
+        }
+
+        void BuildNaturalWindPreview(
+            string stableId,
+            Vector3 center,
+            Vector3 direction,
+            Vector3 size,
+            int stableIndex,
+            Material ribbonMaterial,
+            Material arrowMaterial)
+        {
+            var rootObject = new GameObject(
+                "NaturalStreetGalePreview_自然风场_" +
+                stableIndex.ToString("D2") + "_" + stableId);
+            rootObject.tag = "EditorOnly";
+            Transform root = rootObject.transform;
+            root.SetParent(environmentalTrapPreviewRoot, false);
+            root.localPosition = center;
+            root.localRotation = Quaternion.LookRotation(
+                direction,
+                Vector3.up);
+
+            float halfWidth = size.x * 0.5f;
+            float halfLength = size.z * 0.5f;
+            var outlineObject = new GameObject(
+                "风场边界_白色风道范围");
+            outlineObject.transform.SetParent(root, false);
+            LineRenderer outline = outlineObject.AddComponent<LineRenderer>();
+            outline.useWorldSpace = false;
+            outline.loop = true;
+            outline.positionCount = 4;
+            outline.widthMultiplier = 2.4f;
+            outline.sharedMaterial = ribbonMaterial;
+            outline.SetPosition(0, new Vector3(-halfWidth, 4f, -halfLength));
+            outline.SetPosition(1, new Vector3(halfWidth, 4f, -halfLength));
+            outline.SetPosition(2, new Vector3(halfWidth, 4f, halfLength));
+            outline.SetPosition(3, new Vector3(-halfWidth, 4f, halfLength));
+
+            float[] heightRatios = { 0.12f, 0.28f, 0.46f };
+            float[] lateralRatios = { -0.32f, 0f, 0.32f };
+            const int RibbonPoints = 15;
+            for (int heightIndex = 0;
+                 heightIndex < heightRatios.Length;
+                 heightIndex++)
+            for (int lateralIndex = 0;
+                 lateralIndex < lateralRatios.Length;
+                 lateralIndex++)
+            {
+                var ribbonObject = new GameObject(
+                    "风向流线_" + heightIndex + "_" + lateralIndex);
+                ribbonObject.transform.SetParent(root, false);
+                LineRenderer ribbon = ribbonObject.AddComponent<LineRenderer>();
+                ribbon.useWorldSpace = false;
+                ribbon.positionCount = RibbonPoints;
+                ribbon.widthMultiplier = heightIndex == 0 ? 2.2f : 1.45f;
+                ribbon.sharedMaterial = ribbonMaterial;
+                float height = Mathf.Clamp(
+                    size.y * heightRatios[heightIndex],
+                    18f,
+                    150f);
+                float lateral = halfWidth * lateralRatios[lateralIndex];
+                for (int pointIndex = 0;
+                     pointIndex < RibbonPoints;
+                     pointIndex++)
+                {
+                    float t = pointIndex / (RibbonPoints - 1f);
+                    ribbon.SetPosition(
+                        pointIndex,
+                        new Vector3(
+                            lateral + Mathf.Sin(
+                                t * Mathf.PI * 4f +
+                                lateralIndex * 1.7f) * halfWidth * 0.10f,
+                            height + Mathf.Sin(t * Mathf.PI * 3f) * 3f,
+                            Mathf.Lerp(-halfLength, halfLength, t)));
+                }
+            }
+
+            int arrowCount = Mathf.Clamp(
+                Mathf.CeilToInt(size.z / 180f),
+                4,
+                8);
+            for (int arrowIndex = 0; arrowIndex < arrowCount; arrowIndex++)
+            {
+                float z = Mathf.Lerp(
+                    -halfLength + 42f,
+                    halfLength - 42f,
+                    arrowCount == 1
+                        ? 0.5f
+                        : arrowIndex / (arrowCount - 1f));
+                BuildWindDirectionArrow(
+                    root,
+                    z,
+                    size.x,
+                    arrowIndex,
+                    arrowMaterial);
+            }
+
+            int gateCount = Mathf.Clamp(
+                Mathf.CeilToInt(size.z / 260f),
+                4,
+                7);
+            for (int gateIndex = 0; gateIndex < gateCount; gateIndex++)
+            {
+                float z = Mathf.Lerp(
+                    -halfLength + 28f,
+                    halfLength - 28f,
+                    gateCount == 1
+                        ? 0.5f
+                        : gateIndex / (gateCount - 1f));
+                BuildWindPreviewGate(
+                    root,
+                    z,
+                    Mathf.Max(24f, size.x + 10f),
+                    gateIndex,
+                    ribbonMaterial);
+            }
+
+            var labelObject = new GameObject(
+                "自然风场标签_风向朝前");
+            labelObject.transform.SetParent(root, false);
+            labelObject.transform.localPosition = new Vector3(
+                0f,
+                7f,
+                -halfLength + Mathf.Min(72f, size.z * 0.18f));
+            labelObject.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            TextMesh label = labelObject.AddComponent<TextMesh>();
+            label.text = "自然风场  >>>";
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.fontSize = 64;
+            label.characterSize = 1.15f;
+            label.fontStyle = FontStyle.Bold;
+            label.color = new Color(0.72f, 0.94f, 1f, 1f);
+
+            var centerLabelObject = new GameObject(
+                "自然风场中央标签");
+            centerLabelObject.transform.SetParent(root, false);
+            centerLabelObject.transform.localPosition = new Vector3(
+                0f,
+                92f,
+                0f);
+            TextMesh centerLabel = centerLabelObject.AddComponent<TextMesh>();
+            centerLabel.text = "自然风场\n风向 >>>";
+            centerLabel.anchor = TextAnchor.MiddleCenter;
+            centerLabel.alignment = TextAlignment.Center;
+            centerLabel.fontSize = 72;
+            centerLabel.characterSize = 1.25f;
+            centerLabel.fontStyle = FontStyle.Bold;
+            centerLabel.color = new Color(0.30f, 0.92f, 1f, 1f);
+        }
+
+        void BuildWindPreviewGate(
+            Transform parent,
+            float localZ,
+            float gateWidth,
+            int stableIndex,
+            Material material)
+        {
+            const float GateHeight = 88f;
+            const float BarThickness = 2.6f;
+            var gateObject = new GameObject(
+                "风场立体门_" + stableIndex.ToString("D2"));
+            Transform gate = gateObject.transform;
+            gate.SetParent(parent, false);
+            gate.localPosition = new Vector3(0f, 0f, localZ);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                GameObject post = CreatePrimitive(
+                    PrimitiveType.Cube,
+                    gate,
+                    side < 0 ? "左侧风柱" : "右侧风柱",
+                    false);
+                post.transform.localPosition = new Vector3(
+                    side * gateWidth * 0.5f,
+                    GateHeight * 0.5f,
+                    0f);
+                post.transform.localScale = new Vector3(
+                    BarThickness,
+                    GateHeight,
+                    BarThickness);
+                AssignMaterial(post, material);
+            }
+            GameObject top = CreatePrimitive(
+                PrimitiveType.Cube,
+                gate,
+                "顶部风场边界",
+                false);
+            top.transform.localPosition = new Vector3(0f, GateHeight, 0f);
+            top.transform.localScale = new Vector3(
+                gateWidth + BarThickness,
+                BarThickness,
+                BarThickness);
+            AssignMaterial(top, material);
+
+            GameObject groundStripe = CreatePrimitive(
+                PrimitiveType.Cube,
+                gate,
+                "地面风场横纹",
+                false);
+            groundStripe.transform.localPosition = new Vector3(0f, 3.5f, 0f);
+            groundStripe.transform.localScale = new Vector3(
+                gateWidth,
+                0.35f,
+                4f);
+            AssignMaterial(groundStripe, material);
+        }
+
+        static Material CreateWindPreviewMaterial(
+            string materialName,
+            Color color)
+        {
+            Shader shader = Shader.Find("Sprites/Default") ??
+                            Shader.Find("Unlit/Color");
+            if (shader == null)
+                return null;
+            var material = new Material(shader)
+            {
+                name = materialName,
+                color = color,
+                hideFlags = HideFlags.HideAndDontSave,
+                renderQueue = 3100
+            };
+            if (material.HasProperty("_BaseColor"))
+                material.SetColor("_BaseColor", color);
+            if (material.HasProperty("_Color"))
+                material.SetColor("_Color", color);
+            return material;
+        }
+
+        void BuildWindDirectionArrow(
+            Transform parent,
+            float localZ,
+            float fieldWidth,
+            int stableIndex,
+            Material material)
+        {
+            float stemWidth = Mathf.Clamp(fieldWidth * 0.16f, 2.8f, 6f);
+            var arrowRootObject = new GameObject(
+                "风向箭头_" + stableIndex.ToString("D2"));
+            Transform arrowRoot = arrowRootObject.transform;
+            arrowRoot.SetParent(parent, false);
+            arrowRoot.localPosition = new Vector3(0f, 5f, localZ);
+
+            GameObject stem = CreatePrimitive(
+                PrimitiveType.Cube,
+                arrowRoot,
+                "箭身",
+                false);
+            stem.transform.localPosition = new Vector3(0f, 0f, -6f);
+            stem.transform.localScale = new Vector3(
+                stemWidth,
+                0.35f,
+                24f);
+            AssignMaterial(stem, material);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                GameObject head = CreatePrimitive(
+                    PrimitiveType.Cube,
+                    arrowRoot,
+                    side < 0 ? "左箭头" : "右箭头",
+                    false);
+                head.transform.localPosition = new Vector3(
+                    side * 4.6f,
+                    0f,
+                    7.5f);
+                head.transform.localRotation = Quaternion.Euler(
+                    0f,
+                    side * 38f,
+                    0f);
+                head.transform.localScale = new Vector3(
+                    stemWidth,
+                    0.35f,
+                    16f);
+                AssignMaterial(head, material);
+            }
+        }
+
         void BuildBoundaryAirWalls()
         {
             if (boundaryRoot == null || plan == null)
@@ -1211,7 +1742,20 @@ namespace UnityPlanet.CityPcg
                 return leftStable.CompareTo(rightStable);
             });
 
-            int target = Mathf.Clamp(plan.buildings.Count * 4 / 5, 120, 155);
+            int standardTarget = Mathf.Clamp(
+                plan.buildings.Count * 4 / 5,
+                120,
+                155);
+            // Values above 1 are an explicit editor density multiplier. The
+            // base parcel lattice is already close to full occupancy at 1, so
+            // simply raising its spawn probability would have almost no visual
+            // effect. Continue through more valid infill candidates instead.
+            float requestedTarget = standardTarget * Mathf.Max(
+                1f,
+                settings.buildingDensity);
+            int target = requestedTarget >= int.MaxValue
+                ? int.MaxValue
+                : Mathf.CeilToInt(requestedTarget);
             int created = 0;
             for (int index = 0; index < candidates.Count && created < target; index++)
             {
@@ -1550,12 +2094,41 @@ namespace UnityPlanet.CityPcg
 
         bool InsideReservedGroundVolume(Vector3 position, Vector3 size)
         {
+            if (plan.mission == AirCombatCityMission.FacilityAssault)
+            {
+                float facilityHalf =
+                    AirCombatCityGenerator.FacilityPadSize * 0.5f;
+                for (int index = 0;
+                     index < plan.facilityCores.Count;
+                     index++)
+                {
+                    Vector3 core = plan.facilityCores[index];
+                    if (Mathf.Abs(position.x - core.x) <=
+                            facilityHalf + size.x * 0.5f + 8f &&
+                        Mathf.Abs(position.z - core.z) <=
+                            facilityHalf + size.z * 0.5f + 8f)
+                    {
+                        return true;
+                    }
+                }
+            }
+            // The core planner already keeps authored buildings away from
+            // these compatibility spawn pads. Block infill, tactical pairs
+            // and destruction anchors are instantiated afterwards, so they
+            // must repeat the same reservation or they can silently place a
+            // real collider over a formally valid enemy entrance.
+            if (IntersectsEnemyIngressReservation(
+                    position,
+                    size,
+                    plan.ingresses))
+            {
+                return true;
+            }
             for (int index = 0; index < plan.volumes.Count; index++)
             {
                 AirCombatTacticalVolume volume = plan.volumes[index];
                 if (volume.kind != AirCombatVolumeKind.SpawnBasin &&
-                    volume.kind != AirCombatVolumeKind.RecoveryPocket &&
-                    volume.kind != AirCombatVolumeKind.DangerPlaza)
+                    volume.kind != AirCombatVolumeKind.RecoveryPocket)
                 {
                     continue;
                 }
@@ -2086,10 +2659,10 @@ namespace UnityPlanet.CityPcg
             float openSpan = Vector2.Distance(
                 new Vector2(start.x, start.z),
                 new Vector2(end.x, end.z));
-            float finalSpan = openSpan + SkybridgeFacadeEmbed * 2f;
+            float finalSpan = openSpan + settings.skybridgeFacadeEmbed * 2f;
             if (!TryResolveBridgeLayout(
                     finalSpan,
-                    true,
+                    Mathf.Max(2, settings.skybridgeMaximumSegmentCount),
                     out GameObject ignoredBridgePrefab,
                     out int ignoredBridgeSegmentCount))
             {
@@ -2101,10 +2674,10 @@ namespace UnityPlanet.CityPcg
             {
                 start.y = height;
                 end.y = height;
-                Vector3 midpoint = (start + end) * 0.5f;
-                if (IntersectsProtectedVolume(midpoint) ||
-                    (settings.mission == AirCombatCityMission.BossEncounter &&
-                     IntersectsMissionObjective(midpoint)) ||
+                if (IntersectsProtectedVolume(start, end) ||
+                    ((settings.mission == AirCombatCityMission.BossEncounter ||
+                      settings.mission == AirCombatCityMission.FacilityAssault) &&
+                     IntersectsMissionObjective(start, end)) ||
                     IntersectsThirdBuilding(
                         collapse,
                         null,
@@ -2115,6 +2688,27 @@ namespace UnityPlanet.CityPcg
                     continue;
                 }
                 return true;
+            }
+            return false;
+        }
+
+        public static bool IntersectsEnemyIngressReservation(
+            Vector3 position,
+            Vector3 size,
+            IReadOnlyList<AirCombatEnemyIngress> ingresses)
+        {
+            if (ingresses == null || ingresses.Count == 0)
+                return false;
+            float footprintRadius = Mathf.Sqrt(
+                size.x * size.x + size.z * size.z) * 0.5f;
+            for (int index = 0; index < ingresses.Count; index++)
+            {
+                Vector3 ingress = ingresses[index].position;
+                Vector2 delta = new Vector2(
+                    position.x - ingress.x,
+                    position.z - ingress.z);
+                if (delta.magnitude < 72f + footprintRadius)
+                    return true;
             }
             return false;
         }
@@ -2134,7 +2728,8 @@ namespace UnityPlanet.CityPcg
             Vector3 delta = anchorBounds.center - collapseBounds.center;
             delta.y = 0f;
             float centerDistance = delta.magnitude;
-            if (centerDistance < 22f || centerDistance > 240f)
+            if (centerDistance < settings.skybridgeMinimumCenterDistance ||
+                centerDistance > settings.skybridgeMaximumCenterDistance)
                 return false;
 
             Vector3 direction = delta / centerDistance;
@@ -2177,10 +2772,10 @@ namespace UnityPlanet.CityPcg
                 float openSpan = Vector2.Distance(
                     new Vector2(collapseSocket.x, collapseSocket.z),
                     new Vector2(anchorSocket.x, anchorSocket.z));
-                float finalSpan = openSpan + SkybridgeFacadeEmbed * 2f;
+                float finalSpan = openSpan + settings.skybridgeFacadeEmbed * 2f;
                 if (!TryResolveBridgeLayout(
                         finalSpan,
-                        true,
+                        Mathf.Max(2, settings.skybridgeMaximumSegmentCount),
                         out GameObject bridgePrefab,
                         out int ignoredSegmentCount))
                 {
@@ -2194,10 +2789,12 @@ namespace UnityPlanet.CityPcg
                     continue;
                 }
 
-                Vector3 midpoint = (collapseSocket + anchorSocket) * 0.5f;
-                if (IntersectsProtectedVolume(midpoint) ||
-                    (settings.mission == AirCombatCityMission.BossEncounter &&
-                     IntersectsMissionObjective(midpoint)) ||
+                if (IntersectsProtectedVolume(collapseSocket, anchorSocket) ||
+                    ((settings.mission == AirCombatCityMission.BossEncounter ||
+                      settings.mission == AirCombatCityMission.FacilityAssault) &&
+                     IntersectsMissionObjective(
+                         collapseSocket,
+                         anchorSocket)) ||
                     IntersectsThirdBuilding(
                         collapse,
                         anchor,
@@ -2281,6 +2878,7 @@ namespace UnityPlanet.CityPcg
         void BuildSkybridges()
         {
             connectedBuildingPairs.Clear();
+            runtimeBuiltBridgeSegments.Clear();
             if (darkCity2Catalog == null || connectionRoot == null ||
                 darkCity2Catalog.straightSkybridges == null ||
                 darkCity2Catalog.straightSkybridges.Length == 0)
@@ -2318,7 +2916,8 @@ namespace UnityPlanet.CityPcg
                     Vector3 delta = secondBounds.center - firstBounds.center;
                     delta.y = 0f;
                     float centerDistance = delta.magnitude;
-                    if (centerDistance < 22f || centerDistance > 240f)
+                    if (centerDistance < settings.skybridgeMinimumCenterDistance ||
+                        centerDistance > settings.skybridgeMaximumCenterDistance)
                         continue;
                     Vector3 direction = delta / centerDistance;
                     float commonTop = Mathf.Min(
@@ -2385,12 +2984,17 @@ namespace UnityPlanet.CityPcg
                         float openSpan = Vector2.Distance(
                             new Vector2(layerFirstSocket.x, layerFirstSocket.z),
                             new Vector2(layerSecondSocket.x, layerSecondSocket.z));
-                        float finalSpan = openSpan + SkybridgeFacadeEmbed * 2f;
+                        float finalSpan = openSpan +
+                                          settings.skybridgeFacadeEmbed * 2f;
                         bool guaranteedDestructionPair =
                             IsGuaranteedDestructionBridgePair(first, second);
                         if (!TryResolveBridgeLayout(
                                 finalSpan,
-                                guaranteedDestructionPair,
+                                guaranteedDestructionPair
+                                    ? Mathf.Max(
+                                        2,
+                                        settings.skybridgeMaximumSegmentCount)
+                                    : settings.skybridgeMaximumSegmentCount,
                                 out GameObject bridgePrefab,
                                 out int bridgeSegmentCount))
                         {
@@ -2405,9 +3009,14 @@ namespace UnityPlanet.CityPcg
                         }
                         Vector3 midpoint =
                             (layerFirstSocket + layerSecondSocket) * 0.5f;
-                        if (IntersectsProtectedVolume(midpoint) ||
-                            (settings.mission == AirCombatCityMission.BossEncounter &&
-                             IntersectsMissionObjective(midpoint)) ||
+                        if (IntersectsProtectedVolume(
+                                layerFirstSocket,
+                                layerSecondSocket) ||
+                            ((settings.mission == AirCombatCityMission.BossEncounter ||
+                              settings.mission == AirCombatCityMission.FacilityAssault) &&
+                             IntersectsMissionObjective(
+                                 layerFirstSocket,
+                                 layerSecondSocket)) ||
                             IntersectsThirdBuilding(
                                 first,
                                 second,
@@ -2459,6 +3068,17 @@ namespace UnityPlanet.CityPcg
 
             candidates.Sort((left, right) => left.score.CompareTo(right.score));
             lastSkybridgeCandidateCount = candidates.Count;
+            lastIntraBlockSkybridgeCandidateCount = 0;
+            lastCrossBlockSkybridgeCandidateCount = 0;
+            for (int candidateIndex = 0;
+                 candidateIndex < candidates.Count;
+                 candidateIndex++)
+            {
+                if (candidates[candidateIndex].crossesRoadBlock)
+                    lastCrossBlockSkybridgeCandidateCount++;
+                else
+                    lastIntraBlockSkybridgeCandidateCount++;
+            }
             var destructionCandidateBuildings =
                 new System.Collections.Generic.HashSet<GeneratedBuildingRecord>();
             for (int candidateIndex = 0;
@@ -2487,11 +3107,13 @@ namespace UnityPlanet.CityPcg
                 new System.Collections.Generic.HashSet<BridgeCandidate>();
             bool bossMission = settings.mission ==
                                AirCombatCityMission.BossEncounter;
-            int targetCount = bossMission
-                ? BossCitySkybridgeTarget
-                : MinimumCitySkybridges;
-            int minimumCrossRoadBlockSkybridges =
-                Mathf.CeilToInt(targetCount * 0.5f);
+            int intraBlockTarget = bossMission
+                ? settings.bossIntraBlockSkybridgeTarget
+                : settings.intraBlockSkybridgeTarget;
+            int crossBlockTarget = bossMission
+                ? settings.bossCrossBlockSkybridgeTarget
+                : settings.crossBlockSkybridgeTarget;
+            int targetCount = intraBlockTarget + crossBlockTarget;
             int tacticalTarget = bossMission
                 ? ResolveBossTacticalChokeTarget(runtimeDifficultyTier)
                 : 0;
@@ -2638,10 +3260,9 @@ namespace UnityPlanet.CityPcg
                 }
             }
 
-            // First reserve half of the physical network for bridges that really
-            // cross a road-separated city block.  clusterId describes a visual
-            // composition group and is not a street-block boundary, so it cannot
-            // satisfy this gameplay requirement by itself.
+            // Treat same-block and cross-block bridges as independent authored
+            // quotas. Classification uses the final merged tactical-block group,
+            // not the source road grid or the visual composition cluster.
             for (int pass = 0; pass < 2 && built.Count < targetCount; pass++)
             {
                 bool fillingCrossRoadQuota = pass == 0;
@@ -2649,9 +3270,11 @@ namespace UnityPlanet.CityPcg
                      index < candidates.Count && built.Count < targetCount;
                      index++)
                 {
-                    if (fillingCrossRoadQuota &&
-                        lastCrossRoadBlockSkybridgeCount >=
-                        minimumCrossRoadBlockSkybridges)
+                    int intraBlockCount = selected.Count -
+                                          lastCrossRoadBlockSkybridgeCount;
+                    if (fillingCrossRoadQuota
+                            ? lastCrossRoadBlockSkybridgeCount >= crossBlockTarget
+                            : intraBlockCount >= intraBlockTarget)
                     {
                         break;
                     }
@@ -2660,8 +3283,9 @@ namespace UnityPlanet.CityPcg
                         permanentlyRejected.Contains(candidate) ||
                         (candidate.destructionAmbush &&
                          acceptedDestructionBridges >=
-                         destructionBridgeTarget) ||
-                        (fillingCrossRoadQuota && !candidate.crossesRoadBlock))
+                         destructionBridgeTarget &&
+                         !fillingCrossRoadQuota) ||
+                        candidate.crossesRoadBlock != fillingCrossRoadQuota)
                     {
                         continue;
                     }
@@ -2707,9 +3331,18 @@ namespace UnityPlanet.CityPcg
                 }
             }
 
-            bool networkValid = selected.Count >= targetCount &&
-                                lastCrossRoadBlockSkybridgeCount >=
-                                minimumCrossRoadBlockSkybridges &&
+            int achievedCrossBlock = lastCrossRoadBlockSkybridgeCount;
+            int achievedIntraBlock = selected.Count - achievedCrossBlock;
+            bool requestedCategoriesHavePhysicalResult =
+                (crossBlockTarget <= 0 || achievedCrossBlock > 0) &&
+                (intraBlockTarget <= 0 || achievedIntraBlock > 0);
+            // A user-authored quota may exceed every physically legal bridge
+            // combination in this generated city. The selection passes above
+            // already scan each category to exhaustion when its target is not
+            // met, so the achieved count is the maximum legal quota for this
+            // layout. Instantiate that maximum instead of hiding every accepted
+            // bridge behind an all-or-nothing target check.
+            bool networkValid = requestedCategoriesHavePhysicalResult &&
                                 acceptedDestructionBridges >=
                                 destructionBridgeTarget &&
                                 (!bossMission ||
@@ -2749,6 +3382,7 @@ namespace UnityPlanet.CityPcg
                 networkValid);
             if (!networkValid)
                 return;
+            runtimeBuiltBridgeSegments.AddRange(built);
             for (int index = 0; index < selected.Count; index++)
                 CreateSkybridgeAssembly(selected[index], index);
         }
@@ -3162,17 +3796,54 @@ namespace UnityPlanet.CityPcg
                 lastCrossRoadBlockSkybridgeCount++;
         }
 
-        bool IntersectsMissionObjective(Vector3 midpoint)
+        bool IntersectsMissionObjective(Vector3 start, Vector3 end)
         {
-            Vector2 point = new Vector2(midpoint.x, midpoint.z);
             Vector2 objective = new Vector2(
                 plan.objective.x,
                 plan.objective.z);
-            return Vector2.Distance(point, objective) < 85f;
+            Vector2 segmentStart = new Vector2(start.x, start.z);
+            Vector2 segmentEnd = new Vector2(end.x, end.z);
+            if (DistanceToSegment(
+                    objective,
+                    segmentStart,
+                    segmentEnd) < 85f)
+            {
+                return true;
+            }
+            if (plan.mission != AirCombatCityMission.FacilityAssault)
+                return false;
+            float clearance =
+                AirCombatCityGenerator.FacilityPadSize * 0.5f + 10f;
+            for (int index = 0;
+                 index < plan.facilityCores.Count;
+                 index++)
+            {
+                Vector3 core = plan.facilityCores[index];
+                if (DistanceToSegment(
+                        new Vector2(core.x, core.z),
+                        segmentStart,
+                        segmentEnd) < clearance)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         bool CrossesRoadBlock(Vector3 firstCenter, Vector3 secondCenter)
         {
+            if (CombatDrivenCityPcgPlanner.TryCrossesMergedBlockBoundary(
+                    plan,
+                    new Vector2(firstCenter.x, firstCenter.z),
+                    new Vector2(secondCenter.x, secondCenter.z),
+                    out bool crossesMergedBlockBoundary))
+            {
+                return crossesMergedBlockBoundary;
+            }
+
+            // Generated buildings should normally be covered by the tactical
+            // block layout. Retain the old deterministic grid classification
+            // only as a defensive fallback for an incomplete external plan.
             float streetPitch = Mathf.Max(1f, settings.buildingSpacing * 3f);
             return ResolveRoadBlockIndex(firstCenter.x, streetPitch) !=
                    ResolveRoadBlockIndex(secondCenter.x, streetPitch) ||
@@ -3190,6 +3861,9 @@ namespace UnityPlanet.CityPcg
 
         void BuildAerialCableLinks()
         {
+            lastAerialCableCandidateCount = 0;
+            lastAerialCableCount = 0;
+            runtimeBuiltCableSegments.Clear();
             if (darkCity2Catalog == null || connectionRoot == null ||
                 darkCity2Catalog.cableRed == null ||
                 darkCity2Catalog.cableDark == null ||
@@ -3222,7 +3896,10 @@ namespace UnityPlanet.CityPcg
                     Vector3 delta = secondBounds.center - firstBounds.center;
                     delta.y = 0f;
                     float centerDistance = delta.magnitude;
-                    if (centerDistance < 76f || centerDistance > 310f)
+                    if (centerDistance <
+                            settings.aerialCableMinimumCenterDistance ||
+                        centerDistance >
+                            settings.aerialCableMaximumCenterDistance)
                         continue;
                     Vector3 direction = delta / centerDistance;
                     Vector3 firstSocket = ResolveFacadeSocket(firstBounds, direction);
@@ -3230,7 +3907,8 @@ namespace UnityPlanet.CityPcg
                     float openSpan = Vector2.Distance(
                         new Vector2(firstSocket.x, firstSocket.z),
                         new Vector2(secondSocket.x, secondSocket.z));
-                    if (openSpan < 54f || openSpan > 248f)
+                if (openSpan < settings.aerialCableMinimumOpenSpan ||
+                    openSpan > settings.aerialCableMaximumOpenSpan)
                         continue;
 
                     float commonTop = Mathf.Min(firstBounds.max.y, secondBounds.max.y);
@@ -3250,10 +3928,18 @@ namespace UnityPlanet.CityPcg
                     secondSocket += direction * 2.5f;
                     firstSocket.y = secondSocket.y = centerY;
                     Vector3 midpoint = (firstSocket + secondSocket) * 0.5f;
-                    if (IntersectsProtectedVolume(midpoint))
+                    if (IntersectsProtectedVolume(midpoint) ||
+                        (settings.mission ==
+                             AirCombatCityMission.FacilityAssault &&
+                         IntersectsMissionObjective(
+                             firstSocket,
+                             secondSocket)))
                         continue;
 
-                    float sag = Mathf.Clamp(openSpan * 0.075f, 6f, 18f);
+                    float sag = Mathf.Clamp(
+                        openSpan * settings.aerialCableSagRatio,
+                        settings.aerialCableMinimumSag,
+                        settings.aerialCableMaximumSag);
                     if (CableIntersectsThirdBuilding(
                             first,
                             second,
@@ -3286,11 +3972,20 @@ namespace UnityPlanet.CityPcg
                 }
             }
 
+            lastAerialCableCandidateCount = candidates.Count;
             candidates.Sort((left, right) => left.score.CompareTo(right.score));
             var degree = new System.Collections.Generic.Dictionary<
                 GeneratedBuildingRecord, int>();
             var built = new System.Collections.Generic.List<BuiltCableSegment>();
-            int targetCount = Mathf.Clamp(generatedBuildings.Count / 6, 14, 26);
+            int baseTargetCount = Mathf.Clamp(
+                generatedBuildings.Count / 6,
+                settings.aerialCableMinimumCount,
+                settings.aerialCableMaximumCount);
+            float requestedCableCount = baseTargetCount *
+                                        settings.aerialCableDensityMultiplier;
+            int targetCount = requestedCableCount >= int.MaxValue
+                ? int.MaxValue
+                : Mathf.CeilToInt(requestedCableCount);
             for (int index = 0;
                  index < candidates.Count && built.Count < targetCount;
                  index++)
@@ -3321,6 +4016,8 @@ namespace UnityPlanet.CityPcg
                     end = candidate.end
                 });
             }
+            lastAerialCableCount = built.Count;
+            runtimeBuiltCableSegments.AddRange(built);
         }
 
         void CreateAerialCableAssembly(CableCandidate candidate, int stableIndex)
@@ -3329,16 +4026,17 @@ namespace UnityPlanet.CityPcg
                 "AerialCableLink_" + stableIndex.ToString("D2") + "_" +
                 candidate.first.lot.stableId + "_To_" +
                 candidate.second.lot.stableId +
-                "_FacadeEmbedded_NoCollider");
+                "_FacadeEmbedded_NonBlockingSlowTrigger");
             assembly.transform.SetParent(connectionRoot, false);
 
+            float cableSeparation = settings.aerialCableVerticalSeparation;
             CreateCableTube(
                 assembly.transform,
                 "Cable_Red_Top",
                 candidate.start,
                 candidate.end,
                 candidate.sag * 0.82f,
-                2.7f,
+                cableSeparation,
                 0.48f,
                 darkCity2Catalog.cableRed);
             CreateCableTube(
@@ -3356,9 +4054,14 @@ namespace UnityPlanet.CityPcg
                 candidate.start,
                 candidate.end,
                 candidate.sag * 1.14f,
-                -2.7f,
+                -cableSeparation,
                 0.48f,
                 darkCity2Catalog.cableBlue);
+            AerialCableCurve[] curves =
+                assembly.GetComponentsInChildren<AerialCableCurve>(true);
+            assembly.AddComponent<AerialCableSlowHazard>().Configure(
+                curves,
+                settings);
         }
 
         static void CreateCableTube(
@@ -3517,12 +4220,12 @@ namespace UnityPlanet.CityPcg
                    lot.size.x >= 20f && lot.size.z >= 20f;
         }
 
-        static int ResolveMaximumCableDegree(AirCombatBuildingLot lot)
+        int ResolveMaximumCableDegree(AirCombatBuildingLot lot)
         {
             return lot.band == AirCombatBuildingBand.Facility ||
                    lot.archetype == AirCombatBuildingArchetype.Landmark
-                ? 4
-                : 3;
+                ? settings.aerialCableLandmarkMaximumConnections
+                : settings.aerialCableMaximumConnectionsPerBuilding;
         }
 
         static string ConnectionPairKey(
@@ -3574,31 +4277,22 @@ namespace UnityPlanet.CityPcg
 
         bool TryResolveBridgeLayout(
             float targetSpan,
-            bool allowTwoSegments,
+            int maximumSegmentCount,
             out GameObject bridgePrefab,
             out int segmentCount)
         {
-            bridgePrefab = ResolveBridgeForSpan(targetSpan);
-            if (bridgePrefab != null)
+            int resolvedMaximum = Mathf.Max(1, maximumSegmentCount);
+            for (int count = 1; count <= resolvedMaximum; count++)
             {
-                segmentCount = 1;
-                return true;
-            }
-
-            // Guaranteed collapse-ambush links may cross a merged road block.
-            // Reuse two legal catalog spans instead of over-stretching one
-            // mesh. Ordinary bridges retain the original single-span rule so
-            // this does not silently turn the whole city into long viaducts.
-            if (allowTwoSegments)
-            {
-                bridgePrefab = ResolveBridgeForSpan(targetSpan * 0.5f);
+                bridgePrefab = ResolveBridgeForSpan(targetSpan / count);
                 if (bridgePrefab != null)
                 {
-                    segmentCount = 2;
+                    segmentCount = count;
                     return true;
                 }
             }
 
+            bridgePrefab = null;
             segmentCount = 0;
             return false;
         }
@@ -3616,7 +4310,7 @@ namespace UnityPlanet.CityPcg
                 "_Layer" + (candidate.layerIndex + 1) +
                 "of" + candidate.layerCount +
                 "_Height" + Mathf.RoundToInt(candidate.centerY) +
-                "_" + SkybridgeFacadeEmbed.ToString("0") +
+                "_" + settings.skybridgeFacadeEmbed.ToString("0") +
                 "mFacadeEmbed_" +
                 (candidate.crossesRoadBlock
                     ? "CrossRoadBlock"
@@ -3766,6 +4460,42 @@ namespace UnityPlanet.CityPcg
                 if (Mathf.Abs(delta.x) <= volume.size.x * 0.55f &&
                     Mathf.Abs(delta.y) <= volume.size.y * 0.55f &&
                     Mathf.Abs(delta.z) <= volume.size.z * 0.55f)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool IntersectsProtectedVolume(Vector3 start, Vector3 end)
+        {
+            Vector2 lineStart = new Vector2(start.x, start.z);
+            Vector2 lineEnd = new Vector2(end.x, end.z);
+            float minimumY = Mathf.Min(start.y, end.y);
+            float maximumY = Mathf.Max(start.y, end.y);
+            for (int index = 0; index < plan.volumes.Count; index++)
+            {
+                AirCombatTacticalVolume volume = plan.volumes[index];
+                if (volume.kind != AirCombatVolumeKind.RecoveryPocket &&
+                    volume.kind != AirCombatVolumeKind.SpawnBasin)
+                {
+                    continue;
+                }
+                Vector3 halfSize = volume.size * 0.55f;
+                if (maximumY < volume.center.y - halfSize.y ||
+                    minimumY > volume.center.y + halfSize.y)
+                {
+                    continue;
+                }
+                Rect protectedFootprint = new Rect(
+                    volume.center.x - halfSize.x,
+                    volume.center.z - halfSize.z,
+                    halfSize.x * 2f,
+                    halfSize.z * 2f);
+                if (SegmentIntersectsRect(
+                        lineStart,
+                        lineEnd,
+                        protectedFootprint))
                 {
                     return true;
                 }
@@ -4388,12 +5118,12 @@ namespace UnityPlanet.CityPcg
                    centerY <= buildingBounds.max.y - 8f;
         }
 
-        static int ResolveMaximumBridgeDegree(AirCombatBuildingLot lot)
+        int ResolveMaximumBridgeDegree(AirCombatBuildingLot lot)
         {
             return lot.band == AirCombatBuildingBand.Facility ||
                    lot.archetype == AirCombatBuildingArchetype.Landmark
-                ? 10
-                : 7;
+                ? settings.skybridgeLandmarkMaximumConnections
+                : settings.skybridgeMaximumConnectionsPerBuilding;
         }
 
         static bool IsGuaranteedDestructionBridgePair(
@@ -4521,16 +5251,16 @@ namespace UnityPlanet.CityPcg
             heights.Add(candidate);
         }
 
-        static System.Collections.Generic.List<float>
+        System.Collections.Generic.List<float>
             BuildIrregularBridgeHeights(float commonTop, int pairHash)
         {
-            const float MinimumHeight = 38f;
+            float minimumHeight = settings.skybridgeMinimumHeight;
             const float FacadeTopMargin = 8f;
             const float MinimumVerticalGap = 18f;
             const int MaximumLayersPerPair = 4;
 
             float maximumHeight = commonTop - FacadeTopMargin;
-            float usableSpan = maximumHeight - MinimumHeight;
+            float usableSpan = maximumHeight - minimumHeight;
             var heights = new System.Collections.Generic.List<float>(
                 MaximumLayersPerPair);
             if (usableSpan < 0f)
@@ -4554,7 +5284,7 @@ namespace UnityPlanet.CityPcg
                 float fraction = 0.24f +
                     PositiveStableModulo(pairHash / 29, 46) * 0.01f;
                 heights.Add(Mathf.Lerp(
-                    MinimumHeight,
+                    minimumHeight,
                     maximumHeight,
                     fraction));
                 return heights;
@@ -4570,7 +5300,7 @@ namespace UnityPlanet.CityPcg
                 PositiveStableModulo(pairHash / 37, 15) * 0.01f;
             float gapPoolShare = 0.52f +
                 PositiveStableModulo(pairHash / 43, 17) * 0.01f;
-            float current = MinimumHeight + extra * bottomShare;
+            float current = minimumHeight + extra * bottomShare;
             heights.Add(current);
 
             var weights = new float[layerCount - 1];
@@ -5847,8 +6577,6 @@ namespace UnityPlanet.CityPcg
                     return palette.exposureVolume;
                 case AirCombatVolumeKind.DominancePerch:
                     return palette.longRangeRoute;
-                case AirCombatVolumeKind.DangerPlaza:
-                    return palette.exposureVolume;
                 default:
                     return palette.maneuverVolume;
             }
@@ -5925,13 +6653,41 @@ namespace UnityPlanet.CityPcg
 
         void ClearGenerated()
         {
+            runtimeGeometrySnapshot = null;
+            runtimeBuiltBridgeSegments.Clear();
+            runtimeBuiltCableSegments.Clear();
             Transform generated = transform.Find(GeneratedRootName);
-            if (generated == null)
+            if (generated != null)
+            {
+                if (Application.isPlaying)
+                    Destroy(generated.gameObject);
+                else
+                    DestroyImmediate(generated.gameObject);
+            }
+            DestroyWindPreviewMaterial(ref windPreviewRibbonMaterial);
+            DestroyWindPreviewMaterial(ref windPreviewArrowMaterial);
+        }
+
+        static void DestroyWindPreviewMaterial(ref Material material)
+        {
+            if (material == null)
                 return;
             if (Application.isPlaying)
-                Destroy(generated.gameObject);
+                Destroy(material);
             else
-                DestroyImmediate(generated.gameObject);
+                DestroyImmediate(material);
+            material = null;
+        }
+
+        static void MarkEditorPreviewHierarchyTransient(Transform root)
+        {
+            if (root == null)
+                return;
+            root.gameObject.hideFlags |= HideFlags.DontSaveInEditor;
+            for (int childIndex = 0; childIndex < root.childCount; childIndex++)
+            {
+                MarkEditorPreviewHierarchyTransient(root.GetChild(childIndex));
+            }
         }
 
         sealed class GeneratedBuildingRecord
@@ -6187,8 +6943,6 @@ namespace UnityPlanet.CityPcg
                     return new Color(1f, 0.18f, 0.08f, 0.85f);
                 case AirCombatVolumeKind.DominancePerch:
                     return new Color(1f, 0.92f, 0.12f, 0.9f);
-                case AirCombatVolumeKind.DangerPlaza:
-                    return new Color(1f, 0.28f, 0.08f, 0.85f);
                 default:
                     return new Color(0.35f, 1f, 0.55f, 0.8f);
             }
@@ -6212,8 +6966,6 @@ namespace UnityPlanet.CityPcg
                     return "主轴强攻突破口";
                 case AirCombatVolumeKind.DominancePerch:
                     return "制空优势屋顶";
-                case AirCombatVolumeKind.DangerPlaza:
-                    return "高危开放公园";
                 default:
                     return "脱离与恢复区";
             }

@@ -113,7 +113,7 @@ namespace ModularAssembly
         public ModularBlueprintModule[] modules = Array.Empty<ModularBlueprintModule>();
         public long savedUtcTicks;
         public UnityPlanet.ModularAssembly.VehicleCoreAssistMode coreAssistMode =
-            UnityPlanet.ModularAssembly.VehicleCoreAssistMode.Standard;
+            UnityPlanet.ModularAssembly.VehicleCoreAssistMode.Training;
     }
 
     public sealed class GridModuleRecord
@@ -144,6 +144,8 @@ namespace ModularAssembly
         public bool ExceedsCpu;
         public int CpuCost;
         public readonly List<string> DisconnectedIds = new List<string>();
+        public readonly List<string> UnsupportedFoundationIds =
+            new List<string>();
         public string Message;
         public bool IsValid =>
             HasCore
@@ -151,7 +153,8 @@ namespace ModularAssembly
             && !ExceedsModuleLimit
             && !ExceedsEnergy
             && !ExceedsCpu
-            && DisconnectedIds.Count == 0;
+            && DisconnectedIds.Count == 0
+            && UnsupportedFoundationIds.Count == 0;
     }
 
     public struct GridAssemblyMetrics
@@ -295,6 +298,7 @@ namespace ModularAssembly
             UnityPlanet.ModularAssembly.ModuleCpuBudget.Maximum;
         public bool UsesCapacityOverrides =>
             moduleLimitOverride.HasValue || cpuLimitOverride.HasValue;
+        public bool RequiresFoundationMounts { get; private set; }
 
         public GridAssemblyModel(IEnumerable<GridModuleDefinition> moduleDefinitions)
             : this(moduleDefinitions, null, null)
@@ -398,6 +402,23 @@ namespace ModularAssembly
             }
             coreAssistMode = value;
             Changed?.Invoke();
+        }
+
+        /// <summary>
+        /// Enables the player-build rule that every newly placed or moved
+        /// module must directly touch a core or structural foundation module.
+        /// Runtime/Boss models keep the legacy rule unless their owner opts in.
+        /// </summary>
+        public void SetFoundationMountRule(bool required)
+        {
+            RequiresFoundationMounts = required;
+        }
+
+        public static bool IsFoundationModule(GridModuleDefinition definition)
+        {
+            return definition != null &&
+                   (definition.Category == GridModuleCategory.Core ||
+                    definition.Category == GridModuleCategory.Structure);
         }
 
         public List<Vector3Int> GetCells(GridModuleRecord record) =>
@@ -524,6 +545,11 @@ namespace ModularAssembly
 
         public GridAssemblyValidation Validate()
         {
+            return Validate(true);
+        }
+
+        GridAssemblyValidation Validate(bool enforceFoundationMounts)
+        {
             var result = new GridAssemblyValidation();
             result.HasCore = records.Count(item => item.Definition.Category == GridModuleCategory.Core) == 1;
             result.ExceedsModuleLimit = records.Count > EffectiveModuleLimit;
@@ -542,6 +568,22 @@ namespace ModularAssembly
                 if (!connected.Contains(record.RuntimeId))
                     result.DisconnectedIds.Add(record.RuntimeId);
 
+            if (RequiresFoundationMounts && enforceFoundationMounts)
+            {
+                Dictionary<Vector3Int, GridModuleRecord> recordOccupancy =
+                    BuildRecordOccupancy(records);
+                foreach (GridModuleRecord record in records)
+                {
+                    if (record.Definition.Category !=
+                            GridModuleCategory.Core &&
+                        !HasFoundationMount(record, recordOccupancy))
+                    {
+                        result.UnsupportedFoundationIds.Add(
+                            record.RuntimeId);
+                    }
+                }
+            }
+
             GridAssemblyMetrics metrics = CalculateMetrics();
             result.ExceedsEnergy = metrics.energyCost > metrics.energyCapacity + 0.001f;
             result.CpuCost =
@@ -553,6 +595,8 @@ namespace ModularAssembly
             else if (result.ExceedsModuleLimit)
                 result.Message = $"超过{EffectiveModuleLimit}个模块";
             else if (result.DisconnectedIds.Count > 0) result.Message = "存在未连接核心的模块";
+            else if (result.UnsupportedFoundationIds.Count > 0)
+                result.Message = "存在未安装在基础模块上的模块";
             else if (result.ExceedsEnergy) result.Message = "能源预算不足";
             else if (result.ExceedsCpu)
                 result.Message =
@@ -741,7 +785,10 @@ namespace ModularAssembly
                         UnityPlanet.ModularAssembly.ModuleCpuBudget.Total(
                             restored));
             }
-            GridAssemblyValidation validation = Validate();
+            // Loading and undo keep old blueprints recoverable in the build
+            // scene. Public validation still blocks flight/save until the
+            // player removes and reinstalls unsupported modules.
+            GridAssemblyValidation validation = Validate(false);
             if (!validation.IsValid)
             {
                 records.Clear();
@@ -923,8 +970,58 @@ namespace ModularAssembly
                 error = "模块必须与核心结构整面连接。";
                 return false;
             }
+            if (RequiresFoundationMounts)
+            {
+                Dictionary<Vector3Int, GridModuleRecord> finalOccupancy =
+                    BuildRecordOccupancy(baseRecords.Concat(candidates));
+                if (candidates.Any(item =>
+                        !HasFoundationMount(
+                            item,
+                            finalOccupancy)))
+                {
+                    error = "模块只能安装在基础模块（驾驶核心或结构方块）上。";
+                    return false;
+                }
+            }
             error = string.Empty;
             return true;
+        }
+
+        static bool HasFoundationMount(
+            GridModuleRecord candidate,
+            IReadOnlyDictionary<Vector3Int, GridModuleRecord> occupancy)
+        {
+            foreach (Vector3Int cell in GetCells(
+                         candidate.Definition,
+                         candidate.Pose))
+            foreach (Vector3Int direction in Neighbors)
+            {
+                if (!occupancy.TryGetValue(
+                        cell + direction,
+                        out GridModuleRecord adjacent) ||
+                    ReferenceEquals(adjacent, candidate))
+                {
+                    continue;
+                }
+                if (IsFoundationModule(adjacent.Definition))
+                    return true;
+            }
+            return false;
+        }
+
+        static Dictionary<Vector3Int, GridModuleRecord>
+            BuildRecordOccupancy(IEnumerable<GridModuleRecord> source)
+        {
+            var result =
+                new Dictionary<Vector3Int, GridModuleRecord>();
+            foreach (GridModuleRecord record in source)
+            foreach (Vector3Int cell in GetCells(
+                         record.Definition,
+                         record.Pose))
+            {
+                result[cell] = record;
+            }
+            return result;
         }
 
         List<string> ResolveOperationIds(string runtimeId)

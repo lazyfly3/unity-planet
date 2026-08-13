@@ -576,6 +576,67 @@ namespace UnityPlanet.CityPcg
             return proxy != null ? proxy.Owner : null;
         }
 
+        internal static int ResolveTopplingImpactTargetId(Collider collider)
+        {
+            if (collider == null)
+                return 0;
+            UrbanDestructibleBuilding building = ResolveBuilding(collider);
+            if (building != null)
+                return building.GetInstanceID();
+            UrbanDestructibleRuinSection ruin =
+                collider.GetComponentInParent<UrbanDestructibleRuinSection>();
+            if (ruin != null)
+                return ruin.GetInstanceID();
+            UrbanDestructibleBridge bridge =
+                collider.GetComponentInParent<UrbanDestructibleBridge>();
+            return bridge != null
+                ? bridge.GetInstanceID()
+                : collider.GetInstanceID();
+        }
+
+        internal static bool TryApplyTopplingImpact(
+            Collider collider,
+            Vector3 point,
+            Vector3 direction,
+            float impactSpeed,
+            float fallingMass,
+            float contactRadius,
+            GameObject source)
+        {
+            UrbanDestructibleBuilding building = ResolveBuilding(collider);
+            if (building == null || building.IsUrbanDestroyed ||
+                impactSpeed < UrbanVehicleImpactPolicy.MinimumVehicleImpactSpeed)
+            {
+                return false;
+            }
+            Vector3 safeDirection = direction.sqrMagnitude > 0.001f
+                ? direction.normalized
+                : Vector3.down;
+            float mass = Mathf.Max(1f, fallingMass);
+            float damage = ResolveTopplingImpactDamage(
+                impactSpeed,
+                mass);
+            return building.ApplyTopplingImpact(
+                point,
+                safeDirection,
+                impactSpeed,
+                mass,
+                contactRadius,
+                damage,
+                source);
+        }
+
+        internal static float ResolveTopplingImpactDamage(
+            float impactSpeed,
+            float fallingMass)
+        {
+            return Mathf.Clamp(
+                Mathf.Max(0f, impactSpeed) * 6f +
+                Mathf.Sqrt(Mathf.Max(1f, fallingMass)) * 6f,
+                24f,
+                760f);
+        }
+
         internal static void BreakDecorationsNear(Bounds collapseBounds)
         {
             collapseBounds.Expand(new Vector3(12f, 8f, 12f));
@@ -1011,6 +1072,10 @@ namespace UnityPlanet.CityPcg
                 request.direction,
                 request.normal,
                 stableSeed);
+            UrbanTopplingSection inheritedToppling =
+                section.GetComponentInParent<UrbanTopplingSection>();
+            if (inheritedToppling != null)
+                inheritedToppling.RefreshCompoundCollidersAfterSlice();
             return true;
         }
 
@@ -1858,6 +1923,7 @@ namespace UnityPlanet.CityPcg
             fallingRoot.SetParent(ruinRoot, true);
             fallingRoot.position = hingePoint;
             fallingRoot.rotation = Quaternion.identity;
+            fallingRoot.gameObject.layer = building.gameObject.layer;
 
             int wholeVisualCount = CreateWholeRendererCopies(
                 building.SourceRenderers,
@@ -1936,13 +2002,12 @@ namespace UnityPlanet.CityPcg
                     "CrushedSupport_局部承重失效_" + index.ToString("D2"));
             }
 
-            BoxCollider towerCollider =
-                fallingRoot.gameObject.AddComponent<BoxCollider>();
-            towerCollider.center = fallingRoot.InverseTransformPoint(bounds.center);
-            towerCollider.size = new Vector3(
-                size.x * 0.84f,
-                size.y * 0.96f,
-                size.z * 0.84f);
+            BoxCollider[] towerColliders = CreateTopplingCompoundColliders(
+                fallingRoot,
+                bounds.center,
+                size,
+                4);
+            BoxCollider towerCollider = towerColliders[0];
             Rigidbody body = fallingRoot.gameObject.AddComponent<Rigidbody>();
             body.isKinematic = true;
             body.useGravity = false;
@@ -1957,7 +2022,7 @@ namespace UnityPlanet.CityPcg
             UrbanTopplingSection toppling =
                 fallingRoot.gameObject.AddComponent<UrbanTopplingSection>();
             toppling.Configure(
-                towerCollider,
+                towerColliders,
                 body,
                 Vector3.Cross(Vector3.up, fallDirection).normalized,
                 fallDirection,
@@ -2068,6 +2133,7 @@ namespace UnityPlanet.CityPcg
             fallingRoot.SetParent(ruinRoot, true);
             fallingRoot.position = hingePoint;
             fallingRoot.rotation = Quaternion.identity;
+            fallingRoot.gameObject.layer = building.gameObject.layer;
 
             int lowerVisualCount = CreateClippedRendererCopies(
                 building.SourceRenderers,
@@ -2142,10 +2208,12 @@ namespace UnityPlanet.CityPcg
                 lowerRoot,
                 lowerCenter,
                 new Vector3(size.x * 0.82f, lowerHeight, size.z * 0.82f));
-            BoxCollider topCollider = CreateSliceSectionCollider(
+            BoxCollider[] topColliders = CreateTopplingCompoundColliders(
                 fallingRoot,
                 upperCenter,
-                new Vector3(size.x * 0.80f, upperHeight, size.z * 0.80f));
+                new Vector3(size.x, upperHeight, size.z),
+                3);
+            BoxCollider topCollider = topColliders[0];
             Rigidbody body = fallingRoot.gameObject.AddComponent<Rigidbody>();
             body.isKinematic = true;
             body.useGravity = false;
@@ -2159,7 +2227,7 @@ namespace UnityPlanet.CityPcg
             UrbanTopplingSection toppling =
                 fallingRoot.gameObject.AddComponent<UrbanTopplingSection>();
             toppling.Configure(
-                topCollider,
+                topColliders,
                 body,
                 Vector3.Cross(Vector3.up, fallDirection).normalized,
                 fallDirection,
@@ -2250,6 +2318,107 @@ namespace UnityPlanet.CityPcg
                     ? fallbackWorldSize.z / Mathf.Abs(scale.z)
                     : fallbackWorldSize.z);
             return collider;
+        }
+
+        static BoxCollider[] CreateTopplingCompoundColliders(
+            Transform sectionRoot,
+            Vector3 fallbackWorldCenter,
+            Vector3 fallbackWorldSize,
+            int requestedBands)
+        {
+            int bandCount = Mathf.Clamp(requestedBands, 2, 5);
+            Bounds combined = default;
+            Renderer[] renderers = sectionRoot == null
+                ? Array.Empty<Renderer>()
+                : sectionRoot.GetComponentsInChildren<Renderer>(true);
+            var localRendererBounds = new List<Bounds>(renderers.Length);
+            bool initialized = false;
+            for (int index = 0; index < renderers.Length; index++)
+            {
+                Renderer renderer = renderers[index];
+                if (renderer == null || !renderer.enabled)
+                    continue;
+                Bounds local = ToLocalBounds(
+                    sectionRoot,
+                    renderer.bounds);
+                if (local.size.sqrMagnitude <= 0.0001f)
+                    continue;
+                localRendererBounds.Add(local);
+                if (!initialized)
+                {
+                    combined = local;
+                    initialized = true;
+                }
+                else
+                {
+                    combined.Encapsulate(local.min);
+                    combined.Encapsulate(local.max);
+                }
+            }
+
+            if (!initialized)
+            {
+                Vector3 localCenter = sectionRoot.InverseTransformPoint(
+                    fallbackWorldCenter);
+                Vector3 scale = sectionRoot.lossyScale;
+                combined = new Bounds(
+                    localCenter,
+                    new Vector3(
+                        Mathf.Abs(scale.x) > 0.0001f
+                            ? fallbackWorldSize.x / Mathf.Abs(scale.x)
+                            : fallbackWorldSize.x,
+                        Mathf.Abs(scale.y) > 0.0001f
+                            ? fallbackWorldSize.y / Mathf.Abs(scale.y)
+                            : fallbackWorldSize.y,
+                        Mathf.Abs(scale.z) > 0.0001f
+                            ? fallbackWorldSize.z / Mathf.Abs(scale.z)
+                            : fallbackWorldSize.z));
+                localRendererBounds.Add(combined);
+            }
+
+            float bandHeight = Mathf.Max(0.3f, combined.size.y / bandCount);
+            var result = new BoxCollider[bandCount];
+            for (int bandIndex = 0; bandIndex < bandCount; bandIndex++)
+            {
+                float bandMin = combined.min.y + bandHeight * bandIndex;
+                float bandMax = bandIndex == bandCount - 1
+                    ? combined.max.y
+                    : combined.min.y + bandHeight * (bandIndex + 1);
+                float minX = float.PositiveInfinity;
+                float maxX = float.NegativeInfinity;
+                float minZ = float.PositiveInfinity;
+                float maxZ = float.NegativeInfinity;
+                for (int index = 0; index < localRendererBounds.Count; index++)
+                {
+                    Bounds local = localRendererBounds[index];
+                    if (local.max.y < bandMin || local.min.y > bandMax)
+                        continue;
+                    minX = Mathf.Min(minX, local.min.x);
+                    maxX = Mathf.Max(maxX, local.max.x);
+                    minZ = Mathf.Min(minZ, local.min.z);
+                    maxZ = Mathf.Max(maxZ, local.max.z);
+                }
+                if (float.IsInfinity(minX))
+                {
+                    minX = combined.min.x;
+                    maxX = combined.max.x;
+                    minZ = combined.min.z;
+                    maxZ = combined.max.z;
+                }
+
+                BoxCollider collider =
+                    sectionRoot.gameObject.AddComponent<BoxCollider>();
+                collider.center = new Vector3(
+                    (minX + maxX) * 0.5f,
+                    (bandMin + bandMax) * 0.5f,
+                    (minZ + maxZ) * 0.5f);
+                collider.size = new Vector3(
+                    Mathf.Max(0.3f, maxX - minX),
+                    Mathf.Max(0.3f, bandMax - bandMin + 0.08f),
+                    Mathf.Max(0.3f, maxZ - minZ));
+                result[bandIndex] = collider;
+            }
+            return result;
         }
 
         static Material CreateCutFacadeMaterial(
@@ -4072,6 +4241,7 @@ namespace UnityPlanet.CityPcg
     {
         UrbanDestructionCoordinator coordinator;
         Collider persistentCollider;
+        Collider[] persistentColliders = Array.Empty<Collider>();
         Material facadeMaterial;
         Transform breachVisualRoot;
         float maximumIntegrity;
@@ -4087,6 +4257,29 @@ namespace UnityPlanet.CityPcg
         {
             get
             {
+                bool hasColliderBounds = false;
+                Bounds colliderBounds = new Bounds(
+                    transform.position,
+                    Vector3.zero);
+                for (int index = 0;
+                     index < persistentColliders.Length;
+                     index++)
+                {
+                    Collider collider = persistentColliders[index];
+                    if (collider == null || !collider.enabled)
+                        continue;
+                    if (!hasColliderBounds)
+                    {
+                        colliderBounds = collider.bounds;
+                        hasColliderBounds = true;
+                    }
+                    else
+                    {
+                        colliderBounds.Encapsulate(collider.bounds);
+                    }
+                }
+                if (hasColliderBounds)
+                    return colliderBounds;
                 if (persistentCollider != null)
                     return persistentCollider.bounds;
                 Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
@@ -4120,6 +4313,7 @@ namespace UnityPlanet.CityPcg
             persistentCollider = targetCollider != null
                 ? targetCollider
                 : GetComponentInChildren<Collider>(true);
+            persistentColliders = GetComponentsInChildren<Collider>(true);
             fractureGeneration = Mathf.Max(0, targetFractureGeneration);
             retired = false;
             Bounds bounds = DestructionBounds;
@@ -4132,8 +4326,13 @@ namespace UnityPlanet.CityPcg
             integrity = maximumIntegrity;
             configured = true;
             name = sectionLabel + "_可持续切割_保留碰撞";
-            if (persistentCollider != null)
-                persistentCollider.enabled = true;
+            for (int index = 0;
+                 index < persistentColliders.Length;
+                 index++)
+            {
+                if (persistentColliders[index] != null)
+                    persistentColliders[index].enabled = true;
+            }
             UrbanDestructionWorld.Register(this);
         }
 
@@ -4257,8 +4456,13 @@ namespace UnityPlanet.CityPcg
                     if (sourceRenderers[index] != null)
                         sourceRenderers[index].enabled = false;
             }
-            if (persistentCollider != null)
-                persistentCollider.enabled = false;
+            for (int index = 0;
+                 index < persistentColliders.Length;
+                 index++)
+            {
+                if (persistentColliders[index] != null)
+                    persistentColliders[index].enabled = false;
+            }
             retired = true;
             UrbanDestructionWorld.Unregister(this);
             enabled = false;
@@ -4282,7 +4486,24 @@ namespace UnityPlanet.CityPcg
     /// </summary>
     public sealed class UrbanTopplingSection : MonoBehaviour
     {
-        BoxCollider sectionCollider;
+        const float MaximumSweepStepDegrees = 1.5f;
+        const float MinimumDynamicSeconds = 0.45f;
+        const float RequiredSupportedStillSeconds = 1.25f;
+        const float SupportContactGraceSeconds = 0.22f;
+
+        enum MotionState
+        {
+            ControlledTopple,
+            DynamicFall,
+            SettledCover
+        }
+
+        readonly Collider[] overlapBuffer = new Collider[96];
+        readonly HashSet<int> impactedTargets = new HashSet<int>();
+        readonly HashSet<Collider> supportingColliders =
+            new HashSet<Collider>();
+
+        BoxCollider[] sectionColliders = Array.Empty<BoxCollider>();
         Rigidbody body;
         Quaternion initialRotation;
         Vector3 worldAxis;
@@ -4293,12 +4514,41 @@ namespace UnityPlanet.CityPcg
         float elapsed;
         float currentAngle;
         float lastSweepSpeed;
+        float lastAttemptedSweepSpeed;
         float lastSweepValidUntil = -100f;
         float lastVehicleImpactAt = -100f;
+        float dynamicSeconds;
+        float supportedStillSeconds;
+        float lastSupportContactAt = -100f;
+        Vector3 lastBlockPoint;
+        bool wasBlocked;
+        bool lastStructuralTransferApplied;
+        bool releasePending;
+        bool hasSupportingContact;
+        int lastBlockingTargetId;
+        MotionState motionState;
 
         public float CutHeight => cutHeight;
         public Vector3 FallDirection => fallDirection;
         public float CurrentAngle => currentAngle;
+        public int CompoundColliderCount => sectionColliders.Length;
+        public bool WasBlocked => wasBlocked;
+        public Vector3 LastBlockPoint => lastBlockPoint;
+        public float LastAttemptedSweepSpeed => lastAttemptedSweepSpeed;
+        public bool LastStructuralTransferApplied =>
+            lastStructuralTransferApplied;
+        public int LastBlockingTargetId => lastBlockingTargetId;
+        public bool ReleasePending => releasePending;
+        public bool IsControlledToppling =>
+            motionState == MotionState.ControlledTopple;
+        public bool IsDynamicFalling =>
+            motionState == MotionState.DynamicFall;
+        public bool IsSettledCover =>
+            motionState == MotionState.SettledCover;
+        public float LastRequestedStructuralDamage =>
+            UrbanDestructionWorld.ResolveTopplingImpactDamage(
+                lastAttemptedSweepSpeed,
+                body != null ? body.mass : 120f);
 
         public void Configure(
             BoxCollider targetCollider,
@@ -4309,7 +4559,30 @@ namespace UnityPlanet.CityPcg
             float targetMaximumAngle,
             float targetDuration)
         {
-            sectionCollider = targetCollider;
+            Configure(
+                targetCollider == null
+                    ? Array.Empty<BoxCollider>()
+                    : new[] { targetCollider },
+                targetBody,
+                rotationAxis,
+                targetFallDirection,
+                targetCutHeight,
+                targetMaximumAngle,
+                targetDuration);
+        }
+
+        public void Configure(
+            BoxCollider[] targetColliders,
+            Rigidbody targetBody,
+            Vector3 rotationAxis,
+            Vector3 targetFallDirection,
+            float targetCutHeight,
+            float targetMaximumAngle,
+            float targetDuration)
+        {
+            sectionColliders = targetColliders == null
+                ? Array.Empty<BoxCollider>()
+                : Array.FindAll(targetColliders, item => item != null);
             body = targetBody;
             initialRotation = transform.rotation;
             worldAxis = rotationAxis.sqrMagnitude > 0.001f
@@ -4323,11 +4596,63 @@ namespace UnityPlanet.CityPcg
             duration = Mathf.Max(0.45f, targetDuration);
             elapsed = 0f;
             currentAngle = 0f;
+            wasBlocked = false;
+            lastBlockPoint = transform.position;
+            lastAttemptedSweepSpeed = 0f;
+            lastStructuralTransferApplied = false;
+            lastBlockingTargetId = 0;
+            releasePending = false;
+            hasSupportingContact = false;
+            dynamicSeconds = 0f;
+            supportedStillSeconds = 0f;
+            lastSupportContactAt = -100f;
+            motionState = MotionState.ControlledTopple;
+            impactedTargets.Clear();
+            supportingColliders.Clear();
+            if (body != null)
+            {
+                if (!body.isKinematic)
+                {
+                    body.velocity = Vector3.zero;
+                    body.angularVelocity = Vector3.zero;
+                }
+                body.isKinematic = true;
+                body.useGravity = false;
+                body.detectCollisions = true;
+            }
         }
 
-        void Update()
+        void FixedUpdate()
         {
-            Advance(Time.unscaledDeltaTime, true);
+            float seconds = Time.fixedUnscaledDeltaTime;
+            if (motionState == MotionState.ControlledTopple)
+            {
+                if (releasePending)
+                {
+                    BeginDynamicFall(lastAttemptedSweepSpeed);
+                    return;
+                }
+                Advance(seconds, true);
+                return;
+            }
+            if (motionState == MotionState.DynamicFall)
+            {
+                UpdateDynamicSettlement(seconds, false);
+                return;
+            }
+            if (motionState == MotionState.SettledCover && body != null &&
+                !body.isKinematic &&
+                (!HasValidSupportingCollider() || !body.IsSleeping()))
+            {
+                motionState = MotionState.DynamicFall;
+                dynamicSeconds = MinimumDynamicSeconds;
+                supportedStillSeconds = 0f;
+                hasSupportingContact = false;
+                if (!body.IsSleeping())
+                    supportingColliders.Clear();
+                body.useGravity = true;
+                body.WakeUp();
+            }
         }
 
         public void DebugAdvance(float seconds)
@@ -4337,10 +4662,38 @@ namespace UnityPlanet.CityPcg
             Advance(seconds, false);
         }
 
+        public void DebugReleaseForAudit()
+        {
+            if (Application.isPlaying)
+                return;
+            BeginDynamicFall(lastAttemptedSweepSpeed);
+        }
+
+        public void DebugAdvanceSettlementForAudit(
+            float seconds,
+            bool supported)
+        {
+            if (Application.isPlaying || seconds <= 0f)
+                return;
+            if (motionState == MotionState.ControlledTopple)
+                BeginDynamicFall(lastAttemptedSweepSpeed);
+            if (body != null && !body.isKinematic)
+            {
+                body.velocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+            }
+            UpdateDynamicSettlement(seconds, supported);
+        }
+
         void Advance(float seconds, bool useRigidbody)
         {
-            if (seconds <= 0f || currentAngle >= maximumAngle - 0.01f)
+            if (motionState != MotionState.ControlledTopple || seconds <= 0f)
                 return;
+            if (currentAngle >= maximumAngle - 0.01f)
+            {
+                releasePending = true;
+                return;
+            }
             float previousAngle = currentAngle;
             elapsed = Mathf.Min(duration, elapsed + seconds);
             float t = Mathf.Clamp01(elapsed / duration);
@@ -4348,13 +4701,35 @@ namespace UnityPlanet.CityPcg
             // own mass.  Smooth the final contact to avoid a one-frame snap.
             float gravityEase = t * t;
             gravityEase = gravityEase * (3f - 2f * gravityEase);
-            currentAngle = maximumAngle * gravityEase;
-            float angularSpeed = Mathf.Abs(currentAngle - previousAngle) *
+            float requestedAngle = maximumAngle * gravityEase;
+            float attemptedAngularSpeed =
+                Mathf.Abs(requestedAngle - previousAngle) *
                                  Mathf.Deg2Rad / Mathf.Max(0.0001f, seconds);
-            float sweepRadius = sectionCollider != null
-                ? sectionCollider.bounds.extents.magnitude
-                : Mathf.Max(1f, cutHeight * 0.5f);
-            lastSweepSpeed = angularSpeed * sweepRadius;
+            float sweepRadius = ResolveSweepRadius();
+            float attemptedSweepSpeed = attemptedAngularSpeed * sweepRadius;
+            lastAttemptedSweepSpeed = attemptedSweepSpeed;
+
+            if (!Application.isPlaying)
+                Physics.SyncTransforms();
+            currentAngle = ResolveCollisionSafeAngle(
+                previousAngle,
+                requestedAngle,
+                out Collider obstacle,
+                out Vector3 blockPoint);
+            float resolvedAngularSpeed = Mathf.Abs(
+                currentAngle - previousAngle) * Mathf.Deg2Rad /
+                Mathf.Max(0.0001f, seconds);
+            lastSweepSpeed = resolvedAngularSpeed * sweepRadius;
+            if (obstacle != null)
+            {
+                wasBlocked = true;
+                lastBlockPoint = blockPoint;
+                TransferImpactToObstacle(
+                    obstacle,
+                    blockPoint,
+                    attemptedSweepSpeed,
+                    sweepRadius);
+            }
             if (useRigidbody)
             {
                 lastSweepValidUntil = Time.unscaledTime +
@@ -4367,29 +4742,319 @@ namespace UnityPlanet.CityPcg
                 body.MoveRotation(target);
             else
                 transform.rotation = target;
-
-            // The fallen tower is persistent level geometry.  Its inexpensive
-            // box proxy remains active both during and after the animation; only
-            // short-lived debris particles relinquish collision for performance.
-            if (sectionCollider != null)
-                sectionCollider.enabled = true;
             if (body != null)
                 body.detectCollisions = true;
+
+            // The kinematic phase only establishes a readable collapse arc.
+            // Once it reaches an obstacle or exhausts the hinge arc, the next
+            // physics step hands the section to gravity.  Deferring the handoff
+            // by one FixedUpdate lets MoveRotation commit the last safe pose.
+            if (obstacle != null || currentAngle >= maximumAngle - 0.01f)
+                releasePending = true;
+        }
+
+        void BeginDynamicFall(float sweepSpeed)
+        {
+            if (motionState != MotionState.ControlledTopple)
+                return;
+            releasePending = false;
+            motionState = MotionState.DynamicFall;
+            dynamicSeconds = 0f;
+            supportedStillSeconds = 0f;
+            hasSupportingContact = false;
+            supportingColliders.Clear();
+            lastSupportContactAt = -100f;
+            if (body == null)
+                return;
+
+            body.detectCollisions = true;
+            body.interpolation = RigidbodyInterpolation.Interpolate;
+            body.solverIterations = Mathf.Max(body.solverIterations, 10);
+            body.solverVelocityIterations = Mathf.Max(
+                body.solverVelocityIterations,
+                4);
+            body.maxDepenetrationVelocity = Mathf.Min(
+                body.maxDepenetrationVelocity,
+                12f);
+            body.maxAngularVelocity = Mathf.Min(
+                Mathf.Max(body.maxAngularVelocity, 1.8f),
+                3.2f);
+            body.isKinematic = false;
+            body.collisionDetectionMode =
+                CollisionDetectionMode.ContinuousDynamic;
+            body.useGravity = true;
+
+            float radius = ResolveSweepRadius();
+            float angularSpeed = Mathf.Clamp(
+                sweepSpeed / Mathf.Max(1f, radius),
+                0.16f,
+                1.35f);
+            body.velocity = Vector3.down * 0.85f + fallDirection * 0.55f;
+            body.angularVelocity = worldAxis * angularSpeed;
+            body.WakeUp();
+        }
+
+        void UpdateDynamicSettlement(float seconds, bool forcedSupport)
+        {
+            if (motionState != MotionState.DynamicFall || body == null ||
+                seconds <= 0f)
+            {
+                return;
+            }
+            if (body.isKinematic)
+            {
+                motionState = MotionState.SettledCover;
+                return;
+            }
+
+            dynamicSeconds += seconds;
+            bool recentSupport = forcedSupport ||
+                                 HasValidSupportingCollider() ||
+                                 (hasSupportingContact &&
+                                  Time.unscaledTime - lastSupportContactAt <=
+                                  SupportContactGraceSeconds);
+            bool slow = body.IsSleeping() ||
+                        (body.velocity.sqrMagnitude <= 0.34f * 0.34f &&
+                         body.angularVelocity.sqrMagnitude <= 0.24f * 0.24f);
+            if (dynamicSeconds < MinimumDynamicSeconds || !recentSupport || !slow)
+            {
+                supportedStillSeconds = 0f;
+                return;
+            }
+            supportedStillSeconds += seconds;
+            if (supportedStillSeconds < RequiredSupportedStillSeconds)
+                return;
+
+            body.velocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+            // Keep a sleeping *dynamic* body. If the supporting building or
+            // bridge is destroyed later, PhysX can wake this section and it will
+            // fall again instead of becoming a new kinematic floater.
+            body.Sleep();
+            motionState = MotionState.SettledCover;
+        }
+
+        internal void RefreshCompoundCollidersAfterSlice()
+        {
+            if (body == null)
+                return;
+            BoxCollider[] candidates = GetComponentsInChildren<BoxCollider>(true);
+            sectionColliders = Array.FindAll(
+                candidates,
+                candidate => candidate != null && candidate.enabled &&
+                             candidate.attachedRigidbody == body);
+            if (sectionColliders.Length == 0 &&
+                motionState == MotionState.ControlledTopple)
+            {
+                releasePending = true;
+            }
+        }
+
+        float ResolveCollisionSafeAngle(
+            float startAngle,
+            float requestedAngle,
+            out Collider obstacle,
+            out Vector3 blockPoint)
+        {
+            obstacle = null;
+            blockPoint = transform.position;
+            float delta = requestedAngle - startAngle;
+            if (Mathf.Abs(delta) <= 0.0001f || sectionColliders.Length == 0)
+                return requestedAngle;
+            int steps = Mathf.Max(
+                1,
+                Mathf.CeilToInt(
+                    Mathf.Abs(delta) / MaximumSweepStepDegrees));
+            float safeAngle = startAngle;
+            for (int index = 1; index <= steps; index++)
+            {
+                float candidateAngle = Mathf.Lerp(
+                    startAngle,
+                    requestedAngle,
+                    index / (float)steps);
+                Quaternion candidateRotation = Quaternion.AngleAxis(
+                    candidateAngle,
+                    worldAxis) * initialRotation;
+                if (TryFindBlockingCollider(
+                        candidateRotation,
+                        out obstacle,
+                        out blockPoint))
+                {
+                    return safeAngle;
+                }
+                safeAngle = candidateAngle;
+            }
+            return safeAngle;
+        }
+
+        bool TryFindBlockingCollider(
+            Quaternion candidateRotation,
+            out Collider obstacle,
+            out Vector3 blockPoint)
+        {
+            obstacle = null;
+            blockPoint = transform.position;
+            Vector3 scale = transform.lossyScale;
+            Vector3 absoluteScale = new Vector3(
+                Mathf.Abs(scale.x),
+                Mathf.Abs(scale.y),
+                Mathf.Abs(scale.z));
+            for (int colliderIndex = 0;
+                 colliderIndex < sectionColliders.Length;
+                 colliderIndex++)
+            {
+                BoxCollider sectionCollider =
+                    sectionColliders[colliderIndex];
+                if (sectionCollider == null || !sectionCollider.enabled)
+                    continue;
+                Vector3 scaledCenter = Vector3.Scale(
+                    sectionCollider.center,
+                    absoluteScale);
+                Vector3 predictedCenter = transform.position +
+                                          candidateRotation * scaledCenter;
+                Vector3 halfExtents = Vector3.Scale(
+                    sectionCollider.size * 0.5f,
+                    absoluteScale);
+                int count = Physics.OverlapBoxNonAlloc(
+                    predictedCenter,
+                    halfExtents,
+                    overlapBuffer,
+                    candidateRotation,
+                    ~0,
+                    QueryTriggerInteraction.Ignore);
+                for (int index = 0; index < count; index++)
+                {
+                    Collider candidate = overlapBuffer[index];
+                    overlapBuffer[index] = null;
+                    if (!IsBlockingObstacle(sectionCollider, candidate))
+                        continue;
+                    if (!Physics.ComputePenetration(
+                            sectionCollider,
+                            transform.position,
+                            candidateRotation,
+                            candidate,
+                            candidate.transform.position,
+                            candidate.transform.rotation,
+                            out _,
+                            out float distance) ||
+                        distance <= 0.01f)
+                    {
+                        continue;
+                    }
+                    obstacle = candidate;
+                    blockPoint = candidate.ClosestPoint(predictedCenter);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool IsBlockingObstacle(
+            BoxCollider ownCollider,
+            Collider candidate)
+        {
+            if (ownCollider == null || candidate == null ||
+                candidate == ownCollider || !candidate.enabled ||
+                candidate.isTrigger)
+            {
+                return false;
+            }
+            if (candidate.attachedRigidbody == body ||
+                candidate.transform.IsChildOf(transform))
+            {
+                return false;
+            }
+            Transform ruinRoot = transform.parent;
+            if (ruinRoot != null && candidate.transform.IsChildOf(ruinRoot))
+                return false;
+            if (candidate.GetComponentInParent<IUrbanVehicleImpactReceiver>() !=
+                null)
+            {
+                return false;
+            }
+            Rigidbody candidateBody = candidate.attachedRigidbody;
+            if (candidateBody != null && !candidateBody.isKinematic)
+                return false;
+            return !Physics.GetIgnoreLayerCollision(
+                ownCollider.gameObject.layer,
+                candidate.gameObject.layer);
+        }
+
+        float ResolveSweepRadius()
+        {
+            bool initialized = false;
+            Bounds combined = new Bounds(transform.position, Vector3.zero);
+            for (int index = 0; index < sectionColliders.Length; index++)
+            {
+                BoxCollider collider = sectionColliders[index];
+                if (collider == null)
+                    continue;
+                if (!initialized)
+                {
+                    combined = collider.bounds;
+                    initialized = true;
+                }
+                else
+                {
+                    combined.Encapsulate(collider.bounds);
+                }
+            }
+            return initialized
+                ? Mathf.Max(1f, combined.extents.magnitude)
+                : Mathf.Max(1f, cutHeight * 0.5f);
+        }
+
+        void TransferImpactToObstacle(
+            Collider obstacle,
+            Vector3 point,
+            float impactSpeed,
+            float sweepRadius)
+        {
+            int targetId = UrbanDestructionWorld
+                .ResolveTopplingImpactTargetId(obstacle);
+            lastBlockingTargetId = targetId;
+            if (targetId == 0 || !impactedTargets.Add(targetId))
+                return;
+            float mass = body != null ? body.mass : 120f;
+            lastStructuralTransferApplied =
+                UrbanDestructionWorld.TryApplyTopplingImpact(
+                obstacle,
+                point,
+                fallDirection + Vector3.down * 0.16f,
+                impactSpeed,
+                mass,
+                Mathf.Clamp(sweepRadius * 0.12f, 3f, 14f),
+                gameObject);
         }
 
         void OnCollisionEnter(Collision collision)
         {
-            if (collision == null || collision.contactCount == 0 ||
-                Time.unscaledTime - lastVehicleImpactAt < 0.45f)
+            if (collision == null || collision.contactCount == 0)
             {
                 return;
             }
             ContactPoint contact = collision.GetContact(0);
+            RegisterSupportingContact(contact);
             float speed = Mathf.Max(
                 collision.relativeVelocity.magnitude,
                 Time.unscaledTime <= lastSweepValidUntil
                     ? lastSweepSpeed
                     : 0f);
+            if (motionState == MotionState.DynamicFall && speed >=
+                UrbanVehicleImpactPolicy.MinimumVehicleImpactSpeed)
+            {
+                Collider obstacle = contact.thisCollider != null &&
+                                    contact.thisCollider.attachedRigidbody == body
+                    ? contact.otherCollider
+                    : contact.thisCollider;
+                TransferImpactToObstacle(
+                    obstacle != null ? obstacle : collision.collider,
+                    contact.point,
+                    speed,
+                    ResolveSweepRadius());
+            }
+            if (Time.unscaledTime - lastVehicleImpactAt < 0.45f)
+                return;
             float impulse = Mathf.Max(
                 collision.impulse.magnitude,
                 body != null ? body.mass * speed : speed * 120f);
@@ -4405,6 +5070,55 @@ namespace UnityPlanet.CityPcg
             {
                 lastVehicleImpactAt = Time.unscaledTime;
             }
+        }
+
+        void OnCollisionStay(Collision collision)
+        {
+            if (motionState != MotionState.DynamicFall || collision == null ||
+                collision.contactCount == 0)
+            {
+                return;
+            }
+            for (int index = 0; index < collision.contactCount; index++)
+                RegisterSupportingContact(collision.GetContact(index));
+        }
+
+        void RegisterSupportingContact(ContactPoint contact)
+        {
+            if (motionState != MotionState.DynamicFall || body == null)
+                return;
+            Collider other = contact.otherCollider;
+            if (other == null || other.attachedRigidbody == body ||
+                other.GetComponentInParent<IUrbanVehicleImpactReceiver>() != null)
+            {
+                return;
+            }
+            float verticalNormal = Vector3.Dot(contact.normal, Vector3.up);
+            float belowCenter = body.worldCenterOfMass.y - contact.point.y;
+            if (verticalNormal < 0.18f || belowCenter < 0.35f)
+                return;
+            hasSupportingContact = true;
+            supportingColliders.Add(other);
+            lastSupportContactAt = Time.unscaledTime;
+        }
+
+        void OnCollisionExit(Collision collision)
+        {
+            if (collision?.collider != null)
+                supportingColliders.Remove(collision.collider);
+        }
+
+        bool HasValidSupportingCollider()
+        {
+            foreach (Collider collider in supportingColliders)
+            {
+                if (collider != null && collider.enabled &&
+                    collider.gameObject.activeInHierarchy)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 

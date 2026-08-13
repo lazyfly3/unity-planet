@@ -40,6 +40,7 @@ public sealed class InfinitePlanarSurfaceWorld :
     Camera finiteCombatVisibilityCamera;
     float previousFiniteCombatFarClipPlane;
     float appliedFiniteCombatFarClipPlane;
+    float minimumFiniteCombatFarClipPlane;
     bool finiteCombatFarClipRaised;
     FinitePlanetCombatTerrainPlan finiteCombatTerrainPlan;
     double globalOriginX;
@@ -47,6 +48,7 @@ public sealed class InfinitePlanarSurfaceWorld :
     bool configured;
     bool initialPlayerPlaced;
     bool finiteCombatArea;
+    bool urbanFlatSurface;
     float finiteCombatRadius = DefaultFiniteCombatRadius;
     float finiteCombatFlightCeilingHeight =
         DefaultFiniteCombatFlightCeilingHeight;
@@ -78,6 +80,7 @@ public sealed class InfinitePlanarSurfaceWorld :
     public PlanarCityRuntimeSystem CityRuntimeSystem =>
         cityRuntimeSystem;
     public bool IsFiniteCombatArea => finiteCombatArea;
+    public bool UsesUrbanFlatSurface => urbanFlatSurface;
     public float FiniteCombatRadius => finiteCombatRadius;
     public float FiniteCombatFlightCeilingHeight =>
         finiteCombatFlightCeilingHeight;
@@ -108,10 +111,33 @@ public sealed class InfinitePlanarSurfaceWorld :
             * FiniteCombatFarClipStep;
     }
 
+    public static float CalculateUrbanVisualRequiredFarClip(
+        float mapSize,
+        float combatRadius,
+        float maximumOutsideDistance,
+        float maximumVisualHeight)
+    {
+        float mapHalf = Mathf.Max(0f, mapSize) * 0.5f;
+        float maximumWorldRadius = Mathf.Sqrt(2f) *
+                                   (mapHalf + Mathf.Max(
+                                       0f,
+                                       maximumOutsideDistance));
+        float maximumHorizontalDistance = maximumWorldRadius +
+                                          Mathf.Max(0f, combatRadius);
+        float requiredDistance = Mathf.Sqrt(
+            maximumHorizontalDistance * maximumHorizontalDistance +
+            Mathf.Max(0f, maximumVisualHeight) *
+            Mathf.Max(0f, maximumVisualHeight));
+        return Mathf.Ceil(
+            (requiredDistance + FiniteCombatFarClipSafetyMargin) /
+            FiniteCombatFarClipStep) * FiniteCombatFarClipStep;
+    }
+
     public void ConfigureFiniteCombatMode(
         float combatRadius = DefaultFiniteCombatRadius,
         float flightCeilingHeight =
-            DefaultFiniteCombatFlightCeilingHeight)
+            DefaultFiniteCombatFlightCeilingHeight,
+        bool useUrbanFlatSurface = false)
     {
         if (configured)
         {
@@ -124,6 +150,7 @@ public sealed class InfinitePlanarSurfaceWorld :
             (FiniteCombatViewRadius + 0.5f)
             * FiniteCombatChunkSize;
         finiteCombatArea = true;
+        urbanFlatSurface = useUrbanFlatSurface;
         finiteCombatRadius = Mathf.Clamp(
             combatRadius,
             FiniteCombatChunkSize,
@@ -163,8 +190,15 @@ public sealed class InfinitePlanarSurfaceWorld :
             * Mathf.Max(1f, celestial.maximumTerrainElevation);
         if (finiteCombatArea)
         {
-            finiteCombatTerrainPlan =
-                FinitePlanetCombatTerrainPlanner.Create(
+            finiteCombatTerrainPlan = urbanFlatSurface
+                ? FinitePlanetCombatTerrainPlanner.CreateUrbanFoundation(
+                    definition,
+                    PlanetOrbitChapterSelectionContext.MissionId,
+                    PlanetOrbitChapterSelectionContext.MissionSeed,
+                    finiteCombatRadius,
+                    combatSeaHeight,
+                    OceanEnabled)
+                : FinitePlanetCombatTerrainPlanner.Create(
                     definition,
                     PlanetOrbitChapterSelectionContext.MissionId,
                     PlanetOrbitChapterSelectionContext.MissionSeed,
@@ -249,7 +283,8 @@ public sealed class InfinitePlanarSurfaceWorld :
             finiteCombatArea
                 ? FiniteCombatChunkSize
                 : PlanetLabPlanarSettings.InfiniteChunkSize,
-            finiteCombatTerrainPlan);
+            finiteCombatTerrainPlan,
+            urbanFlatSurface);
 
         double playerX;
         double playerZ;
@@ -336,6 +371,24 @@ public sealed class InfinitePlanarSurfaceWorld :
             ? value
             : player != null ? player.transform : null;
         streamer?.SetTarget(movementTarget);
+    }
+
+    public void ApplyUrbanFlightCeiling(
+        float maximumCombatAltitude,
+        float minimumFarClipPlane = 0f)
+    {
+        if (!finiteCombatArea || !urbanFlatSurface)
+        {
+            throw new System.InvalidOperationException(
+                "Urban flight ceiling requires the finite city surface mode.");
+        }
+        finiteCombatFlightCeilingHeight = Mathf.Max(
+            80f,
+            maximumCombatAltitude);
+        minimumFiniteCombatFarClipPlane = Mathf.Max(
+            0f,
+            minimumFarClipPlane);
+        MaintainFiniteCombatCameraVisibility(Camera.main);
     }
 
     public bool ContainsFiniteCombatPoint(
@@ -613,6 +666,9 @@ public sealed class InfinitePlanarSurfaceWorld :
             finiteCombatRadius,
             finiteCombatFlightCeilingHeight,
             maximumTerrainHeight);
+        requiredFarClip = Mathf.Max(
+            requiredFarClip,
+            minimumFiniteCombatFarClipPlane);
         if (target.farClipPlane + 0.01f >= requiredFarClip)
             return;
 
@@ -859,6 +915,8 @@ public sealed class InfinitePlanarSurfaceWorld :
 [DisallowMultipleComponent]
 public sealed class InfinitePlanarSurfaceEntryCoordinator : MonoBehaviour
 {
+    const float PreparationTimeoutSeconds = 45f;
+
     InfinitePlanarSurfaceWorld world;
     PlanetLoadingUI loadingUI;
     PlanarSurfaceLandedSpacecraftRestorer restorer;
@@ -873,7 +931,10 @@ public sealed class InfinitePlanarSurfaceEntryCoordinator : MonoBehaviour
         world = targetWorld;
         loadingUI = targetLoadingUI
             ?? FindObjectOfType<PlanetLoadingUI>(true);
-        loadingUI?.Show("正在准备无限平面地表");
+        loadingUI?.Show(
+            world != null && world.IsFiniteCombatArea
+                ? "正在准备城市战场"
+                : "正在准备无限平面地表");
         if (routine != null)
             StopCoroutine(routine);
         routine = StartCoroutine(WaitForReady());
@@ -887,31 +948,66 @@ public sealed class InfinitePlanarSurfaceEntryCoordinator : MonoBehaviour
 
     IEnumerator WaitForReady()
     {
+        float deadline = Time.realtimeSinceStartup +
+                         PreparationTimeoutSeconds;
         while (world != null && !world.IsCenterCollisionReady)
         {
-            loadingUI?.SetProgress(0.25f, "正在生成着陆区碰撞");
+            if (AbortTimedOutPreparation(deadline, "城市地面碰撞准备超时。"))
+                yield break;
+            loadingUI?.SetProgress(
+                0.25f,
+                world.IsFiniteCombatArea
+                    ? "正在准备城市地面碰撞"
+                    : "正在生成着陆区碰撞");
             yield return null;
         }
+        deadline = Time.realtimeSinceStartup + PreparationTimeoutSeconds;
         while (world != null && !world.IsInitialPlayerPlaced)
         {
+            if (AbortTimedOutPreparation(deadline, "城市出生点准备超时。"))
+                yield break;
             loadingUI?.SetProgress(0.55f, "正在校准安全出生点");
             yield return null;
         }
+        deadline = Time.realtimeSinceStartup + PreparationTimeoutSeconds;
         while (world != null && !world.IsFullyReady)
         {
+            if (AbortTimedOutPreparation(deadline, "城市战场加载超时。"))
+                yield break;
             float progress = world.Streamer != null
                 ? Mathf.Lerp(
                     0.55f,
                     0.95f,
                     world.Streamer.ActiveChunkCount / 25f)
                 : 0.55f;
-            loadingUI?.SetProgress(progress, "正在生成 5×5 活动区块");
+            loadingUI?.SetProgress(
+                progress,
+                world.IsFiniteCombatArea
+                    ? "正在加载城市战斗区"
+                    : "正在生成 5×5 活动区块");
             yield return null;
         }
+        deadline = Time.realtimeSinceStartup + PreparationTimeoutSeconds;
         while (restorer != null && !restorer.IsRestoreComplete)
         {
+            if (AbortTimedOutPreparation(
+                    deadline,
+                    "飞船与城市战斗系统准备超时。"))
+            {
+                yield break;
+            }
             if (restorer.HasFailed)
             {
+                GalaxyTravelManager manager = GalaxyTravelManager.Instance;
+                if (world != null
+                    && world.IsFiniteCombatArea
+                    && manager != null
+                    && manager.AbortChapterMissionEntry(
+                        restorer.FailureReason))
+                {
+                    world.gameObject.SetActive(false);
+                    yield break;
+                }
                 loadingUI?.ShowFailure(restorer.FailureReason);
                 yield break;
             }
@@ -942,5 +1038,22 @@ public sealed class InfinitePlanarSurfaceEntryCoordinator : MonoBehaviour
                 ?.SetInputBlocked(false);
         }
         routine = null;
+    }
+
+    bool AbortTimedOutPreparation(float deadline, string reason)
+    {
+        if (Time.realtimeSinceStartup <= deadline)
+            return false;
+
+        GalaxyTravelManager manager = GalaxyTravelManager.Instance;
+        bool returning = world != null
+            && world.IsFiniteCombatArea
+            && manager != null
+            && manager.AbortChapterMissionEntry(reason);
+        if (returning)
+            world.gameObject.SetActive(false);
+        else
+            loadingUI?.ShowFailure(reason);
+        return true;
     }
 }

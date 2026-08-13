@@ -65,12 +65,24 @@ namespace UnityPlanet.SpaceStation
 
         public static void CompleteAssemblyReturn()
         {
+            CompleteAssemblyReturn(
+                SpaceStationSpawnLocation.DockingBay);
+        }
+
+        public static void CompleteInitialAssemblyReturn()
+        {
+            CompleteAssemblyReturn(
+                SpaceStationSpawnLocation.Floor01Room);
+        }
+
+        static void CompleteAssemblyReturn(
+            SpaceStationSpawnLocation spawnLocation)
+        {
             assemblyOpenedFromStation = false;
             initialAssembly = false;
             pendingSpaceBlueprint = null;
             activeExpeditionBlueprint = null;
-            pendingStationSpawn =
-                SpaceStationSpawnLocation.DockingBay;
+            pendingStationSpawn = spawnLocation;
         }
 
         public static void PrepareSpaceLaunch(

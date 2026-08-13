@@ -194,6 +194,131 @@ namespace UnityPlanet.ModularAssembly
     }
 
     /// <summary>
+    /// Solves the physical-projectile intercept in the shooter's moving frame.
+    /// Horde projectiles inherit the firing aircraft velocity, so aiming only
+    /// at playerPosition + playerVelocity * time produces a systematic miss.
+    /// The returned direction is the muzzle direction while impactPoint is the
+    /// actual world-space point used to validate the projectile corridor.
+    /// </summary>
+    public static class HordeRangedAimPolicy
+    {
+        const float Epsilon = 0.0001f;
+
+        public static bool TryResolveIntercept(
+            Vector3 origin,
+            Vector3 shooterVelocity,
+            Vector3 targetPosition,
+            Vector3 targetVelocity,
+            float projectileSpeed,
+            float maximumFlightSeconds,
+            out Vector3 direction,
+            out Vector3 impactPoint,
+            out float flightSeconds)
+        {
+            direction = Vector3.zero;
+            impactPoint = targetPosition;
+            flightSeconds = 0f;
+            float speed = Mathf.Max(Epsilon, projectileSpeed);
+            float maximumTime = Mathf.Max(Epsilon, maximumFlightSeconds);
+            Vector3 relativePosition = targetPosition - origin;
+            Vector3 relativeVelocity = targetVelocity - shooterVelocity;
+            float c = Vector3.Dot(relativePosition, relativePosition);
+            if (c <= Epsilon)
+            {
+                direction = relativeVelocity.sqrMagnitude > Epsilon
+                    ? relativeVelocity.normalized
+                    : Vector3.forward;
+                return true;
+            }
+
+            float a = Vector3.Dot(relativeVelocity, relativeVelocity) -
+                      speed * speed;
+            float b = 2f * Vector3.Dot(
+                relativePosition,
+                relativeVelocity);
+            float candidate = float.PositiveInfinity;
+            if (Mathf.Abs(a) <= Epsilon)
+            {
+                if (Mathf.Abs(b) > Epsilon)
+                {
+                    float linear = -c / b;
+                    if (linear > Epsilon)
+                        candidate = linear;
+                }
+            }
+            else
+            {
+                float discriminant = b * b - 4f * a * c;
+                if (discriminant >= 0f)
+                {
+                    float root = Mathf.Sqrt(discriminant);
+                    float first = (-b - root) / (2f * a);
+                    float second = (-b + root) / (2f * a);
+                    if (first > Epsilon)
+                        candidate = first;
+                    if (second > Epsilon)
+                        candidate = Mathf.Min(candidate, second);
+                }
+            }
+            if (float.IsNaN(candidate) || float.IsInfinity(candidate) ||
+                candidate > maximumTime)
+            {
+                return false;
+            }
+
+            flightSeconds = candidate;
+            impactPoint = targetPosition + targetVelocity * candidate;
+            Vector3 compensatedAim = impactPoint - origin -
+                                     shooterVelocity * candidate;
+            if (compensatedAim.sqrMagnitude <= Epsilon)
+                return false;
+            direction = compensatedAim.normalized;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Keeps ordinary encounters ranged-majority at runtime as well as in the
+    /// fixed roster. These limits include both active and already queued craft.
+    /// </summary>
+    public static class HordeSpawnCompositionPolicy
+    {
+        public static int MaximumInterceptors(int activeCap)
+        {
+            return Mathf.Max(1, Mathf.FloorToInt(Mathf.Max(1, activeCap) * 0.28f));
+        }
+
+        public static int TargetStrikers(int activeCap)
+        {
+            return Mathf.Max(2, Mathf.CeilToInt(Mathf.Max(1, activeCap) * 0.58f));
+        }
+
+        public static int TargetGunships(int activeCap)
+        {
+            return Mathf.Max(1, Mathf.CeilToInt(Mathf.Max(1, activeCap) * 0.14f));
+        }
+    }
+
+    /// <summary>
+    /// Separates an enemy's authored role cost from the pressure it can
+    /// actually apply in the current navigation state.
+    /// </summary>
+    public static class HordeCombatPressurePolicy
+    {
+        public const float PathStarvedPresenceMultiplier = 0.2f;
+
+        public static float EffectiveThreatCost(
+            int authoredThreatCost,
+            bool actionable)
+        {
+            float cost = Mathf.Max(1, authoredThreatCost);
+            return actionable
+                ? cost
+                : cost * PathStarvedPresenceMultiplier;
+        }
+    }
+
+    /// <summary>
     /// Ordinary horde weapons may be stopped by city cover, but cannot alter
     /// its structural graph. Boss attacks and explicitly armed player skills
     /// use their own authorized demolition paths.
@@ -281,6 +406,15 @@ namespace UnityPlanet.ModularAssembly
                     };
             }
         }
+
+        public static HordeEnemyProfile ForRole(
+            HordeEnemyRole role,
+            float healthMultiplier)
+        {
+            HordeEnemyProfile profile = ForRole(role);
+            profile.maximumHealth *= Mathf.Clamp(healthMultiplier, 0.5f, 3f);
+            return profile;
+        }
     }
 
     public sealed class HordeAirNavigationService
@@ -291,6 +425,10 @@ namespace UnityPlanet.ModularAssembly
         const int MaximumNodes =
             AltitudeLayers * RadiusLayers * SectorCount;
         const float CorridorRadius = 5f;
+        const float ProjectileCorridorRadius = 0.08f;
+        const float GroundedPlayerMaximumClearance = 30f;
+        const string UrbanFlatGroundPrefix =
+            "UrbanCombatGroundCollision_";
 
         sealed class Node
         {
@@ -301,7 +439,10 @@ namespace UnityPlanet.ModularAssembly
         }
 
         readonly Node[] nodes = new Node[MaximumNodes];
-        readonly RaycastHit[] rayHits = new RaycastHit[64];
+        // Structural buildings can contribute many child colliders along one
+        // vertical ray. Keep enough fixed capacity that their roofs cannot
+        // crowd the actual terrain hit out of a normal non-alloc query.
+        readonly RaycastHit[] rayHits = new RaycastHit[256];
         readonly Collider[] overlapHits = new Collider[64];
         readonly float[] scores = new float[MaximumNodes];
         readonly float[] estimated = new float[MaximumNodes];
@@ -425,22 +566,70 @@ namespace UnityPlanet.ModularAssembly
                 1800f,
                 ~0,
                 QueryTriggerInteraction.Ignore);
-            float nearest = float.PositiveInfinity;
+            float explicitGroundHeight = 0f;
+            float explicitGroundDistance = float.PositiveInfinity;
+            float lowestGenericHeight = float.PositiveInfinity;
             height = 0f;
-            bool found = false;
+            bool foundExplicitGround = false;
+            bool foundGenericGround = false;
             for (int index = 0; index < count; index++)
             {
                 RaycastHit hit = rayHits[index];
                 if (hit.collider == null ||
                     !IsStaticEnvironment(hit.collider) ||
-                    hit.distance >= nearest)
+                    hit.normal.y < 0.35f)
+                {
                     continue;
-                nearest = hit.distance;
-                height = hit.point.y;
-                found = true;
+                }
+
+                // Prefer colliders that explicitly own the terrain surface.
+                // The urban arena deliberately uses a BoxCollider for its flat
+                // ground, while natural missions use TerrainCollider. Buildings
+                // remain generic static colliders and must not turn their roofs
+                // into the reference surface for the air-navigation graph.
+                bool explicitGround =
+                    hit.collider is TerrainCollider ||
+                    hit.collider.name.StartsWith(
+                        UrbanFlatGroundPrefix,
+                        StringComparison.Ordinal);
+                if (explicitGround)
+                {
+                    if (hit.distance >= explicitGroundDistance)
+                        continue;
+                    explicitGroundDistance = hit.distance;
+                    explicitGroundHeight = hit.point.y;
+                    foundExplicitGround = true;
+                    continue;
+                }
+
+                // A generated building is an obstacle, never a terrain datum.
+                // This also protects the generic fallback in isolated tools or
+                // tests where no explicitly named urban ground exists.
+                if (hit.collider.GetComponentInParent<
+                        UrbanDestructibleBuilding>() != null)
+                {
+                    continue;
+                }
+
+                // Generic planar/test grounds have no semantic component. In a
+                // vertical stack the actual ground is the lowest upward-facing
+                // surface; selecting the nearest hit here would select a roof.
+                if (hit.point.y < lowestGenericHeight)
+                {
+                    lowestGenericHeight = hit.point.y;
+                    foundGenericGround = true;
+                }
             }
-            if (found)
+            if (foundExplicitGround)
+            {
+                height = explicitGroundHeight;
                 return true;
+            }
+            if (foundGenericGround)
+            {
+                height = lowestGenericHeight;
+                return true;
+            }
 
             PlanetEnvironmentSample sample = PlanetEnvironmentRuntime.Sample(
                 new Vector3(worldX, battleCenter.y, worldZ),
@@ -472,6 +661,160 @@ namespace UnityPlanet.ModularAssembly
                     return false;
             }
             return true;
+        }
+
+        /// <summary>
+        /// Tests only the projectile volume. This must stay independent from
+        /// the five-metre vehicle corridor: a landed player can have a valid
+        /// firing line even though an enemy hull cannot fly through the same
+        /// ground-skimming segment.
+        /// </summary>
+        public bool HasStaticClearBallisticLine(Vector3 start, Vector3 end)
+        {
+            Vector3 delta = end - start;
+            float distance = delta.magnitude;
+            if (distance <= 0.01f)
+                return true;
+            int count = Physics.SphereCastNonAlloc(
+                start,
+                ProjectileCorridorRadius,
+                delta / distance,
+                rayHits,
+                distance,
+                ~0,
+                QueryTriggerInteraction.Ignore);
+            for (int index = 0; index < count; index++)
+            {
+                Collider collider = rayHits[index].collider;
+                if (collider != null && IsStaticEnvironment(collider))
+                    return false;
+            }
+            return true;
+        }
+
+        public Vector3 ResolveSafePlayerApproachPoint(
+            Vector3 playerPosition)
+        {
+            if (!TrySampleGround(
+                    playerPosition.x,
+                    playerPosition.z,
+                    out float ground))
+            {
+                return playerPosition;
+            }
+            return new Vector3(
+                playerPosition.x,
+                Mathf.Max(
+                    playerPosition.y,
+                    ground + CorridorRadius + 2f),
+                playerPosition.z);
+        }
+
+        /// <summary>
+        /// Finds a local, hull-clear endpoint from which an ordinary horde
+        /// enemy can actually threaten a landed player. It never grants a
+        /// straight-line movement bypass: every accepted endpoint still needs
+        /// a route through the normal five-metre navigation corridor.
+        /// </summary>
+        public bool TryFindGroundedCombatApproachPath(
+            Vector3 start,
+            Vector3 playerPosition,
+            HordeEnemyProfile profile,
+            int stableIndex,
+            List<Vector3> result,
+            out Vector3 approach)
+        {
+            approach = Vector3.zero;
+            result?.Clear();
+            if (result == null || profile == null || !IsReady ||
+                !TrySampleGround(
+                    playerPosition.x,
+                    playerPosition.z,
+                    out float playerGround) ||
+                playerPosition.y - playerGround >
+                    GroundedPlayerMaximumClearance)
+            {
+                return false;
+            }
+
+            Vector3 preferred = Vector3.ProjectOnPlane(
+                start - playerPosition,
+                Vector3.up);
+            if (preferred.sqrMagnitude < 0.01f)
+            {
+                float stableAngle = stableIndex * 137.5f * Mathf.Deg2Rad;
+                preferred = new Vector3(
+                    Mathf.Sin(stableAngle),
+                    0f,
+                    Mathf.Cos(stableAngle));
+            }
+            preferred.Normalize();
+
+            bool suicide = profile.attackKind ==
+                           HordeEnemyAttackKind.Suicide;
+            float preferredRange = suicide
+                ? 58f
+                : Mathf.Clamp(
+                    (profile.preferredMinimumRange +
+                     profile.preferredMaximumRange) * 0.5f,
+                    95f,
+                    165f);
+            float roleClearance = profile.role == HordeEnemyRole.Gunship
+                ? 34f
+                : suicide ? 18f : 24f;
+            Vector3 safePlayerApproach =
+                ResolveSafePlayerApproachPoint(playerPosition);
+
+            // Start with the enemy-facing side, then alternate clockwise and
+            // counter-clockwise. Two radii let the fallback use a street or a
+            // nearby courtyard without turning every open space into a route.
+            for (int radiusBand = 0; radiusBand < 2; radiusBand++)
+            {
+                float radius = preferredRange *
+                               (radiusBand == 0 ? 1f : 0.78f);
+                for (int sample = 0; sample < SectorCount; sample++)
+                {
+                    int step = sample == 0
+                        ? 0
+                        : ((sample + 1) / 2) *
+                          ((sample & 1) == 1 ? 1 : -1);
+                    Vector3 radial = Quaternion.AngleAxis(
+                        step * (360f / SectorCount),
+                        Vector3.up) * preferred;
+                    Vector3 candidate = playerPosition + radial * radius;
+                    if (!TrySampleGround(
+                            candidate.x,
+                            candidate.z,
+                            out float candidateGround))
+                    {
+                        continue;
+                    }
+                    candidate.y = Mathf.Max(
+                        candidateGround + roleClearance,
+                        playerPosition.y + (suicide ? 10f : 16f));
+                    if (HasStaticOccupant(candidate, CorridorRadius))
+                        continue;
+
+                    bool hasAttackGeometry = suicide
+                        ? HasStaticClearCorridor(
+                            candidate,
+                            safePlayerApproach)
+                        : HasStaticClearBallisticLine(
+                            candidate,
+                            playerPosition);
+                    if (!hasAttackGeometry ||
+                        !FindPath(start, candidate, result))
+                    {
+                        continue;
+                    }
+
+                    approach = candidate;
+                    return true;
+                }
+            }
+
+            result.Clear();
+            return false;
         }
 
         public bool FindPath(
@@ -749,6 +1092,8 @@ namespace UnityPlanet.ModularAssembly
             new List<Vector3>(24);
         readonly Collider[] spawnOverlaps = new Collider[32];
         readonly float[] sectorReadyAt = new float[SectorCount];
+        Collider[] playerAimColliders = Array.Empty<Collider>();
+        Collider playerAimCollider;
         CombatTestController owner;
         WeaponVisualPool visuals;
         WeaponProjectilePool projectiles;
@@ -772,6 +1117,7 @@ namespace UnityPlanet.ModularAssembly
         bool running;
         bool finalClear;
         bool objectiveDrivenSession;
+        float nextPlayerAimRefreshAt;
 
         float EncounterClock => objectiveDrivenSession
             ? Mathf.Min(elapsed, FinalClearStartSeconds - 0.01f)
@@ -1025,6 +1371,22 @@ namespace UnityPlanet.ModularAssembly
             return (best + offset) % ingresses.Count;
         }
 
+        public static bool ShouldUseAdaptiveSpawnFallback(
+            int totalAttempts,
+            int plannedIngressCount)
+        {
+            return plannedIngressCount <= 0 ||
+                   Mathf.Max(0, totalAttempts) >= plannedIngressCount;
+        }
+
+        public static int ResolveAdaptiveSpawnDirectionStep(
+            int totalAttempts,
+            int sampleIndex)
+        {
+            return (Mathf.Max(0, totalAttempts) +
+                    Mathf.Max(0, sampleIndex) * 3) & 7;
+        }
+
         public IEnumerator PrepareNavigation(
             Rigidbody targetBody,
             Vector3 center,
@@ -1051,6 +1413,7 @@ namespace UnityPlanet.ModularAssembly
         {
             EndSession();
             playerBody = targetBody;
+            RefreshPlayerAimColliders();
             battleCenter = center;
             warningRadius = Mathf.Max(300f, arenaWarningRadius);
             seed = deterministicSeed;
@@ -1075,6 +1438,60 @@ namespace UnityPlanet.ModularAssembly
             edpcg?.BeginSession();
         }
 
+        void RefreshPlayerAimColliders()
+        {
+            playerAimColliders = playerBody != null
+                ? playerBody.GetComponentsInChildren<Collider>(true)
+                : Array.Empty<Collider>();
+            playerAimCollider = null;
+            nextPlayerAimRefreshAt = 0f;
+        }
+
+        public Vector3 ResolvePlayerAimPoint()
+        {
+            if (playerBody == null)
+                return battleCenter;
+            if (playerAimColliders == null || playerAimColliders.Length == 0)
+                RefreshPlayerAimColliders();
+            if (playerAimCollider == null || !playerAimCollider.enabled ||
+                !playerAimCollider.gameObject.activeInHierarchy ||
+                Time.time >= nextPlayerAimRefreshAt)
+            {
+                nextPlayerAimRefreshAt = Time.time + 0.1f;
+                Vector3 centerOfMass = playerBody.worldCenterOfMass;
+                float bestScore = float.PositiveInfinity;
+                Collider best = null;
+                for (int index = 0; index < playerAimColliders.Length; index++)
+                {
+                    Collider candidate = playerAimColliders[index];
+                    if (candidate == null || !candidate.enabled ||
+                        candidate.isTrigger ||
+                        !candidate.gameObject.activeInHierarchy)
+                    {
+                        continue;
+                    }
+                    float score = candidate.bounds.SqrDistance(centerOfMass) +
+                                  (candidate.bounds.center - centerOfMass)
+                                      .sqrMagnitude * 0.01f;
+                    if (score >= bestScore)
+                        continue;
+                    bestScore = score;
+                    best = candidate;
+                }
+                playerAimCollider = best;
+            }
+            return playerAimCollider != null
+                ? playerAimCollider.bounds.center
+                : playerBody.worldCenterOfMass;
+        }
+
+        public Vector3 ResolvePlayerAimVelocity(Vector3 worldAimPoint)
+        {
+            return playerBody != null
+                ? playerBody.GetPointVelocity(worldAimPoint)
+                : Vector3.zero;
+        }
+
         public void Tick(float deltaTime)
         {
             if (!running)
@@ -1097,6 +1514,17 @@ namespace UnityPlanet.ModularAssembly
             float encounterClock = EncounterClock;
             UpdateEdpcgSnapshot();
             edpcg?.Tick(deltaTime);
+            if (edpcg != null &&
+                edpcg.TryConsumeSpawnUrgency(out int spawnUrgency))
+            {
+                // Facility damage asks for an earlier scheduling check only.
+                // ShouldSpawn, hard-pressure, population, roster, ingress and
+                // navigation gates below remain authoritative.
+                float responseSeconds = spawnUrgency >= 2 ? 0.2f : 0.55f;
+                nextSpawnAt = Mathf.Min(
+                    nextSpawnAt,
+                    Time.time + responseSeconds);
+            }
             if (!objectiveDrivenSession &&
                 elapsed >= FinalClearStartSeconds)
             {
@@ -1239,7 +1667,7 @@ namespace UnityPlanet.ModularAssembly
                     Mathf.Max(1f, profile.maximumSpeed),
                     0f,
                     0.65f);
-                return playerBody.worldCenterOfMass +
+                return ResolveSafePlayerApproachPoint() +
                        playerBody.velocity * leadSeconds;
             }
             if (edpcg != null &&
@@ -1426,6 +1854,67 @@ namespace UnityPlanet.ModularAssembly
                    navigation.HasStaticClearCorridor(start, end);
         }
 
+        public bool HasLineOfFire(Vector3 start, Vector3 end)
+        {
+            return navigation != null &&
+                   navigation.HasStaticClearBallisticLine(start, end);
+        }
+
+        public Vector3 ResolveSafePlayerApproachPoint()
+        {
+            if (playerBody == null)
+                return battleCenter;
+            return navigation != null
+                ? navigation.ResolveSafePlayerApproachPoint(
+                    playerBody.worldCenterOfMass)
+                : playerBody.worldCenterOfMass;
+        }
+
+        public bool TryFindGroundedPlayerApproachPath(
+            HordeEnemyVehicle enemy,
+            Vector3 start,
+            List<Vector3> result,
+            out Vector3 approach)
+        {
+            approach = Vector3.zero;
+            return navigation != null && playerBody != null &&
+                   enemy != null &&
+                   navigation.TryFindGroundedCombatApproachPath(
+                       start,
+                       playerBody.worldCenterOfMass,
+                       enemy.Profile,
+                       enemy.SlotIndex,
+                       result,
+                       out approach);
+        }
+
+        bool HasReachablePlayerApproach(
+            Vector3 start,
+            HordeEnemyRole role,
+            int stableIndex)
+        {
+            if (navigation == null || playerBody == null)
+                return false;
+            HordeEnemyProfile profile = HordeEnemyProfile.ForRole(role);
+            if (navigation.TryFindGroundedCombatApproachPath(
+                    start,
+                    playerBody.worldCenterOfMass,
+                    profile,
+                    stableIndex,
+                    spawnPathProbe,
+                    out _))
+            {
+                return true;
+            }
+
+            // Airborne targets retain the existing elevated inbound point,
+            // but spawning now validates graph reachability instead of
+            // requiring one unobstructed line from the perimeter.
+            Vector3 inbound = playerBody.worldCenterOfMass +
+                              Vector3.up * 25f;
+            return navigation.FindPath(start, inbound, spawnPathProbe);
+        }
+
         public bool TryGetArrivalWarning(out Vector3 worldPosition)
         {
             worldPosition = Vector3.zero;
@@ -1436,6 +1925,16 @@ namespace UnityPlanet.ModularAssembly
                 return false;
             if (plannedIngresses.Count > 0)
             {
+                // Once the safe adaptive fallback is active its exact hidden
+                // candidate depends on collision and path validation. Do not
+                // keep displaying a stale authored entrance in another
+                // direction.
+                if (ShouldUseAdaptiveSpawnFallback(
+                        queued.TotalAttempts,
+                        plannedIngresses.Count))
+                {
+                    return false;
+                }
                 int ingressIndex = SelectPlannedIngressIndex(
                     plannedIngresses,
                     playerBody.worldCenterOfMass,
@@ -1589,7 +2088,7 @@ namespace UnityPlanet.ModularAssembly
 
             int killsSinceDecision = Mathf.Max(0, Kills - killsAtLastDecision);
             int budget = Mathf.Min(
-                ThreatBudgetAt(encounterClock),
+                ResolveThreatBudget(encounterClock, phase),
                 threatRoom);
             if (phase >= 2 && killsSinceDecision >= 3 &&
                 availableSlots >= 2 && threatRoom > budget)
@@ -1668,33 +2167,49 @@ namespace UnityPlanet.ModularAssembly
             int availableSlots,
             int killsSinceDecision)
         {
-            if (EncounterClock < 12f)
+            float openingSeconds =
+                EdpcgFacilityAssaultPacingPolicy.ResolveOpeningSeconds(
+                    edpcg != null ? edpcg.MissionId : null,
+                    12f);
+            if (EncounterClock < openingSeconds)
                 return HordeSpawnRuleKind.OpeningSweep;
 
             var candidates = new HordeSpawnRuleKind[4];
             var weights = new int[4];
             int count = 0;
-            candidates[count] = HordeSpawnRuleKind.InterceptorScreen;
-            weights[count++] = 4;
-
-            int strikerLimit = phase >= 3 ? 2 : 1;
+            int interceptorLimit =
+                HordeSpawnCompositionPolicy.MaximumInterceptors(
+                    CurrentActiveCap);
+            int strikerLimit = HordeSpawnCompositionPolicy.TargetStrikers(
+                CurrentActiveCap);
+            int gunshipLimit = HordeSpawnCompositionPolicy.TargetGunships(
+                CurrentActiveCap);
+            if (CountRole(HordeEnemyRole.Interceptor) < interceptorLimit)
+            {
+                candidates[count] = HordeSpawnRuleKind.InterceptorScreen;
+                weights[count++] = 1;
+            }
             if (budget >= 2 && availableSlots >= 1 &&
                 CountRole(HordeEnemyRole.Striker) < strikerLimit)
             {
                 candidates[count] = HordeSpawnRuleKind.StrikerEscort;
-                weights[count++] = phase == 1 ? 2 : 3;
+                weights[count++] = phase == 1 ? 6 : 5;
             }
-            if (phase >= 2 && budget >= 2 && availableSlots >= 2)
+            if (phase >= 2 && budget >= 4 && availableSlots >= 2 &&
+                CountRole(HordeEnemyRole.Striker) + 1 < strikerLimit)
             {
                 candidates[count] = HordeSpawnRuleKind.PincerPressure;
-                weights[count++] = phase >= 3 ? 4 : 2;
+                weights[count++] = phase >= 3 ? 5 : 3;
             }
             if (phase >= 3 && budget >= 3 && availableSlots >= 1 &&
-                !HasGunship())
+                CountRole(HordeEnemyRole.Gunship) < gunshipLimit)
             {
                 candidates[count] = HordeSpawnRuleKind.GunshipCommand;
-                weights[count++] = 5;
+                weights[count++] = 4;
             }
+
+            if (count == 0)
+                return HordeSpawnRuleKind.StrikerEscort;
 
             int totalWeight = 0;
             for (int index = 0; index < count; index++)
@@ -1728,6 +2243,11 @@ namespace UnityPlanet.ModularAssembly
             HordeEnemyRole[] roles)
         {
             int count = 0;
+            int interceptorLimit =
+                HordeSpawnCompositionPolicy.MaximumInterceptors(
+                    CurrentActiveCap);
+            bool mayAddInterceptor =
+                CountRole(HordeEnemyRole.Interceptor) < interceptorLimit;
             switch (rule)
             {
                 case HordeSpawnRuleKind.StrikerEscort:
@@ -1740,58 +2260,10 @@ namespace UnityPlanet.ModularAssembly
                     count = AppendRole(
                         roles,
                         count,
-                        HordeEnemyRole.Interceptor,
+                        HordeEnemyRole.Striker,
                         ref budget,
                         ref availableSlots);
-                    break;
-                case HordeSpawnRuleKind.PincerPressure:
-                    count = AppendRole(
-                        roles,
-                        count,
-                        HordeEnemyRole.Interceptor,
-                        ref budget,
-                        ref availableSlots);
-                    count = AppendRole(
-                        roles,
-                        count,
-                        HordeEnemyRole.Interceptor,
-                        ref budget,
-                        ref availableSlots);
-                    if (phase >= 3 && CountRole(HordeEnemyRole.Striker) < 2)
-                    {
-                        count = AppendRole(
-                            roles,
-                            count,
-                            HordeEnemyRole.Striker,
-                            ref budget,
-                            ref availableSlots);
-                    }
-                    count = AppendRole(
-                        roles,
-                        count,
-                        HordeEnemyRole.Interceptor,
-                        ref budget,
-                        ref availableSlots);
-                    break;
-                case HordeSpawnRuleKind.GunshipCommand:
-                    count = AppendRole(
-                        roles,
-                        count,
-                        HordeEnemyRole.Gunship,
-                        ref budget,
-                        ref availableSlots);
-                    count = AppendRole(
-                        roles,
-                        count,
-                        HordeEnemyRole.Interceptor,
-                        ref budget,
-                        ref availableSlots);
-                    break;
-                default:
-                    int desired = rule == HordeSpawnRuleKind.OpeningSweep
-                        ? 2
-                        : phase >= 2 ? 3 : 2;
-                    while (count < desired && budget > 0 && availableSlots > 0)
+                    if (mayAddInterceptor)
                     {
                         count = AppendRole(
                             roles,
@@ -1801,8 +2273,106 @@ namespace UnityPlanet.ModularAssembly
                             ref availableSlots);
                     }
                     break;
+                case HordeSpawnRuleKind.PincerPressure:
+                    count = AppendRole(
+                        roles,
+                        count,
+                        HordeEnemyRole.Striker,
+                        ref budget,
+                        ref availableSlots);
+                    count = AppendRole(
+                        roles,
+                        count,
+                        HordeEnemyRole.Striker,
+                        ref budget,
+                        ref availableSlots);
+                    if (mayAddInterceptor)
+                    {
+                        count = AppendRole(
+                            roles,
+                            count,
+                            HordeEnemyRole.Interceptor,
+                            ref budget,
+                            ref availableSlots);
+                    }
+                    break;
+                case HordeSpawnRuleKind.GunshipCommand:
+                    count = AppendRole(
+                        roles,
+                        count,
+                        HordeEnemyRole.Gunship,
+                        ref budget,
+                        ref availableSlots);
+                    if (mayAddInterceptor)
+                    {
+                        count = AppendRole(
+                            roles,
+                            count,
+                            HordeEnemyRole.Interceptor,
+                            ref budget,
+                            ref availableSlots);
+                    }
+                    break;
+                default:
+                    if (rule == HordeSpawnRuleKind.OpeningSweep)
+                    {
+                        count = AppendRole(
+                            roles,
+                            count,
+                            HordeEnemyRole.Striker,
+                            ref budget,
+                            ref availableSlots);
+                        count = AppendRole(
+                            roles,
+                            count,
+                            HordeEnemyRole.Striker,
+                            ref budget,
+                            ref availableSlots);
+                        if (mayAddInterceptor)
+                        {
+                            count = AppendRole(
+                                roles,
+                                count,
+                                HordeEnemyRole.Interceptor,
+                                ref budget,
+                                ref availableSlots);
+                        }
+                    }
+                    else
+                    {
+                        if (mayAddInterceptor)
+                        {
+                            count = AppendRole(
+                                roles,
+                                count,
+                                HordeEnemyRole.Interceptor,
+                                ref budget,
+                                ref availableSlots);
+                        }
+                        count = AppendRole(
+                            roles,
+                            count,
+                            HordeEnemyRole.Striker,
+                            ref budget,
+                            ref availableSlots);
+                    }
+                    break;
             }
             return count;
+        }
+
+        bool IsFacilityAssaultSession =>
+            edpcg != null &&
+            EdpcgFacilityAssaultPacingPolicy.Applies(edpcg.MissionId);
+
+        int ResolveThreatBudget(float encounterClock, int phase)
+        {
+            // Facility assault uses a 4/4/4/2 threat budget aligned to EDPCG's
+            // four phases. Other missions keep the authored legacy time budget.
+            return EdpcgFacilityAssaultPacingPolicy.ResolveThreatBudget(
+                edpcg != null ? edpcg.MissionId : null,
+                phase,
+                ThreatBudgetAt(encounterClock));
         }
 
         static int AppendRole(
@@ -2090,7 +2660,11 @@ namespace UnityPlanet.ModularAssembly
                 direction.normalized,
                 Vector3.up);
             enemy.Activate(
-                HordeEnemyProfile.ForRole(queued.Role),
+                HordeEnemyProfile.ForRole(
+                    queued.Role,
+                    edpcg != null
+                        ? edpcg.Settings.enemyHealthMultiplier
+                        : 1f),
                 playerBody,
                 position,
                 rotation,
@@ -2112,25 +2686,74 @@ namespace UnityPlanet.ModularAssembly
             if (playerBody == null || navigation == null)
                 return false;
             if (plannedIngresses.Count > 0)
-                return TryResolvePlannedIngressPosition(queued, out position);
+            {
+                if (TryResolvePlannedIngressPosition(queued, out position))
+                    return true;
+                // Authored entrances remain the first choice. Once each one
+                // has failed at least once, use the existing player-relative
+                // candidate solver as a bounded safety valve. It still checks
+                // visibility, overlap, arena bounds and a real navigation path;
+                // this does not permit a visible pop or a spawn inside a wall.
+                if (!ShouldUseAdaptiveSpawnFallback(
+                        queued.TotalAttempts,
+                        plannedIngresses.Count))
+                {
+                    return false;
+                }
+            }
+            return TryResolveAdaptiveSpawnPosition(queued, out position);
+        }
+
+        bool TryResolveAdaptiveSpawnPosition(
+            QueuedSpawn queued,
+            out Vector3 position)
+        {
+            position = Vector3.zero;
+            // Scan all eight horizontal directions in a deterministic order.
+            // A single authored tactical sector may point outside the arena
+            // when the player is near an edge; limiting fallback to that one
+            // sector recreates the same permanent SpawnRecovery loop.
+            for (int sample = 0; sample < 8; sample++)
+            {
+                int directionStep =
+                    ResolveAdaptiveSpawnDirectionStep(
+                        queued.TotalAttempts,
+                        sample);
+                if (TryResolveAdaptiveSpawnCandidate(
+                        queued,
+                        directionStep,
+                        sample,
+                        out position))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool TryResolveAdaptiveSpawnCandidate(
+            QueuedSpawn queued,
+            int directionStep,
+            int sampleIndex,
+            out Vector3 position)
+        {
+            position = Vector3.zero;
             Vector3 forward = Vector3.ProjectOnPlane(
                 playerBody.transform.forward,
                 Vector3.up);
             if (forward.sqrMagnitude < 0.01f)
                 forward = Vector3.forward;
             forward.Normalize();
-            float attemptOffset = queued.Attempts == 0
-                ? 0f
-                : (queued.Attempts % 2 == 1 ? 1f : -1f) *
-                  Mathf.Ceil(queued.Attempts * 0.5f) * 7.5f;
-            float angle = queued.Sector * 45f + attemptOffset;
+            float angle = (queued.Sector + directionStep) * 45f;
             Vector3 radial = Quaternion.AngleAxis(angle, Vector3.up) * forward;
             float speedDistance = Mathf.Clamp(
                 playerBody.velocity.magnitude * 4f,
                 190f,
                 275f);
             float distance = speedDistance +
-                             (queued.Attempts * 17 + spawnSequence * 11) % 36;
+                             (queued.TotalAttempts * 17 +
+                              sampleIndex * 11 +
+                              spawnSequence * 11) % 36;
             Vector3 lateral = Vector3.Cross(Vector3.up, radial).normalized;
             float centered = queued.MemberIndex - (queued.MemberCount - 1) * 0.5f;
             Vector3 offset;
@@ -2166,7 +2789,11 @@ namespace UnityPlanet.ModularAssembly
             if (playerDistance < 170f || playerDistance > 320f ||
                 Vector3.Distance(candidate, battleCenter) > warningRadius * 0.75f)
                 return false;
-            if (playerDistance < 250f && IsUnoccludedInPlayerView(candidate))
+            // Formal planetary combat currently has no consumer for the
+            // legacy arrival-warning API. Every adaptive candidate therefore
+            // remains strictly hidden instead of relying on a marker that may
+            // point toward a different authored entrance.
+            if (IsUnoccludedInPlayerView(candidate))
                 return false;
             for (int index = 0; index < active.Count; index++)
             {
@@ -2187,8 +2814,10 @@ namespace UnityPlanet.ModularAssembly
                 if (collider != null && collider.enabled)
                     return false;
             }
-            Vector3 inbound = playerBody.worldCenterOfMass + Vector3.up * 25f;
-            if (!navigation.HasStaticClearCorridor(candidate, inbound))
+            if (!HasReachablePlayerApproach(
+                    candidate,
+                    queued.Role,
+                    spawnSequence * 4 + queued.MemberIndex))
                 return false;
             position = candidate;
             return true;
@@ -2268,11 +2897,10 @@ namespace UnityPlanet.ModularAssembly
             {
                 return false;
             }
-            // First try every PCG entrance without a visible pop. If the whole
-            // arena is visible, the existing arrival warning is preferable to
-            // silently starving the wave after all entrances were checked.
-            if (queued.Attempts < plannedIngresses.Count &&
-                IsUnoccludedInPlayerView(candidate))
+            // Never depend on the legacy arrival-warning hook: formal planet
+            // combat does not render it. A visible authored entrance is simply
+            // skipped and the hidden adaptive solver becomes the safety valve.
+            if (IsUnoccludedInPlayerView(candidate))
             {
                 return false;
             }
@@ -2298,9 +2926,10 @@ namespace UnityPlanet.ModularAssembly
                     return false;
             }
 
-            Vector3 inbound = playerBody.worldCenterOfMass +
-                              Vector3.up * 25f;
-            if (!navigation.FindPath(candidate, inbound, spawnPathProbe))
+            if (!HasReachablePlayerApproach(
+                    candidate,
+                    queued.Role,
+                    spawnSequence * 4 + queued.MemberIndex))
                 return false;
             position = candidate;
             return true;
@@ -2387,16 +3016,34 @@ namespace UnityPlanet.ModularAssembly
             int suicideCommits = 0;
             int rangedFireLanes = 0;
             int navigationRecoveries = 0;
-            int threat = 0;
+            int pursuingThreats = 0;
+            int closeApproachThreats = 0;
+            float threat = 0f;
+            int pressureDirectionMask = 0;
+            Vector3 playerPosition = playerBody != null
+                ? playerBody.worldCenterOfMass
+                : battleCenter;
             for (int index = 0; index < active.Count; index++)
             {
                 HordeEnemyVehicle enemy = active[index];
                 if (enemy == null || !enemy.IsCombatCapable)
                     continue;
-                threat += Mathf.Max(1, enemy.Profile.threatCost);
+                float roleThreatCost = Mathf.Max(1, enemy.Profile.threatCost);
                 if (enemy.IsThreatening ||
                     enemy.IsEnvironmentalTrapCommitted)
+                {
                     engagements++;
+                    Vector3 direction = enemy.BodyPosition - playerPosition;
+                    direction.y = 0f;
+                    if (direction.sqrMagnitude > 1f)
+                    {
+                        int sector =
+                            EdpcgThreatDirectionUtility.HorizontalSector(
+                                playerPosition,
+                                enemy.BodyPosition);
+                        pressureDirectionMask |= 1 << sector;
+                    }
+                }
                 if (enemy.IsSuicideCommit)
                     suicideCommits++;
                 if (enemy.IsRangedFiring)
@@ -2405,6 +3052,50 @@ namespace UnityPlanet.ModularAssembly
                     EdpcgEnemyTacticalState.NavigationRecovery)
                 {
                     navigationRecoveries++;
+                    continue;
+                }
+
+                EdpcgEnemyTacticalState tacticalState = enemy.TacticalState;
+                bool pursuingPlayer =
+                    tacticalState == EdpcgEnemyTacticalState.Ingress ||
+                    tacticalState == EdpcgEnemyTacticalState.Positioning ||
+                    tacticalState == EdpcgEnemyTacticalState.Threatening ||
+                    tacticalState == EdpcgEnemyTacticalState.Telegraphing ||
+                    tacticalState == EdpcgEnemyTacticalState.Attacking ||
+                    tacticalState == EdpcgEnemyTacticalState.Reengaging ||
+                    tacticalState ==
+                        EdpcgEnemyTacticalState.EnvironmentalTrapCommit;
+                bool attackCommitted = enemy.IsThreatening ||
+                                       enemy.IsEnvironmentalTrapCommitted;
+                bool actionableThreat = attackCommitted ||
+                                        enemy.HasActionableRoute;
+                // Path-starved craft keep only a small presence cost. They
+                // cannot contribute full combat pressure and trigger braking
+                // while they are unable to reach or shoot the player.
+                threat += HordeCombatPressurePolicy.EffectiveThreatCost(
+                    Mathf.RoundToInt(roleThreatCost),
+                    actionableThreat);
+                pursuingPlayer = attackCommitted ||
+                                 (pursuingPlayer &&
+                                  enemy.HasActionableRoute);
+                if (!pursuingPlayer)
+                    continue;
+                float distance = Vector3.Distance(
+                    enemy.BodyPosition,
+                    playerPosition);
+                float closeDistance = edpcg.Settings.closeApproachDistance;
+                if (attackCommitted || distance <= closeDistance * 1.65f)
+                    pursuingThreats++;
+                if (distance <= closeDistance)
+                    closeApproachThreats++;
+                if ((attackCommitted || distance <= closeDistance) &&
+                    distance > 1f)
+                {
+                    int sector =
+                        EdpcgThreatDirectionUtility.HorizontalSector(
+                            playerPosition,
+                            enemy.BodyPosition);
+                    pressureDirectionMask |= 1 << sector;
                 }
             }
             edpcg.UpdateDirectorSnapshot(
@@ -2414,7 +3105,22 @@ namespace UnityPlanet.ModularAssembly
                 suicideCommits,
                 rangedFireLanes,
                 navigationRecoveries,
-                threat);
+                threat,
+                CountSetBits(pressureDirectionMask),
+                pressureDirectionMask,
+                pursuingThreats,
+                closeApproachThreats);
+        }
+
+        static int CountSetBits(int value)
+        {
+            int count = 0;
+            while (value != 0)
+            {
+                value &= value - 1;
+                count++;
+            }
+            return count;
         }
 
         static bool InReliefWindow(float seconds)
@@ -2429,6 +3135,9 @@ namespace UnityPlanet.ModularAssembly
         MonoBehaviour,
         ISpaceDamageable
     {
+        static readonly List<HordeEnemyVehicle> activeCombatEnemies =
+            new List<HordeEnemyVehicle>(32);
+
         enum AttackState
         {
             Tracking,
@@ -2494,6 +3203,8 @@ namespace UnityPlanet.ModularAssembly
         AttackState attackState;
 
         public HordeEnemyProfile Profile => profile;
+        public static IReadOnlyList<HordeEnemyVehicle> ActiveCombatEnemies =>
+            activeCombatEnemies;
         public HordeEnemyRole Role => profile?.role ?? HordeEnemyRole.Interceptor;
         public int SlotIndex { get; private set; }
         public bool HasAttackToken => hasAttackToken;
@@ -2514,6 +3225,8 @@ namespace UnityPlanet.ModularAssembly
         public bool IsRangedFiring => !IsSuicide &&
                                       attackState == AttackState.Firing;
         public bool IsReengaging => reengaging;
+        public bool HasActionableRoute =>
+            routeIndex < route.Count && pathFailureCount < 3;
         public bool IsEnvironmentalTrapCommitted =>
             environmentalTrapCommitted;
         public bool IsEnvironmentalPursuer { get; private set; }
@@ -2604,6 +3317,8 @@ namespace UnityPlanet.ModularAssembly
             IsEnvironmentalPursuer = environmentalPursuer;
             health = profile.maximumHealth;
             activeForCombat = true;
+            if (!activeCombatEnemies.Contains(this))
+                activeCombatEnemies.Add(this);
             dead = false;
             hasAttackToken = false;
             desiredVelocity = rotation * Vector3.forward * profile.maximumSpeed;
@@ -2657,6 +3372,7 @@ namespace UnityPlanet.ModularAssembly
 
         public void DeactivateForPool()
         {
+            activeCombatEnemies.Remove(this);
             director?.ReleaseAttackToken(this);
             activeForCombat = false;
             dead = false;
@@ -2689,6 +3405,11 @@ namespace UnityPlanet.ModularAssembly
             }
             SetRenderers(false);
             gameObject.SetActive(false);
+        }
+
+        void OnDestroy()
+        {
+            activeCombatEnemies.Remove(this);
         }
 
         public void SetAttackToken(bool value)
@@ -2911,6 +3632,16 @@ namespace UnityPlanet.ModularAssembly
                     body.position,
                     tacticalDestination,
                     route);
+                if (!found && CanUseGroundedPlayerApproachFallback() &&
+                    director.TryFindGroundedPlayerApproachPath(
+                        this,
+                        body.position,
+                        route,
+                        out Vector3 groundedApproach))
+                {
+                    tacticalDestination = groundedApproach;
+                    found = route.Count > 0;
+                }
                 routeIndex = 0;
                 nextReplanAt = Time.time + director.SemanticReplanSeconds;
                 if (found && route.Count > 0)
@@ -2974,6 +3705,19 @@ namespace UnityPlanet.ModularAssembly
                                     0f,
                                     0.8f);
             desiredAim = (predicted - body.worldCenterOfMass).normalized;
+        }
+
+        bool CanUseGroundedPlayerApproachFallback()
+        {
+            if (environmentalTrapCommitted ||
+                attackState == AttackState.Recovering)
+            {
+                return false;
+            }
+            return PathIntent != EdpcgPathIntent.BreakAway &&
+                   PathIntent != EdpcgPathIntent.BreakLineOfSight &&
+                   PathIntent != EdpcgPathIntent.EnvironmentalTrapCommit &&
+                   PathIntent != EdpcgPathIntent.NavigationRecovery;
         }
 
         EdpcgPathIntent ChoosePathIntent()
@@ -3080,9 +3824,14 @@ namespace UnityPlanet.ModularAssembly
                 reengaging = true;
                 return;
             }
-            bool hasClearCorridor = director.HasLineOfTravel(
-                body.worldCenterOfMass,
-                playerPosition);
+            bool hasClearCorridor = profile.attackKind ==
+                                    HordeEnemyAttackKind.Ranged
+                ? director.HasLineOfFire(
+                    body.worldCenterOfMass,
+                    playerPosition)
+                : director.HasLineOfTravel(
+                    body.worldCenterOfMass,
+                    director.ResolveSafePlayerApproachPoint());
             if (HordeReengagementPolicy.HasReestablishedContact(
                     profile.attackKind,
                     playerDistance,
@@ -3174,11 +3923,12 @@ namespace UnityPlanet.ModularAssembly
                 return;
             }
 
-            Vector3 target = playerBody.worldCenterOfMass;
+            Vector3 target = director.ResolvePlayerAimPoint();
             float distance = Vector3.Distance(body.worldCenterOfMass, target);
-            bool hasLineOfSight = director.HasLineOfTravel(
-                body.worldCenterOfMass,
-                target);
+            bool hasLineOfSight = TryResolveRangedLineOfFire(
+                target,
+                out Vector3 lineOfFireOrigin,
+                out Vector3 lineOfFireTarget);
             if (!hasLineOfSight)
                 lineOfSightLostAt = Time.time;
             float hysteresis = director.EdpcgRuntime != null
@@ -3208,8 +3958,8 @@ namespace UnityPlanet.ModularAssembly
                 case AttackState.Telegraph:
                     WeaponPermission = EdpcgWeaponPermission.TelegraphOnly;
                     visuals?.SpawnTracer(
-                        ResolveMuzzle(0),
-                        target,
+                        lineOfFireOrigin,
+                        lineOfFireTarget,
                         new Color(1f, 0.42f, 0.08f, 0.75f),
                         0.07f,
                         "HordeAttackTelegraph");
@@ -3274,8 +4024,12 @@ namespace UnityPlanet.ModularAssembly
         {
             Vector3 target = playerBody.worldCenterOfMass;
             float distance = Vector3.Distance(body.worldCenterOfMass, target);
+            Vector3 approachTarget =
+                director.ResolveSafePlayerApproachPoint();
             bool hasApproach =
-                director.HasLineOfTravel(body.worldCenterOfMass, target);
+                director.HasLineOfTravel(
+                    body.worldCenterOfMass,
+                    approachTarget);
             switch (attackState)
             {
                 case AttackState.Tracking:
@@ -3322,7 +4076,7 @@ namespace UnityPlanet.ModularAssembly
                             distance / Mathf.Max(1f, profile.maximumSpeed),
                             0.15f,
                             commitSeconds);
-                        suicideCommitAim = target +
+                        suicideCommitAim = approachTarget +
                                            playerBody.velocity * lead;
                         suicideCommitEndsAt = Time.time + commitSeconds;
                         attackState = AttackState.Firing;
@@ -3377,12 +4131,16 @@ namespace UnityPlanet.ModularAssembly
             for (int gun = 0; gun < profile.gunCount; gun++)
             {
                 Vector3 origin = ResolveMuzzle(gun);
-                Vector3 predicted = target + playerBody.velocity * Mathf.Clamp(
-                    Vector3.Distance(origin, target) /
-                    Mathf.Max(1f, weaponProfile.projectileSpeed),
-                    0f,
-                    0.8f);
-                Vector3 direction = (predicted - origin).normalized;
+                if (!TryResolveRangedShot(
+                        origin,
+                        target,
+                        out Vector3 direction,
+                        out Vector3 impactPoint))
+                {
+                    continue;
+                }
+                if (!director.HasLineOfFire(origin, impactPoint))
+                    continue;
                 visuals?.SpawnMuzzle(
                     origin,
                     direction,
@@ -3397,6 +4155,62 @@ namespace UnityPlanet.ModularAssembly
                     transform,
                     null);
             }
+        }
+
+        bool TryResolveRangedLineOfFire(
+            Vector3 target,
+            out Vector3 origin,
+            out Vector3 impactPoint)
+        {
+            int gunCount = Mathf.Max(1, profile != null
+                ? profile.gunCount
+                : 1);
+            for (int gun = 0; gun < gunCount; gun++)
+            {
+                origin = ResolveMuzzle(gun);
+                if (TryResolveRangedShot(
+                        origin,
+                        target,
+                        out _,
+                        out impactPoint) &&
+                    director.HasLineOfFire(origin, impactPoint))
+                {
+                    return true;
+                }
+            }
+            origin = body != null
+                ? body.worldCenterOfMass
+                : transform.position;
+            impactPoint = target;
+            return false;
+        }
+
+        bool TryResolveRangedShot(
+            Vector3 origin,
+            Vector3 target,
+            out Vector3 direction,
+            out Vector3 impactPoint)
+        {
+            direction = Vector3.zero;
+            impactPoint = target;
+            if (body == null || playerBody == null || weaponProfile == null)
+                return false;
+            float projectileSpeed = Mathf.Max(
+                1f,
+                weaponProfile.projectileSpeed);
+            float maximumFlightSeconds = Mathf.Max(
+                0.1f,
+                weaponProfile.range / projectileSpeed);
+            return HordeRangedAimPolicy.TryResolveIntercept(
+                origin,
+                body.velocity,
+                target,
+                director.ResolvePlayerAimVelocity(target),
+                projectileSpeed,
+                maximumFlightSeconds,
+                out direction,
+                out impactPoint,
+                out _);
         }
 
         Vector3 ResolveMuzzle(int gun)

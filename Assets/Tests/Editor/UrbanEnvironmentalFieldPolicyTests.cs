@@ -9,6 +9,76 @@ using UnityPlanet.ModularAssembly;
 public sealed class UrbanEnvironmentalFieldPolicyTests
 {
     [Test]
+    public void FieldOverlapBufferCannotBeFilledByOneLegalBossHull()
+    {
+        var root = new GameObject("EnvironmentalOverlapCapacityTest");
+        try
+        {
+            UrbanEnvironmentalFieldVolume field =
+                root.AddComponent<UrbanEnvironmentalFieldVolume>();
+            FieldInfo bufferField = typeof(UrbanEnvironmentalFieldVolume)
+                .GetField(
+                    "overlapBuffer",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(bufferField, Is.Not.Null);
+            Collider[] buffer = (Collider[])bufferField.GetValue(field);
+            Assert.That(buffer.Length,
+                Is.GreaterThanOrEqualTo(
+                    ModularBossCombatPolicy.AssemblyModuleLimit + 96),
+                "One legal Boss plus a maximum-size player must leave room " +
+                "for both combat bodies before dynamic growth is needed.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
+    }
+
+    [Test]
+    public void MagneticSupportUsesLargeHullBoundsAndCachesColliders()
+    {
+        var fieldObject = new GameObject("MagneticLargeHullFieldTest");
+        var bodyObject = new GameObject("MagneticLargeHullBodyTest");
+        try
+        {
+            UrbanEnvironmentalFieldVolume field = fieldObject
+                .AddComponent<UrbanEnvironmentalFieldVolume>();
+            Rigidbody body = bodyObject.AddComponent<Rigidbody>();
+            BoxCollider hull = bodyObject.AddComponent<BoxCollider>();
+            hull.size = new Vector3(50f, 30f, 40f);
+            Physics.SyncTransforms();
+
+            const BindingFlags Flags = BindingFlags.Instance |
+                                       BindingFlags.NonPublic;
+            MethodInfo estimate = typeof(UrbanEnvironmentalFieldVolume)
+                .GetMethod("EstimateBodyRadius", Flags);
+            MethodInfo resolveColliders = typeof(UrbanEnvironmentalFieldVolume)
+                .GetMethod("ResolveBodyColliders", Flags);
+            Assert.That(estimate, Is.Not.Null);
+            Assert.That(resolveColliders, Is.Not.Null);
+            float radius = (float)estimate.Invoke(
+                field,
+                new object[] { body, Vector3.right });
+            Assert.That(radius, Is.EqualTo(25f).Within(0.01f),
+                "Boss support must use the real half-extent, not the old 12 m cap.");
+
+            Collider[] first = (Collider[])resolveColliders.Invoke(
+                field,
+                new object[] { body });
+            Collider[] second = (Collider[])resolveColliders.Invoke(
+                field,
+                new object[] { body });
+            Assert.That(ReferenceEquals(first, second), Is.True,
+                "Magnetic FixedUpdate must reuse the collider snapshot.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(bodyObject);
+            Object.DestroyImmediate(fieldObject);
+        }
+    }
+
+    [Test]
     public void RuntimeForceMultiplierIsRealtimeAndSafetyClamped()
     {
         var root = new GameObject("EnvironmentalForceMultiplierTest");
@@ -296,6 +366,46 @@ public sealed class UrbanEnvironmentalFieldPolicyTests
                         "No magnetic facade may close the authored opening.");
                 }
             }
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
+    }
+
+    [Test]
+    public void RequestedTrapCountsBuildDistinctRuntimeFieldsAndRoutes()
+    {
+        var settings = new AirCombatCitySettings
+        {
+            seed = 7319,
+            naturalStreetGaleCount = 2,
+            magneticCourtyardCount = 3
+        };
+        AirCombatCityPlan plan = AirCombatCityGenerator.Generate(
+            settings,
+            out AirCombatCityReport report);
+        Assert.That(report.valid, Is.True, report.failureReason);
+
+        var root = new GameObject("VariableEnvironmentalTrapCountTest");
+        try
+        {
+            UrbanEnvironmentalFieldDirector director =
+                root.AddComponent<UrbanEnvironmentalFieldDirector>();
+            director.Configure(plan, settings.ValidatedCopy());
+
+            Assert.That(director.HasRequiredCombatTraps, Is.True,
+                director.ValidationError);
+            Assert.That(director.Fields.Count(field => field.Kind ==
+                    UrbanEnvironmentalFieldKind.NaturalStreetGale),
+                Is.EqualTo(2));
+            Assert.That(director.Fields.Count(field => field.Kind ==
+                    UrbanEnvironmentalFieldKind.MagneticCourtyard),
+                Is.EqualTo(3));
+            Assert.That(director.PursuitRoutes.Count, Is.EqualTo(5));
+            Assert.That(director.Fields.Select(field => field.transform.position)
+                    .Distinct().Count(),
+                Is.EqualTo(5));
         }
         finally
         {

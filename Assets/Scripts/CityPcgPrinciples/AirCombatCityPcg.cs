@@ -68,8 +68,7 @@ namespace UnityPlanet.CityPcg
         RecoveryPocket = 4,
         KiteLoop = 5,
         AssaultBreach = 6,
-        DominancePerch = 7,
-        DangerPlaza = 8
+        DominancePerch = 7
     }
 
     public enum AirCombatEnemyLaneKind
@@ -163,15 +162,64 @@ namespace UnityPlanet.CityPcg
         public float buildingSpacing = 63.6f;
 
         [InspectorName("建筑密度")]
-        [Range(0.5f, 0.95f)]
+        [Min(0.5f)]
         public float buildingDensity = 0.91f;
 
         [InspectorName("最多候选次数")]
-        [Range(1, 24)]
+        [Min(1)]
         public int maximumAttempts = 10;
+
+        [Header("空中连廊")]
+        [Min(0)] public int intraBlockSkybridgeTarget = 138;
+        [Min(0)] public int crossBlockSkybridgeTarget = 12;
+        [Min(0)] public int bossIntraBlockSkybridgeTarget = 202;
+        [Min(0)] public int bossCrossBlockSkybridgeTarget = 18;
+        [Min(1f)] public float skybridgeMinimumCenterDistance = 22f;
+        [Min(1f)] public float skybridgeMaximumCenterDistance = 240f;
+        [Min(1f)] public float skybridgeMinimumHeight = 38f;
+        [Min(0f)] public float skybridgeFacadeEmbed = 9f;
+        [Min(1)] public int skybridgeMaximumSegmentCount = 3;
+        [Min(1)] public int skybridgeMaximumConnectionsPerBuilding = 7;
+        [Min(1)] public int skybridgeLandmarkMaximumConnections = 10;
+
+        [Header("空中电线与减速")]
+        [Min(0f)] public float aerialCableDensityMultiplier = 1f;
+        [Min(0)] public int aerialCableMinimumCount = 14;
+        [Min(0)] public int aerialCableMaximumCount = 26;
+        [Min(1f)] public float aerialCableMinimumCenterDistance = 76f;
+        [Min(1f)] public float aerialCableMaximumCenterDistance = 310f;
+        [Min(1f)] public float aerialCableMinimumOpenSpan = 54f;
+        [Min(1f)] public float aerialCableMaximumOpenSpan = 248f;
+        [Min(0f)] public float aerialCableSagRatio = 0.075f;
+        [Min(0f)] public float aerialCableMinimumSag = 6f;
+        [Min(0f)] public float aerialCableMaximumSag = 18f;
+        [Min(1)] public int aerialCableMaximumConnectionsPerBuilding = 3;
+        [Min(1)] public int aerialCableLandmarkMaximumConnections = 4;
+        [Min(0f)] public float aerialCableVerticalSeparation = 2.7f;
+        [Min(0.05f)] public float cableTriggerRadius = 1.05f;
+        [Range(1, 16)] public int cableTriggerSegmentsPerCurve = 6;
+        [Min(0f)] public float cableMinimumAffectedSpeed = 8f;
+        [Range(0f, 0.9f)] public float playerCableSlowdown = 0.28f;
+        [Range(0f, 0.9f)] public float enemyCableSlowdown = 0.14f;
+        [Min(0.05f)] public float cableRepeatCooldown = 0.45f;
+        [Min(0f)] public float playerCableSwayAmplitude = 1.55f;
+        [Min(0f)] public float enemyCableSwayAmplitude = 0.85f;
+        [Min(0.05f)] public float cableSwayDuration = 1.05f;
+
+        [Header("环境陷阱分布")]
+        [Min(1)] public int naturalStreetGaleCount = 1;
+        [Min(1)] public int magneticCourtyardCount = 2;
+        [Range(0f, 1f)] public float environmentalTrapRandomness = 0.72f;
+        [Range(0f, 1f)] public float environmentalTrapEdgeBias = 0.35f;
+        [Min(0f)] public float environmentalTrapPreferredMinimumRadius = 250f;
+        [Min(1f)] public float environmentalTrapPreferredMaximumRadius = 590f;
+        [Min(0f)] public float environmentalTrapEdgeClearance = 120f;
+        [Min(0f)] public float environmentalTrapMinimumSeparation = 260f;
 
         [Header("Combat-driven PCG")]
         public bool useVisualDistrictThemes = true;
+        [HideInInspector]
+        public bool removeUpperParameterLimits;
         public CombatCityDifficultyProfile combatDifficulty =
             new CombatCityDifficultyProfile();
         public CombatCityDifficultyProfile Difficulty =>
@@ -181,23 +229,23 @@ namespace UnityPlanet.CityPcg
         public float MainCorridorWidth => Mathf.Max(
             152f,
             turnRadius * 1.52f + wingspan * 0.4f) *
-            Mathf.Lerp(1.10f, 0.92f, Difficulty.navigationChallenge);
+            Mathf.Lerp(1.18f, 0.82f, Difficulty.navigationChallenge);
 
         public float FlankCorridorWidth => Mathf.Max(
             118f,
             turnRadius * 1.22f + wingspan * 0.25f) *
-            Mathf.Lerp(1.08f, 0.86f, Difficulty.navigationChallenge);
+            Mathf.Lerp(1.16f, 0.78f, Difficulty.navigationChallenge);
 
         public float LongRangeCorridorWidth => Mathf.Max(
             136f,
             turnRadius * 1.38f + wingspan * 0.25f) *
-            Mathf.Lerp(1.12f, 0.88f, Difficulty.navigationChallenge);
+            Mathf.Lerp(1.20f, 0.80f, Difficulty.navigationChallenge);
 
         public float ManeuverDiameter => Mathf.Max(350f, turnRadius * 3.55f) *
-            Mathf.Lerp(1.10f, 0.92f, Difficulty.navigationChallenge);
+            Mathf.Lerp(1.16f, 0.84f, Difficulty.navigationChallenge);
 
         public float RecoveryDiameter => Mathf.Max(200f, turnRadius * 2.1f) *
-            Mathf.Lerp(0.92f, 1.16f, Difficulty.recoveryGenerosity);
+            Mathf.Lerp(0.85f, 1.25f, Difficulty.recoveryGenerosity);
 
         // `wingspan` is the gameplay envelope used by the city planner rather
         // than the bare renderer width.  A few metres of lateral allowance are
@@ -214,19 +262,152 @@ namespace UnityPlanet.CityPcg
             {
                 seed = seed,
                 mission = mission,
-                mapSize = Mathf.Clamp(mapSize, 1200f, 2600f),
-                combatSpeed = Mathf.Clamp(combatSpeed, 20f, 160f),
-                turnRadius = Mathf.Clamp(turnRadius, 40f, 300f),
-                weaponRange = Mathf.Clamp(weaponRange, 120f, 1200f),
-                wingspan = Mathf.Clamp(wingspan, 4f, 80f),
-                lowAltitude = Mathf.Clamp(lowAltitude, 30f, 120f),
-                mediumAltitude = Mathf.Clamp(mediumAltitude, 70f, 220f),
-                highAltitude = Mathf.Clamp(highAltitude, 120f, 300f),
-                maximumAltitude = Mathf.Clamp(maximumAltitude, 180f, 400f),
-                buildingSpacing = Mathf.Clamp(buildingSpacing, 48f, 96f),
-                buildingDensity = Mathf.Clamp(buildingDensity, 0.5f, 0.95f),
-                maximumAttempts = Mathf.Clamp(maximumAttempts, 1, 24),
+                mapSize = removeUpperParameterLimits
+                    ? Mathf.Max(1200f, mapSize)
+                    : Mathf.Clamp(mapSize, 1200f, 2600f),
+                combatSpeed = removeUpperParameterLimits
+                    ? Mathf.Max(20f, combatSpeed)
+                    : Mathf.Clamp(combatSpeed, 20f, 160f),
+                turnRadius = removeUpperParameterLimits
+                    ? Mathf.Max(40f, turnRadius)
+                    : Mathf.Clamp(turnRadius, 40f, 300f),
+                weaponRange = removeUpperParameterLimits
+                    ? Mathf.Max(120f, weaponRange)
+                    : Mathf.Clamp(weaponRange, 120f, 1200f),
+                wingspan = removeUpperParameterLimits
+                    ? Mathf.Max(4f, wingspan)
+                    : Mathf.Clamp(wingspan, 4f, 80f),
+                lowAltitude = removeUpperParameterLimits
+                    ? Mathf.Max(30f, lowAltitude)
+                    : Mathf.Clamp(lowAltitude, 30f, 120f),
+                mediumAltitude = removeUpperParameterLimits
+                    ? Mathf.Max(70f, mediumAltitude)
+                    : Mathf.Clamp(mediumAltitude, 70f, 220f),
+                highAltitude = removeUpperParameterLimits
+                    ? Mathf.Max(120f, highAltitude)
+                    : Mathf.Clamp(highAltitude, 120f, 300f),
+                maximumAltitude = removeUpperParameterLimits
+                    ? Mathf.Max(180f, maximumAltitude)
+                    : Mathf.Clamp(maximumAltitude, 180f, 400f),
+                buildingSpacing = removeUpperParameterLimits
+                    ? Mathf.Max(48f, buildingSpacing)
+                    : Mathf.Clamp(buildingSpacing, 48f, 96f),
+                buildingDensity = removeUpperParameterLimits
+                    ? Mathf.Max(0.5f, buildingDensity)
+                    : Mathf.Clamp(buildingDensity, 0.5f, 0.95f),
+                maximumAttempts = removeUpperParameterLimits
+                    ? Mathf.Max(1, maximumAttempts)
+                    : Mathf.Clamp(maximumAttempts, 1, 24),
+                intraBlockSkybridgeTarget = removeUpperParameterLimits
+                    ? Mathf.Max(0, intraBlockSkybridgeTarget)
+                    : Mathf.Clamp(intraBlockSkybridgeTarget, 0, 200),
+                crossBlockSkybridgeTarget = removeUpperParameterLimits
+                    ? Mathf.Max(0, crossBlockSkybridgeTarget)
+                    : Mathf.Clamp(crossBlockSkybridgeTarget, 0, 200),
+                bossIntraBlockSkybridgeTarget = removeUpperParameterLimits
+                    ? Mathf.Max(0, bossIntraBlockSkybridgeTarget)
+                    : Mathf.Clamp(bossIntraBlockSkybridgeTarget, 0, 300),
+                bossCrossBlockSkybridgeTarget = removeUpperParameterLimits
+                    ? Mathf.Max(0, bossCrossBlockSkybridgeTarget)
+                    : Mathf.Clamp(bossCrossBlockSkybridgeTarget, 0, 300),
+                skybridgeMinimumCenterDistance = Mathf.Max(
+                    1f,
+                    skybridgeMinimumCenterDistance),
+                skybridgeMaximumCenterDistance = Mathf.Max(
+                    skybridgeMinimumCenterDistance + 1f,
+                    skybridgeMaximumCenterDistance),
+                skybridgeMinimumHeight = Mathf.Max(1f, skybridgeMinimumHeight),
+                skybridgeFacadeEmbed = Mathf.Max(0f, skybridgeFacadeEmbed),
+                skybridgeMaximumSegmentCount = Mathf.Max(
+                    1,
+                    skybridgeMaximumSegmentCount),
+                skybridgeMaximumConnectionsPerBuilding = Mathf.Max(
+                    1,
+                    skybridgeMaximumConnectionsPerBuilding),
+                skybridgeLandmarkMaximumConnections = Mathf.Max(
+                    1,
+                    skybridgeLandmarkMaximumConnections),
+                aerialCableDensityMultiplier = removeUpperParameterLimits
+                    ? Mathf.Max(0f, aerialCableDensityMultiplier)
+                    : Mathf.Clamp(aerialCableDensityMultiplier, 0f, 4f),
+                aerialCableMinimumCount = removeUpperParameterLimits
+                    ? Mathf.Max(0, aerialCableMinimumCount)
+                    : Mathf.Clamp(aerialCableMinimumCount, 0, 64),
+                aerialCableMaximumCount = removeUpperParameterLimits
+                    ? Mathf.Max(0, aerialCableMaximumCount)
+                    : Mathf.Clamp(aerialCableMaximumCount, 0, 96),
+                aerialCableMinimumCenterDistance = Mathf.Max(
+                    1f,
+                    aerialCableMinimumCenterDistance),
+                aerialCableMaximumCenterDistance = Mathf.Max(
+                    aerialCableMinimumCenterDistance + 1f,
+                    aerialCableMaximumCenterDistance),
+                aerialCableMinimumOpenSpan = Mathf.Max(
+                    1f,
+                    aerialCableMinimumOpenSpan),
+                aerialCableMaximumOpenSpan = Mathf.Max(
+                    aerialCableMinimumOpenSpan + 1f,
+                    aerialCableMaximumOpenSpan),
+                aerialCableSagRatio = Mathf.Max(0f, aerialCableSagRatio),
+                aerialCableMinimumSag = Mathf.Max(0f, aerialCableMinimumSag),
+                aerialCableMaximumSag = Mathf.Max(
+                    aerialCableMinimumSag,
+                    aerialCableMaximumSag),
+                aerialCableMaximumConnectionsPerBuilding = Mathf.Max(
+                    1,
+                    aerialCableMaximumConnectionsPerBuilding),
+                aerialCableLandmarkMaximumConnections = Mathf.Max(
+                    1,
+                    aerialCableLandmarkMaximumConnections),
+                aerialCableVerticalSeparation = Mathf.Max(
+                    0f,
+                    aerialCableVerticalSeparation),
+                cableTriggerRadius = removeUpperParameterLimits
+                    ? Mathf.Max(0.05f, cableTriggerRadius)
+                    : Mathf.Clamp(cableTriggerRadius, 0.05f, 4f),
+                cableTriggerSegmentsPerCurve = Mathf.Clamp(
+                    cableTriggerSegmentsPerCurve,
+                    1,
+                    16),
+                cableMinimumAffectedSpeed = Mathf.Max(
+                    0f,
+                    cableMinimumAffectedSpeed),
+                playerCableSlowdown = Mathf.Clamp(
+                    playerCableSlowdown,
+                    0f,
+                    0.9f),
+                enemyCableSlowdown = Mathf.Clamp(
+                    enemyCableSlowdown,
+                    0f,
+                    0.9f),
+                cableRepeatCooldown = Mathf.Max(0.05f, cableRepeatCooldown),
+                playerCableSwayAmplitude = Mathf.Max(
+                    0f,
+                    playerCableSwayAmplitude),
+                enemyCableSwayAmplitude = Mathf.Max(
+                    0f,
+                    enemyCableSwayAmplitude),
+                cableSwayDuration = Mathf.Max(0.05f, cableSwayDuration),
+                naturalStreetGaleCount = Mathf.Max(1, naturalStreetGaleCount),
+                magneticCourtyardCount = Mathf.Max(1, magneticCourtyardCount),
+                environmentalTrapRandomness = Mathf.Clamp01(
+                    environmentalTrapRandomness),
+                environmentalTrapEdgeBias = Mathf.Clamp01(
+                    environmentalTrapEdgeBias),
+                environmentalTrapPreferredMinimumRadius = Mathf.Max(
+                    0f,
+                    environmentalTrapPreferredMinimumRadius),
+                environmentalTrapPreferredMaximumRadius = Mathf.Max(
+                    1f,
+                    environmentalTrapPreferredMaximumRadius),
+                environmentalTrapEdgeClearance = Mathf.Max(
+                    0f,
+                    environmentalTrapEdgeClearance),
+                environmentalTrapMinimumSeparation = Mathf.Max(
+                    0f,
+                    environmentalTrapMinimumSeparation),
                 useVisualDistrictThemes = useVisualDistrictThemes,
+                removeUpperParameterLimits = removeUpperParameterLimits,
                 combatDifficulty = (combatDifficulty ??
                     new CombatCityDifficultyProfile()).ValidatedCopy()
             };
@@ -239,14 +420,40 @@ namespace UnityPlanet.CityPcg
             copy.maximumAltitude = Mathf.Max(
                 copy.highAltitude + 40f,
                 copy.maximumAltitude);
+            copy.skybridgeMaximumCenterDistance = Mathf.Max(
+                copy.skybridgeMinimumCenterDistance + 1f,
+                copy.skybridgeMaximumCenterDistance);
+            copy.skybridgeLandmarkMaximumConnections = Mathf.Max(
+                copy.skybridgeMaximumConnectionsPerBuilding,
+                copy.skybridgeLandmarkMaximumConnections);
+            copy.aerialCableMaximumCount = Mathf.Max(
+                copy.aerialCableMinimumCount,
+                copy.aerialCableMaximumCount);
+            copy.aerialCableMaximumCenterDistance = Mathf.Max(
+                copy.aerialCableMinimumCenterDistance + 1f,
+                copy.aerialCableMaximumCenterDistance);
+            copy.aerialCableMaximumOpenSpan = Mathf.Max(
+                copy.aerialCableMinimumOpenSpan + 1f,
+                copy.aerialCableMaximumOpenSpan);
+            copy.aerialCableMaximumSag = Mathf.Max(
+                copy.aerialCableMinimumSag,
+                copy.aerialCableMaximumSag);
+            copy.aerialCableLandmarkMaximumConnections = Mathf.Max(
+                copy.aerialCableMaximumConnectionsPerBuilding,
+                copy.aerialCableLandmarkMaximumConnections);
+            copy.environmentalTrapPreferredMaximumRadius = Mathf.Max(
+                copy.environmentalTrapPreferredMinimumRadius + 1f,
+                copy.environmentalTrapPreferredMaximumRadius);
             float minimumMap = Mathf.Max(
                 1200f,
                 copy.turnRadius * 12f,
                 copy.weaponRange * 3.2f);
-            copy.mapSize = Mathf.Clamp(
-                Mathf.Max(copy.mapSize, minimumMap),
-                1200f,
-                2600f);
+            copy.mapSize = copy.removeUpperParameterLimits
+                ? Mathf.Max(copy.mapSize, minimumMap)
+                : Mathf.Clamp(
+                    Mathf.Max(copy.mapSize, minimumMap),
+                    1200f,
+                    2600f);
             return copy;
         }
     }
@@ -453,6 +660,37 @@ namespace UnityPlanet.CityPcg
     /// </summary>
     public static class AirCombatCityGenerator
     {
+        // The formal assault objective is a modular runtime facility, not a
+        // decorative city tower.  The planner owns a real empty pad for it so
+        // post-instantiation systems never have to hide a clipping failure.
+        public const float FacilityPadSize = 54f;
+        public const float FacilityPadHeight = 44f;
+        public const float FacilityPadMinimumSeparation = 92f;
+        // Recovery courtyards are selected from parcel interiors rather than
+        // arbitrary coordinates. This keeps their three real wall buildings
+        // away from the street grid while still allowing stable seed variation.
+        static readonly Vector2[] RecoveryParcelSlots =
+        {
+            new Vector2(-1.56f, -0.58f),
+            new Vector2(-1.56f, 0.58f),
+            new Vector2(-2.56f, -0.58f),
+            new Vector2(-2.56f, 0.58f),
+            new Vector2(-3.56f, -0.58f),
+            new Vector2(-3.56f, 0.58f),
+            new Vector2(1.56f, -0.58f),
+            new Vector2(2.56f, -0.58f),
+            new Vector2(2.56f, 0.58f),
+            new Vector2(3.56f, -0.58f),
+            new Vector2(3.56f, 0.58f)
+        };
+
+        struct RecoveryPocketCandidate
+        {
+            public Vector3 point;
+            public float score;
+            public int slotIndex;
+        }
+
         struct StableRandom
         {
             uint state;
@@ -542,20 +780,19 @@ namespace UnityPlanet.CityPcg
             CombatDrivenCityPcgPlanner.BuildTacticalBlockLayout(settings, plan);
             BuildRoadNetwork(settings, plan);
             BuildEnemyIngresses(settings, plan, ref random);
+            if (settings.mission == AirCombatCityMission.FacilityAssault)
+                BuildFacility(settings, plan);
             BuildBuildings(settings, plan, ref random);
             CombatDrivenCityPcgPlanner.BuildPhysicalRegionFeatures(
                 settings,
                 plan);
             BuildLowUrbanIslands(settings, plan, ref random);
             BuildRecoveryDistricts(settings, plan, ref random);
-            BuildTacticalPark(settings, plan);
             EnsureCentralTacticalCover(settings, plan);
             EnsureCentralLowCover(settings, plan);
             PromoteCentralMediumCover(settings, plan, ref random);
             EnsureCentralCoverContinuity(settings, plan);
             PromoteSkylineAnchors(settings, plan);
-            if (settings.mission == AirCombatCityMission.FacilityAssault)
-                BuildFacility(settings, plan);
             CombatDrivenCityPcgPlanner.BindGeneratedFeatures(settings, plan);
             return plan;
         }
@@ -578,37 +815,27 @@ namespace UnityPlanet.CityPcg
                 settings.highAltitude,
                 0.35f);
             float maskedDetour = Mathf.Lerp(
-                1.45f,
-                1.85f,
+                1.30f,
+                2.05f,
                 settings.Difficulty.navigationChallenge);
+            maskedDetour = ClampMaskedDetourToShortcutBudget(
+                settings,
+                sideX,
+                connectorZ,
+                upperCombatAltitude,
+                maskedDetour);
             float maskedX = -sideX * maskedDetour;
             float exposureX = sideX * 0.20f;
             Vector3 kiteCenter = new Vector3(
                 streetPitch * 1.50f,
                 settings.mediumAltitude,
                 streetPitch * 0.50f);
-            // Recovery pockets live in the outer parcels, not beside the kite
-            // loop.  The previous mirrored placement put the eastern pocket's
-            // tall back wall directly through the loop and its north wall into
-            // a 94 m avenue.  Because that relationship was seed-independent,
-            // retrying seeds could never produce a valid city.
-            float westRecoveryX = -streetPitch * 2.5f;
-            float eastRecoveryX = streetPitch * 3.5f;
-            float recoveryZ = streetPitch * 0.62f;
             Vector3 recoveryPocketSize = new Vector3(
                 streetPitch * 0.67f * Mathf.Lerp(
-                    0.88f, 1.14f, settings.Difficulty.recoveryGenerosity),
+                    0.78f, 1.28f, settings.Difficulty.recoveryGenerosity),
                 settings.maximumAltitude * 0.72f,
                 streetPitch * 0.62f * Mathf.Lerp(
-                    0.88f, 1.14f, settings.Difficulty.recoveryGenerosity));
-            Vector3 westRecovery = new Vector3(
-                westRecoveryX,
-                settings.mediumAltitude,
-                recoveryZ);
-            Vector3 eastRecovery = new Vector3(
-                eastRecoveryX,
-                settings.mediumAltitude,
-                -recoveryZ);
+                    0.78f, 1.28f, settings.Difficulty.recoveryGenerosity));
             bool clearanceStyle = settings.mission !=
                                   AirCombatCityMission.FacilityAssault;
             plan.playerSpawn = clearanceStyle
@@ -636,18 +863,6 @@ namespace UnityPlanet.CityPcg
                     settings.ManeuverDiameter,
                     settings.maximumAltitude,
                     settings.ManeuverDiameter));
-            AddVolume(
-                plan,
-                "volume.recovery.west",
-                AirCombatVolumeKind.RecoveryPocket,
-                westRecovery,
-                recoveryPocketSize);
-            AddVolume(
-                plan,
-                "volume.recovery.east",
-                AirCombatVolumeKind.RecoveryPocket,
-                eastRecovery,
-                recoveryPocketSize);
             AddVolume(
                 plan,
                 "volume.kite-loop.center",
@@ -695,7 +910,7 @@ namespace UnityPlanet.CityPcg
                     settings.LongRangeCorridorWidth,
                     settings.maximumAltitude,
                     settings.combatSpeed * Mathf.Lerp(
-                        6.2f, 9f, settings.Difficulty.exposurePressure)));
+                        5.0f, 10.5f, settings.Difficulty.exposurePressure)));
 
             Vector3 south = new Vector3(0f, settings.lowAltitude, -half + 90f);
             Vector3 north = new Vector3(0f, settings.mediumAltitude, half - 90f);
@@ -733,8 +948,8 @@ namespace UnityPlanet.CityPcg
                 north);
 
             float loopRadius = settings.turnRadius * Mathf.Lerp(
-                1.55f,
-                1.22f,
+                1.68f,
+                1.14f,
                 settings.Difficulty.navigationChallenge);
             var loopPoints = new Vector3[13];
             for (int point = 0; point < loopPoints.Length; point++)
@@ -759,6 +974,519 @@ namespace UnityPlanet.CityPcg
                 new Vector3(0f, settings.lowAltitude, -connectorZ * 0.35f),
                 new Vector3(0f, settings.mediumAltitude, 0f),
                 new Vector3(0f, upperCombatAltitude, connectorZ * 0.35f));
+
+            List<Vector3> recoveryPockets = ResolveRecoveryPocketLocations(
+                settings,
+                plan,
+                plan.resolvedSeed,
+                streetPitch,
+                recoveryPocketSize,
+                kiteCenter);
+            AddVolume(
+                plan,
+                "volume.recovery.west",
+                AirCombatVolumeKind.RecoveryPocket,
+                recoveryPockets[0],
+                recoveryPocketSize);
+            AddVolume(
+                plan,
+                "volume.recovery.east",
+                AirCombatVolumeKind.RecoveryPocket,
+                recoveryPockets[1],
+                recoveryPocketSize);
+            for (int recoveryIndex = 2;
+                 recoveryIndex < recoveryPockets.Count;
+                 recoveryIndex++)
+            {
+                AddVolume(
+                    plan,
+                    "volume.recovery.extra." +
+                    (recoveryIndex - 2).ToString("D2"),
+                    AirCombatVolumeKind.RecoveryPocket,
+                    recoveryPockets[recoveryIndex],
+                    recoveryPocketSize);
+            }
+        }
+
+        static float ClampMaskedDetourToShortcutBudget(
+            AirCombatCitySettings settings,
+            float sideX,
+            float connectorZ,
+            float upperCombatAltitude,
+            float requestedDetour)
+        {
+            float half = settings.mapSize * 0.5f;
+            Vector3 south = new Vector3(
+                0f,
+                settings.lowAltitude,
+                -half + 90f);
+            Vector3 north = new Vector3(
+                0f,
+                settings.mediumAltitude,
+                half - 90f);
+            float exposureX = sideX * 0.20f;
+            float exposureLength = SixPointRouteLength(
+                south,
+                new Vector3(
+                    exposureX * 0.52f,
+                    settings.mediumAltitude,
+                    -connectorZ),
+                new Vector3(
+                    exposureX,
+                    upperCombatAltitude,
+                    -connectorZ * 0.55f),
+                new Vector3(
+                    exposureX,
+                    upperCombatAltitude,
+                    connectorZ * 0.55f),
+                new Vector3(
+                    exposureX * 0.52f,
+                    settings.mediumAltitude,
+                    connectorZ),
+                north);
+            float maximumSaving =
+                CombatDrivenCityPcgPlanner
+                    .MaximumExposureShortcutSavingRatio - 0.002f;
+            float maximumMaskedLength = exposureLength /
+                                        Mathf.Max(0.01f, 1f - maximumSaving);
+            if (MaskedRouteLength(
+                    settings,
+                    sideX,
+                    connectorZ,
+                    requestedDetour,
+                    south,
+                    north) <= maximumMaskedLength)
+            {
+                return requestedDetour;
+            }
+
+            float lower = 0f;
+            float upper = requestedDetour;
+            for (int iteration = 0; iteration < 16; iteration++)
+            {
+                float candidate = (lower + upper) * 0.5f;
+                if (MaskedRouteLength(
+                        settings,
+                        sideX,
+                        connectorZ,
+                        candidate,
+                        south,
+                        north) <= maximumMaskedLength)
+                {
+                    lower = candidate;
+                }
+                else
+                {
+                    upper = candidate;
+                }
+            }
+            return lower;
+        }
+
+        static float MaskedRouteLength(
+            AirCombatCitySettings settings,
+            float sideX,
+            float connectorZ,
+            float detour,
+            Vector3 south,
+            Vector3 north)
+        {
+            float maskedX = -sideX * detour;
+            return SixPointRouteLength(
+                south,
+                new Vector3(
+                    maskedX * 0.52f,
+                    settings.lowAltitude,
+                    -connectorZ),
+                new Vector3(
+                    maskedX,
+                    settings.mediumAltitude,
+                    -connectorZ * 0.55f),
+                new Vector3(
+                    maskedX,
+                    settings.mediumAltitude,
+                    connectorZ * 0.55f),
+                new Vector3(
+                    maskedX * 0.52f,
+                    settings.mediumAltitude,
+                    connectorZ),
+                north);
+        }
+
+        static float SixPointRouteLength(
+            Vector3 first,
+            Vector3 second,
+            Vector3 third,
+            Vector3 fourth,
+            Vector3 fifth,
+            Vector3 sixth)
+        {
+            return Vector3.Distance(first, second) +
+                   Vector3.Distance(second, third) +
+                   Vector3.Distance(third, fourth) +
+                   Vector3.Distance(fourth, fifth) +
+                   Vector3.Distance(fifth, sixth);
+        }
+
+        static List<Vector3> ResolveRecoveryPocketLocations(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan,
+            int resolvedSeed,
+            float streetPitch,
+            Vector3 pocketSize,
+            Vector3 kiteCenter)
+        {
+            ResolveRecoveryPocketPair(
+                settings,
+                plan,
+                resolvedSeed,
+                streetPitch,
+                pocketSize,
+                kiteCenter,
+                out Vector3 westRecovery,
+                out Vector3 eastRecovery);
+            westRecovery.y = settings.mediumAltitude;
+            eastRecovery.y = settings.mediumAltitude;
+            int requested = Mathf.Max(2, settings.magneticCourtyardCount);
+            var selected = new List<Vector3>(Mathf.Min(
+                requested,
+                RecoveryParcelSlots.Length))
+            {
+                westRecovery,
+                eastRecovery
+            };
+            if (requested <= 2)
+                return selected;
+
+            float minimumRadius = settings.environmentalTrapPreferredMinimumRadius;
+            float maximumRadius = Mathf.Max(
+                minimumRadius + 1f,
+                settings.environmentalTrapPreferredMaximumRadius);
+            float targetRadius = Mathf.Lerp(
+                minimumRadius,
+                maximumRadius,
+                settings.environmentalTrapEdgeBias);
+            float half = settings.mapSize * 0.5f;
+            float pocketExtent = Mathf.Max(pocketSize.x, pocketSize.z) * 0.5f;
+            var candidates = new List<RecoveryPocketCandidate>(
+                RecoveryParcelSlots.Length);
+            for (int slotIndex = 0;
+                 slotIndex < RecoveryParcelSlots.Length;
+                 slotIndex++)
+            {
+                Vector2 slot = RecoveryParcelSlots[slotIndex] * streetPitch;
+                if (!IsSafeRecoverySlot(
+                        slot,
+                        pocketSize,
+                        kiteCenter,
+                        settings,
+                        plan))
+                    continue;
+                Vector3 point = new Vector3(
+                    slot.x,
+                    settings.mediumAltitude,
+                    slot.y);
+                if (Vector3.Distance(point, westRecovery) < 1f ||
+                    Vector3.Distance(point, eastRecovery) < 1f)
+                {
+                    continue;
+                }
+                float edgeGap = half -
+                                Mathf.Max(Mathf.Abs(slot.x), Mathf.Abs(slot.y)) -
+                                pocketExtent;
+                float randomScore = StableNoise01(
+                                        resolvedSeed,
+                                        slotIndex * 263 + 1709) * 2f - 1f;
+                candidates.Add(new RecoveryPocketCandidate
+                {
+                    point = point,
+                    slotIndex = slotIndex,
+                    score = ScoreTrapRadius(
+                                slot.magnitude,
+                                minimumRadius,
+                                maximumRadius,
+                                targetRadius) -
+                            Mathf.Max(
+                                0f,
+                                settings.environmentalTrapEdgeClearance -
+                                edgeGap) * 5f +
+                            randomScore * streetPitch * 1.25f *
+                            settings.environmentalTrapRandomness
+                });
+            }
+            candidates.Sort((first, second) =>
+            {
+                int byScore = second.score.CompareTo(first.score);
+                return byScore != 0
+                    ? byScore
+                    : first.slotIndex.CompareTo(second.slotIndex);
+            });
+
+            AddRecoveryCandidates(
+                selected,
+                candidates,
+                requested,
+                settings.environmentalTrapMinimumSeparation);
+            // Separation is a preference. If the requested count cannot fit at
+            // that spacing, fill remaining distinct legal parcels rather than
+            // silently reducing the authored trap count.
+            AddRecoveryCandidates(selected, candidates, requested, 0f);
+            return selected;
+        }
+
+        static void AddRecoveryCandidates(
+            List<Vector3> selected,
+            List<RecoveryPocketCandidate> candidates,
+            int requested,
+            float minimumSeparation)
+        {
+            for (int candidateIndex = 0;
+                 candidateIndex < candidates.Count && selected.Count < requested;
+                 candidateIndex++)
+            {
+                Vector3 point = candidates[candidateIndex].point;
+                bool available = true;
+                for (int selectedIndex = 0;
+                     selectedIndex < selected.Count;
+                     selectedIndex++)
+                {
+                    float distance = Vector3.Distance(
+                        Vector3.ProjectOnPlane(point, Vector3.up),
+                        Vector3.ProjectOnPlane(
+                            selected[selectedIndex],
+                            Vector3.up));
+                    if (distance < 1f || distance < minimumSeparation)
+                    {
+                        available = false;
+                        break;
+                    }
+                }
+                if (available)
+                    selected.Add(point);
+            }
+        }
+
+        static void ResolveRecoveryPocketPair(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan,
+            int resolvedSeed,
+            float streetPitch,
+            Vector3 pocketSize,
+            Vector3 kiteCenter,
+            out Vector3 westRecovery,
+            out Vector3 eastRecovery)
+        {
+            float minimumRadius = settings.environmentalTrapPreferredMinimumRadius;
+            float maximumRadius = Mathf.Max(
+                minimumRadius + 1f,
+                settings.environmentalTrapPreferredMaximumRadius);
+            float targetRadius = Mathf.Lerp(
+                minimumRadius,
+                maximumRadius,
+                settings.environmentalTrapEdgeBias);
+            float half = settings.mapSize * 0.5f;
+            float pocketExtent = Mathf.Max(pocketSize.x, pocketSize.z) * 0.5f;
+            float bestScore = float.NegativeInfinity;
+            westRecovery = new Vector3(
+                -streetPitch * 2.56f,
+                0f,
+                streetPitch * 0.58f);
+            eastRecovery = new Vector3(
+                streetPitch * 2.56f,
+                0f,
+                -streetPitch * 0.58f);
+
+            for (int westIndex = 0; westIndex < RecoveryParcelSlots.Length;
+                 westIndex++)
+            {
+                Vector2 westSlot = RecoveryParcelSlots[westIndex];
+                if (westSlot.x >= 0f)
+                    continue;
+                Vector2 west = westSlot * streetPitch;
+                if (!IsSafeRecoverySlot(
+                        west,
+                        pocketSize,
+                        kiteCenter,
+                        settings,
+                        plan))
+                {
+                    continue;
+                }
+
+                for (int eastIndex = 0;
+                     eastIndex < RecoveryParcelSlots.Length;
+                     eastIndex++)
+                {
+                    Vector2 eastSlot = RecoveryParcelSlots[eastIndex];
+                    if (eastSlot.x <= 0f)
+                        continue;
+                    Vector2 east = eastSlot * streetPitch;
+                    if (!IsSafeRecoverySlot(
+                            east,
+                            pocketSize,
+                            kiteCenter,
+                            settings,
+                            plan))
+                    {
+                        continue;
+                    }
+
+                    float westRadius = west.magnitude;
+                    float eastRadius = east.magnitude;
+                    float westEdgeGap = half -
+                                        Mathf.Max(Mathf.Abs(west.x), Mathf.Abs(west.y)) -
+                                        pocketExtent;
+                    float eastEdgeGap = half -
+                                        Mathf.Max(Mathf.Abs(east.x), Mathf.Abs(east.y)) -
+                                        pocketExtent;
+                    float separation = Vector2.Distance(west, east);
+                    float score = ScoreTrapRadius(
+                                      westRadius,
+                                      minimumRadius,
+                                      maximumRadius,
+                                      targetRadius) +
+                                  ScoreTrapRadius(
+                                      eastRadius,
+                                      minimumRadius,
+                                      maximumRadius,
+                                      targetRadius);
+                    score -= Mathf.Max(
+                                 0f,
+                                 settings.environmentalTrapEdgeClearance -
+                                 westEdgeGap) * 5f;
+                    score -= Mathf.Max(
+                                 0f,
+                                 settings.environmentalTrapEdgeClearance -
+                                 eastEdgeGap) * 5f;
+                    score -= Mathf.Max(
+                                 0f,
+                                 settings.environmentalTrapMinimumSeparation -
+                                 separation) * 6f;
+                    float randomScore = StableNoise01(
+                                            resolvedSeed,
+                                            westIndex * 97 + eastIndex * 193 + 41) *
+                                        2f - 1f;
+                    score += randomScore * streetPitch * 1.25f *
+                             settings.environmentalTrapRandomness;
+                    if (score <= bestScore)
+                        continue;
+                    bestScore = score;
+                    westRecovery = new Vector3(west.x, 0f, west.y);
+                    eastRecovery = new Vector3(east.x, 0f, east.y);
+                }
+            }
+        }
+
+        static bool IsSafeRecoverySlot(
+            Vector2 point,
+            Vector3 pocketSize,
+            Vector3 kiteCenter,
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan)
+        {
+            float half = settings.mapSize * 0.5f;
+            float extent = Mathf.Max(pocketSize.x, pocketSize.z) * 0.5f;
+            if (Mathf.Max(Mathf.Abs(point.x), Mathf.Abs(point.y)) + extent >=
+                half - 24f)
+            {
+                return false;
+            }
+
+            Vector2 kite = new Vector2(kiteCenter.x, kiteCenter.z);
+            float kiteClearance = settings.turnRadius * 1.72f + extent;
+            return Vector2.Distance(point, kite) >= kiteClearance &&
+                   RecoveryWallsClearFlightRoutes(point, plan);
+        }
+
+        static bool RecoveryWallsClearFlightRoutes(
+            Vector2 center,
+            AirCombatCityPlan plan)
+        {
+            if (plan == null || plan.routes == null)
+                return true;
+            float openSign = center.x < 0f ? -1f : 1f;
+            Vector2[] wallCenters =
+            {
+                center + new Vector2(-openSign * 44f, 0f),
+                center + new Vector2(-openSign * 12f, -42f),
+                center + new Vector2(-openSign * 12f, 42f)
+            };
+            Vector2[] wallFootprints =
+            {
+                new Vector2(110f, 18f),
+                new Vector2(78f, 18f),
+                new Vector2(78f, 18f)
+            };
+            float[] wallYaws =
+            {
+                openSign > 0f ? 90f : -90f,
+                0f,
+                180f
+            };
+            for (int routeIndex = 0;
+                 routeIndex < plan.routes.Count;
+                 routeIndex++)
+            {
+                AirCombatFlightRoute route = plan.routes[routeIndex];
+                if (route == null || route.points == null)
+                    continue;
+                for (int segment = 1;
+                     segment < route.points.Length;
+                     segment++)
+                {
+                    Vector2 start = new Vector2(
+                        route.points[segment - 1].x,
+                        route.points[segment - 1].z);
+                    Vector2 end = new Vector2(
+                        route.points[segment].x,
+                        route.points[segment].z);
+                    for (int wallIndex = 0;
+                         wallIndex < wallCenters.Length;
+                         wallIndex++)
+                    {
+                        if (FootprintIntersectsCorridor(
+                                wallCenters[wallIndex],
+                                wallFootprints[wallIndex],
+                                wallYaws[wallIndex],
+                                start,
+                                end,
+                                route.width * 0.5f,
+                                out _))
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        static float ScoreTrapRadius(
+            float radius,
+            float minimumRadius,
+            float maximumRadius,
+            float targetRadius)
+        {
+            float outside = radius < minimumRadius
+                ? minimumRadius - radius
+                : radius > maximumRadius
+                    ? radius - maximumRadius
+                    : 0f;
+            return -Mathf.Abs(radius - targetRadius) - outside * 3f;
+        }
+
+        static float StableNoise01(int seed, int salt)
+        {
+            unchecked
+            {
+                uint value = (uint)seed ^ ((uint)salt + 0x9E3779B9u);
+                value ^= value >> 16;
+                value *= 0x7FEB352Du;
+                value ^= value >> 15;
+                value *= 0x846CA68Bu;
+                value ^= value >> 16;
+                return (value & 0x00FFFFFFu) / 16777216f;
+            }
         }
 
         static void BuildRoadNetwork(
@@ -811,7 +1539,8 @@ namespace UnityPlanet.CityPcg
                         settings,
                         RoadTileWidth * northSouthBaseLanes,
                         west,
-                        east);
+                        east,
+                        northSouthKind);
                     AddRoad(
                         plan,
                         "road.grid.ns." + (roadIndex + 3).ToString("D2") +
@@ -846,7 +1575,8 @@ namespace UnityPlanet.CityPcg
                         settings,
                         RoadTileWidth * eastWestBaseLanes,
                         south,
-                        north);
+                        north,
+                        eastWestKind);
                     AddRoad(
                         plan,
                         "road.grid.ew." + (roadIndex + 3).ToString("D2") +
@@ -865,13 +1595,21 @@ namespace UnityPlanet.CityPcg
             AirCombatCitySettings settings,
             float baseWidth,
             CombatCityBlockPlan first,
-            CombatCityBlockPlan second)
+            CombatCityBlockPlan second,
+            AirCombatRouteKind roadKind)
         {
             float firstScale = first != null ? first.roadWidthScale : 1f;
             float secondScale = second != null ? second.roadWidthScale : firstScale;
             float localScale = (firstScale + secondScale) * 0.5f;
+            float legibility = settings.Difficulty.routeLegibility;
+            float hierarchyScale = roadKind == AirCombatRouteKind.Main
+                ? Mathf.Lerp(0.94f, 1.18f, legibility)
+                : roadKind == AirCombatRouteKind.MaskedFlank
+                    ? Mathf.Lerp(1.04f, 0.88f, legibility)
+                    : Mathf.Lerp(1.02f, 0.92f, legibility);
             return Mathf.Clamp(
-                baseWidth * localScale * settings.Difficulty.roadWidthScale,
+                baseWidth * localScale * hierarchyScale *
+                settings.Difficulty.roadWidthScale,
                 16f,
                 94f);
         }
@@ -893,9 +1631,9 @@ namespace UnityPlanet.CityPcg
                 settings.Difficulty.combatPressure * 2f);
             for (int i = 0; i < ingressDirectionCount; i++)
             {
-                float angle = missionOffset + i * (360f / ingressDirectionCount) +
-                              random.Range(-4f, 4f);
-                float radians = angle * Mathf.Deg2Rad;
+                float authoredAngle =
+                    missionOffset + i * (360f / ingressDirectionCount) +
+                    random.Range(-4f, 4f);
                 AirCombatEnemyLaneKind kind = i % 3 == 0
                     ? AirCombatEnemyLaneKind.Suicide
                     : AirCombatEnemyLaneKind.Ranged;
@@ -904,10 +1642,42 @@ namespace UnityPlanet.CityPcg
                     : (i & 1) == 0
                         ? settings.highAltitude
                         : settings.mediumAltitude;
-                Vector3 position = new Vector3(
-                    Mathf.Sin(radians) * radius,
-                    altitude,
-                    Mathf.Cos(radians) * radius);
+                Vector3 position = Vector3.zero;
+                for (int candidateIndex = 0;
+                     candidateIndex < 17;
+                     candidateIndex++)
+                {
+                    float offset = candidateIndex == 0
+                        ? 0f
+                        : (candidateIndex % 2 == 1 ? 1f : -1f) *
+                          Mathf.Ceil(candidateIndex * 0.5f) * 7.5f;
+                    float angle = authoredAngle + offset;
+                    float radians = angle * Mathf.Deg2Rad;
+                    Vector3 candidate = new Vector3(
+                        Mathf.Sin(radians) * radius,
+                        altitude,
+                        Mathf.Cos(radians) * radius);
+                    if (EnemyIngressIntersectsRecoveryDistrict(
+                            plan,
+                            candidate))
+                    {
+                        continue;
+                    }
+                    position = candidate;
+                    break;
+                }
+                if (position.sqrMagnitude < 0.001f)
+                {
+                    // The angular search is deliberately broad enough for the
+                    // authored two-courtyard layout. Preserve a deterministic
+                    // final candidate if a future profile consumes the whole
+                    // perimeter; validation will still reject an unsafe plan.
+                    float radians = authoredAngle * Mathf.Deg2Rad;
+                    position = new Vector3(
+                        Mathf.Sin(radians) * radius,
+                        altitude,
+                        Mathf.Cos(radians) * radius);
+                }
                 Vector3 target = Vector3.Lerp(
                     new Vector3(0f, altitude, 0f),
                     plan.playerSpawn,
@@ -1297,6 +2067,11 @@ namespace UnityPlanet.CityPcg
                 // 维修庭院背向交战中心开口。玩家进入后能换取完整的
                 // 十秒维修窗口，但后墙也会切断其对中心战场的输出线；
                 // 想继续射击就必须离开庭院，避免安全掩体成为永久炮台。
+                // Candidate parcels stay on the east/west bands so the three
+                // physical wall buildings can remain aligned with the real
+                // street grid. Rotating these walls freely makes their corners
+                // clip adjacent sidewalks even when the courtyard centre is in
+                // a legal parcel.
                 float openSign = center.x < 0f ? -1f : 1f;
                 float backHeight = Mathf.Max(
                     random.Range(108f, 116f),
@@ -1378,86 +2153,6 @@ namespace UnityPlanet.CityPcg
             });
         }
 
-        static void BuildTacticalPark(
-            AirCombatCitySettings settings,
-            AirCombatCityPlan plan)
-        {
-            const float RoadTileWidth = 22.26f;
-            const float SidewalkWidth = 6.2f;
-            float pitch = ResolveStreetPitch(settings);
-            float nearCenter = 0.5f * (
-                RoadTileWidth * 1.5f + SidewalkWidth +
-                (pitch - RoadTileWidth * 0.5f - SidewalkWidth));
-            float outerCenter = pitch * 2.5f;
-            Vector2[] candidates =
-            {
-                new Vector2(-nearCenter, outerCenter),
-                new Vector2(nearCenter, outerCenter),
-                new Vector2(-nearCenter, -outerCenter),
-                new Vector2(nearCenter, -outerCenter),
-                new Vector2(-outerCenter, nearCenter),
-                new Vector2(outerCenter, -nearCenter)
-            };
-            Vector2 center = candidates[0];
-            float bestScore = float.NegativeInfinity;
-            for (int c = 0; c < candidates.Length; c++)
-            {
-                float score = 0f;
-                for (int b = 0; b < plan.buildings.Count; b++)
-                {
-                    AirCombatBuildingLot building = plan.buildings[b];
-                    float distance = Vector2.Distance(
-                        candidates[c],
-                        new Vector2(building.center.x, building.center.z));
-                    if (distance < 88f || distance > 270f)
-                        continue;
-                    score += building.band == AirCombatBuildingBand.High
-                        ? 2.4f
-                        : building.band == AirCombatBuildingBand.Medium
-                            ? 1.5f
-                            : 0.7f;
-                }
-                for (int v = 0; v < plan.volumes.Count; v++)
-                {
-                    if (plan.volumes[v].kind !=
-                        AirCombatVolumeKind.RecoveryPocket)
-                    {
-                        continue;
-                    }
-                    Vector2 recovery = new Vector2(
-                        plan.volumes[v].center.x,
-                        plan.volumes[v].center.z);
-                    if (Vector2.Distance(candidates[c], recovery) < 260f)
-                        score -= 1000f;
-                }
-                if (score <= bestScore)
-                    continue;
-                bestScore = score;
-                center = candidates[c];
-            }
-            Vector2 size = new Vector2(112f, 112f);
-            for (int i = plan.buildings.Count - 1; i >= 0; i--)
-            {
-                AirCombatBuildingLot building = plan.buildings[i];
-                float radius = Mathf.Sqrt(
-                    building.size.x * building.size.x +
-                    building.size.z * building.size.z) * 0.5f;
-                if (Mathf.Abs(building.center.x - center.x) <=
-                        size.x * 0.5f + radius &&
-                    Mathf.Abs(building.center.z - center.y) <=
-                        size.y * 0.5f + radius)
-                {
-                    plan.buildings.RemoveAt(i);
-                }
-            }
-            AddVolume(
-                plan,
-                "volume.danger-plaza.park",
-                AirCombatVolumeKind.DangerPlaza,
-                new Vector3(center.x, settings.lowAltitude, center.y),
-                new Vector3(size.x, settings.mediumAltitude, size.y));
-        }
-
         static bool OverlapsBuilding(
             List<AirCombatBuildingLot> buildings,
             Vector2 point,
@@ -1488,8 +2183,10 @@ namespace UnityPlanet.CityPcg
             // 只有不侵占公园/维修区/出生盆地、不碰道路、不切安全航路的
             // 地块才会落楼；因此视觉密度提高，但飞机既有净空规则不变。
             const int TargetUsefulCover = 10;
+            const int TargetMediumCover = 3;
             float centralRadius = settings.ManeuverDiameter * 0.5f;
             int usefulCover = 0;
+            int mediumCover = 0;
             for (int i = 0; i < plan.buildings.Count; i++)
             {
                 AirCombatBuildingLot existing = plan.buildings[i];
@@ -1500,15 +2197,19 @@ namespace UnityPlanet.CityPcg
                     existing.size.y >= settings.lowAltitude + 12f)
                 {
                     usefulCover++;
+                    if (existing.band == AirCombatBuildingBand.Medium)
+                        mediumCover++;
                 }
             }
-            if (usefulCover >= TargetUsefulCover)
+            if (usefulCover >= TargetUsefulCover &&
+                mediumCover >= TargetMediumCover)
                 return;
 
             const float Width = 22f;
             const float Depth = 24f;
             int added = 0;
-            while (usefulCover < TargetUsefulCover)
+            while (usefulCover < TargetUsefulCover ||
+                   mediumCover < TargetMediumCover)
             {
                 Vector2 bestPoint = Vector2.zero;
                 float bestYaw = 0f;
@@ -1582,6 +2283,7 @@ namespace UnityPlanet.CityPcg
                         97)
                 });
                 usefulCover++;
+                mediumCover++;
                 added++;
             }
         }
@@ -1594,11 +2296,8 @@ namespace UnityPlanet.CityPcg
             for (int i = 0; i < plan.volumes.Count; i++)
             {
                 AirCombatTacticalVolume volume = plan.volumes[i];
-                if (volume.kind != AirCombatVolumeKind.RecoveryPocket &&
-                    volume.kind != AirCombatVolumeKind.DangerPlaza)
-                {
+                if (volume.kind != AirCombatVolumeKind.RecoveryPocket)
                     continue;
-                }
                 float halfX = volume.size.x * 0.5f + footprint.x * 0.5f + 6f;
                 float halfZ = volume.size.z * 0.5f + footprint.y * 0.5f + 6f;
                 if (Mathf.Abs(point.x - volume.center.x) <= halfX &&
@@ -1705,6 +2404,101 @@ namespace UnityPlanet.CityPcg
                 lowCount++;
                 added++;
             }
+
+            // Dense high-tier layouts can exhaust every empty low-cover lot.
+            // Lowering an already legal central medium building is safer than
+            // adding an overlapping object: its footprint is unchanged and
+            // its vertical obstruction only becomes smaller. Keep at least
+            // three medium silhouettes so both sides of the validator's height
+            // mix contract remain constructively guaranteed.
+            int centralMedium = 0;
+            for (int index = 0; index < plan.buildings.Count; index++)
+            {
+                AirCombatBuildingLot building = plan.buildings[index];
+                Vector2 point = new Vector2(
+                    building.center.x,
+                    building.center.z);
+                if (point.magnitude < centralRadius &&
+                    building.band == AirCombatBuildingBand.Medium)
+                {
+                    centralMedium++;
+                }
+            }
+            for (int index = 0;
+                 lowCount < 3 && centralMedium > 3 &&
+                 index < plan.buildings.Count;
+                 index++)
+            {
+                AirCombatBuildingLot building = plan.buildings[index];
+                Vector2 point = new Vector2(
+                    building.center.x,
+                    building.center.z);
+                if (point.magnitude >= centralRadius ||
+                    building.band != AirCombatBuildingBand.Medium ||
+                    building.clusterId >= 1200)
+                {
+                    continue;
+                }
+                float height = 46f + lowCount * 4f;
+                building.band = AirCombatBuildingBand.Low;
+                building.size = new Vector3(
+                    building.size.x,
+                    height,
+                    building.size.z);
+                building.center = new Vector3(
+                    building.center.x,
+                    height * 0.5f,
+                    building.center.z);
+                building.archetype = AirCombatBuildingArchetype.LowBlock;
+                lowCount++;
+                centralMedium--;
+            }
+        }
+
+        public static bool EnemyIngressIntersectsRecoveryDistrict(
+            AirCombatCityPlan plan,
+            Vector3 ingressPosition)
+        {
+            if (plan == null)
+                return false;
+            Vector2 point = new Vector2(
+                ingressPosition.x,
+                ingressPosition.z);
+            for (int index = 0; index < plan.volumes.Count; index++)
+            {
+                AirCombatTacticalVolume volume = plan.volumes[index];
+                if (volume.kind != AirCombatVolumeKind.RecoveryPocket)
+                    continue;
+                Vector2 center = new Vector2(
+                    volume.center.x,
+                    volume.center.z);
+                float openSign = center.x < 0f ? -1f : 1f;
+                Vector2[] wallCenters =
+                {
+                    center + new Vector2(-openSign * 44f, 0f),
+                    center + new Vector2(-openSign * 12f, -42f),
+                    center + new Vector2(-openSign * 12f, 42f)
+                };
+                Vector2[] wallFootprints =
+                {
+                    new Vector2(110f, 18f),
+                    new Vector2(78f, 18f),
+                    new Vector2(78f, 18f)
+                };
+                for (int wall = 0; wall < wallCenters.Length; wall++)
+                {
+                    float wallRadius = Mathf.Sqrt(
+                        wallFootprints[wall].x * wallFootprints[wall].x +
+                        wallFootprints[wall].y * wallFootprints[wall].y) *
+                        0.5f;
+                    if (Vector2.Distance(point, wallCenters[wall]) <
+                        72f + wallRadius)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         static void EnsureCentralCoverContinuity(
@@ -2058,6 +2852,28 @@ namespace UnityPlanet.CityPcg
             const float RoadsideClearance = 6.2f;
             footprint.x = Mathf.Max(2f, footprint.x);
             footprint.y = Mathf.Max(2f, footprint.y);
+            if (plan.facilityCores.Count > 0)
+            {
+                float radians = yaw * Mathf.Deg2Rad;
+                float cosine = Mathf.Abs(Mathf.Cos(radians));
+                float sine = Mathf.Abs(Mathf.Sin(radians));
+                float extentX =
+                    (footprint.x * cosine + footprint.y * sine) * 0.5f;
+                float extentZ =
+                    (footprint.x * sine + footprint.y * cosine) * 0.5f;
+                float padHalf = FacilityPadSize * 0.5f + 8f;
+                for (int coreIndex = 0;
+                     coreIndex < plan.facilityCores.Count;
+                     coreIndex++)
+                {
+                    Vector3 core = plan.facilityCores[coreIndex];
+                    if (Mathf.Abs(point.x - core.x) <= extentX + padHalf &&
+                        Mathf.Abs(point.y - core.z) <= extentZ + padHalf)
+                    {
+                        return true;
+                    }
+                }
+            }
             for (int i = 0; i < plan.roads.Count; i++)
             {
                 AirCombatRoadStrip road = plan.roads[i];
@@ -2138,7 +2954,12 @@ namespace UnityPlanet.CityPcg
             return false;
         }
 
-        internal static bool FootprintIntersectsCorridor(
+        /// <summary>
+        /// Shared read-only footprint/corridor query used by the planner,
+        /// validation and editor tactical annotations. It performs no scene or
+        /// physics mutation.
+        /// </summary>
+        public static bool FootprintIntersectsCorridor(
             Vector2 center,
             Vector2 footprint,
             float yaw,
@@ -2259,31 +3080,199 @@ namespace UnityPlanet.CityPcg
             AirCombatCitySettings settings,
             AirCombatCityPlan plan)
         {
-            Vector3 center = new Vector3(
+            Vector2 objective = new Vector2(
                 plan.objective.x,
-                0f,
                 plan.objective.z);
-            plan.facilityCores.Add(center + new Vector3(-78f, 0f, -24f));
-            plan.facilityCores.Add(center + new Vector3(78f, 0f, -24f));
-            plan.facilityCores.Add(center + new Vector3(0f, 0f, 76f));
-            for (int i = 0; i < plan.facilityCores.Count; i++)
+            float challenge = Mathf.Clamp01(
+                settings.Difficulty.navigationChallenge);
+            // The authored objective can be close to the boundary. Anchor the
+            // three real facilities toward the combat interior, then increase
+            // their separation with difficulty. Buildings are generated only
+            // after these pads exist and must therefore route around them.
+            Vector2 placementCenter = Vector2.Lerp(
+                Vector2.zero,
+                objective,
+                Mathf.Lerp(0.10f, 0.28f, challenge));
+            float preferredRadius = Mathf.Lerp(138f, 252f, challenge);
+            float seedYaw = PositiveModulo(plan.resolvedSeed, 31) - 15f;
+            for (int slot = 0; slot < 3; slot++)
             {
-                Vector3 core = plan.facilityCores[i];
-                float height = i == 2 ? 176f : 142f;
-                plan.buildings.Add(new AirCombatBuildingLot
+                float targetYaw = seedYaw + slot * 120f;
+                bool found = false;
+                // Search a bounded deterministic fan around each authored
+                // sector.  Difficulty expands the triangle, but legality is
+                // always decided by the same physical contract.
+                for (int ring = 0; ring < 7 && !found; ring++)
+                for (int turn = 0; turn < 17 && !found; turn++)
                 {
-                    stableId = "facility.core-building." + i,
-                    center = core + Vector3.up * (height * 0.5f),
-                    size = new Vector3(46f, height, 46f),
-                    yaw = ResolveFacadeYaw(
-                        plan,
-                        new Vector2(core.x, core.z)),
-                    band = AirCombatBuildingBand.Facility,
-                    archetype = AirCombatBuildingArchetype.Facility,
-                    clusterId = 990,
-                    visualVariant = i
-                });
+                    int signedStep = turn == 0
+                        ? 0
+                        : ((turn + 1) / 2) * (turn % 2 == 1 ? 1 : -1);
+                    float yaw = targetYaw + signedStep * 7f;
+                    float radius = preferredRadius +
+                                   (ring - 2) * 24f;
+                    Vector2 direction = new Vector2(
+                        Mathf.Sin(yaw * Mathf.Deg2Rad),
+                        Mathf.Cos(yaw * Mathf.Deg2Rad));
+                    Vector2 point = placementCenter + direction * radius;
+                    Vector3 candidate = new Vector3(point.x, 0f, point.y);
+                    if (!FacilitySiteIsLegal(settings, plan, candidate))
+                        continue;
+                    plan.facilityCores.Add(candidate);
+                    found = true;
+                }
             }
+        }
+
+        static bool FacilitySiteIsLegal(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan,
+            Vector3 candidate)
+        {
+            float half = FacilityPadSize * 0.5f;
+            float mapHalf = settings.mapSize * 0.5f - half - 18f;
+            if (Mathf.Abs(candidate.x) > mapHalf ||
+                Mathf.Abs(candidate.z) > mapHalf)
+            {
+                return false;
+            }
+
+            Vector2 center = new Vector2(candidate.x, candidate.z);
+            for (int index = 0; index < plan.facilityCores.Count; index++)
+            {
+                Vector2 other = new Vector2(
+                    plan.facilityCores[index].x,
+                    plan.facilityCores[index].z);
+                if (Vector2.Distance(center, other) <
+                    FacilityPadMinimumSeparation)
+                {
+                    return false;
+                }
+            }
+
+            // Physical combat-region geometry is instantiated after the base
+            // building pass. Reserve its authored footprint now, otherwise a
+            // later kite-loop tower or destruction pair can invalidate an
+            // otherwise legal facility pad.
+            for (int index = 0; index < plan.opportunities.Count; index++)
+            {
+                TacticalOpportunity opportunity = plan.opportunities[index];
+                if (opportunity == null ||
+                    (opportunity.kind != TacticalOpportunityKind.KiteLoop &&
+                     opportunity.kind !=
+                     TacticalOpportunityKind.DestructionAmbush))
+                {
+                    continue;
+                }
+                Bounds bounds = opportunity.bounds;
+                float opportunityHalfX = opportunity.kind ==
+                                             TacticalOpportunityKind.KiteLoop
+                    ? 31f
+                    : bounds.extents.x;
+                float opportunityHalfZ = opportunity.kind ==
+                                             TacticalOpportunityKind.KiteLoop
+                    ? 31f
+                    : bounds.extents.z;
+                if (Mathf.Abs(candidate.x - bounds.center.x) <=
+                        half + opportunityHalfX + 8f &&
+                    Mathf.Abs(candidate.z - bounds.center.z) <=
+                        half + opportunityHalfZ + 8f)
+                {
+                    return false;
+                }
+            }
+
+            for (int index = 0; index < plan.buildings.Count; index++)
+            {
+                AirCombatBuildingLot building = plan.buildings[index];
+                float radians = building.yaw * Mathf.Deg2Rad;
+                float cos = Mathf.Abs(Mathf.Cos(radians));
+                float sin = Mathf.Abs(Mathf.Sin(radians));
+                float extentX =
+                    (building.size.x * cos + building.size.z * sin) * 0.5f;
+                float extentZ =
+                    (building.size.x * sin + building.size.z * cos) * 0.5f;
+                if (Mathf.Abs(candidate.x - building.center.x) <=
+                        half + extentX + 8f &&
+                    Mathf.Abs(candidate.z - building.center.z) <=
+                        half + extentZ + 8f)
+                {
+                    return false;
+                }
+            }
+
+            bool nearApproachRoad = false;
+            for (int index = 0; index < plan.roads.Count; index++)
+            {
+                AirCombatRoadStrip road = plan.roads[index];
+                Vector2 start = new Vector2(road.start.x, road.start.z);
+                Vector2 end = new Vector2(road.end.x, road.end.z);
+                float distance = DistanceToSegment(center, start, end);
+                if (distance <= road.width * 0.5f + half + 8f)
+                    return false;
+                if (distance <= road.width * 0.5f + half + 92f)
+                    nearApproachRoad = true;
+            }
+            if (!nearApproachRoad)
+                return false;
+
+            float verticalSafety = settings.wingspan * 0.45f + 8f;
+            for (int routeIndex = 0;
+                 routeIndex < plan.routes.Count;
+                 routeIndex++)
+            {
+                AirCombatFlightRoute route = plan.routes[routeIndex];
+                if (route.kind == AirCombatRouteKind.EnemyIngress ||
+                    route.points == null)
+                    continue;
+                for (int pointIndex = 1;
+                     pointIndex < route.points.Length;
+                     pointIndex++)
+                {
+                    if (!FootprintIntersectsCorridor(
+                            center,
+                            Vector2.one * FacilityPadSize,
+                            0f,
+                            new Vector2(
+                                route.points[pointIndex - 1].x,
+                                route.points[pointIndex - 1].z),
+                            new Vector2(
+                                route.points[pointIndex].x,
+                                route.points[pointIndex].z),
+                            route.width * 0.5f,
+                            out float segmentT))
+                    {
+                        continue;
+                    }
+                    float altitude = Mathf.Lerp(
+                        route.points[pointIndex - 1].y,
+                        route.points[pointIndex].y,
+                        segmentT);
+                    if (FacilityPadHeight + verticalSafety >= altitude)
+                        return false;
+                }
+            }
+            return true;
+        }
+
+        static bool FacilitySitesAreValid(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan)
+        {
+            if (plan.facilityCores.Count != 3)
+                return false;
+            var accepted = new List<Vector3>(3);
+            for (int index = 0; index < plan.facilityCores.Count; index++)
+            {
+                Vector3 candidate = plan.facilityCores[index];
+                plan.facilityCores.RemoveAt(index);
+                bool valid = FacilitySiteIsLegal(settings, plan, candidate);
+                plan.facilityCores.Insert(index, candidate);
+                if (!valid)
+                    return false;
+                accepted.Add(candidate);
+            }
+            return accepted.Count == 3;
         }
 
         static AirCombatCityReport Validate(
@@ -2304,7 +3293,7 @@ namespace UnityPlanet.CityPcg
                 alternateRouteAvailable = false,
                 facilityReachable = settings.mission !=
                     AirCombatCityMission.FacilityAssault ||
-                    plan.facilityCores.Count == 3
+                    FacilitySitesAreValid(settings, plan)
             };
             ValidateRoadGrid(settings, plan, report);
             ValidateCoverContinuity(settings, plan, report);
@@ -2725,7 +3714,6 @@ namespace UnityPlanet.CityPcg
             bool kite = false;
             bool assault = false;
             bool occlusion = false;
-            bool dangerPlaza = false;
             for (int i = 0; i < plan.volumes.Count; i++)
             {
                 switch (plan.volumes[i].kind)
@@ -2738,9 +3726,6 @@ namespace UnityPlanet.CityPcg
                         break;
                     case AirCombatVolumeKind.OcclusionGate:
                         occlusion = true;
-                        break;
-                    case AirCombatVolumeKind.DangerPlaza:
-                        dangerPlaza = true;
                         break;
                 }
             }
@@ -2757,7 +3742,7 @@ namespace UnityPlanet.CityPcg
                     report.recoveryDistrictCount++;
             }
             report.tacticalRolesComplete =
-                kite && assault && occlusion && dangerPlaza;
+                kite && assault && occlusion;
         }
 
         static bool RouteClearOfBuildings(

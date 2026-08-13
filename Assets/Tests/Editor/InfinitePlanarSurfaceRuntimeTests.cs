@@ -1,10 +1,35 @@
 using NUnit.Framework;
 using SpacecraftEditor;
 using UnityEngine;
+using UnityPlanet.CityPcg;
 using UnityPlanet.CombatMap;
+using System.Reflection;
 
 public sealed class InfinitePlanarSurfaceRuntimeTests
 {
+    [Test]
+    public void UrbanCombatCenterUsesManeuverBowlInsteadOfEdgeFacility()
+    {
+        var city = new AirCombatCityPlan
+        {
+            objective = new Vector3(0f, 135f, 652f)
+        };
+        city.volumes.Add(new AirCombatTacticalVolume
+        {
+            kind = AirCombatVolumeKind.ManeuverBowl,
+            center = new Vector3(0f, 135f, 0f),
+            size = new Vector3(300f, 350f, 300f)
+        });
+
+        Vector3 center =
+            FinitePlanetUrbanCombatRuntime.ResolveFormalCombatCenter(
+                city,
+                12f);
+
+        Assert.That(center, Is.EqualTo(new Vector3(0f, 147f, 0f)));
+        Assert.That(center.z, Is.Not.EqualTo(city.objective.z));
+    }
+
     [Test]
     public void FiniteCombatModeClampsArenaInsideFixedTerrainWindow()
     {
@@ -30,6 +55,96 @@ public sealed class InfinitePlanarSurfaceRuntimeTests
         finally
         {
             Object.DestroyImmediate(root);
+        }
+    }
+
+    [Test]
+    public void UrbanFoundationUsesFlatLightweightReadinessChunks()
+    {
+        var root = new GameObject("UrbanFlatFoundationTest");
+        ProceduralPlanetPreset preset =
+            ScriptableObject.CreateInstance<ProceduralPlanetPreset>();
+        try
+        {
+            preset.ApplyTemplate(
+                ProceduralPlanetLabTemplate.TemperateOcean);
+            GalaxyPlanetDefinition definition = preset.CloneDefinition();
+            FinitePlanetCombatTerrainPlan foundation =
+                FinitePlanetCombatTerrainPlanner.CreateUrbanFoundation(
+                    definition,
+                    "industrial_outpost",
+                    7319,
+                    InfinitePlanarSurfaceWorld.DefaultFiniteCombatRadius,
+                    0f,
+                    false);
+
+            Assert.That(foundation, Is.Not.Null);
+            Assert.That(
+                foundation.SemanticPlan.theme,
+                Is.EqualTo(CombatMapTheme.Urban));
+            Assert.That(foundation.DefenseLayout.IsValid, Is.True);
+            Assert.That(foundation.Validation.CanCommit, Is.True);
+
+            var settings = new PlanetLabPlanarSettings
+            {
+                autoAnchor = false
+            };
+            settings.SetAnchorDirection(Vector3.up);
+            PlanetLabInfiniteTerrainStreamer streamer =
+                root.AddComponent<PlanetLabInfiniteTerrainStreamer>();
+            streamer.Configure(
+                definition,
+                settings,
+                null,
+                null,
+                null,
+                false,
+                InfinitePlanarSurfaceWorld.FiniteCombatViewRadius,
+                InfinitePlanarSurfaceWorld.FiniteCombatChunkResolution,
+                InfinitePlanarSurfaceWorld.FiniteCombatChunkSize,
+                foundation,
+                true);
+
+            Assert.That(streamer.UsesFlatCombatSurface, Is.True);
+            Assert.That(streamer.ActiveChunkCount, Is.EqualTo(25));
+            Assert.That(streamer.IsFullyReady, Is.True);
+            Assert.That(
+                streamer.SampleHeight(0f, 0f),
+                Is.EqualTo(foundation.BaseGroundHeight).Within(0.001f));
+            Assert.That(
+                streamer.SampleHeight(700f, -700f),
+                Is.EqualTo(foundation.BaseGroundHeight).Within(0.001f));
+
+            MeshFilter[] filters =
+                root.GetComponentsInChildren<MeshFilter>(true);
+            int terrainMeshCount = 0;
+            int terrainVertexCount = 0;
+            foreach (MeshFilter filter in filters)
+            {
+                if (filter.sharedMesh == null ||
+                    filter.sharedMesh.name != "UrbanFlatReadinessChunk")
+                {
+                    continue;
+                }
+                terrainMeshCount++;
+                terrainVertexCount += filter.sharedMesh.vertexCount;
+            }
+            Assert.That(terrainMeshCount, Is.EqualTo(25));
+            Assert.That(terrainVertexCount, Is.EqualTo(100));
+
+            streamer.RefreshAppearance(null, null, true);
+            MeshRenderer[] renderers =
+                root.GetComponentsInChildren<MeshRenderer>(true);
+            foreach (MeshRenderer renderer in renderers)
+            {
+                if (renderer.name == "Ocean")
+                    Assert.That(renderer.enabled, Is.False);
+            }
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+            Object.DestroyImmediate(preset);
         }
     }
 
@@ -78,6 +193,130 @@ public sealed class InfinitePlanarSurfaceRuntimeTests
             Assert.IsFalse(world.ContainsFiniteCombatPoint(
                 root.transform.position + Vector3.right * 285f,
                 40f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
+    }
+
+    [Test]
+    public void UrbanFlightCeilingUsesCityMaximumAltitude()
+    {
+        var root = new GameObject("UrbanFlightCeilingTest");
+        try
+        {
+            InfinitePlanarSurfaceWorld world =
+                root.AddComponent<InfinitePlanarSurfaceWorld>();
+            world.ConfigureFiniteCombatMode(
+                useUrbanFlatSurface: true);
+
+            world.ApplyUrbanFlightCeiling(350f);
+
+            Assert.That(world.UsesUrbanFlatSurface, Is.True);
+            Assert.That(
+                world.FiniteCombatFlightCeilingHeight,
+                Is.EqualTo(350f).Within(0.001f));
+
+            world.ApplyUrbanFlightCeiling(1350f);
+            Assert.That(
+                world.FiniteCombatFlightCeilingHeight,
+                Is.EqualTo(1350f).Within(0.001f),
+                "Urban height must not be clamped by hidden terrain.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
+    }
+
+    [Test]
+    public void UrbanFarClipCoversTheVisualSkylineEnvelope()
+    {
+        const float MapSize = 1664f;
+        const float OutsideDistance = 3200f;
+        float farClip =
+            InfinitePlanarSurfaceWorld.CalculateUrbanVisualRequiredFarClip(
+                MapSize,
+                InfinitePlanarSurfaceWorld.DefaultFiniteCombatRadius,
+                OutsideDistance,
+                470f);
+        float farthestSkylineRadius = Mathf.Sqrt(2f) *
+                                      (MapSize * 0.5f + OutsideDistance);
+
+        Assert.That(
+            farClip,
+            Is.GreaterThan(
+                farthestSkylineRadius +
+                InfinitePlanarSurfaceWorld.DefaultFiniteCombatRadius));
+        Assert.That(farClip % 100f, Is.EqualTo(0f));
+    }
+
+    [Test]
+    public void CitySurveyExtractionDoesNotOverlapItsScanObjectives()
+    {
+        var root = new GameObject("UrbanSurveyAnchorTest");
+        try
+        {
+            FinitePlanetUrbanCombatRuntime runtime =
+                root.AddComponent<FinitePlanetUrbanCombatRuntime>();
+            var layout = new FinitePlanetDefenseLayoutPlan
+            {
+                powerPositions = new[]
+                {
+                    new CombatSemanticAnchor(),
+                    new CombatSemanticAnchor(),
+                    new CombatSemanticAnchor()
+                },
+                retreatPoints = new[]
+                {
+                    new CombatSemanticAnchor(),
+                    new CombatSemanticAnchor()
+                }
+            };
+            var city = new AirCombatCityPlan
+            {
+                objective = Vector3.zero,
+                playerSpawn = Vector3.zero
+            };
+            city.volumes.Add(new AirCombatTacticalVolume
+            {
+                kind = AirCombatVolumeKind.RecoveryPocket,
+                center = new Vector3(-220f, 0f, 0f),
+                size = new Vector3(120f, 220f, 110f)
+            });
+            city.volumes.Add(new AirCombatTacticalVolume
+            {
+                kind = AirCombatVolumeKind.RecoveryPocket,
+                center = new Vector3(220f, 0f, 0f),
+                size = new Vector3(120f, 220f, 110f)
+            });
+            city.volumes.Add(new AirCombatTacticalVolume
+            {
+                kind = AirCombatVolumeKind.ManeuverBowl,
+                center = Vector3.zero,
+                size = new Vector3(300f, 350f, 300f)
+            });
+
+            MethodInfo synchronize =
+                typeof(FinitePlanetUrbanCombatRuntime).GetMethod(
+                    "SynchronizeFormalMissionAnchors",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(synchronize, Is.Not.Null);
+            synchronize.Invoke(runtime, new object[] { layout, city });
+
+            Vector2 extraction = new Vector2(
+                layout.retreatPoints[0].position.x,
+                layout.retreatPoints[0].position.z);
+            for (int index = 0; index < layout.powerPositions.Length; index++)
+            {
+                Vector2 scan = new Vector2(
+                    layout.powerPositions[index].position.x,
+                    layout.powerPositions[index].position.z);
+                Assert.That(
+                    Vector2.Distance(extraction, scan),
+                    Is.GreaterThan(80f));
+            }
         }
         finally
         {

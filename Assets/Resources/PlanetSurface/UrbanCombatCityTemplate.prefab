@@ -59,6 +59,62 @@ MonoBehaviour:
     buildingSpacing: 63.6
     buildingDensity: 0.91
     maximumAttempts: 10
+    intraBlockSkybridgeTarget: 138
+    crossBlockSkybridgeTarget: 12
+    bossIntraBlockSkybridgeTarget: 202
+    bossCrossBlockSkybridgeTarget: 18
+    skybridgeMinimumCenterDistance: 22
+    skybridgeMaximumCenterDistance: 240
+    skybridgeMinimumHeight: 38
+    skybridgeFacadeEmbed: 9
+    skybridgeMaximumSegmentCount: 3
+    skybridgeMaximumConnectionsPerBuilding: 7
+    skybridgeLandmarkMaximumConnections: 10
+    aerialCableDensityMultiplier: 1
+    aerialCableMinimumCount: 14
+    aerialCableMaximumCount: 26
+    aerialCableMinimumCenterDistance: 76
+    aerialCableMaximumCenterDistance: 310
+    aerialCableMinimumOpenSpan: 54
+    aerialCableMaximumOpenSpan: 248
+    aerialCableSagRatio: 0.075
+    aerialCableMinimumSag: 6
+    aerialCableMaximumSag: 18
+    aerialCableMaximumConnectionsPerBuilding: 3
+    aerialCableLandmarkMaximumConnections: 4
+    aerialCableVerticalSeparation: 2.7
+    cableTriggerRadius: 1.05
+    cableTriggerSegmentsPerCurve: 6
+    cableMinimumAffectedSpeed: 8
+    playerCableSlowdown: 0.28
+    enemyCableSlowdown: 0.14
+    cableRepeatCooldown: 0.45
+    playerCableSwayAmplitude: 1.55
+    enemyCableSwayAmplitude: 0.85
+    cableSwayDuration: 1.05
+    naturalStreetGaleCount: 1
+    magneticCourtyardCount: 2
+    environmentalTrapRandomness: 0.72
+    environmentalTrapEdgeBias: 0.35
+    environmentalTrapPreferredMinimumRadius: 250
+    environmentalTrapPreferredMaximumRadius: 590
+    environmentalTrapEdgeClearance: 120
+    environmentalTrapMinimumSeparation: 260
+    useVisualDistrictThemes: 1
+    removeUpperParameterLimits: 0
+    combatDifficulty:
+      navigationChallenge: 0.42
+      combatPressure: 0.45
+      exposurePressure: 0.42
+      recoveryGenerosity: 0.72
+      tacticalOpportunityDensity: 0.72
+      routeLegibility: 0.78
+      bossPursuitPressure: 0.45
+      destructionUtility: 0.72
+      decisionComplexity: 0.48
+      roadWidthScale: 1
+      blockMergeStrength: 0.32
+  designProfile: {fileID: 0}
   palette:
     road: {fileID: 2100000, guid: 514fcb48999763744ab368bc720b155a, type: 2}
     asphalt: {fileID: 2100000, guid: 514fcb48999763744ab368bc720b155a, type: 2}
@@ -93,9 +149,9 @@ MonoBehaviour:
   streetLightPrefab: {fileID: 0}
   parkPlanterPrefab: {fileID: 0}
   showSemanticGizmos: 1
-  showLabels: 1
   showRuntimePanel: 1
   keepBuildingColliders: 1
+  buildVisualBackground: 1
   destructionSettings:
     maximumPhysicalDebris: 48
     maximumVisualDebris: 96
@@ -106,3 +162,7 @@ MonoBehaviour:
     demolitionIntegrityFraction: 0.48
     normalProjectileDamageScale: 0.08
     explosionDamageScale: 0.38
+    structuralColumns: 5
+    targetStructuralFloorHeight: 9
+    neighbourSupportTransfer: 0.22
+    maximumVisibleStructuralHoles: 8

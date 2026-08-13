@@ -23,6 +23,10 @@ MonoBehaviour:
   driftResponseSeconds: 0.16
   intentAuthorityFraction: 0.75
   driftAuthorityFraction: 1
+  descentResponseSeconds: 0.08
+  descentAuthorityFraction: 1
+  descentInputWeight: 1.35
+  minimumDescentAcceleration: 6
   stopVelocityGain: 10
   stopAuthorityFraction: 1
   positionHoldGain: 5

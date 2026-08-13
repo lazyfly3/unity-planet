@@ -721,6 +721,9 @@ public sealed class InterstellarModularVehicleLoader : MonoBehaviour
             modularRoot.AddComponent<RobocraftMotionCoordinator>();
         motion.ConfigureExplicit(Body, assembly, model, presenter);
         motion.SetEnvironmentProvider(vacuum);
+        PlayerModularLandingAssist landingAssist =
+            modularRoot.AddComponent<PlayerModularLandingAssist>();
+        landingAssist.Configure(Body, motion, vacuum);
         ModularInterstellarControlAdapter controls =
             modularRoot.GetComponent<ModularInterstellarControlAdapter>();
         controls.Configure(Body, motion);
@@ -741,6 +744,7 @@ public sealed class InterstellarModularVehicleLoader : MonoBehaviour
             model,
             null,
             Camera.main);
+        weapons.EnablePlayerCoreDefenseWeapon();
         weapons.SetHudVisible(false);
         VehicleStructureGraph graph = weapons.StructureGraph;
         graph.SetAutomaticReturnToBuild(false);

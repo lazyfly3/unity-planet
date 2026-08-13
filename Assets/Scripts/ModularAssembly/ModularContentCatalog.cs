@@ -679,6 +679,9 @@ namespace UnityPlanet.ModularAssembly
         {
             bool initialized = false;
             Bounds result = new Bounds();
+            Matrix4x4 worldToSpace = space != null
+                ? space.worldToLocalMatrix
+                : Matrix4x4.identity;
             foreach (Renderer renderer in renderers)
             {
                 if (renderer == null)
@@ -686,16 +689,25 @@ namespace UnityPlanet.ModularAssembly
                     continue;
                 }
 
-                Bounds world = renderer.bounds;
-                Vector3 minimum = world.min;
-                Vector3 maximum = world.max;
+                // Renderer.bounds is a world-axis-aligned box. Converting its
+                // corners back into a rotated module repeats the AABB
+                // expansion and makes the measured mesh depend on the
+                // vehicle's world rotation. That poisoned the prepared visual
+                // cache and made every later copy of the same module too
+                // small. Transform the renderer's real local bounds directly
+                // into the requested space instead.
+                Bounds localBounds = renderer.localBounds;
+                Vector3 minimum = localBounds.min;
+                Vector3 maximum = localBounds.max;
+                Matrix4x4 rendererToSpace =
+                    worldToSpace * renderer.transform.localToWorldMatrix;
                 for (int corner = 0; corner < 8; corner++)
                 {
                     Vector3 point = new Vector3(
                         (corner & 1) == 0 ? minimum.x : maximum.x,
                         (corner & 2) == 0 ? minimum.y : maximum.y,
                         (corner & 4) == 0 ? minimum.z : maximum.z);
-                    Vector3 local = space.InverseTransformPoint(point);
+                    Vector3 local = rendererToSpace.MultiplyPoint3x4(point);
                     if (!initialized)
                     {
                         result = new Bounds(local, Vector3.zero);
@@ -721,18 +733,10 @@ namespace UnityPlanet.ModularAssembly
             {
                 return;
             }
-            Bounds bounds = renderers[0].bounds;
-            for (int index = 1; index < renderers.Length; index++)
-            {
-                bounds.Encapsulate(renderers[index].bounds);
-            }
+            Bounds bounds = BoundsInSpace(renderers, instance.transform);
             BoxCollider collider = instance.AddComponent<BoxCollider>();
-            collider.center = instance.transform.InverseTransformPoint(bounds.center);
-            Vector3 scale = instance.transform.lossyScale;
-            collider.size = new Vector3(
-                bounds.size.x / Mathf.Max(0.0001f, Mathf.Abs(scale.x)),
-                bounds.size.y / Mathf.Max(0.0001f, Mathf.Abs(scale.y)),
-                bounds.size.z / Mathf.Max(0.0001f, Mathf.Abs(scale.z)));
+            collider.center = bounds.center;
+            collider.size = bounds.size;
         }
 
         public void UnloadUnused()

@@ -142,6 +142,11 @@ namespace UnityPlanet.ModularAssembly
         public bool hasAimOverride;
         public bool evadeRequested;
         public Vector2 evadeDirection;
+        public bool landingRequested;
+        public Vector3 landingAnchorWorld;
+        public Vector3 landingSurfacePointWorld;
+        public Vector3 landingSurfaceNormalWorld;
+        public float landingClearance;
     }
 
     public struct TrainingFlightAssistDemand
@@ -281,6 +286,62 @@ namespace UnityPlanet.ModularAssembly
                    deadzone * deadzone;
         }
 
+        public static bool IsDescentIntent(
+            Vector3 movementInputWorld,
+            Vector3 upWorld,
+            ArcadeFlightTuningProfile tuning = null)
+        {
+            if (!HasMovementIntent(movementInputWorld, tuning))
+                return false;
+            Vector3 up = upWorld.sqrMagnitude > 0.0001f
+                ? upWorld.normalized
+                : Vector3.up;
+            return Vector3.Dot(movementInputWorld, up) < -0.01f;
+        }
+
+        public static float ResolveIntentResponseSeconds(
+            Vector3 movementInputWorld,
+            Vector3 upWorld,
+            ArcadeFlightTuningProfile tuning)
+        {
+            if (tuning != null &&
+                IsDescentIntent(movementInputWorld, upWorld, tuning))
+            {
+                return Mathf.Max(0.03f, tuning.descentResponseSeconds);
+            }
+            return tuning != null
+                ? Mathf.Max(0.03f, tuning.intentResponseSeconds)
+                : VelocityResponseSeconds;
+        }
+
+        public static float ResolveIntentAuthorityFraction(
+            Vector3 movementInputWorld,
+            Vector3 upWorld,
+            ArcadeFlightTuningProfile tuning)
+        {
+            if (tuning != null &&
+                IsDescentIntent(movementInputWorld, upWorld, tuning))
+            {
+                return Mathf.Clamp01(tuning.descentAuthorityFraction);
+            }
+            return tuning != null
+                ? Mathf.Clamp01(tuning.intentAuthorityFraction)
+                : IntentAuthorityFraction;
+        }
+
+        public static float CalculateDescentAssistForce(
+            float vehicleMass,
+            float baseDownwardForce,
+            ArcadeFlightTuningProfile tuning)
+        {
+            float minimumAcceleration = tuning != null
+                ? Mathf.Max(0f, tuning.minimumDescentAcceleration)
+                : 6f;
+            return Mathf.Max(
+                Mathf.Max(0f, baseDownwardForce),
+                Mathf.Max(1f, vehicleMass) * minimumAcceleration);
+        }
+
         public static TrainingFlightAssistDemand CalculateDemand(
             Vector3 position,
             Vector3 velocity,
@@ -288,7 +349,8 @@ namespace UnityPlanet.ModularAssembly
             bool holdInitialized,
             Vector3 movementInputWorld,
             float targetSpeed,
-            ArcadeFlightTuningProfile tuning = null)
+            ArcadeFlightTuningProfile tuning = null,
+            float intentResponseOverride = -1f)
         {
             if (!holdInitialized)
                 holdPosition = position;
@@ -323,9 +385,11 @@ namespace UnityPlanet.ModularAssembly
                     intentDirection * currentSpeedAlongIntent;
                 targetVelocity = intentDirection *
                     targetSpeedAlongIntent;
-                float intentResponse = tuning != null
-                    ? tuning.intentResponseSeconds
-                    : VelocityResponseSeconds;
+                float intentResponse = intentResponseOverride > 0f
+                    ? intentResponseOverride
+                    : tuning != null
+                        ? tuning.intentResponseSeconds
+                        : VelocityResponseSeconds;
                 float driftResponse = tuning != null
                     ? tuning.driftResponseSeconds
                     : VelocityResponseSeconds;
@@ -522,6 +586,7 @@ namespace UnityPlanet.ModularAssembly
                 }
             }
         }
+        public bool InjectedControlActive => injectedControlActive;
         public VehicleCoreAssistMode CoreAssistMode => coreAssistMode;
         public ArcadeFlightTuningProfile RuntimeArcadeFlightTuning =>
             PlayerArcadeTuning;
@@ -864,6 +929,14 @@ public void ConfigureExplicit(
                 ArcadeFlightTuningProfile.CreateRuntimeCopy(
                     applyRuntimeOverrides);
             arcadeFlightTuningResolved = true;
+        }
+
+        public void RefreshArcadeTuningAuthority()
+        {
+            if (body == null)
+                return;
+            RebuildRcs24Allocator();
+            RefreshTelemetry();
         }
 
         public void SetInjectedControl(RobocraftControlFrame control)
@@ -1253,6 +1326,11 @@ public void ConfigureExplicit(
                     control.boost,
                     control.freeLook,
                     aimOverride,
+                    control.landingRequested,
+                    control.landingAnchorWorld,
+                    control.landingSurfacePointWorld,
+                    control.landingSurfaceNormalWorld,
+                    control.landingClearance,
                     groundMobility.GroundControlWeight);
             }
             ApplyAerodynamics();
@@ -1747,6 +1825,11 @@ void ApplyAirMovement(
             bool boost,
             bool freeLook,
             Vector3? aimForwardOverride,
+            bool landingRequested,
+            Vector3 landingAnchorWorld,
+            Vector3 landingSurfacePointWorld,
+            Vector3 landingSurfaceNormalWorld,
+            float landingClearance,
             float groundControlWeight)
         {
             float airControlScale =
@@ -1770,6 +1853,7 @@ void ApplyAirMovement(
                 Vector3.Cross(up, cameraForward).normalized;
             rcs24.BeginStep(moverForceScales);
             bool prioritizePlayerArcadeIntent =
+                !landingRequested &&
                 !braking &&
                 TrainingFlightAssist.ShouldPrioritizePlayerIntent(
                     coreAssistMode,
@@ -1791,8 +1875,13 @@ void ApplyAirMovement(
                     -1f,
                     1f)
                 : roll;
+            Vector3 orientationUp = landingRequested &&
+                                    landingSurfaceNormalWorld.sqrMagnitude >
+                                    0.0001f
+                ? landingSurfaceNormalWorld.normalized
+                : up;
             Vector3 requestedWorldTorque = ResolveOrientationTorque(
-                up,
+                orientationUp,
                 resolvedRoll,
                 freeLook,
                 braking,
@@ -1829,7 +1918,30 @@ void ApplyAirMovement(
             }
             Vector3 desiredLocalForce = Vector3.zero;
 
-            if (braking &&
+            if (landingRequested)
+            {
+                hoverHeld = false;
+                ResetTrainingHold();
+                desiredLocalForce =
+                    CalculatePlayerLandingDesiredLocalForce(
+                        orientationUp,
+                        landingAnchorWorld,
+                        landingSurfacePointWorld,
+                        landingClearance);
+                if (desiredLocalForce.sqrMagnitude > 0.01f)
+                {
+                    rcs24.SolveTranslation(new Rcs24SolveRequest
+                    {
+                        desired = desiredLocalForce,
+                        strictDirection = false,
+                        group = coreAssistMode ==
+                                VehicleCoreAssistMode.Training
+                            ? "player_landing_arcade"
+                            : "player_landing_standard"
+                    });
+                }
+            }
+            else if (braking &&
                 Mathf.Max(
                     hoverControlScale,
                     planarBrakeScale) > 0.001f)
@@ -1917,7 +2029,10 @@ void ApplyAirMovement(
                 Vector3 arcadeMovementInput = Vector3.ClampMagnitude(
                     arcadeForward * move.y +
                     arcadeRight * move.x +
-                    up * vertical,
+                    up * (vertical < 0f && playerArcadeTuning != null
+                        ? vertical *
+                          playerArcadeTuning.descentInputWeight
+                        : vertical),
                     1f);
                 float commandAcceleration =
                     CalculateArcadeCommandAcceleration(
@@ -2046,6 +2161,65 @@ void ApplyAirMovement(
             UpdateAirMoverOutputs(output.thrusterThrottles);
         }
 
+        Vector3 CalculatePlayerLandingDesiredLocalForce(
+            Vector3 landingUp,
+            Vector3 landingAnchorWorld,
+            Vector3 landingSurfacePointWorld,
+            float landingClearance)
+        {
+            Vector3 up = landingUp.sqrMagnitude > 0.0001f
+                ? landingUp.normalized
+                : Vector3.up;
+            float mass = Mathf.Max(1f, body.mass);
+            Vector3 center = body.worldCenterOfMass;
+            float heightAboveTouchdown = Mathf.Max(
+                0f,
+                Vector3.Dot(
+                    center - landingSurfacePointWorld,
+                    up) - Mathf.Max(0f, landingClearance));
+            float gravityDownAcceleration = Mathf.Max(
+                0f,
+                -Vector3.Dot(gravity, up));
+            float upwardAcceleration =
+                CalculateDirectionalForce(up) / mass;
+            float downwardAcceleration =
+                CalculateDirectionalForce(-up) / mass;
+            float targetVerticalSpeed =
+                PlayerLandingAssistPolicy.ResolveTargetVerticalSpeed(
+                    coreAssistMode,
+                    heightAboveTouchdown,
+                    upwardAcceleration,
+                    gravityDownAcceleration);
+            float verticalSpeed = Vector3.Dot(body.velocity, up);
+            float responseSeconds = coreAssistMode ==
+                                    VehicleCoreAssistMode.Training
+                ? 0.22f
+                : 0.48f;
+            float verticalControlAcceleration =
+                (targetVerticalSpeed - verticalSpeed) /
+                responseSeconds + gravityDownAcceleration;
+            verticalControlAcceleration = Mathf.Clamp(
+                verticalControlAcceleration,
+                -Mathf.Max(0f, downwardAcceleration),
+                Mathf.Max(0f, upwardAcceleration));
+
+            Vector3 planarError = Vector3.ProjectOnPlane(
+                landingAnchorWorld - center,
+                up);
+            Vector3 planarVelocity = Vector3.ProjectOnPlane(
+                body.velocity,
+                up);
+            Vector3 planarAcceleration =
+                PlayerLandingAssistPolicy.ResolvePlanarAcceleration(
+                    coreAssistMode,
+                    planarError,
+                    planarVelocity);
+            Vector3 requestedAcceleration =
+                planarAcceleration + up * verticalControlAcceleration;
+            return transform.InverseTransformDirection(
+                requestedAcceleration * mass);
+        }
+
         Vector3 AllocatePlayerArcadeIntentPriority(
             Vector3 up,
             Vector3 movementInputWorld,
@@ -2062,6 +2236,7 @@ void ApplyAirMovement(
                 movementInputWorld,
                 1f);
             TrainingFlightAssistDemand demand = CalculateArcadeDemand(
+                up,
                 movementInput,
                 commandAcceleration,
                 boost,
@@ -2092,9 +2267,10 @@ void ApplyAirMovement(
                 Vector3 intentForceWorld = LimitArcadeForceToAuthority(
                     demand.intentAccelerationWorld *
                     airControlScale * mass,
-                    tuning != null
-                        ? tuning.intentAuthorityFraction
-                        : TrainingFlightAssist.IntentAuthorityFraction);
+                    TrainingFlightAssist.ResolveIntentAuthorityFraction(
+                        movementInput,
+                        up,
+                        tuning));
                 cumulativeForceWorld += intentForceWorld;
                 cumulativeLocalForce =
                     transform.InverseTransformDirection(
@@ -2205,6 +2381,7 @@ void ApplyAirMovement(
             float mass = Mathf.Max(1f, body.mass);
             float gravityMagnitude = Mathf.Max(0f, gravity.magnitude);
             TrainingFlightAssistDemand demand = CalculateArcadeDemand(
+                up,
                 movementInputWorld,
                 commandAcceleration,
                 boost,
@@ -2219,6 +2396,7 @@ void ApplyAirMovement(
         }
 
         TrainingFlightAssistDemand CalculateArcadeDemand(
+            Vector3 up,
             Vector3 movementInputWorld,
             float commandAcceleration,
             bool boost,
@@ -2263,7 +2441,11 @@ void ApplyAirMovement(
                     trainingHoldInitialized,
                     movementInput,
                     targetSpeed,
-                    tuning);
+                    tuning,
+                    TrainingFlightAssist.ResolveIntentResponseSeconds(
+                        movementInput,
+                        up,
+                        tuning));
             trainingHoldPosition = demand.holdPosition;
             trainingHoldInitialized = true;
             return demand;
@@ -2930,7 +3112,11 @@ Vector3 ResolveOrientationTorque(
             if (!trainingCoreAuthorityOverride)
             {
                 trainingUpAssistForce = TrainingUpForce;
-                trainingDownAssistForce = TrainingDownForce;
+                trainingDownAssistForce =
+                    TrainingFlightAssist.CalculateDescentAssistForce(
+                        body.mass,
+                        TrainingDownForce,
+                        PlayerArcadeTuning);
                 trainingPlanarAssistForce =
                     TrainingFlightAssist.CalculatePlanarAssistForce(
                         body.mass,

@@ -34,7 +34,6 @@ namespace UnityPlanet.CityPcg.Editor
             @"^Building_\d{2}_L1$",
             RegexOptions.CultureInvariant);
 
-        [MenuItem("Tools/城市 PCG/重建 Dark City 2 规则素材目录")]
         public static void BuildFromMenu()
         {
             DarkCity2UrbanCatalog catalog = BuildLibrary();
