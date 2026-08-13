@@ -647,19 +647,11 @@ namespace ModularAssembly
 
         static float ResolveThrusterForce(string moduleId)
         {
-            if (moduleId.IndexOf(
-                    "speed_rocketsmall_112",
-                    StringComparison.OrdinalIgnoreCase) >= 0)
-                return 3000f;
-            if (moduleId.IndexOf(
-                    "rocket_222",
-                    StringComparison.OrdinalIgnoreCase) >= 0)
-                return 120000f;
-            if (moduleId.IndexOf(
-                    "small_propeller_224",
-                    StringComparison.OrdinalIgnoreCase) >= 0)
-                return 7500f;
-            return 0f;
+            return UnityPlanet.ModularAssembly.NeoXThrusterPhysicsProfile.TryResolve(
+                moduleId,
+                out UnityPlanet.ModularAssembly.NeoXThrusterPhysicsProfile profile)
+                ? profile.MaximumForce
+                : 0f;
         }
 
         static void AddSigned(

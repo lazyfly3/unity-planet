@@ -1,3 +1,4 @@
+using ModularAssembly;
 using NUnit.Framework;
 using SpacecraftEditor;
 using UnityEngine;
@@ -763,6 +764,198 @@ public sealed class VehicleRuntimeOptimizationTests
             AirBuildCatalog.OrderedIds,
             Does.Contain("wheel_basic_111"),
             "目录过滤不能删除定义；已有飞船仍需解析隐藏模块。");
+    }
+
+    [TestCase("speed_rocketsmall_112", 44000f)]
+    [TestCase("small_propeller_224", 120000f)]
+    [TestCase("rocket_222", 120000f)]
+    public void CatalogDefinition_ReportsActualPlayerThrusterForce(
+        string neoXId,
+        float expectedForce)
+    {
+        string sourceId = "block:common:" + neoXId;
+        string json =
+            "{\"items\":[{" +
+            "\"sourceId\":\"" + sourceId + "\"," +
+            "\"neoXId\":\"" + neoXId + "\"," +
+            "\"chineseName\":\"test thruster\"," +
+            "\"contentKind\":\"module\"," +
+            "\"ownership\":\"base\"," +
+            "\"behavior\":\"Thruster\"," +
+            "\"explicitFootprint\":true," +
+            "\"footprint\":[1,1,1]}]}";
+        ModularContentCatalog catalog =
+            ModularContentCatalog.FromJson(json);
+        var model = new GridAssemblyModel(
+            System.Array.Empty<GridModuleDefinition>());
+
+        try
+        {
+            NeoXCatalogIntegration.RegisterDefinitions(model, catalog);
+
+            Assert.That(
+                model.Definitions.TryGetValue(
+                    "neox@" + sourceId,
+                    out GridModuleDefinition definition),
+                Is.True);
+            Assert.That(
+                definition.ThrustNewtons,
+                Is.EqualTo(expectedForce).Within(0.001f));
+            Assert.That(definition.MassKg, Is.EqualTo(180f));
+            Assert.That(
+                NeoXThrusterPhysicsProfile.TryResolve(
+                    sourceId,
+                    out NeoXThrusterPhysicsProfile profile),
+                Is.True);
+            Assert.That(
+                definition.ThrustNewtons,
+                Is.EqualTo(profile.MaximumForce).Within(0.001f));
+        }
+        finally
+        {
+            foreach (GridModuleDefinition definition in model.Definitions.Values)
+            {
+                Object.DestroyImmediate(definition);
+            }
+        }
+    }
+
+    [Test]
+    public void AirBuildModuleDetails_UseActualCpuMassAndThrusterForce()
+    {
+        var definition = ScriptableObject.CreateInstance<
+            GridModuleDefinition>();
+        try
+        {
+            definition.Configure(
+                "neox@block:speed:speed_rocketsmall_112",
+                "赛车小型喷射器",
+                GridModuleCategory.MainThruster,
+                null,
+                new Vector3Int(1, 2, 1),
+                180f,
+                0f,
+                0f,
+                140f,
+                44000f,
+                null);
+            var record = new ModularContentRecord
+            {
+                sourceId = "block:speed:speed_rocketsmall_112",
+                neoXId = "speed_rocketsmall_112",
+                behavior = "Thruster"
+            };
+
+            string details =
+                AirBuildExperienceController.BuildModuleDetails(
+                    record,
+                    definition);
+
+            Assert.That(details, Does.Contain("CPU 消耗  40"));
+            Assert.That(details, Does.Contain("重量  180 kg"));
+            Assert.That(details, Does.Contain("功能：推进器"));
+            Assert.That(details, Does.Contain("推力：44 kN"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(definition);
+        }
+    }
+
+    [Test]
+    public void AirBuildModuleDetails_UseCombatWeaponProfile()
+    {
+        var definition = ScriptableObject.CreateInstance<
+            GridModuleDefinition>();
+        try
+        {
+            definition.Configure(
+                "neox@block:weapon:snipercannon_422",
+                "狙击炮",
+                GridModuleCategory.KineticWeapon,
+                null,
+                new Vector3Int(4, 2, 2),
+                220f,
+                0f,
+                5f,
+                140f,
+                0f,
+                null);
+            var record = new ModularContentRecord
+            {
+                sourceId = "block:weapon:snipercannon_422",
+                neoXId = "snipercannon_422",
+                behavior = "SniperCannon"
+            };
+
+            string details =
+                AirBuildExperienceController.BuildModuleDetails(
+                    record,
+                    definition);
+
+            Assert.That(details, Does.Contain("CPU 消耗  180"));
+            Assert.That(details, Does.Contain("功能：武器"));
+            Assert.That(details, Does.Contain("伤害：240"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(definition);
+        }
+    }
+
+    [TestCase(
+        "speed_rocketsmall_112",
+        "NeoXExhaust_rocketsmall_boost.sfx",
+        -1f)]
+    [TestCase(
+        "rocket_222",
+        "NeoXExhaust_rocket_boost.sfx",
+        1f)]
+    [TestCase(
+        "small_propeller_224",
+        "NeoXExhaust_propeller_halo.sfx",
+        1f)]
+    public void ThrusterExhaustPresentation_UsesModelSpecificNozzleEnd(
+        string neoXId,
+        string effectName,
+        float expectedDirectionZ)
+    {
+        var root = new GameObject("thruster-vfx-test");
+        try
+        {
+            GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            visual.transform.SetParent(root.transform, false);
+            NeoXBehaviorModule module =
+                root.AddComponent<NeoXBehaviorModule>();
+            module.Configure(new ModularContentRecord
+            {
+                sourceId = "block:test:" + neoXId,
+                neoXId = neoXId,
+                behavior = "Thruster",
+                exhaustAxisLocal = new[] { 0f, 0f, 1f }
+            });
+            NeoXThrusterExhaustVfx vfx =
+                root.AddComponent<NeoXThrusterExhaustVfx>();
+            vfx.Configure(module);
+            vfx.SetTargetThrottle(1f);
+            vfx.SendMessage("LateUpdate");
+
+            Transform effect = root.transform.Find(effectName);
+            Assert.That(effect, Is.Not.Null);
+            Assert.That(
+                Vector3.Dot(effect.forward, Vector3.forward),
+                Is.EqualTo(expectedDirectionZ).Within(0.001f));
+            Assert.That(
+                Mathf.Sign(effect.position.z),
+                Is.EqualTo(expectedDirectionZ));
+            Assert.That(
+                Mathf.Abs(effect.position.z),
+                Is.GreaterThan(0.5f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
     }
 
     [Test]

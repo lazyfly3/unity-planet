@@ -335,7 +335,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   difficultyTier: 4
   seed: 7319
-  runContinuously: 1
+  runContinuously: 0
   loopRestartDelaySeconds: 4
 --- !u!1 &693296282
 GameObject:
@@ -605,6 +605,7 @@ MonoBehaviour:
     enemyCableSwayAmplitude: 0.85
     cableSwayDuration: 1.05
     naturalStreetGaleCount: 3
+    naturalStreetGaleStrength: 0.25
     magneticCourtyardCount: 2
     environmentalTrapRandomness: 0.72
     environmentalTrapEdgeBias: 0.157
@@ -615,17 +616,19 @@ MonoBehaviour:
     useVisualDistrictThemes: 1
     removeUpperParameterLimits: 1
     combatDifficulty:
-      navigationChallenge: 0.42
-      combatPressure: 0.45
-      exposurePressure: 0
-      recoveryGenerosity: 0.72
-      tacticalOpportunityDensity: 0.72
-      routeLegibility: 0.78
-      bossPursuitPressure: 0.45
+      useExplicitAverageDifficulty: 1
+      explicitAverageDifficulty: 0.5
+      navigationChallenge: 0.51
+      combatPressure: 0.5
+      exposurePressure: 0.5
+      recoveryGenerosity: 0.63
+      tacticalOpportunityDensity: 0.71000004
+      routeLegibility: 0.76
+      bossPursuitPressure: 0.56
       destructionUtility: 0.72
-      decisionComplexity: 0.48
-      roadWidthScale: 1
-      blockMergeStrength: 0.32
+      decisionComplexity: 0.56
+      roadWidthScale: 1.02
+      blockMergeStrength: 0.57
   designProfile: {fileID: 0}
   palette:
     road: {fileID: 2100000, guid: 514fcb48999763744ab368bc720b155a, type: 2}

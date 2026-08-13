@@ -863,7 +863,7 @@ namespace UnityPlanet.EditorTools
             DrawSectionTitle("颜色说明");
             EditorGUILayout.LabelField(
                 "方格底色：绿色容易    黄色中等    橙色困难    红色高危；" +
-                "综合成立枪线、命中紧迫度、脱离余量与机动净空");
+                "表示留守与转移两种选择中较低的生存成本");
             EditorGUILayout.LabelField(
                 "黄色：主机动路线    蓝色：掩蔽侧翼路线    橙色：远程火力路线    " +
                 "粉色：环境陷阱专用路线    金色粗线：实时预留");
@@ -887,9 +887,9 @@ namespace UnityPlanet.EditorTools
                 "“4秒/8秒”是从最近合法路线锚点开始计算的局部建线下界，不包含当前敌机先飞到该锚点的时间。" +
                 "楼缝由球内候选检查水平及斜向两侧建筑；复杂转弯、刹停和真实敌机当前位置仍需播放模式物理复核。" +
                 "楼缝枪位当前只用于诊断，不会主动把实战敌机引入窄缝。" +
-                "方格底色是综合难度：同时计算火力紧迫度、可用脱离路线、逃逸余量和机动净空；" +
-                "没有成立枪线时不会因为“无需转移”被误判为困难。" +
-                "综合难度＝火力60%＋脱离28%×响应需求＋机动12%。",
+                "方格底色是区块生存难度：先计算留在本格的火力成本，再在三层可飞图上寻找通往更低火力格的最低风险路径。" +
+                "最终难度取“留守成本”和“转移成本”中较低者；安全格不需要脱离，因此不会因为出口少被误判为困难。" +
+                "机动净空不再单独占权重，只决定相邻格能否连通、飞行时间和沿途暴露。外围最高楼格只作为天际线边界，不计入关卡难度平均。",
                 MessageType.Warning);
 
             EditorGUI.BeginChangeCheck();
@@ -927,6 +927,7 @@ namespace UnityPlanet.EditorTools
             }
 
             DrawCityChallengeProfileEditor();
+            DrawGeneratedCityDifficultyReport();
             DrawCityChallengeReport(sceneChallengeReport);
 
             EditorGUI.BeginChangeCheck();
@@ -1031,16 +1032,21 @@ namespace UnityPlanet.EditorTools
                     EdpcgGridDifficultyEvaluator.Evaluate(
                         cell, shownDirections, shownVolume,
                         shownFastestHit, HasFilteredCellCrossfire(cell));
-                cellSummary = "方向 " + shownDirections +
+                cellSummary = cell.excludedFromDifficulty
+                    ? "外围最高楼边界：参与遮挡与可达性，但不计入难度平均"
+                    : "目标 " + cell.targetDifficulty.ToString("P0") +
+                              "   方向 " + shownDirections +
                               "   楼缝窗口 " + shownGapWindows +
                               "   威胁体积 " + shownVolume.ToString("P0") +
-                              "   综合难度 " + difficulty.score.ToString("P0") +
+                              "   生存难度 " + difficulty.score.ToString("P0") +
                               "（" + difficulty.ChineseLevel + "）" +
-                              "   火力 " + difficulty.fireThreat.ToString("P0") +
-                              "   脱离 " + difficulty.escapeDifficulty.ToString("P0") +
-                              "   机动 " + difficulty.maneuverDifficulty.ToString("P0") +
-                              "   有效脱离 " +
-                              difficulty.recommendedExitCount +
+                              "   留守火力 " + difficulty.fireThreat.ToString("P0") +
+                              (difficulty.minimumRiskPathCellCount > 0
+                                  ? "   最低风险转移 " +
+                                    difficulty.minimumRiskPathCellCount + "格 / " +
+                                    difficulty.minimumRiskPathSeconds.ToString("0.0") + "秒 / 暴露" +
+                                    difficulty.minimumRiskPathExposure.ToString("0.00")
+                                  : "   留守优于转移") +
                               (HasFilteredCellCrossfire(cell)
                                   ? "   可执行交叉火力"
                                   : string.Empty) +
@@ -1134,7 +1140,7 @@ namespace UnityPlanet.EditorTools
                 "来火方向 " + cell.threatDirectionCount +
                 "   可见枪线 " + cell.incomingLineCount +
                 "   已挡枪线 " + cell.blockedLineCount +
-                "   安全出口 " + cell.safeExitCount +
+                "   可执行机动方向 " + cell.safeExitCount +
                 "   方格压力 " + cell.pressureScore.ToString("P0"));
             bool dwellReached = runtime.ActiveGridCellDwellSeconds >=
                                 challenge.playerCellDwellSeconds;
@@ -1150,7 +1156,7 @@ namespace UnityPlanet.EditorTools
                           challenge.playerCellDwellSeconds.ToString("0.0") +
                           " 秒"
                         : !safe
-                            ? "不允许：安全出口或压力上限未满足"
+                            ? "不允许：可执行机动方向或压力上限未满足"
                             : "允许：最多 " +
                               challenge.maximumPressureDirections +
                               " 个来火方向；只移动已有突击机/炮艇");
@@ -1255,7 +1261,7 @@ namespace UnityPlanet.EditorTools
                 1,
                 3);
             edited.minimumSafeExitCount = EditorGUILayout.IntSlider(
-                "重定位前最少安全出口",
+                "重定位前最少可执行机动方向",
                 edited.minimumSafeExitCount,
                 1,
                 4);
@@ -1408,6 +1414,95 @@ namespace UnityPlanet.EditorTools
                 report.averageThreatenedVolumeRatio.ToString("P0") +
                 "   平均最早命中 " +
                 report.averageFastestHitSeconds.ToString("0.0") + " 秒");
+        }
+
+        void DrawGeneratedCityDifficultyReport()
+        {
+            AirCombatCityPcgLab lab = scenePreviewLab;
+            AirCombatCityReport report = lab != null ? lab.Report : null;
+            if (report == null || !report.cityDifficultyEvaluated)
+                return;
+            EditorGUILayout.Space(4f);
+            EditorGUILayout.LabelField("城市生成难度闭环", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "规划目标 / 实际",
+                report.targetAverageDifficulty.ToString("P0") + " / " +
+                report.plannedAverageDifficulty.ToString("P0") +
+                "   安全格 " + report.plannedSafeCellRatio.ToString("P0") +
+                "   高危格 " + report.plannedHighRiskCellRatio.ToString("P0"));
+            EditorGUILayout.LabelField(
+                "局部拟合",
+                (report.cityDifficultyTargetMet ? "已达到目标" : "未达到目标") +
+                "   平均误差 " +
+                report.plannedDifficultyFitError.ToString("P0") +
+                "   最长最低风险转移 " +
+                report.plannedMaximumCellsToLowerThreat + "格");
+            AirCombatCityPlan plan = lab.Plan;
+            if (plan != null && plan.tacticalBlocks != null)
+            {
+                int greedyCount = 0;
+                int exposedCount = 0;
+                float opennessTotal = 0f;
+                for (int index = 0;
+                     index < plan.tacticalBlocks.Count;
+                     index++)
+                {
+                    CombatCityBlockPlan block =
+                        plan.tacticalBlocks[index];
+                    if (block == null || block.excludedFromDifficulty)
+                        continue;
+                    greedyCount++;
+                    opennessTotal += block.greedyCandidateOpenness;
+                    if (block.greedyCandidateOpenness >= 0.75f)
+                        exposedCount++;
+                }
+                EditorGUILayout.LabelField(
+                    "贪心生成摘要",
+                    "内部格 " + greedyCount +
+                    "   大开放格 " + exposedCount +
+                    "   平均开放度 " +
+                    (greedyCount > 0
+                        ? (opennessTotal / greedyCount).ToString("P0")
+                        : "0%") +
+                    "   单格候选 3～5种");
+                CombatCityBlockPlan selected =
+                    CombatDrivenCityPcgPlanner.GetTacticalBlock(
+                        plan,
+                        sceneSelectedGridX,
+                        sceneSelectedGridZ);
+                if (selected != null &&
+                    !selected.excludedFromDifficulty)
+                {
+                    EditorGUILayout.LabelField(
+                        "选中格贪心过程",
+                        "顺序 " + (selected.generationOrder + 1) +
+                        "   固定基准 " +
+                        selected.targetDifficulty.ToString("P0") +
+                        "   预算反馈目标 " +
+                        selected.greedyRequestedDifficulty.ToString("P0") +
+                        "   采用开放度 " +
+                        selected.greedyCandidateOpenness.ToString("P0"));
+                    EditorGUILayout.LabelField(
+                        "提交前后剩余预算",
+                        selected.greedyRemainingBudgetBefore.ToString("P0") +
+                        " → " +
+                        selected.greedyRemainingBudgetAfter.ToString("P0") +
+                        "   比较候选 " +
+                        selected.localCorrectionCount +
+                        "种   候选代价 " +
+                        selected.greedyCandidateScore.ToString("0.000"));
+                }
+            }
+            if (report.finalDifficultyEvaluated)
+            {
+                EditorGUILayout.LabelField(
+                    "最终实体复核",
+                    (report.finalDifficultyTargetMet ? "通过" : "未通过") +
+                    "   平均 " +
+                    report.finalAverageDifficulty.ToString("P0") +
+                    "   安全格 " + report.finalSafeCellRatio.ToString("P0") +
+                    "   高危格 " + report.finalHighRiskCellRatio.ToString("P0"));
+            }
         }
 
         void UpdateSceneOverlay()

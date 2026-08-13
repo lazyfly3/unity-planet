@@ -592,7 +592,11 @@ public static class PlanetDecorationToolBootstrap
 
     static PlanetDecorationToolBootstrap()
     {
-        EditorApplication.delayCall += TryAutomaticSetup;
+        // The shipped game uses the city-PCG chapter path and deliberately
+        // keeps the legacy planet-decoration catalog empty.  Do not silently
+        // recreate or re-import retired natural-surface assets when the
+        // project is opened on a machine without the old EditorPrefs key.
+        // The explicit Tools menu remains available for manual experiments.
     }
 
     [MenuItem("Tools/体素星球/重新建立默认装饰目录")]

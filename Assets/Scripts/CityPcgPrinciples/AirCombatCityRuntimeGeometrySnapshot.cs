@@ -35,6 +35,8 @@ namespace UnityPlanet.CityPcg
             System.Array.Empty<AirCombatRuntimeConnectionGeometry>();
         public AirCombatRuntimeConnectionGeometry[] aerialCables =
             System.Array.Empty<AirCombatRuntimeConnectionGeometry>();
+        public AirCombatRuntimeWindGeometry[] winds =
+            System.Array.Empty<AirCombatRuntimeWindGeometry>();
         public AirCombatRuntimeRouteGeometry[] routes =
             System.Array.Empty<AirCombatRuntimeRouteGeometry>();
         public AirCombatRuntimeIngressGeometry[] ingresses =
@@ -59,8 +61,24 @@ namespace UnityPlanet.CityPcg
     [System.Serializable]
     public struct AirCombatRuntimeConnectionGeometry
     {
+        public string stableId;
         public Vector3 localStart;
         public Vector3 localEnd;
+        public Vector3[] localPoints;
+        [Min(0f)] public float physicalRadius;
+        [Range(0f, 1f)] public float playerSlowdown;
+        public bool bossTactical;
+        public bool destructionCritical;
+    }
+
+    [System.Serializable]
+    public struct AirCombatRuntimeWindGeometry
+    {
+        public string stableId;
+        public Vector3 localCenter;
+        public Vector3 localDirection;
+        public Vector3 size;
+        [Min(0f)] public float strength;
     }
 
     [System.Serializable]

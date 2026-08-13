@@ -192,7 +192,7 @@ public sealed class ModularBossViewerWindow : EditorWindow
         EditorGUILayout.Space(10f);
         EditorGUILayout.LabelField("Boss 模型原位飞行与撞楼检测", EditorStyles.boldLabel);
         EditorGUILayout.HelpBox(
-            "这是 UrbanEnvironmentalTrapTest 场景内的常驻循环，和风场、磁场测试同时存在。直接进入 Play Mode 后，真实 Boss 会从模型锚点自动完成追击、升降、受损飞行和撞楼，然后原地复位进入下一轮；不会新建或切换场景。",
+            "这是 UrbanEnvironmentalTrapTest 场景内的可选检测。场景默认只观察风场、磁场与城市；只有点击下方“进入播放并启动 Boss 检测”后，真实 Boss 才会从模型锚点完成追击、升降、受损飞行和撞楼，然后原地复位进入下一轮。",
             MessageType.Info);
         using (new EditorGUI.DisabledScope(!correctScene))
         {
@@ -208,7 +208,7 @@ public sealed class ModularBossViewerWindow : EditorWindow
             EditorGUILayout.BeginHorizontal();
             using (new EditorGUI.DisabledScope(EditorApplication.isPlaying))
             {
-                if (GUILayout.Button("进入 Play Mode（自动循环）") && harness != null)
+                if (GUILayout.Button("进入播放并启动 Boss 检测") && harness != null)
                     StartFlightTest(
                         flightCourse ?? EnsureFlightCourse(harness),
                         tier,

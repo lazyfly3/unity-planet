@@ -570,6 +570,10 @@ namespace UnityPlanet.EDPCG
                     stableId = block.stableId,
                     gridX = block.gridX,
                     gridZ = block.gridZ,
+                    excludedFromDifficulty = block.excludedFromDifficulty,
+                    targetDifficulty = block.targetDifficulty,
+                    difficultyCombatPressure = citySettings.Difficulty
+                        .combatPressure,
                     localBounds = block.bounds,
                     worldCorners = BuildWorldCorners(
                         block.bounds, result.altitude, projector)
@@ -604,6 +608,7 @@ namespace UnityPlanet.EDPCG
             result.RebuildIndex();
             BuildHorizontalEvasions(result, geometry, playerHullRadius,
                 options);
+            EdpcgGridDifficultyEvaluator.RebuildSurvivalCosts(result);
             stopwatch.Stop();
             result.buildMilliseconds =
                 (float)stopwatch.Elapsed.TotalMilliseconds;
@@ -631,6 +636,10 @@ namespace UnityPlanet.EDPCG
             RecountEvasions(low);
             RecountEvasions(medium);
             RecountEvasions(high);
+            EdpcgGridDifficultyEvaluator.RebuildSurvivalCosts(
+                low,
+                medium,
+                high);
         }
 
         static List<ThreatAnchor> BuildAnchors(

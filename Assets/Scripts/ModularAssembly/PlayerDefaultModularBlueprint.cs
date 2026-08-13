@@ -13,6 +13,8 @@ namespace ModularAssembly
             "neox@block:common:block_111";
         const string LargeRocketId =
             "neox@block:common:rocket_222";
+        const string EnergyCoreId =
+            "neox@block:core:core_energy_111";
 
         public static ModularBlueprintData Create()
         {
@@ -91,7 +93,29 @@ namespace ModularAssembly
                         "500d38642f2b4ad3a7f0d1d36ad9dabe"),
                     Module("eee05d2864974dffba4b21bc61c0105d",
                         LargeRocketId, 2, 0, -1, 6,
-                        "500d38642f2b4ad3a7f0d1d36ad9dabe")
+                        "500d38642f2b4ad3a7f0d1d36ad9dabe"),
+
+                    Module("29021a01285d4dd0a686cb3db93fa3c3",
+                        EnergyCoreId, 0, 1, 1, 16,
+                        "b38e5be6a7c5433ca6ab64fef3cbc98d"),
+                    Module("a404f36cea294d0d8fd57f587762c83d",
+                        EnergyCoreId, -1, 1, 1, 16,
+                        "b38e5be6a7c5433ca6ab64fef3cbc98d"),
+                    Module("d3cb46b89c834e6ba5ea5dc456584481",
+                        EnergyCoreId, 0, 1, -2, 16,
+                        "7e15c30760594872a7e3ccdf91c594aa"),
+                    Module("f49ee5d9aa874c559abe9a3af64f5094",
+                        EnergyCoreId, -1, 1, -2, 16,
+                        "7e15c30760594872a7e3ccdf91c594aa"),
+
+                    Module("1c65b7e3fc954b59b67dccc34e34ed71",
+                        LargeRocketId, -1, -2, 1, 20),
+                    Module("753efb989a634bf7a445bb387edc0a59",
+                        LargeRocketId, 1, -2, -2, 20,
+                        "74d0b90f59994fe0bfea106ce09d0284"),
+                    Module("0295442b6b934ee3add01486744c0a17",
+                        LargeRocketId, -3, -2, -2, 20,
+                        "74d0b90f59994fe0bfea106ce09d0284")
                 }
             };
         }

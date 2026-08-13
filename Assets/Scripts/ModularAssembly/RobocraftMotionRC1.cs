@@ -14,6 +14,84 @@ namespace UnityPlanet.ModularAssembly
         Disabled
     }
 
+    /// <summary>
+    /// Authoritative RC3 parameters for the three player-facing NeoX
+    /// propulsion modules. Build statistics and runtime allocation must resolve
+    /// through this table so the hangar never advertises placeholder thrust.
+    /// </summary>
+    public readonly struct NeoXThrusterPhysicsProfile
+    {
+        public const string SmallRocketId = "speed_rocketsmall_112";
+        public const string PropellerId = "small_propeller_224";
+        public const string MainRocketId = "rocket_222";
+
+        public float MaximumForce { get; }
+        public float ResponseTime { get; }
+        public float SoftSpeed { get; }
+        public bool AtmosphereOnly { get; }
+        public bool IsPropeller { get; }
+
+        NeoXThrusterPhysicsProfile(
+            float maximumForce,
+            float responseTime,
+            float softSpeed,
+            bool atmosphereOnly,
+            bool isPropeller)
+        {
+            MaximumForce = maximumForce;
+            ResponseTime = responseTime;
+            SoftSpeed = softSpeed;
+            AtmosphereOnly = atmosphereOnly;
+            IsPropeller = isPropeller;
+        }
+
+        public static bool TryResolve(
+            string identifier,
+            out NeoXThrusterPhysicsProfile profile)
+        {
+            string id = identifier ?? string.Empty;
+            if (id.IndexOf(
+                    SmallRocketId,
+                    StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                profile = new NeoXThrusterPhysicsProfile(
+                    44000f,
+                    0.05f,
+                    100f,
+                    false,
+                    false);
+                return true;
+            }
+            if (id.IndexOf(
+                    PropellerId,
+                    StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                profile = new NeoXThrusterPhysicsProfile(
+                    120000f,
+                    0.2f,
+                    80f,
+                    true,
+                    true);
+                return true;
+            }
+            if (id.IndexOf(
+                    MainRocketId,
+                    StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                profile = new NeoXThrusterPhysicsProfile(
+                    120000f,
+                    0.12f,
+                    140f,
+                    false,
+                    false);
+                return true;
+            }
+
+            profile = default;
+            return false;
+        }
+    }
+
     public enum VehicleEvasionState
     {
         Ready,
@@ -2996,42 +3074,9 @@ Vector3 ResolveOrientationTorque(
             string runtimeId)
         {
             string id = module.SourceId ?? string.Empty;
-            float force;
-            float response;
-            float speed;
-            bool atmosphereOnly;
-            bool propeller;
-            if (id.IndexOf(
-                    "speed_rocketsmall_112",
-                    StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                force = 3000f;
-                response = 0.05f;
-                speed = 100f;
-                atmosphereOnly = false;
-                propeller = false;
-            }
-            else if (id.IndexOf(
-                         "small_propeller_224",
-                         StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                force = 7500f;
-                response = 0.2f;
-                speed = 80f;
-                atmosphereOnly = true;
-                propeller = true;
-            }
-            else if (id.IndexOf(
-                         "rocket_222",
-                         StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                force = 120000f;
-                response = 0.12f;
-                speed = 140f;
-                atmosphereOnly = false;
-                propeller = false;
-            }
-            else
+            if (!NeoXThrusterPhysicsProfile.TryResolve(
+                    id,
+                    out NeoXThrusterPhysicsProfile profile))
             {
                 Debug.LogWarning(
                     $"RC3.1: 推进器 {id} 缺少人工物理配置，已禁用推力。",
@@ -3056,12 +3101,13 @@ Vector3 ResolveOrientationTorque(
                 localPosition = transform.InverseTransformPoint(
                     module.WorldExhaustPosition),
                 localDirection = direction,
-                maximumForce = force * actuatorForceMultiplier,
-                responseTime = response,
-                softSpeed = speed,
-                atmosphereOnly = atmosphereOnly,
-                propeller = propeller,
-                diskRadius = propeller ? 1f : 0.25f,
+                maximumForce = profile.MaximumForce *
+                               actuatorForceMultiplier,
+                responseTime = profile.ResponseTime,
+                softSpeed = profile.SoftSpeed,
+                atmosphereOnly = profile.AtmosphereOnly,
+                propeller = profile.IsPropeller,
+                diskRadius = profile.IsPropeller ? 1f : 0.25f,
                 rotationSign = StableRotationSign(runtimeId),
                 intakeEfficiency = 1f
             });

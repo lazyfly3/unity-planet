@@ -13,11 +13,16 @@ namespace UnityPlanet.SpacecraftArchitecture
     [Serializable]
     public sealed class ShipArchitectureProgressData
     {
-        public const int CurrentFormatVersion = 1;
+        public const int CurrentFormatVersion = 2;
 
         public int formatVersion = CurrentFormatVersion;
         public int moduleCapacityLevel;
         public int cpuCapacityLevel;
+        // Version-one saves started at 96 modules / 2000 CPU. These floors
+        // preserve their exact entitlement while new saves use the tighter
+        // progression curve.
+        public int minimumModuleCapacity;
+        public int minimumCpuCapacity;
         public bool legacyBlueprintCapacityChecked;
         public long lastUpgradeUtcTicks;
     }
@@ -29,8 +34,11 @@ namespace UnityPlanet.SpacecraftArchitecture
     /// </summary>
     public static class ShipArchitectureProgressService
     {
-        public const int InitialModuleCapacity = 96;
-        public const int InitialCpuCapacity = 2000;
+        public const int InitialModuleCapacity = 40;
+        // The current default "1231" blueprint consumes 1096 CPU with the
+        // runtime catalog. Keep only a four-point safety margin so a fresh
+        // player must earn the first architecture upgrade before expanding it.
+        public const int InitialCpuCapacity = 1100;
         public const int AbsoluteModuleCapacity = 1024;
         public const int AbsoluteCpuCapacity = 9999;
 
@@ -39,33 +47,43 @@ namespace UnityPlanet.SpacecraftArchitecture
         static readonly int[] ModuleCapacities =
         {
             InitialModuleCapacity,
+            56,
+            80,
             128,
-            192,
-            288,
+            224,
             448,
-            704,
             AbsoluteModuleCapacity
         };
 
         static readonly int[] CpuCapacities =
         {
             InitialCpuCapacity,
+            1800,
             2600,
-            3400,
-            4500,
-            5900,
-            7600,
+            3800,
+            5400,
+            7400,
             AbsoluteCpuCapacity
         };
 
         static readonly int[] UpgradeCosts =
         {
-            100,
-            160,
-            260,
-            420,
-            680,
-            1000
+            200,
+            350,
+            600,
+            1000,
+            1700,
+            2800
+        };
+
+        static readonly int[] VersionOneModuleCapacities =
+        {
+            96, 128, 192, 288, 448, 704, 1024
+        };
+
+        static readonly int[] VersionOneCpuCapacities =
+        {
+            2000, 2600, 3400, 4500, 5900, 7600, 9999
         };
 
         static ShipArchitectureProgressData cached;
@@ -76,14 +94,16 @@ namespace UnityPlanet.SpacecraftArchitecture
         public static int TierCount => ModuleCapacities.Length;
 
         public static int ModuleCapacity =>
-            GetCapacity(
-                ShipArchitectureBranch.ModuleCapacity,
-                LoadOrCreate().moduleCapacityLevel);
+            GetCurrentCapacity(ShipArchitectureBranch.ModuleCapacity);
 
         public static int CpuCapacity =>
-            GetCapacity(
-                ShipArchitectureBranch.CpuCapacity,
-                LoadOrCreate().cpuCapacityLevel);
+            GetCurrentCapacity(ShipArchitectureBranch.CpuCapacity);
+
+        public static int GetCurrentCapacity(
+            ShipArchitectureBranch branch)
+        {
+            return CurrentCapacity(branch, LoadOrCreate());
+        }
 
         public static int GetLevel(ShipArchitectureBranch branch)
         {
@@ -110,16 +130,21 @@ namespace UnityPlanet.SpacecraftArchitecture
             out int cost)
         {
             int level = GetLevel(branch);
-            if (level >= TierCount - 1)
+            int currentCapacity = GetCurrentCapacity(branch);
+            int nextLevel = FindNextLevel(
+                branch,
+                level,
+                currentCapacity);
+            if (nextLevel < 0)
             {
-                nextCapacity = GetCapacity(branch, level);
+                nextCapacity = currentCapacity;
                 cost = 0;
                 return false;
             }
 
-            nextCapacity = GetCapacity(branch, level + 1);
+            nextCapacity = GetCapacity(branch, nextLevel);
             cost = UpgradeCosts[Mathf.Clamp(
-                level,
+                nextLevel - 1,
                 0,
                 UpgradeCosts.Length - 1)];
             return true;
@@ -134,16 +159,20 @@ namespace UnityPlanet.SpacecraftArchitecture
                 ShipArchitectureBranch.ModuleCapacity
                     ? data.moduleCapacityLevel
                     : data.cpuCapacityLevel;
-            if (previousLevel >= TierCount - 1)
+            int nextLevel = FindNextLevel(
+                branch,
+                previousLevel,
+                CurrentCapacity(branch, data));
+            if (nextLevel < 0)
             {
                 message = "该架构分支已达到最高授权。";
                 return false;
             }
 
             if (branch == ShipArchitectureBranch.ModuleCapacity)
-                data.moduleCapacityLevel++;
+                data.moduleCapacityLevel = nextLevel;
             else
-                data.cpuCapacityLevel++;
+                data.cpuCapacityLevel = nextLevel;
             data.lastUpgradeUtcTicks = DateTime.UtcNow.Ticks;
 
             try
@@ -227,9 +256,30 @@ namespace UnityPlanet.SpacecraftArchitecture
             {
                 cached = JsonUtility.FromJson<
                     ShipArchitectureProgressData>(File.ReadAllText(path));
-                if (cached == null ||
-                    cached.formatVersion !=
-                    ShipArchitectureProgressData.CurrentFormatVersion)
+                if (cached == null)
+                {
+                    throw new InvalidDataException(
+                        "不支持的舰体架构进度格式。");
+                }
+                if (cached.formatVersion == 1)
+                {
+                    MigrateFromVersionOne(cached);
+                    try
+                    {
+                        SaveCached();
+                    }
+                    catch (Exception exception)
+                    {
+                        // The in-memory entitlement is already safe. Retry
+                        // persistence next time instead of replacing a valid
+                        // version-one save as though it were corrupt.
+                        Debug.LogWarning(
+                            "[ShipArchitecture] 旧架构授权迁移暂未保存：" +
+                            exception.Message);
+                    }
+                }
+                else if (cached.formatVersion !=
+                         ShipArchitectureProgressData.CurrentFormatVersion)
                 {
                     throw new InvalidDataException(
                         "不支持的舰体架构进度格式。");
@@ -258,6 +308,79 @@ namespace UnityPlanet.SpacecraftArchitecture
                     return level;
             }
             return capacities.Length - 1;
+        }
+
+        static int FindNextLevel(
+            ShipArchitectureBranch branch,
+            int currentLevel,
+            int currentCapacity)
+        {
+            int[] capacities = branch ==
+                ShipArchitectureBranch.ModuleCapacity
+                    ? ModuleCapacities
+                    : CpuCapacities;
+            for (int level = Mathf.Max(0, currentLevel + 1);
+                 level < capacities.Length;
+                 level++)
+            {
+                if (capacities[level] > currentCapacity)
+                    return level;
+            }
+            return -1;
+        }
+
+        static int CurrentCapacity(
+            ShipArchitectureBranch branch,
+            ShipArchitectureProgressData data)
+        {
+            int level = branch == ShipArchitectureBranch.ModuleCapacity
+                ? data.moduleCapacityLevel
+                : data.cpuCapacityLevel;
+            int minimum = branch == ShipArchitectureBranch.ModuleCapacity
+                ? data.minimumModuleCapacity
+                : data.minimumCpuCapacity;
+            return Mathf.Max(GetCapacity(branch, level), minimum);
+        }
+
+        static void MigrateFromVersionOne(
+            ShipArchitectureProgressData data)
+        {
+            int oldModuleCapacity = VersionOneModuleCapacities[
+                Mathf.Clamp(
+                    data.moduleCapacityLevel,
+                    0,
+                    VersionOneModuleCapacities.Length - 1)];
+            int oldCpuCapacity = VersionOneCpuCapacities[
+                Mathf.Clamp(
+                    data.cpuCapacityLevel,
+                    0,
+                    VersionOneCpuCapacities.Length - 1)];
+
+            data.minimumModuleCapacity = oldModuleCapacity;
+            data.minimumCpuCapacity = oldCpuCapacity;
+            data.moduleCapacityLevel = FindHighestLevelAtOrBelow(
+                ModuleCapacities,
+                oldModuleCapacity);
+            data.cpuCapacityLevel = FindHighestLevelAtOrBelow(
+                CpuCapacities,
+                oldCpuCapacity);
+            data.formatVersion =
+                ShipArchitectureProgressData.CurrentFormatVersion;
+            Normalize(data);
+        }
+
+        static int FindHighestLevelAtOrBelow(
+            int[] capacities,
+            int entitlement)
+        {
+            int result = 0;
+            for (int level = 1; level < capacities.Length; level++)
+            {
+                if (capacities[level] > entitlement)
+                    break;
+                result = level;
+            }
+            return result;
         }
 
         static void SaveCached()
@@ -290,6 +413,14 @@ namespace UnityPlanet.SpacecraftArchitecture
                 data.cpuCapacityLevel,
                 0,
                 CpuCapacities.Length - 1);
+            data.minimumModuleCapacity = Mathf.Clamp(
+                data.minimumModuleCapacity,
+                0,
+                AbsoluteModuleCapacity);
+            data.minimumCpuCapacity = Mathf.Clamp(
+                data.minimumCpuCapacity,
+                0,
+                AbsoluteCpuCapacity);
         }
 
         static string ResolveSlotId()

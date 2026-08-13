@@ -210,6 +210,10 @@ namespace UnityPlanet.EDPCG
         public float escapeDifficulty;
         public float maneuverDifficulty;
         public float responseDemand;
+        public float stayDifficulty;
+        public float minimumRiskPathExposure;
+        public float minimumRiskPathSeconds;
+        public int minimumRiskPathCellCount;
         public int reachableTransitionCount;
         public int recommendedExitCount;
 
@@ -219,7 +223,7 @@ namespace UnityPlanet.EDPCG
         {
             get
             {
-                if (score >= 0.68f)
+                if (score >= 0.58f)
                     return "高危";
                 if (score >= 0.40f)
                     return "困难";
@@ -252,6 +256,12 @@ namespace UnityPlanet.EDPCG
                 result.maneuverDifficulty = 1f;
                 return result;
             }
+            if (cell.excludedFromDifficulty)
+            {
+                result.score = 0f;
+                result.stayDifficulty = 0f;
+                return result;
+            }
 
             directionCount = Mathf.Max(0, directionCount);
             threatenedVolume = Mathf.Clamp01(threatenedVolume);
@@ -259,84 +269,178 @@ namespace UnityPlanet.EDPCG
                             float.IsPositiveInfinity(fastestHitSeconds)
                 ? 0f
                 : Mathf.Clamp01((8f - Mathf.Max(0f, fastestHitSeconds)) / 8f);
-            result.fireThreat = Mathf.Clamp01(
-                threatenedVolume * 0.35f +
-                Mathf.Clamp01(directionCount / 3f) * 0.25f +
-                urgency * 0.25f +
-                (crossfire ? 0.15f : 0f));
-
-            bool hasFiniteHit = !float.IsNaN(fastestHitSeconds) &&
-                                !float.IsInfinity(fastestHitSeconds);
-            bool responseRequired = directionCount > 0 ||
-                                    threatenedVolume > 0.001f ||
-                                    hasFiniteHit;
-            result.responseDemand = responseRequired
-                ? Mathf.Clamp01(result.fireThreat / 0.35f)
-                : 0f;
-
-            int transitionCount = 0;
+            result.fireThreat = AirCombatCityDifficultyPcg
+                .EvaluateFireThreatMetrics(
+                    threatenedVolume,
+                    directionCount,
+                    urgency,
+                    crossfire,
+                    cell.difficultyCombatPressure);
+            result.stayDifficulty = result.fireThreat;
+            bool responseRequired = result.fireThreat >
+                                    AirCombatGridSurvivalSolver
+                                        .SafeThreatThreshold;
+            result.responseDemand = responseRequired ? 1f : 0f;
             int reachableCount = 0;
-            int recommendedCount = 0;
-            float bestReduction = 0f;
             for (int index = 0; index < cell.evasions.Count; index++)
             {
                 EdpcgGridEvasionLink link = cell.evasions[index];
                 if (link == null)
                     continue;
-                transitionCount++;
                 if (link.reachable)
                     reachableCount++;
-                if (!link.recommended)
-                    continue;
-                recommendedCount++;
-                bestReduction = Mathf.Max(bestReduction,
-                    link.pressureReduction);
             }
             result.reachableTransitionCount = reachableCount;
-            result.recommendedExitCount = recommendedCount;
-
-            if (responseRequired)
+            result.recommendedExitCount = cell.safeExitCount;
+            result.maneuverDifficulty = 0f;
+            if (cell.survivalDifficultyComputed &&
+                Mathf.Abs(result.fireThreat - cell.difficultyFireThreat) <=
+                0.025f)
             {
-                float exitScarcity = recommendedCount <= 0 ? 1f :
-                    recommendedCount == 1 ? 0.58f :
-                    recommendedCount == 2 ? 0.25f : 0f;
-                float marginDifficulty = recommendedCount <= 0 ||
-                                         float.IsNaN(
-                                             cell.bestEscapeMarginSeconds) ||
-                                         float.IsNegativeInfinity(
-                                             cell.bestEscapeMarginSeconds)
-                    ? 1f
-                    : 1f - Mathf.InverseLerp(0.2f, 2.5f,
-                        cell.bestEscapeMarginSeconds);
-                float reductionDifficulty = recommendedCount <= 0
-                    ? 1f
-                    : 1f - Mathf.Clamp01(bestReduction / 0.35f);
-                result.escapeDifficulty = Mathf.Clamp01(
-                    exitScarcity * 0.45f +
-                    marginDifficulty * 0.35f +
-                    reductionDifficulty * 0.20f);
+                result.score = cell.survivalDifficulty;
+                result.escapeDifficulty = cell.minimumRiskPathExposure;
+                result.minimumRiskPathExposure =
+                    cell.minimumRiskPathExposure;
+                result.minimumRiskPathSeconds =
+                    cell.minimumRiskPathSeconds;
+                result.minimumRiskPathCellCount =
+                    cell.minimumRiskPathCellCount;
             }
-
-            int sampleCount = Mathf.Max(1, cell.subSampleCount);
-            float flyableRatio = Mathf.Clamp01(
-                cell.flyableSubSampleCount / (float)sampleCount);
-            float transitionRatio = transitionCount <= 0
-                ? 0f
-                : reachableCount / (float)transitionCount;
-            float transitionDiversity = Mathf.Clamp01(
-                reachableCount / 5f);
-            float transitionDifficulty =
-                (1f - transitionRatio) * 0.45f +
-                (1f - transitionDiversity) * 0.55f;
-            result.maneuverDifficulty = Mathf.Clamp01(
-                (1f - flyableRatio) * 0.55f +
-                transitionDifficulty * 0.45f);
-
-            result.score = Mathf.Clamp01(
-                result.fireThreat * 0.60f +
-                result.escapeDifficulty * result.responseDemand * 0.28f +
-                result.maneuverDifficulty * 0.12f);
+            else
+            {
+                // 非默认筛选模式没有整张图的重算上下文，保守显示该筛选
+                // 下的留守风险；不会再用“出口少”给安全格凭空加分。
+                result.score = result.fireThreat;
+                result.escapeDifficulty = 0f;
+            }
             return result;
+        }
+
+        public static void RebuildSurvivalCosts(
+            params EdpcgGridFireAnalysis[] analyses)
+        {
+            var cells = new List<EdpcgGridFireCell>(192);
+            var keys = new Dictionary<string, int>(192);
+            if (analyses == null)
+                return;
+            for (int analysisIndex = 0;
+                 analysisIndex < analyses.Length;
+                 analysisIndex++)
+            {
+                EdpcgGridFireAnalysis analysis = analyses[analysisIndex];
+                if (analysis == null)
+                    continue;
+                for (int cellIndex = 0;
+                     cellIndex < analysis.cells.Count;
+                     cellIndex++)
+                {
+                    EdpcgGridFireCell cell = analysis.cells[cellIndex];
+                    if (cell == null)
+                        continue;
+                    int index = cells.Count;
+                    cells.Add(cell);
+                    keys[DifficultyKey(cell.stableId,
+                        analysis.altitudeLayer)] = index;
+                }
+            }
+            float[] threats = new float[cells.Count];
+            bool[] flyable = new bool[cells.Count];
+            var edges = new List<AirCombatGridSurvivalSolver.Edge>(
+                cells.Count * 8);
+            for (int index = 0; index < cells.Count; index++)
+            {
+                EdpcgGridFireCell cell = cells[index];
+                float fastest = cell.authorizedFastestHitSeconds;
+                float urgency = float.IsPositiveInfinity(fastest)
+                    ? 0f
+                    : Mathf.Clamp01((8f - fastest) / 8f);
+                float fireThreat = AirCombatCityDifficultyPcg
+                    .EvaluateFireThreatMetrics(
+                        cell.authorizedThreatenedVolumeRatio,
+                        cell.authorizedDirectionCount,
+                        urgency,
+                        cell.crossfire,
+                        cell.difficultyCombatPressure);
+                threats[index] = fireThreat;
+                flyable[index] = cell.flyable &&
+                                  !cell.excludedFromDifficulty;
+                cell.difficultyFireThreat = fireThreat;
+                cell.survivalDifficultyComputed = false;
+            }
+            for (int analysisIndex = 0;
+                 analysisIndex < analyses.Length;
+                 analysisIndex++)
+            {
+                EdpcgGridFireAnalysis analysis = analyses[analysisIndex];
+                if (analysis == null)
+                    continue;
+                for (int cellIndex = 0;
+                     cellIndex < analysis.cells.Count;
+                     cellIndex++)
+                {
+                    EdpcgGridFireCell cell = analysis.cells[cellIndex];
+                    if (cell == null || !keys.TryGetValue(DifficultyKey(
+                            cell.stableId, analysis.altitudeLayer),
+                            out int source))
+                    {
+                        continue;
+                    }
+                    for (int linkIndex = 0;
+                         linkIndex < cell.evasions.Count;
+                         linkIndex++)
+                    {
+                        EdpcgGridEvasionLink link = cell.evasions[linkIndex];
+                        if (link == null || !link.reachable ||
+                            !keys.TryGetValue(DifficultyKey(
+                                link.targetCellId,
+                                link.targetAltitudeLayer),
+                                out int target))
+                        {
+                            continue;
+                        }
+                        edges.Add(new AirCombatGridSurvivalSolver.Edge
+                        {
+                            from = source,
+                            to = target,
+                            travelSeconds = Mathf.Max(0.01f,
+                                link.travelSeconds)
+                        });
+                    }
+                }
+            }
+            AirCombatGridSurvivalSolver.Result[] results =
+                AirCombatGridSurvivalSolver.Solve(threats, flyable, edges);
+            for (int index = 0; index < cells.Count; index++)
+            {
+                EdpcgGridFireCell cell = cells[index];
+                AirCombatGridSurvivalSolver.Result result = results[index];
+                if (cell.excludedFromDifficulty)
+                {
+                    cell.survivalDifficulty = 0f;
+                    cell.minimumRiskPathExposure = 0f;
+                    cell.minimumRiskPathSeconds = 0f;
+                    cell.minimumRiskPathCellCount = 0;
+                    cell.lowerThreatCellId = string.Empty;
+                    cell.survivalDifficultyComputed = true;
+                    continue;
+                }
+                cell.survivalDifficulty = result.difficulty;
+                cell.minimumRiskPathExposure = result.pathExposure;
+                cell.minimumRiskPathSeconds = result.pathSeconds;
+                cell.minimumRiskPathCellCount = result.pathCellCount;
+                cell.lowerThreatCellId = result.targetIndex >= 0 &&
+                                         result.targetIndex < cells.Count
+                    ? cells[result.targetIndex].stableId
+                    : string.Empty;
+                cell.survivalDifficultyComputed = true;
+            }
+        }
+
+        static string DifficultyKey(
+            string stableId,
+            EdpcgFireAnalysisAltitudeLayer altitude)
+        {
+            return (stableId ?? string.Empty) + "#" + (int)altitude;
         }
     }
 
@@ -351,6 +455,9 @@ namespace UnityPlanet.EDPCG
         public Vector3 worldSamplePosition;
         public Vector3[] worldCorners = Array.Empty<Vector3>();
         public bool flyable;
+        public bool excludedFromDifficulty;
+        [Range(0f, 1f)] public float targetDifficulty;
+        [Range(0f, 1f)] public float difficultyCombatPressure;
         public int subSampleCount;
         public int flyableSubSampleCount;
         public float threatenedVolumeRatio;
@@ -361,6 +468,13 @@ namespace UnityPlanet.EDPCG
         public float authorizedFastestHitSeconds = float.PositiveInfinity;
         public float fastestEscapeSeconds = float.PositiveInfinity;
         public float bestEscapeMarginSeconds = float.NegativeInfinity;
+        public bool survivalDifficultyComputed;
+        public float difficultyFireThreat;
+        public float survivalDifficulty;
+        public float minimumRiskPathExposure;
+        public float minimumRiskPathSeconds;
+        public int minimumRiskPathCellCount;
+        public string lowerThreatCellId = string.Empty;
         public int incomingLineCount;
         public int blockedLineCount;
         public int gapWindowCount;

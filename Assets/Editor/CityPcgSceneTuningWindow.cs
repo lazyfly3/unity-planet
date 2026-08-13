@@ -43,6 +43,8 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
     bool cachedWindTrapAvailable;
     int cachedWindTrapCount;
     Vector3 cachedWindTrapPosition;
+    string generationShowcaseMessage = string.Empty;
+    float requestedGenerationDifficulty = 0.50f;
 
     [MenuItem("Tools/城市 PCG/城市参数调节器", false, 1)]
     public static void OpenWindow()
@@ -56,12 +58,24 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
     void OnEnable()
     {
         FindPreviewCity();
+        SyncRequestedDifficultyFromCity();
         EditorApplication.hierarchyChanged += OnHierarchyChanged;
+        CityGreedyGenerationShowcase.Changed += Repaint;
     }
 
     void OnDisable()
     {
         EditorApplication.hierarchyChanged -= OnHierarchyChanged;
+        CityGreedyGenerationShowcase.Changed -= Repaint;
+    }
+
+    void OnInspectorUpdate()
+    {
+        if (CityGreedyGenerationShowcase.IsPlaying ||
+            EditorApplication.isPlaying)
+        {
+            Repaint();
+        }
     }
 
     void OnHierarchyChanged()
@@ -96,6 +110,8 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
             return;
         }
 
+        DrawPlayObservationControls();
+
         if (cityGenerator == null)
         {
             EditorGUILayout.HelpBox(
@@ -110,10 +126,303 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
         }
 
         scroll = EditorGUILayout.BeginScrollView(scroll);
+        DrawGreedyGenerationShowcase();
         DrawSettings();
         DrawActions();
         DrawReport();
         EditorGUILayout.EndScrollView();
+    }
+
+    void DrawPlayObservationControls()
+    {
+        EditorGUILayout.Space(5f);
+        EditorGUILayout.LabelField("播放观察模式", EditorStyles.boldLabel);
+        ModularBossFlightTestCourse course =
+            Object.FindObjectOfType<ModularBossFlightTestCourse>(true);
+        bool bossLoop = course != null && course.RunContinuously;
+        EditorGUILayout.HelpBox(
+            bossLoop
+                ? "当前选择：Boss 飞行与撞楼检测。进入播放后会明确启动 Boss 循环。"
+                : "当前选择：环境陷阱观察。进入播放后只运行场景原有风场、磁场与探针，不会自动启动 Boss。",
+            bossLoop ? MessageType.Warning : MessageType.Info);
+
+        if (!EditorApplication.isPlaying)
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledScope(course == null ||
+                                                   !bossLoop))
+                {
+                    if (GUILayout.Button("只观察环境陷阱（默认）"))
+                        ConfigureBossObservation(course, false);
+                }
+                using (new EditorGUI.DisabledScope(course == null ||
+                                                   bossLoop))
+                {
+                    if (GUILayout.Button("选择 Boss 飞行检测"))
+                        ConfigureBossObservation(course, true);
+                }
+            }
+            if (GUILayout.Button(
+                    bossLoop ? "进入播放并启动 Boss 检测" :
+                        "进入播放观察环境陷阱",
+                    GUILayout.Height(28f)))
+            {
+                CityGreedyGenerationShowcase.Clear();
+                EditorApplication.isPlaying = true;
+            }
+        }
+        else if (course != null)
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (course.IsRunning)
+                {
+                    if (GUILayout.Button("暂停 Boss 检测"))
+                        course.StopLoop();
+                }
+                else if (GUILayout.Button("启动 Boss 检测"))
+                {
+                    course.ConfigureLoop(true);
+                    course.BeginTest();
+                }
+                if (GUILayout.Button("退出播放模式"))
+                    EditorApplication.isPlaying = false;
+            }
+        }
+    }
+
+    void DrawGreedyGenerationShowcase()
+    {
+        EditorGUILayout.Space(4f);
+        EditorGUILayout.LabelField(
+            "逐格贪心生成过程演示",
+            EditorStyles.boldLabel);
+        EditorGUILayout.HelpBox(
+            "演示顺序严格使用正式算法：道路与合并街区先完成；从中心区块开始按四邻接向外扩张；每加入一格，所有已生成旧格都会重新求解，灰框表示参与重算，红蓝框表示显著变化。主体区块完成后，再依次展示连廊三维复核、电线减速校准和风场方向/强度校准。演示只开关临时预览层的显示，不保存生成层级，也不修改 Boss、相机或玩家物理对象。",
+            MessageType.Info);
+
+        EditorGUILayout.Space(3f);
+        EditorGUILayout.LabelField(
+            "本次生成要求",
+            EditorStyles.miniBoldLabel);
+        requestedGenerationDifficulty = EditorGUILayout.Slider(
+            "目标危险度",
+            requestedGenerationDifficulty,
+            AirCombatCityDifficultyPcg.MinimumTargetDifficulty,
+            AirCombatCityDifficultyPcg.MaximumTargetDifficulty);
+        EditorGUILayout.LabelField(
+            "输入目标",
+            (requestedGenerationDifficulty * 100f).ToString("0") + "%");
+        EditorGUILayout.HelpBox(
+            "这个值会先转换为同一套正式城市难度配置，再重建道路、合并街区与逐格贪心城市。它不是只改变演示颜色，也不会修改 EDPCG 敌人数量。",
+            MessageType.None);
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            if (GUILayout.Button("设为 10% 安全展示"))
+                requestedGenerationDifficulty = 0.10f;
+            if (GUILayout.Button("设为 50% 中等展示"))
+                requestedGenerationDifficulty = 0.50f;
+            if (GUILayout.Button("设为 90% 危险展示"))
+                requestedGenerationDifficulty = 0.90f;
+        }
+        if (GUILayout.Button(
+                "按目标危险度重建并准备演示",
+                GUILayout.Height(34f)))
+        {
+            ApplyRequestedDifficultyAndPrepareShowcase();
+            return;
+        }
+
+        if (cityGenerator != null && cityGenerator.Report != null)
+        {
+            float requested = AirCombatCityDifficultyPcg.ResolveTarget(
+                cityGenerator.Settings.Difficulty).averageDifficulty;
+            float achieved = cityGenerator.Report.plannedAverageDifficulty;
+            float delta = achieved - requested;
+            EditorGUILayout.HelpBox(
+                "当前城市：要求 " +
+                (requested * 100f).ToString("0.0") + "%｜实际 " +
+                (achieved * 100f).ToString("0.0") + "%｜" +
+                (Mathf.Abs(delta) < 0.015f
+                    ? "已接近目标"
+                    : delta < 0f
+                        ? "偏低 " + (-delta * 100f).ToString("0.0") +
+                          "%：后续格应补更危险候选"
+                        : "偏高 " + (delta * 100f).ToString("0.0") +
+                          "%：后续格应补更安全候选"),
+                Mathf.Abs(delta) < 0.015f
+                    ? MessageType.Info
+                    : MessageType.Warning);
+        }
+
+        bool prepared = CityGreedyGenerationShowcase.IsPreparedFor(
+            cityGenerator);
+        if (!prepared)
+        {
+            if (GUILayout.Button("准备逐格生成演示", GUILayout.Height(34f)))
+            {
+                generationShowcaseMessage =
+                    CityGreedyGenerationShowcase.Prepare(
+                        cityGenerator, out string error)
+                        ? "演示已准备；道路、合并街区与外围封边作为起始状态。"
+                        : error;
+                if (CityGreedyGenerationShowcase.IsPrepared)
+                    CityGreedyGenerationShowcase.Focus();
+            }
+            if (!string.IsNullOrEmpty(generationShowcaseMessage))
+            {
+                EditorGUILayout.HelpBox(
+                    generationShowcaseMessage,
+                    CityGreedyGenerationShowcase.IsPrepared
+                        ? MessageType.Info
+                        : MessageType.Error);
+            }
+            return;
+        }
+
+        CityGreedyGenerationShowcase.Trace trace =
+            CityGreedyGenerationShowcase.CurrentTrace;
+        int oldFrame = CityGreedyGenerationShowcase.FrameIndex;
+        int newFrame = EditorGUILayout.IntSlider(
+            "演示步骤",
+            oldFrame,
+            0,
+            CityGreedyGenerationShowcase.LastFrameIndex);
+        if (newFrame != oldFrame)
+            CityGreedyGenerationShowcase.SetFrame(newFrame);
+
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            if (GUILayout.Button("回到道路阶段"))
+                CityGreedyGenerationShowcase.Reset();
+            if (GUILayout.Button("上一步"))
+                CityGreedyGenerationShowcase.Previous();
+            if (GUILayout.Button("下一步"))
+                CityGreedyGenerationShowcase.Next();
+            if (GUILayout.Button(
+                    CityGreedyGenerationShowcase.IsPlaying
+                        ? "暂停"
+                        : "自动播放"))
+            {
+                CityGreedyGenerationShowcase.SetPlaying(
+                    !CityGreedyGenerationShowcase.IsPlaying);
+            }
+        }
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            if (GUILayout.Button("显示完整城市"))
+                CityGreedyGenerationShowcase.Finish();
+            if (GUILayout.Button("在场景中定位演示"))
+                CityGreedyGenerationShowcase.Focus();
+            if (GUILayout.Button("退出演示并恢复城市"))
+            {
+                CityGreedyGenerationShowcase.Clear();
+                generationShowcaseMessage = string.Empty;
+                return;
+            }
+        }
+
+        CityGreedyGenerationShowcase.SecondsPerStep =
+            EditorGUILayout.Slider(
+                "每步停留时间（秒）",
+                CityGreedyGenerationShowcase.SecondsPerStep,
+                0.4f,
+                4f);
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            CityGreedyGenerationShowcase.ShowRecalculation =
+                EditorGUILayout.ToggleLeft(
+                    "显示旧区块重算影响",
+                    CityGreedyGenerationShowcase.ShowRecalculation);
+            CityGreedyGenerationShowcase.ShowChineseLabels =
+                EditorGUILayout.ToggleLeft(
+                    "显示中文步骤标注",
+                    CityGreedyGenerationShowcase.ShowChineseLabels);
+            CityGreedyGenerationShowcase.ShowNextDirection =
+                EditorGUILayout.ToggleLeft(
+                    "显示下一格箭头",
+                    CityGreedyGenerationShowcase.ShowNextDirection);
+        }
+
+        CityGreedyGenerationShowcase.Step step =
+            CityGreedyGenerationShowcase.CurrentStep;
+        if (CityGreedyGenerationShowcase.FrameIndex == 0)
+        {
+            EditorGUILayout.HelpBox(
+                "当前：道路网格与街区合并已经完成。下一步从中心区块开始。",
+                MessageType.None);
+        }
+        else if (step != null)
+        {
+            int changedCount = 0;
+            for (int index = 0;
+                 index < step.recalculatedCells.Count;
+                 index++)
+            {
+                if (Mathf.Abs(step.recalculatedCells[index].Delta) >= 0.005f)
+                    changedCount++;
+            }
+            EditorGUILayout.HelpBox(
+                "中心向外第 " +
+                CityGreedyGenerationShowcase.FrameIndex + " 格：全城危险度 " +
+                (step.cityDifficultyBefore * 100f).ToString("0.0") +
+                "% → " +
+                (step.cityDifficultyAfter * 100f).ToString("0.0") +
+                "%；已生成区域实测 " +
+                (step.generatedDifficultyBefore * 100f).ToString("0.0") +
+                "% → " +
+                (step.generatedDifficultyAfter * 100f).ToString("0.0") +
+                "%；剩余区块所需均值 " +
+                (step.remainingRequiredBefore * 100f).ToString("0.0") +
+                "% → " +
+                (step.remainingRequiredAfter * 100f).ToString("0.0") +
+                "%；本格选择" +
+                (step.requestedMoreDanger ? "更危险" : "更安全") +
+                "候选；旧区块有 " + changedCount + " 格发生可见变化。",
+                CityGreedyGenerationShowcase.FrameIndex == trace.steps.Count
+                    ? MessageType.Info
+                    : MessageType.None);
+            if (CityGreedyGenerationShowcase.FrameIndex == trace.steps.Count)
+            {
+                EditorGUILayout.HelpBox(
+                    "全部区块完成：完整城市已在本步之前按区块逐渐形成，没有额外的整城弹出帧。",
+                    MessageType.Info);
+            }
+        }
+        else if (CityGreedyGenerationShowcase.CurrentFinalStage != null)
+        {
+            CityGreedyGenerationShowcase.FinalTuningStage stage =
+                CityGreedyGenerationShowcase.CurrentFinalStage;
+            int stageIndex = CityGreedyGenerationShowcase.FrameIndex -
+                             trace.steps.Count;
+            EditorGUILayout.HelpBox(
+                "末段校准 " + stageIndex + " / " +
+                trace.finalStages.Count + "｜" + stage.title + "\n" +
+                stage.purpose + "\n全城危险度 " +
+                (stage.difficultyBefore * 100f).ToString("0.0") +
+                "% → " +
+                (stage.difficultyAfter * 100f).ToString("0.0") +
+                "%｜目标 " +
+                (trace.targetDifficulty * 100f).ToString("0.0") +
+                "%\n" + stage.decision,
+                MessageType.Info);
+        }
+        EditorGUILayout.LabelField(
+            "演示分析耗时",
+            trace.analysisMilliseconds.ToString("0.0") + " 毫秒");
+    }
+
+    static void ConfigureBossObservation(
+        ModularBossFlightTestCourse course,
+        bool enabled)
+    {
+        if (course == null)
+            return;
+        Undo.RecordObject(course, "切换测试场景播放观察模式");
+        course.ConfigureLoop(enabled);
+        EditorUtility.SetDirty(course);
+        EditorSceneManager.MarkSceneDirty(course.gameObject.scene);
     }
 
     void DrawSettings()
@@ -216,7 +525,7 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
         {
             EditorGUI.indentLevel++;
             EditorGUILayout.HelpBox(
-                "区块按最终合并后的街区组判定：拆除内部道路并合并的街区视为同一区块，其内部连廊不会算作跨区块。两类目标分别满足，不能互相补足。",
+                "连廊在主体城市完成后才参与末段复核。它同时可能挡枪和挡机动：楼间缝、两桥之间、桥下贴地与桥上方会按玩家包线分别试飞，只要存在一条真实净空就不会误判为封路。Boss 的战术夹层与破坏连廊属于强制玩法语义，普通关的标量校准不能删掉它们。",
                 MessageType.None);
             EditorGUILayout.LabelField("普通任务连廊数量", EditorStyles.miniBoldLabel);
             DrawNonNegativeInt(
@@ -496,6 +805,12 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
                 "naturalStreetGaleCount",
                 "自然风场数量",
                 8);
+            DrawSlider(
+                settings,
+                "naturalStreetGaleStrength",
+                "自然风场强度倍率",
+                0.25f,
+                1.5f);
             DrawPositiveInt(
                 settings,
                 "magneticCourtyardCount",
@@ -515,7 +830,7 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
             }
             EditorGUILayout.LabelField("位置规则", EditorStyles.miniBoldLabel);
             EditorGUILayout.HelpBox(
-                "磁场庭院只会落在能容纳三面实体磁墙的合法街区，风场仍需满足连续道路、侧向入口和末端撞击面。随机性由城市种子决定：同一种子可复现，换种子才会改变位置。",
+                "磁场庭院只会落在能容纳三面实体磁墙的合法街区。风场在道路、主体区块、连廊和电线完成后生成；PCG 不预言玩家路线，而是对每条可选机动边的正反方向分别计算顺风、逆风和侧风，再由最低火力路径选择玩家理论上更有利的走法。随机性由城市种子决定：同一种子可复现。",
                 MessageType.None);
             DrawSlider(
                 settings,
@@ -685,6 +1000,7 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
         if (cityGenerator == null)
             return;
 
+        CityGreedyGenerationShowcase.Clear();
         Undo.RecordObject(cityGenerator, "调整城市生成参数");
         CopySettings(
             cityGenerator.Settings.ValidatedCopy(),
@@ -699,6 +1015,62 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
         AssetDatabase.SaveAssets();
         SceneView.RepaintAll();
         Repaint();
+    }
+
+    void ApplyRequestedDifficultyAndPrepareShowcase()
+    {
+        if (cityGenerator == null)
+            return;
+        CityGreedyGenerationShowcase.Clear();
+        Undo.RecordObject(cityGenerator, "按目标危险度重建城市");
+        cityGenerator.Settings.combatDifficulty =
+            CombatCityDifficultyProfile.CreateForTargetDifficulty(
+                requestedGenerationDifficulty,
+                cityGenerator.Settings.mission);
+        ForcePreviewOptions(cityGenerator);
+        cityGenerator.Rebuild();
+        EnsureTerrain(cityGenerator.transform, cityGenerator.Settings.mapSize);
+        EditorUtility.SetDirty(cityGenerator);
+        bool validationPassed = cityGenerator.Report != null &&
+                                cityGenerator.Report.valid;
+        string validationReason = cityGenerator.Report != null
+            ? cityGenerator.Report.failureReason
+            : "城市生成器没有返回验证报告。";
+        Scene scene = cityGenerator.gameObject.scene;
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
+        AssetDatabase.SaveAssets();
+        parametersChanged = false;
+        if (CityGreedyGenerationShowcase.Prepare(
+                cityGenerator, out string error))
+        {
+            generationShowcaseMessage =
+                "已按 " +
+                (requestedGenerationDifficulty * 100f).ToString("0") +
+                "% 目标重建；实际 " +
+                (cityGenerator.Report.plannedAverageDifficulty * 100f)
+                .ToString("0.0") + "%；" +
+                (validationPassed
+                    ? "已通过正式验证，演示从道路阶段开始。"
+                    : "未达到正式验收：" + validationReason +
+                      " 演示仍会保留，用来观察剩余缺口怎样形成。");
+            CityGreedyGenerationShowcase.Focus();
+        }
+        else
+        {
+            generationShowcaseMessage = error;
+        }
+        SceneView.RepaintAll();
+        Repaint();
+    }
+
+    void SyncRequestedDifficultyFromCity()
+    {
+        if (cityGenerator == null || cityGenerator.Settings == null)
+            return;
+        requestedGenerationDifficulty = AirCombatCityDifficultyPcg
+            .ResolveTarget(cityGenerator.Settings.Difficulty)
+            .averageDifficulty;
     }
 
     void RestoreDefaults()
@@ -993,6 +1365,8 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
         destination.enemyCableSwayAmplitude = source.enemyCableSwayAmplitude;
         destination.cableSwayDuration = source.cableSwayDuration;
         destination.naturalStreetGaleCount = source.naturalStreetGaleCount;
+        destination.naturalStreetGaleStrength =
+            source.naturalStreetGaleStrength;
         destination.magneticCourtyardCount = source.magneticCourtyardCount;
         destination.environmentalTrapRandomness =
             source.environmentalTrapRandomness;

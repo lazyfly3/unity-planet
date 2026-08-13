@@ -25,8 +25,10 @@ namespace UnityPlanet.ModularAssembly
         private Transform logicalRoot;
         private bool hasCachedMuzzleFallback;
         private bool hasCachedExhaustFallback;
+        private bool hasCachedOppositeExhaustFallback;
         private Vector3 cachedMuzzleFallbackLocal;
         private Vector3 cachedExhaustFallbackLocal;
+        private Vector3 cachedOppositeExhaustFallbackLocal;
 
         public string SourceId => sourceId;
         public GridModuleBehaviorKind BehaviorKind => behaviorKind;
@@ -53,6 +55,65 @@ namespace UnityPlanet.ModularAssembly
                 WorldExhaustDirection,
                 ref hasCachedExhaustFallback,
                 ref cachedExhaustFallbackLocal);
+        public Vector3 WorldOppositeExhaustPosition =>
+            ResolveCachedSurfacePosition(
+                -WorldExhaustDirection,
+                ref hasCachedOppositeExhaustFallback,
+                ref cachedOppositeExhaustFallbackLocal);
+
+        private Vector3 ResolveWorldSurfacePosition(Vector3 direction)
+        {
+            Vector3 normalizedDirection = direction.sqrMagnitude > 0.001f
+                ? direction.normalized
+                : Root.forward;
+            Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+            Bounds combined = default;
+            bool hasBounds = false;
+            for (int index = 0; index < renderers.Length; index++)
+            {
+                Renderer renderer = renderers[index];
+                if (renderer == null || renderer is ParticleSystemRenderer
+                    || !IsFinite(renderer.transform.position)
+                    || !IsFinite(renderer.transform.lossyScale))
+                {
+                    continue;
+                }
+
+                Bounds current = renderer.bounds;
+                if (!IsFinite(current)
+                    || current.extents.sqrMagnitude > 65536f)
+                {
+                    continue;
+                }
+                if (!hasBounds)
+                {
+                    combined = current;
+                    hasBounds = true;
+                }
+                else
+                {
+                    combined.Encapsulate(current);
+                }
+            }
+
+            if (!hasBounds || !IsFinite(combined))
+            {
+                return Root.position + normalizedDirection * 0.5f;
+            }
+
+            float radius =
+                Mathf.Abs(Vector3.Dot(normalizedDirection, Vector3.right))
+                * combined.extents.x
+                + Mathf.Abs(Vector3.Dot(normalizedDirection, Vector3.up))
+                * combined.extents.y
+                + Mathf.Abs(Vector3.Dot(normalizedDirection, Vector3.forward))
+                * combined.extents.z;
+            Vector3 resolved = combined.center
+                               + normalizedDirection * Mathf.Max(0.05f, radius);
+            return IsFinite(resolved)
+                ? resolved
+                : Root.position + normalizedDirection * 0.5f;
+        }
         private Transform Root => logicalRoot != null ? logicalRoot : transform;
 
         public void Configure(ModularContentRecord record)
@@ -119,61 +180,28 @@ private Vector3 ResolveSocketPosition(
                 hasCachedFallback = false;
             }
 
-            Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
-            Bounds combined = default;
-            bool hasBounds = false;
-            for (int index = 0; index < renderers.Length; index++)
-            {
-                Renderer renderer = renderers[index];
-                if (renderer == null || renderer is ParticleSystemRenderer
-                    || !IsFinite(renderer.transform.position)
-                    || !IsFinite(renderer.transform.lossyScale))
-                {
-                    continue;
-                }
+            Vector3 resolved = ResolveWorldSurfacePosition(direction);
+            cachedFallbackLocal = Root.InverseTransformPoint(resolved);
+            hasCachedFallback = IsFinite(cachedFallbackLocal);
+            return resolved;
+        }
 
-                Bounds current = renderer.bounds;
-                if (!IsFinite(current)
-                    || current.extents.sqrMagnitude > 65536f)
+        private Vector3 ResolveCachedSurfacePosition(
+            Vector3 direction,
+            ref bool hasCachedFallback,
+            ref Vector3 cachedFallbackLocal)
+        {
+            if (hasCachedFallback)
+            {
+                Vector3 cachedWorld = Root.TransformPoint(cachedFallbackLocal);
+                if (IsFinite(cachedWorld))
                 {
-                    continue;
+                    return cachedWorld;
                 }
-                if (!hasBounds)
-                {
-                    combined = current;
-                    hasBounds = true;
-                }
-                else
-                {
-                    combined.Encapsulate(current);
-                }
+                hasCachedFallback = false;
             }
 
-            Vector3 normalizedDirection = direction.sqrMagnitude > 0.001f
-                ? direction.normalized
-                : Root.forward;
-            Vector3 resolved;
-            if (!hasBounds || !IsFinite(combined))
-            {
-                resolved = Root.position + normalizedDirection * 0.5f;
-            }
-            else
-            {
-                float radius =
-                    Mathf.Abs(Vector3.Dot(normalizedDirection, Vector3.right))
-                    * combined.extents.x
-                    + Mathf.Abs(Vector3.Dot(normalizedDirection, Vector3.up))
-                    * combined.extents.y
-                    + Mathf.Abs(Vector3.Dot(normalizedDirection, Vector3.forward))
-                    * combined.extents.z;
-                resolved = combined.center
-                           + normalizedDirection * Mathf.Max(0.05f, radius);
-            }
-
-            if (!IsFinite(resolved))
-            {
-                resolved = Root.position + normalizedDirection * 0.5f;
-            }
+            Vector3 resolved = ResolveWorldSurfacePosition(direction);
             cachedFallbackLocal = Root.InverseTransformPoint(resolved);
             hasCachedFallback = IsFinite(cachedFallbackLocal);
             return resolved;
@@ -183,8 +211,10 @@ private Vector3 ResolveSocketPosition(
         {
             hasCachedMuzzleFallback = false;
             hasCachedExhaustFallback = false;
+            hasCachedOppositeExhaustFallback = false;
             cachedMuzzleFallbackLocal = Vector3.zero;
             cachedExhaustFallbackLocal = Vector3.zero;
+            cachedOppositeExhaustFallbackLocal = Vector3.zero;
         }
 
         private static bool IsFinite(Bounds value)

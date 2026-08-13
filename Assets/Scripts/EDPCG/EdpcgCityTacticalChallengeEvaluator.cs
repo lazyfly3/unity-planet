@@ -155,8 +155,8 @@ namespace UnityPlanet.EDPCG
                                     report.solvableCrossfireCellCount >=
                                     Math.Max(2, minimumCrossfire / 2);
                     report.summary = report.passed
-                        ? "时间窗重叠且本档可授权的交叉火力在目标区间，并保留拆解出口。"
-                        : "可执行交叉火力数量或带正逃逸余量的拆解出口未达到目标。";
+                        ? "时间窗重叠且本档可授权的交叉火力在目标区间，并保留通往更低火力格的路径。"
+                        : "可执行交叉火力数量或通往更低火力格的正余量路径未达到目标。";
                     break;
                 case EdpcgCityTacticalPuzzleKind.CoverRelay:
                     report.passed = report.coverCellCount >= 16 &&
@@ -173,8 +173,8 @@ namespace UnityPlanet.EDPCG
                     report.summary = report.environmentalTrapRouteCount == 0
                         ? "编辑预览没有真实环境陷阱路线；只能在正式城市运行时完成此题目验收。"
                         : report.passed
-                            ? "诱敌路线与玩家撤离出口均已满足。"
-                            : "陷阱追击路线或玩家撤离出口不足。";
+                            ? "诱敌路线与玩家转入更低火力格的路径均已满足。"
+                            : "陷阱追击路线或更低火力转移路径不足。";
                     break;
                 case EdpcgCityTacticalPuzzleKind.VerticalPressure:
                     report.passed = low != null && low.IsUsable &&

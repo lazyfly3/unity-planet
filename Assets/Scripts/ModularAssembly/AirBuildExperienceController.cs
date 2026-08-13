@@ -26,6 +26,10 @@ namespace UnityPlanet.ModularAssembly
         private readonly List<Text> cardLabels = new List<Text>();
         private readonly Dictionary<string, Texture2D> thumbnails =
             new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, ModularContentRecord>
+            paletteRecordsByModuleId =
+                new Dictionary<string, ModularContentRecord>(
+                    StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<Renderer, bool> environmentRenderers =
             new Dictionary<Renderer, bool>();
         private static readonly IComparer<RaycastHit> RaycastHitDistanceComparer =
@@ -62,6 +66,8 @@ namespace UnityPlanet.ModularAssembly
         private Button selectionDeleteButton;
         private RawImage compactImage;
         private Text compactName;
+        private Text compactDetails;
+        private Text selectionDetails;
         private Transform thumbnailRoot;
         private Camera thumbnailCamera;
         private Light thumbnailLight;
@@ -82,6 +88,7 @@ namespace UnityPlanet.ModularAssembly
         private int page;
         private int roll;
         private int ghostGeneration;
+        private string displayedSelectionRuntimeId;
         private bool placing;
         private bool lastFlight;
         private bool presentationInitialized;
@@ -145,6 +152,11 @@ namespace UnityPlanet.ModularAssembly
                     .FirstOrDefault(item => item != null &&
                                             string.Equals(item.neoXId, id, StringComparison.OrdinalIgnoreCase));
                 AirBuildCatalog.ApplyDefaults(record);
+                if (record != null &&
+                    !string.IsNullOrWhiteSpace(record.sourceId))
+                {
+                    paletteRecordsByModuleId[ModuleId(record)] = record;
+                }
             });
 
             SuppressLegacy();
@@ -289,7 +301,7 @@ namespace UnityPlanet.ModularAssembly
                 return;
             }
 
-            string moduleId = "neox@" + record.sourceId.Replace("@", "_");
+            string moduleId = ModuleId(record);
             if (!controller.Model.Definitions.TryGetValue(moduleId, out GridModuleDefinition definition))
             {
                 placementText.text = "模块定义尚未加载。";
@@ -303,10 +315,13 @@ namespace UnityPlanet.ModularAssembly
             candidate = null;
             surfaceRoot.gameObject.SetActive(true);
             controller.enabled = false;
-            sidebar.sizeDelta = new Vector2(104f, sidebar.sizeDelta.y);
+            sidebar.sizeDelta = new Vector2(330f, sidebar.sizeDelta.y);
             fullPanel.SetActive(false);
             compactPanel.SetActive(true);
-            compactName.text = record.chineseName + "\nR 旋转\nEsc 取消";
+            selectionPanel.SetActive(false);
+            compactName.text = record.chineseName;
+            compactDetails.text = BuildModuleDetails(record, definition) +
+                                  "\n\nR  旋转    Esc  取消";
             compactImage.texture = thumbnails.TryGetValue(record.sourceId, out Texture2D texture)
                 ? texture
                 : Texture2D.grayTexture;
@@ -332,6 +347,7 @@ namespace UnityPlanet.ModularAssembly
             compactPanel.SetActive(false);
             placementText.text = "选择模块后，指向载具表面进行安装";
             HideCandidate();
+            RefreshSelectionPanel();
         }
 
         private void RefreshSelectionPanel()
@@ -340,6 +356,7 @@ namespace UnityPlanet.ModularAssembly
                 controller == null ||
                 controller.Model == null ||
                 selectionName == null ||
+                selectionDetails == null ||
                 selectionDeleteButton == null)
             {
                 return;
@@ -347,6 +364,16 @@ namespace UnityPlanet.ModularAssembly
 
             GridModuleRecord selected =
                 controller.Model.Find(controller.SelectedRuntimeId);
+            string runtimeId = selected?.RuntimeId ?? string.Empty;
+            if (string.Equals(
+                    displayedSelectionRuntimeId,
+                    runtimeId,
+                    StringComparison.Ordinal) &&
+                selectionPanel.activeSelf == (selected != null))
+            {
+                return;
+            }
+            displayedSelectionRuntimeId = runtimeId;
             if (selected != null && selected.Definition == null)
             {
                 selectionPanel.SetActive(false);
@@ -360,19 +387,16 @@ namespace UnityPlanet.ModularAssembly
                 return;
             }
 
-            selectionName.text =
-                selected.Definition.DisplayName + "\n" +
-                selected.Definition.Footprint.x + "×" +
-                selected.Definition.Footprint.y + "×" +
-                selected.Definition.Footprint.z;
+            selectionName.text = selected.Definition.DisplayName;
+            paletteRecordsByModuleId.TryGetValue(
+                selected.Definition.ModuleId,
+                out ModularContentRecord record);
+            selectionDetails.text =
+                BuildModuleDetails(record, selected.Definition);
             selectionDeleteButton.interactable = editable;
             RectTransform selectionRect =
                 selectionPanel.GetComponent<RectTransform>();
-            selectionRect.sizeDelta = new Vector2(310f, 142f);
-            SetRect(
-                selectionDeleteButton.GetComponent<RectTransform>(),
-                new Vector2(16f, -84f),
-                new Vector2(278f, 42f));
+            selectionRect.sizeDelta = new Vector2(350f, 246f);
         }
 
         private void DeleteSelectedModule()
@@ -1098,10 +1122,15 @@ namespace UnityPlanet.ModularAssembly
                     typeof(RawImage)).GetComponent<RawImage>();
                 image.transform.SetParent(card.transform, false);
                 image.raycastTarget = false;
-                SetRect(image.rectTransform, new Vector2(8f, -7f), new Vector2(154f, 88f));
-                Text label = CreateText(card.transform, string.Empty, 14, FontStyle.Bold, Color.white);
-                SetRect(label.rectTransform, new Vector2(6f, -94f), new Vector2(158f, 30f));
+                SetRect(image.rectTransform, new Vector2(8f, -7f), new Vector2(154f, 76f));
+                Text label = CreateText(card.transform, string.Empty, 13, FontStyle.Bold, Color.white);
+                SetRect(label.rectTransform, new Vector2(6f, -84f), new Vector2(158f, 40f));
                 label.alignment = TextAnchor.MiddleCenter;
+                label.horizontalOverflow = HorizontalWrapMode.Wrap;
+                label.verticalOverflow = VerticalWrapMode.Truncate;
+                label.resizeTextForBestFit = true;
+                label.resizeTextMinSize = 10;
+                label.resizeTextMaxSize = 13;
                 cardButtons.Add(card);
                 cardImages.Add(image);
                 cardLabels.Add(label);
@@ -1157,12 +1186,37 @@ namespace UnityPlanet.ModularAssembly
                 typeof(RectTransform),
                 typeof(RawImage)).GetComponent<RawImage>();
             compactImage.transform.SetParent(compactPanel.transform, false);
-            SetRect(compactImage.rectTransform, new Vector2(10f, -18f), new Vector2(84f, 84f));
-            compactName = CreateText(compactPanel.transform, string.Empty, 14, FontStyle.Bold, Color.white);
-            SetRect(compactName.rectTransform, new Vector2(8f, -114f), new Vector2(88f, 110f));
-            compactName.alignment = TextAnchor.UpperCenter;
+            SetRect(compactImage.rectTransform, new Vector2(16f, -18f), new Vector2(96f, 96f));
+            compactName = CreateText(compactPanel.transform, string.Empty, 20, FontStyle.Bold, Color.white);
+            SetRect(compactName.rectTransform, new Vector2(126f, -20f), new Vector2(188f, 88f));
+            compactName.alignment = TextAnchor.MiddleLeft;
+            compactName.horizontalOverflow = HorizontalWrapMode.Wrap;
+            compactName.verticalOverflow = VerticalWrapMode.Truncate;
+            compactName.resizeTextForBestFit = true;
+            compactName.resizeTextMinSize = 14;
+            compactName.resizeTextMaxSize = 20;
+            compactDetails = CreateText(
+                compactPanel.transform,
+                string.Empty,
+                16,
+                FontStyle.Normal,
+                new Color(0.72f, 0.90f, 0.92f, 1f));
+            SetRect(
+                compactDetails.rectTransform,
+                new Vector2(16f, -132f),
+                new Vector2(298f, 220f));
+            compactDetails.horizontalOverflow = HorizontalWrapMode.Wrap;
+            compactDetails.verticalOverflow = VerticalWrapMode.Truncate;
+            compactDetails.resizeTextForBestFit = true;
+            compactDetails.resizeTextMinSize = 12;
+            compactDetails.resizeTextMaxSize = 16;
             Button cancel = CreateButton(compactPanel.transform, "取消");
-            SetRect(cancel.GetComponent<RectTransform>(), new Vector2(8f, -244f), new Vector2(88f, 40f));
+            RectTransform cancelRect = cancel.GetComponent<RectTransform>();
+            cancelRect.anchorMin = new Vector2(0f, 0f);
+            cancelRect.anchorMax = new Vector2(1f, 0f);
+            cancelRect.pivot = new Vector2(0.5f, 0f);
+            cancelRect.anchoredPosition = new Vector2(0f, 16f);
+            cancelRect.sizeDelta = new Vector2(-32f, 42f);
             cancel.onClick.AddListener(CancelPlacement);
             compactPanel.SetActive(false);
 
@@ -1175,7 +1229,7 @@ namespace UnityPlanet.ModularAssembly
             selectionRect.anchorMax = new Vector2(1f, 0f);
             selectionRect.pivot = new Vector2(1f, 0f);
             selectionRect.anchoredPosition = new Vector2(-22f, 22f);
-            selectionRect.sizeDelta = new Vector2(310f, 142f);
+            selectionRect.sizeDelta = new Vector2(350f, 246f);
 
             selectionName = CreateText(
                 selectionPanel.transform,
@@ -1186,15 +1240,34 @@ namespace UnityPlanet.ModularAssembly
             SetRect(
                 selectionName.rectTransform,
                 new Vector2(16f, -14f),
-                new Vector2(278f, 58f));
+                new Vector2(318f, 42f));
+            selectionName.resizeTextForBestFit = true;
+            selectionName.resizeTextMinSize = 14;
+            selectionName.resizeTextMaxSize = 18;
+
+            selectionDetails = CreateText(
+                selectionPanel.transform,
+                string.Empty,
+                15,
+                FontStyle.Normal,
+                new Color(0.72f, 0.90f, 0.92f, 1f));
+            SetRect(
+                selectionDetails.rectTransform,
+                new Vector2(16f, -62f),
+                new Vector2(318f, 120f));
+            selectionDetails.horizontalOverflow = HorizontalWrapMode.Wrap;
+            selectionDetails.verticalOverflow = VerticalWrapMode.Truncate;
+            selectionDetails.resizeTextForBestFit = true;
+            selectionDetails.resizeTextMinSize = 11;
+            selectionDetails.resizeTextMaxSize = 15;
 
             selectionDeleteButton = CreateButton(
                 selectionPanel.transform,
                 "删除模块");
             SetRect(
                 selectionDeleteButton.GetComponent<RectTransform>(),
-                new Vector2(16f, -84f),
-                new Vector2(278f, 42f));
+                new Vector2(16f, -190f),
+                new Vector2(318f, 42f));
             selectionDeleteButton.onClick.AddListener(DeleteSelectedModule);
             selectionPanel.SetActive(false);
 
@@ -1481,7 +1554,14 @@ namespace UnityPlanet.ModularAssembly
                 cardImages[index].texture = thumbnails.TryGetValue(record.sourceId, out Texture2D texture)
                     ? texture
                     : Texture2D.grayTexture;
-                cardLabels[index].text = record.chineseName + "\n" + Footprint(record);
+                string cpuLabel = TryGetDefinition(
+                    record,
+                    out GridModuleDefinition definition)
+                    ? ModuleCpuBudget.Cost(definition).ToString()
+                    : "--";
+                cardLabels[index].text =
+                    record.chineseName + "\n" +
+                    Footprint(record) + "   CPU " + cpuLabel;
                 bool core = record.BehaviorKind == GridModuleBehaviorKind.Core;
                 card.interactable = !core;
                 if (!core)
@@ -1797,6 +1877,132 @@ namespace UnityPlanet.ModularAssembly
             return size != null && size.Length >= 3
                 ? size[0] + "×" + size[1] + "×" + size[2]
                 : "1×1×1";
+        }
+
+        private static string ModuleId(ModularContentRecord record)
+        {
+            return record == null || string.IsNullOrWhiteSpace(record.sourceId)
+                ? string.Empty
+                : "neox@" + record.sourceId.Replace("@", "_");
+        }
+
+        private bool TryGetDefinition(
+            ModularContentRecord record,
+            out GridModuleDefinition definition)
+        {
+            definition = null;
+            return controller?.Model?.Definitions != null &&
+                   controller.Model.Definitions.TryGetValue(
+                       ModuleId(record),
+                       out definition);
+        }
+
+        public static string BuildModuleDetails(
+            ModularContentRecord record,
+            GridModuleDefinition definition)
+        {
+            if (definition == null)
+            {
+                return "模块数据尚未加载";
+            }
+
+            Vector3Int size = definition.Footprint;
+            string summary =
+                "CPU 消耗  " + ModuleCpuBudget.Cost(definition) +
+                "    重量  " + definition.MassKg.ToString("0.#") + " kg" +
+                "\n占格  " + size.x + "×" + size.y + "×" + size.z +
+                "    耐久  " + definition.MaxIntegrity.ToString("0.#");
+            return summary + "\n" +
+                   BuildFunctionDetails(record, definition);
+        }
+
+        private static string BuildFunctionDetails(
+            ModularContentRecord record,
+            GridModuleDefinition definition)
+        {
+            GridModuleBehaviorKind behavior = record != null
+                ? record.BehaviorKind
+                : GridModuleBehaviorKind.None;
+            switch (behavior)
+            {
+                case GridModuleBehaviorKind.Core:
+                    return "功能：基础核心\n作用：飞船控制与模块连接";
+                case GridModuleBehaviorKind.Thruster:
+                    return "功能：推进器\n推力：" +
+                           FormatForce(definition.ThrustNewtons);
+                case GridModuleBehaviorKind.Wing:
+                    return "功能：机翼\n作用：提供升力并改善高速飞行";
+                case GridModuleBehaviorKind.ControlSurface:
+                    return "功能：控制翼\n作用：提供俯仰、偏航或滚转力矩";
+                case GridModuleBehaviorKind.Battery:
+                case GridModuleBehaviorKind.Energy:
+                    return "功能：能源模块\n能源容量：" +
+                           definition.EnergyCapacity.ToString("0.#");
+                case GridModuleBehaviorKind.Shield:
+                case GridModuleBehaviorKind.ForceField:
+                    return "功能：防护模块\n持续能耗：" +
+                           definition.EnergyCost.ToString("0.#");
+                case GridModuleBehaviorKind.Repair:
+                    return "功能：维修模块\n作用：修复受损飞船模块";
+                case GridModuleBehaviorKind.EMP:
+                    return "功能：EMP 模块\n作用：干扰敌方系统";
+                case GridModuleBehaviorKind.Radar:
+                    return "功能：雷达\n作用：探测和锁定目标";
+                case GridModuleBehaviorKind.Drone:
+                    return "功能：无人机模块\n作用：提供辅助作战能力";
+                case GridModuleBehaviorKind.Wheel:
+                case GridModuleBehaviorKind.Track:
+                case GridModuleBehaviorKind.Leg:
+                    return "功能：地面移动\n作用：提供地面驱动力";
+                case GridModuleBehaviorKind.Hover:
+                    return "功能：悬浮推进\n推力：" +
+                           FormatForce(definition.ThrustNewtons);
+            }
+
+            if (behavior >= GridModuleBehaviorKind.KineticRapid &&
+                behavior <= GridModuleBehaviorKind.Saw)
+            {
+                string sourceId = record?.sourceId ?? definition.ModuleId;
+                WeaponProfile profile = WeaponProfileLibrary.Resolve(
+                    sourceId,
+                    behavior);
+                return "功能：武器\n伤害：" +
+                       profile.damage.ToString("0.#") +
+                       "    射速：" +
+                       profile.shotsPerSecond.ToString("0.#") + "/秒";
+            }
+
+            switch (definition.Category)
+            {
+                case GridModuleCategory.Core:
+                    return "功能：基础核心\n作用：飞船控制与模块连接";
+                case GridModuleCategory.Armor:
+                    return "功能：装甲\n作用：吸收伤害并保护内部模块";
+                case GridModuleCategory.Battery:
+                    return "功能：能源模块\n能源容量：" +
+                           definition.EnergyCapacity.ToString("0.#");
+                case GridModuleCategory.MainThruster:
+                case GridModuleCategory.RcsThruster:
+                    return "功能：推进器\n推力：" +
+                           FormatForce(definition.ThrustNewtons);
+                case GridModuleCategory.KineticWeapon:
+                    WeaponProfile profile = WeaponProfileLibrary.Resolve(
+                        definition.ModuleId,
+                        GridModuleBehaviorKind.None);
+                    return "功能：武器\n伤害：" +
+                           profile.damage.ToString("0.#") +
+                           "    射速：" +
+                           profile.shotsPerSecond.ToString("0.#") + "/秒";
+                default:
+                    return "功能：结构件\n作用：承载、连接并保护飞船";
+            }
+        }
+
+        private static string FormatForce(float newtons)
+        {
+            return Mathf.Abs(newtons) >= 1000f
+                ? (newtons / 1000f).ToString("0.#") + " kN"
+                : newtons.ToString("0") + " N";
         }
 
         private void RefreshCategoryColors()

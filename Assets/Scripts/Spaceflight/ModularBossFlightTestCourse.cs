@@ -98,7 +98,8 @@ public sealed class ModularBossFlightTestCourse : MonoBehaviour
 
     [SerializeField, Range(0, 5)] int difficultyTier;
     [SerializeField] int seed = 7319;
-    [SerializeField] bool runContinuously = true;
+    [Tooltip("仅在城市参数调节器或 Boss 检测工具中明确选择后启用；测试场景默认只观察环境陷阱。")]
+    [SerializeField] bool runContinuously;
     [SerializeField, Min(1f)] float loopRestartDelaySeconds = 4f;
 
     readonly List<GridModuleDefinition> definitions =
@@ -228,7 +229,7 @@ public sealed class ModularBossFlightTestCourse : MonoBehaviour
     {
         if (!Application.isPlaying)
         {
-            lastReport = "进入 Play Mode 后会在当前场景自动开始并循环，无需点击单次试飞按钮。";
+            lastReport = "请在城市参数调节器或 Boss 检测工具中明确选择 Boss 飞行检测。";
             return;
         }
         StopAllCoroutines();

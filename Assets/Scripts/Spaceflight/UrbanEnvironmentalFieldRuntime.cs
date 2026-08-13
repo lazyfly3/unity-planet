@@ -515,7 +515,10 @@ namespace UnityPlanet.CityPcg
                                       ? 48f
                                       : 0f) -
                                   impactDistance * 0.35f -
-                                  Mathf.Abs(radius - targetRadius) * 0.68f -
+                                  // 半径偏好是策划明确输入，必须压过
+                                  // “长道路天然得分高”的次要偏置，否则
+                                  // 内圈/外圈调节会选到同一条风廊。
+                                  Mathf.Abs(radius - targetRadius) * 2.0f -
                                   outsidePreferredRange * 2.2f -
                                   Mathf.Max(
                                       0f,
@@ -700,7 +703,10 @@ namespace UnityPlanet.CityPcg
                     Vector3.up);
                 float distance = Vector3.Dot(delta, direction) - extentAlong;
                 float across = Mathf.Abs(Vector3.Dot(delta, side));
-                if (distance < -8f || distance > 72f ||
+                // 区块贪心会把部分道路尽端保留成暴露格；风廊仍可
+                // 沿道路延伸到相邻地块的真实立面，不能只搜索原来
+                // 单地块尺度的72米，否则高危开放城市会丢失陷阱数。
+                if (distance < -8f || distance > 144f ||
                     across > roadWidth * 0.45f + extentAcross * 0.55f ||
                     distance >= facadeDistance)
                 {
@@ -1018,7 +1024,8 @@ namespace UnityPlanet.CityPcg
                     length),
                 seed ^ Mathf.RoundToInt(
                     road.start.x * 17f + road.start.z * 31f +
-                    road.end.x * 43f + road.end.z * 59f));
+                    road.end.x * 43f + road.end.z * 59f),
+                settings.naturalStreetGaleStrength);
             fields.Add(field);
 
             float halfWidth = field.LocalSize.x * 0.5f;
@@ -1453,9 +1460,18 @@ namespace UnityPlanet.CityPcg
 
         public void ConfigureNaturalWind(Vector3 size, int seed)
         {
+            ConfigureNaturalWind(size, seed, 1f);
+        }
+
+        public void ConfigureNaturalWind(
+            Vector3 size,
+            int seed,
+            float strength)
+        {
             kind = UrbanEnvironmentalFieldKind.NaturalStreetGale;
             localSize = SanitizeSize(size);
             stableSeed = seed;
+            forceMultiplier = Mathf.Clamp(strength, 0.25f, 1.5f);
             controlMode = UrbanEnvironmentalFieldControlMode.Automatic;
             state = UrbanEnvironmentalFieldState.Dormant;
             nextStateAt = Time.time + 4.5f +

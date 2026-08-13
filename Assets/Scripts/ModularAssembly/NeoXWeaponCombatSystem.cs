@@ -160,6 +160,17 @@ namespace UnityPlanet.ModularAssembly
                 : view != null && view.Record != null
                     ? view.Record.Definition.ModuleId
                     : string.Empty;
+            return Resolve(
+                sourceId,
+                behavior != null
+                    ? behavior.BehaviorKind
+                    : GridModuleBehaviorKind.None);
+        }
+
+        public static WeaponProfile Resolve(
+            string sourceId,
+            GridModuleBehaviorKind behaviorKind)
+        {
             string id = (sourceId ?? string.Empty).ToLowerInvariant();
             if (id.Contains("missile_fighter_522"))
                 return FighterMissile(sourceId);
@@ -179,25 +190,22 @@ namespace UnityPlanet.ModularAssembly
                 return Gatling(sourceId);
             if (id.Contains("machinegun_111"))
                 return MachineGun(sourceId);
-            if (behavior != null)
+            switch (behaviorKind)
             {
-                switch (behavior.BehaviorKind)
-                {
-                    case GridModuleBehaviorKind.Gatling:
-                        return Gatling(sourceId);
-                    case GridModuleBehaviorKind.Cannon:
-                        return AntiAir(sourceId);
-                    case GridModuleBehaviorKind.SniperCannon:
-                        return Sniper(sourceId);
-                    case GridModuleBehaviorKind.Rocket:
-                        return Rocket(sourceId);
-                    case GridModuleBehaviorKind.GuidedMissile:
-                        return GuidedMissile(sourceId);
-                    case GridModuleBehaviorKind.EnergyCannon:
-                        return EnergyCannon(sourceId);
-                    case GridModuleBehaviorKind.Laser:
-                        return HeavyLaser(sourceId);
-                }
+                case GridModuleBehaviorKind.Gatling:
+                    return Gatling(sourceId);
+                case GridModuleBehaviorKind.Cannon:
+                    return AntiAir(sourceId);
+                case GridModuleBehaviorKind.SniperCannon:
+                    return Sniper(sourceId);
+                case GridModuleBehaviorKind.Rocket:
+                    return Rocket(sourceId);
+                case GridModuleBehaviorKind.GuidedMissile:
+                    return GuidedMissile(sourceId);
+                case GridModuleBehaviorKind.EnergyCannon:
+                    return EnergyCannon(sourceId);
+                case GridModuleBehaviorKind.Laser:
+                    return HeavyLaser(sourceId);
             }
             return MachineGun(sourceId);
         }

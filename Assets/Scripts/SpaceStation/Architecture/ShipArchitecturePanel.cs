@@ -256,9 +256,9 @@ namespace UnityPlanet.SpaceStation.Architecture
                 return;
 
             int level = ShipArchitectureProgressService.GetLevel(view.Branch);
-            int capacity = ShipArchitectureProgressService.GetCapacity(
-                view.Branch,
-                level);
+            int capacity =
+                ShipArchitectureProgressService.GetCurrentCapacity(
+                    view.Branch);
             string unit = view.Branch ==
                 ShipArchitectureBranch.ModuleCapacity
                     ? "模块"
@@ -287,11 +287,17 @@ namespace UnityPlanet.SpaceStation.Architecture
                     unlocked,
                     current,
                     terminal);
-                view.NodeLabels[index].text =
+                int tierCapacity =
                     ShipArchitectureProgressService.GetCapacity(
-                            view.Branch,
-                            index)
-                        .ToString("N0");
+                        view.Branch,
+                        index);
+                // A migrated save can sit between two values on the new
+                // curve. Show its preserved entitlement on the active node
+                // instead of falsely claiming that the player was reduced.
+                view.NodeLabels[index].text =
+                    (current
+                        ? Mathf.Max(tierCapacity, capacity)
+                        : tierCapacity).ToString("N0");
                 view.NodeLabels[index].color = current && terminal
                     ? Gold
                     : current

@@ -93,6 +93,7 @@ MonoBehaviour:
     enemyCableSwayAmplitude: 0.85
     cableSwayDuration: 1.05
     naturalStreetGaleCount: 1
+    naturalStreetGaleStrength: 1
     magneticCourtyardCount: 2
     environmentalTrapRandomness: 0.72
     environmentalTrapEdgeBias: 0.35

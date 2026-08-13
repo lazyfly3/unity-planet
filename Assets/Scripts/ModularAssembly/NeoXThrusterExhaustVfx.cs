@@ -94,9 +94,15 @@ namespace UnityPlanet.ModularAssembly
             if (effectRoot == null)
                 return;
 
-            Vector3 direction = module.WorldExhaustDirection;
-            if (direction.sqrMagnitude < 0.001f)
-                direction = transform.forward;
+            Vector3 physicalDirection = module.WorldExhaustDirection;
+            if (physicalDirection.sqrMagnitude < 0.001f)
+                physicalDirection = transform.forward;
+            // This source mesh models its visible nozzle on the opposite end
+            // from the shared logical thrust axis. Keep physics unchanged and
+            // correct only the exhaust presentation for this model.
+            Vector3 direction = style == ExhaustStyle.SmallRocket
+                ? -physicalDirection
+                : physicalDirection;
             direction.Normalize();
             Vector3 referenceUp =
                 Mathf.Abs(Vector3.Dot(direction, transform.up)) > 0.96f
@@ -107,8 +113,11 @@ namespace UnityPlanet.ModularAssembly
                 : style == ExhaustStyle.Propeller
                     ? 0.1f
                     : 0.14f;
+            Vector3 nozzlePosition = style == ExhaustStyle.SmallRocket
+                ? module.WorldOppositeExhaustPosition
+                : module.WorldExhaustPosition;
             effectRoot.SetPositionAndRotation(
-                module.WorldExhaustPosition +
+                nozzlePosition +
                 direction * nozzleClearance,
                 Quaternion.LookRotation(direction, referenceUp));
 

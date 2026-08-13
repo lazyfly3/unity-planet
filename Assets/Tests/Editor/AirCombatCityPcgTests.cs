@@ -113,7 +113,12 @@ public sealed class AirCombatCityPcgTests
                 building.StableId.StartsWith(
                     "infill-SmallClusterParcel",
                     StringComparison.Ordinal));
-            Assert.That(largeParcels, Is.GreaterThanOrEqualTo(100));
+            // 逐格难度生成会把一部分原来的通用大地块换成带独立
+            // stableId 的战术高度锚点。验收真实实体城的总体量，再
+            // 要求大复合地块仍占主体，避免用旧命名数量误判缩水。
+            Assert.That(destructibleBuildings.Length,
+                Is.GreaterThanOrEqualTo(160));
+            Assert.That(largeParcels, Is.GreaterThanOrEqualTo(80));
             Assert.That(largeParcels, Is.GreaterThanOrEqualTo(smallParcels * 2),
                 "Large parcels must form the city body; small parcels only fill gaps.");
             Assert.That(
@@ -485,7 +490,7 @@ public sealed class AirCombatCityPcgTests
     }
 
     [Test]
-    public void ReportedRuntimeClearanceSeedBuildsBothCollapseAmbushBridges()
+    public void ReportedRuntimeClearanceSeedKeepsSingleCityAndBuildsBothCollapseAmbushBridges()
     {
         GameObject template = AssetDatabase.LoadAssetAtPath<GameObject>(
             "Assets/Resources/PlanetSurface/UrbanCombatCityTemplate.prefab");
@@ -504,7 +509,7 @@ public sealed class AirCombatCityPcgTests
                 0,
                 898490944);
 
-            Assert.That(lab.Report.resolvedSeed, Is.EqualTo(-884632481));
+            Assert.That(lab.Report.resolvedSeed, Is.EqualTo(898490944));
             Assert.That(lab.HasValidPlan, Is.True, lab.LastSummary);
             Assert.That(lab.Report.skybridgeNetworkValid, Is.True);
             Assert.That(lab.Report.destructionAmbushBridgeCount,
@@ -520,7 +525,8 @@ public sealed class AirCombatCityPcgTests
                 .Where(item => item.name.Contains(
                     "collapse-candidate"))
                 .ToArray();
-            Assert.That(destructionBridges, Has.Length.EqualTo(2));
+            Assert.That(destructionBridges, Has.Length.GreaterThanOrEqualTo(2),
+                "两组坍塌伏击可以由多个可破坏桥段共同组成；权威组数由报告字段验证。");
             DarkCity2AssetDescriptor[] modularSpans = destructionBridges
                 .SelectMany(item => item.GetComponentsInChildren<
                     DarkCity2AssetDescriptor>(true))
@@ -1449,5 +1455,397 @@ public sealed class AirCombatCityPcgTests
             Is.GreaterThan(narrowReport.maximumRoadWidth));
         Assert.That(wideReport.minimumRoadWidth,
             Is.GreaterThanOrEqualTo(narrowReport.minimumRoadWidth));
+    }
+
+    [Test]
+    public void SurvivalCostKeepsSafeCellsCheapAndChoosesMinimumExposurePath()
+    {
+        float[] threat = { 0.80f, 0.70f, 0.10f, 0.20f };
+        bool[] flyable = { true, true, true, true };
+        var edges = new List<AirCombatGridSurvivalSolver.Edge>
+        {
+            new AirCombatGridSurvivalSolver.Edge
+                { from = 0, to = 1, travelSeconds = 1f },
+            new AirCombatGridSurvivalSolver.Edge
+                { from = 1, to = 2, travelSeconds = 1f },
+            new AirCombatGridSurvivalSolver.Edge
+                { from = 0, to = 3, travelSeconds = 10f }
+        };
+
+        AirCombatGridSurvivalSolver.Result[] result =
+            AirCombatGridSurvivalSolver.Solve(threat, flyable, edges);
+
+        Assert.That(result[0].targetIndex, Is.EqualTo(2));
+        Assert.That(result[0].pathCellCount, Is.EqualTo(2));
+        Assert.That(result[0].difficulty, Is.LessThan(threat[0]));
+        Assert.That(result[2].difficulty, Is.EqualTo(threat[2]).Within(0.0001f),
+            "安全格不应因为难以脱离而额外变难。");
+        Assert.That(result[2].pathCellCount, Is.Zero);
+    }
+
+    [Test]
+    public void CityGenerationUsesOneSeedAndBuildsBlocksFromCenterOutward()
+    {
+        var settings = new AirCombatCitySettings
+        {
+            seed = 7319,
+            mission = AirCombatCityMission.Clearance,
+            maximumAttempts = 4,
+            combatDifficulty = CombatCityDifficultyProfile.CreateForTier(
+                2,
+                AirCombatCityMission.Clearance)
+        };
+
+        AirCombatCityPlan plan = AirCombatCityGenerator.Generate(
+            settings,
+            out AirCombatCityReport report);
+
+        Assert.That(plan.requestedSeed, Is.EqualTo(settings.seed));
+        Assert.That(plan.resolvedSeed, Is.EqualTo(settings.seed));
+        Assert.That(report.attempts, Is.EqualTo(1),
+            "局部修正不能再被记成多座候选城市。");
+        Assert.That(plan.tacticalBlocks.Count, Is.EqualTo(64));
+        CombatCityBlockPlan[] ordered = plan.tacticalBlocks
+            .OrderBy(block => block.generationOrder)
+            .ToArray();
+        float previousRing = -1f;
+        var generatedCoordinates = new HashSet<Vector2Int>();
+        for (int index = 0; index < ordered.Length; index++)
+        {
+            CombatCityBlockPlan block = ordered[index];
+            float ring = Mathf.Max(
+                Mathf.Abs(block.gridX - 3.5f),
+                Mathf.Abs(block.gridZ - 3.5f));
+            Assert.That(ring + 0.0001f, Is.GreaterThanOrEqualTo(previousRing));
+            previousRing = ring;
+            Assert.That(block.generatedForDifficulty, Is.True);
+            bool perimeter = block.gridX == 0 || block.gridZ == 0 ||
+                             block.gridX == 7 || block.gridZ == 7;
+            Assert.That(block.excludedFromDifficulty, Is.EqualTo(perimeter));
+            if (!perimeter)
+            {
+                bool firstGreedyBlock = generatedCoordinates.Count == 0;
+                bool touchesCommittedFrontier =
+                    generatedCoordinates.Contains(new Vector2Int(
+                        block.gridX - 1, block.gridZ)) ||
+                    generatedCoordinates.Contains(new Vector2Int(
+                        block.gridX + 1, block.gridZ)) ||
+                    generatedCoordinates.Contains(new Vector2Int(
+                        block.gridX, block.gridZ - 1)) ||
+                    generatedCoordinates.Contains(new Vector2Int(
+                        block.gridX, block.gridZ + 1));
+                Assert.That(firstGreedyBlock || touchesCommittedFrontier,
+                    Is.True,
+                    "每个新格必须从已提交城市的四邻接前沿扩张：" +
+                    block.stableId);
+                Assert.That(block.localCorrectionCount,
+                    Is.InRange(3, 5),
+                    "字段现在记录该格实际比较的贪心候选数。" );
+                Assert.That(float.IsNaN(block.greedyCandidateScore) ||
+                            float.IsInfinity(block.greedyCandidateScore),
+                    Is.False);
+                generatedCoordinates.Add(new Vector2Int(
+                    block.gridX, block.gridZ));
+            }
+        }
+    }
+
+    [Test]
+    public void GreedyGenerationFeedsGlobalBudgetIntoLaterNeighborBlocks()
+    {
+        var settings = new AirCombatCitySettings
+        {
+            seed = 7319,
+            mission = AirCombatCityMission.Clearance,
+            maximumAttempts = 10,
+            combatDifficulty = CombatCityDifficultyProfile.CreateForTier(
+                5,
+                AirCombatCityMission.Clearance)
+        };
+
+        AirCombatCityPlan plan = AirCombatCityGenerator.Generate(
+            settings,
+            out AirCombatCityReport report);
+        CombatCityBlockPlan[] greedy = plan.tacticalBlocks
+            .Where(block => !block.excludedFromDifficulty)
+            .OrderBy(block => block.generationOrder)
+            .ToArray();
+
+        Assert.That(greedy, Has.Length.EqualTo(36));
+        Assert.That(greedy.Any(block => Mathf.Abs(
+                block.greedyRequestedDifficulty -
+                block.targetDifficulty) > 0.01f),
+            Is.True,
+            "如果每格仍只读取开局固定目标，说明全局剩余预算没有接通。" );
+        Assert.That(greedy.Any(block => block.greedyCandidateOpenness >= 0.50f),
+            Is.True,
+            "最高档必须允许贪心器选择显著开放候选。" );
+        Assert.That(report.plannedAverageDifficulty,
+            Is.GreaterThan(0.50f));
+    }
+
+    [Test]
+    public void GreedyGenerationIsDeterministicIncludingChosenCandidates()
+    {
+        var settings = new AirCombatCitySettings
+        {
+            seed = 38995,
+            mission = AirCombatCityMission.Clearance,
+            maximumAttempts = 10,
+            combatDifficulty = CombatCityDifficultyProfile.CreateForTier(
+                4,
+                AirCombatCityMission.Clearance)
+        };
+
+        AirCombatCityPlan first = AirCombatCityGenerator.Generate(
+            settings,
+            out AirCombatCityReport firstReport);
+        AirCombatCityPlan second = AirCombatCityGenerator.Generate(
+            settings,
+            out AirCombatCityReport secondReport);
+
+        Assert.That(secondReport.checksum, Is.EqualTo(firstReport.checksum));
+        for (int index = 0; index < first.tacticalBlocks.Count; index++)
+        {
+            Assert.That(second.tacticalBlocks[index].generationOrder,
+                Is.EqualTo(first.tacticalBlocks[index].generationOrder));
+            Assert.That(second.tacticalBlocks[index]
+                    .greedyCandidateOpenness,
+                Is.EqualTo(first.tacticalBlocks[index]
+                    .greedyCandidateOpenness).Within(0.0001f));
+            Assert.That(second.tacticalBlocks[index]
+                    .greedyRequestedDifficulty,
+                Is.EqualTo(first.tacticalBlocks[index]
+                    .greedyRequestedDifficulty).Within(0.0001f));
+        }
+    }
+
+    [Test]
+    public void SameSeedProducesHigherSpatialDifficultyAtHighestTier()
+    {
+        var low = new AirCombatCitySettings
+        {
+            seed = 7319,
+            mission = AirCombatCityMission.Clearance,
+            maximumAttempts = 3,
+            combatDifficulty = CombatCityDifficultyProfile.CreateForTier(
+                0,
+                AirCombatCityMission.Clearance)
+        };
+        var high = new AirCombatCitySettings
+        {
+            seed = low.seed,
+            mission = low.mission,
+            maximumAttempts = low.maximumAttempts,
+            combatDifficulty = CombatCityDifficultyProfile.CreateForTier(
+                5,
+                AirCombatCityMission.Clearance)
+        };
+
+        AirCombatCityGenerator.Generate(low, out AirCombatCityReport lowReport);
+        AirCombatCityGenerator.Generate(high,
+            out AirCombatCityReport highReport);
+
+        Assert.That(lowReport.cityDifficultyTargetMet, Is.True);
+        Assert.That(highReport.cityDifficultyTargetMet, Is.True);
+        Assert.That(highReport.plannedAverageDifficulty,
+            Is.GreaterThan(lowReport.plannedAverageDifficulty + 0.08f));
+        Assert.That(highReport.plannedHighRiskCellRatio,
+            Is.GreaterThan(lowReport.plannedHighRiskCellRatio));
+    }
+
+    [Test]
+    public void GreedyShowcaseTraceReplaysCenterOutAndRecalculatesOldBlocks()
+    {
+        var settings = new AirCombatCitySettings
+        {
+            seed = 7319,
+            mission = AirCombatCityMission.Clearance,
+            maximumAttempts = 10,
+            combatDifficulty = CombatCityDifficultyProfile.CreateForTier(
+                4,
+                AirCombatCityMission.Clearance)
+        };
+        AirCombatCityPlan plan = AirCombatCityGenerator.Generate(
+            settings,
+            out AirCombatCityReport report);
+        int buildingCount = plan.buildings.Count;
+        bool[] generatedBefore = plan.tacticalBlocks
+            .Select(block => block.generatedForDifficulty)
+            .ToArray();
+
+        CityGreedyGenerationShowcase.Trace trace =
+            CityGreedyGenerationShowcase.BuildTrace(settings, plan);
+
+        Assert.That(trace, Is.Not.Null);
+        Assert.That(trace.steps, Has.Count.EqualTo(36));
+        float nearestCenterDistance = plan.tacticalBlocks
+            .Where(block => !block.excludedFromDifficulty)
+            .Min(block => new Vector2(
+                block.bounds.center.x,
+                block.bounds.center.z).sqrMagnitude);
+        float firstCenterDistance = new Vector2(
+            trace.steps[0].block.bounds.center.x,
+            trace.steps[0].block.bounds.center.z).sqrMagnitude;
+        Assert.That(firstCenterDistance,
+            Is.EqualTo(nearestCenterDistance).Within(0.01f),
+            "逐格回放必须从离城市中心最近的内部区块开始。" );
+        var committed = new HashSet<Vector2Int>();
+        bool sawOldCellRecalculated = false;
+        for (int index = 0; index < trace.steps.Count; index++)
+        {
+            CityGreedyGenerationShowcase.Step step = trace.steps[index];
+            Vector2Int coordinate = new Vector2Int(
+                step.block.gridX, step.block.gridZ);
+            if (index > 0)
+            {
+                bool adjacent = committed.Any(previous =>
+                    Mathf.Abs(previous.x - coordinate.x) +
+                    Mathf.Abs(previous.y - coordinate.y) == 1);
+                Assert.That(adjacent, Is.True,
+                    "演示步骤必须保持正式算法的四邻接扩张顺序。" );
+            }
+            committed.Add(coordinate);
+            Assert.That(step.candidatesTested, Is.InRange(3, 5));
+            Assert.That(float.IsNaN(step.cityDifficultyAfter) ||
+                        float.IsInfinity(step.cityDifficultyAfter),
+                Is.False);
+            if (step.recalculatedCells.Any(change =>
+                    Mathf.Abs(change.Delta) >= 0.005f))
+            {
+                sawOldCellRecalculated = true;
+            }
+        }
+        Assert.That(sawOldCellRecalculated, Is.True,
+            "加入新格后必须展示至少一次旧格危险度的重新计算。" );
+        Assert.That(plan.buildings, Has.Count.EqualTo(buildingCount),
+            "分析回放不得改写正式城市规划。" );
+        for (int index = 0; index < plan.tacticalBlocks.Count; index++)
+        {
+            Assert.That(plan.tacticalBlocks[index].generatedForDifficulty,
+                Is.EqualTo(generatedBefore[index]),
+                "分析结束后必须恢复每个区块的正式生成状态。" );
+        }
+        Assert.That(report.valid, Is.True, report.failureReason);
+    }
+
+    [TestCase(0.10f)]
+    [TestCase(0.50f)]
+    [TestCase(0.90f)]
+    public void ExplicitTargetDifficultyRoundTripsThroughFormalProfile(
+        float requested)
+    {
+        CombatCityDifficultyProfile profile =
+            CombatCityDifficultyProfile.CreateForTargetDifficulty(
+                requested,
+                AirCombatCityMission.Clearance);
+
+        AirCombatCityDifficultyTarget target =
+            AirCombatCityDifficultyPcg.ResolveTarget(profile);
+
+        Assert.That(profile.useExplicitAverageDifficulty, Is.True);
+        Assert.That(target.averageDifficulty,
+            Is.EqualTo(requested).Within(0.0001f));
+        Assert.That(profile.navigationChallenge, Is.InRange(0f, 1f));
+        Assert.That(profile.exposurePressure, Is.InRange(0f, 1f));
+        Assert.That(profile.recoveryGenerosity, Is.InRange(0f, 1f));
+    }
+
+    [Test]
+    public void ExplicitNinetyPercentOpenCityCanReachHighThreatDomain()
+    {
+        var settings = new AirCombatCitySettings
+        {
+            seed = 7319,
+            mission = AirCombatCityMission.Clearance,
+            maximumAttempts = 5,
+            combatDifficulty = CombatCityDifficultyProfile
+                .CreateForTargetDifficulty(0.90f,
+                    AirCombatCityMission.Clearance)
+        };
+
+        AirCombatCityPlan plan = AirCombatCityGenerator.Generate(
+            settings,
+            out AirCombatCityReport report);
+
+        Assert.That(report.plannedAverageDifficulty,
+            Is.GreaterThanOrEqualTo(0.80f),
+            "90%目标必须能由区块主体接近，不能等到风场阶段伪造危险度。");
+        Assert.That(report.plannedHighRiskCellRatio,
+            Is.GreaterThanOrEqualTo(0.80f));
+        Assert.That(report.cityDifficultyTargetMet,
+            Is.True, report.failureReason);
+        Assert.That(plan.tacticalBlocks.Count(block =>
+                !block.excludedFromDifficulty &&
+                block.generatedForDifficulty),
+            Is.EqualTo(36));
+    }
+
+    [Test]
+    public void CableOnlyAddsDelayWhenPlayerCorridorTouchesCurve()
+    {
+        var cable = new AirCombatRuntimeConnectionGeometry
+        {
+            localStart = new Vector3(50f, 60f, -20f),
+            localEnd = new Vector3(50f, 60f, 20f),
+            localPoints = new[]
+            {
+                new Vector3(50f, 60f, -20f),
+                new Vector3(50f, 60f, 20f)
+            },
+            physicalRadius = 1.05f,
+            playerSlowdown = 0.28f
+        };
+
+        float hit = AirCombatCityDifficultyPcg.ApplyCableTraversalDelay(
+            new Vector3(0f, 60f, 0f),
+            new Vector3(100f, 60f, 0f),
+            9f,
+            2f,
+            new[] { cable });
+        float miss = AirCombatCityDifficultyPcg.ApplyCableTraversalDelay(
+            new Vector3(0f, 120f, 0f),
+            new Vector3(100f, 120f, 0f),
+            9f,
+            2f,
+            new[] { cable });
+
+        Assert.That(hit, Is.GreaterThan(2f));
+        Assert.That(miss, Is.EqualTo(2f).Within(0.0001f));
+    }
+
+    [Test]
+    public void WindEvaluatesBothDirectionsWithoutAssumingPlayerRoute()
+    {
+        var wind = new AirCombatRuntimeWindGeometry
+        {
+            localCenter = new Vector3(50f, 60f, 0f),
+            localDirection = Vector3.right,
+            size = new Vector3(60f, 120f, 140f),
+            strength = 1.5f
+        };
+        float tailwind = AirCombatCityDifficultyPcg
+            .ApplyWindTraversalModifier(
+                new Vector3(0f, 60f, 0f),
+                new Vector3(100f, 60f, 0f),
+                2f,
+                new[] { wind });
+        float headwind = AirCombatCityDifficultyPcg
+            .ApplyWindTraversalModifier(
+                new Vector3(100f, 60f, 0f),
+                new Vector3(0f, 60f, 0f),
+                2f,
+                new[] { wind });
+        float crosswind = AirCombatCityDifficultyPcg
+            .ApplyWindTraversalModifier(
+                new Vector3(50f, 60f, -50f),
+                new Vector3(50f, 60f, 50f),
+                2f,
+                new[] { wind });
+
+        Assert.That(tailwind, Is.LessThan(2f));
+        Assert.That(headwind, Is.GreaterThan(2f));
+        Assert.That(crosswind, Is.GreaterThan(2f));
+        Assert.That(headwind, Is.GreaterThan(crosswind));
     }
 }

@@ -196,10 +196,13 @@ namespace UnityPlanet.EditorTools
                     string label = cell.gridX + "," + cell.gridZ;
                     if (cell.flyable)
                     {
-                        label += "  难：" + difficulty.ChineseLevel + " " +
-                                 difficulty.score.ToString("P0") +
-                                 "\n来：" + CompactThreatDirections(cell) +
-                                 "\n避：" + CompactEvasion(cell, difficulty);
+                        label += cell.excludedFromDifficulty
+                            ? "  外围最高楼\n不计难度平均"
+                            : "  生存：" + difficulty.ChineseLevel + " " +
+                              difficulty.score.ToString("P0") +
+                              " / 目标" + cell.targetDifficulty.ToString("P0") +
+                              "\n来：" + CompactThreatDirections(cell) +
+                              "\n策：" + CompactSurvivalPath(difficulty);
                     }
                     else
                     {
@@ -574,17 +577,19 @@ namespace UnityPlanet.EditorTools
                                 selected, shownDirections,
                                 shownThreatenedVolume, shownFastestHit,
                                 HasFilteredCrossfire(selected));
+                        string difficultyText = selected.excludedFromDifficulty
+                            ? "外围最高楼边界｜参与遮挡与可达性，不计入难度平均"
+                            : "目标 " + selected.targetDifficulty.ToString("P0") +
+                              "｜生存难度 " + difficulty.score.ToString("P0") +
+                              "（" + difficulty.ChineseLevel + "）｜留守火力 " +
+                              difficulty.fireThreat.ToString("P0") +
+                              "\n" + CompactSurvivalPath(difficulty);
                         GUI.Label(
-                            new Rect(48f, 8f, panelWidth, 92f),
+                            new Rect(48f, 8f, panelWidth, 110f),
                             "当前方格 " + selected.gridX + "," +
                             selected.gridZ + "（" +
                             ChineseAltitude(analysis.altitudeLayer) + "）\n" +
-                            "综合难度 " + difficulty.score.ToString("P0") +
-                            "（" + difficulty.ChineseLevel + "）｜火力 " +
-                            difficulty.fireThreat.ToString("P0") +
-                            "｜脱离 " + difficulty.escapeDifficulty.ToString("P0") +
-                            "｜机动 " + difficulty.maneuverDifficulty.ToString("P0") +
-                            "\n" +
+                            difficultyText + "\n" +
                             ChineseViewMode(options.threatViewMode) + " " +
                             shownDirections + "向｜受威胁体积 " +
                             shownThreatenedVolume.ToString("P0") +
@@ -593,10 +598,7 @@ namespace UnityPlanet.EditorTools
                                 ? "没有能完成预警的射击窗"
                                 : "最早命中 " +
                                   shownFastestHit.ToString("0.0") +
-                                  "秒") +
-                            "｜有效脱离 " +
-                            difficulty.recommendedExitCount + "｜" +
-                            CompactEvasion(selected, difficulty),
+                                  "秒"),
                             SmallLabelStyle(Color.white));
                     }
                 }
@@ -609,7 +611,7 @@ namespace UnityPlanet.EditorTools
                         sceneView.position.height - 82f,
                         instructionWidth,
                         64f),
-                    "底色：绿色容易｜黄色中等｜橙色困难｜红色高危；综合火力、脱离与机动\n" +
+                    "底色：绿色容易｜黄色中等｜橙色困难｜红色高危；取留守火力与最低风险转移中的较低生存成本\n" +
                     "按住控制键单击选格｜蓝橙网：有效枪位包络｜蓝线与叉：实体裁切/挡枪｜红橙短线：弹道｜绿线：转移\n" +
                     "参考机宽 " + analysis.referenceShipWidth.ToString("0.#") +
                     "米｜结果为只读规划诊断，不是开火授权",
@@ -626,7 +628,9 @@ namespace UnityPlanet.EditorTools
         {
             if (!cell.flyable)
                 return new Color(0.16f, 0.16f, 0.18f, 0.35f);
-            if (difficulty.score >= 0.68f)
+            if (cell.excludedFromDifficulty)
+                return new Color(0.25f, 0.30f, 0.36f, 0.18f);
+            if (difficulty.score >= 0.58f)
                 return new Color(1f, 0.12f, 0.08f, 0.27f);
             if (difficulty.score >= 0.40f)
                 return new Color(1f, 0.44f, 0.08f, 0.24f);
@@ -1076,6 +1080,18 @@ namespace UnityPlanet.EditorTools
                         best.endWorldPosition));
             return direction + " " + best.travelSeconds.ToString("0.0") +
                    "秒";
+        }
+
+        static string CompactSurvivalPath(
+            EdpcgGridDifficultyBreakdown difficulty)
+        {
+            if (difficulty.minimumRiskPathCellCount <= 0)
+                return "留守优于转移";
+            return "最低风险转移 " +
+                   difficulty.minimumRiskPathCellCount + "格｜" +
+                   difficulty.minimumRiskPathSeconds.ToString("0.0") +
+                   "秒｜沿途暴露 " +
+                   difficulty.minimumRiskPathExposure.ToString("0.00");
         }
 
         static string ChineseSectorShort(int sector)

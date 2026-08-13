@@ -498,7 +498,12 @@ namespace UnityPlanet.ModularAssembly
                     // atmosphere and actuator authority. It is not a consumer
                     // of the weapon/active-function construction energy pool.
                     value.energyCost = 0f;
-                    value.thrust = 6000f;
+                    value.thrust =
+                        NeoXThrusterPhysicsProfile.TryResolve(
+                            record.sourceId ?? record.neoXId,
+                            out NeoXThrusterPhysicsProfile profile)
+                            ? profile.MaximumForce
+                            : 6000f;
                 }
                 else if (behavior == GridModuleBehaviorKind.Battery || behavior == GridModuleBehaviorKind.Energy)
                 {

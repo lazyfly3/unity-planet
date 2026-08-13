@@ -231,7 +231,9 @@ namespace UnityPlanet.CityPcg
                 if (HasValidPlan)
                 {
                     RebuildCurrentPlan();
-                    accepted = HasValidPlan && report.skybridgeNetworkValid;
+                    accepted = HasValidPlan && report.skybridgeNetworkValid &&
+                               report.finalDifficultyEvaluated &&
+                               report.finalDifficultyTargetMet;
                 }
             }
             finally
@@ -391,17 +393,20 @@ namespace UnityPlanet.CityPcg
             BuildBlockInfill();
             BuildTacticalCloseBuildingPairs();
             EnsureDestructionBridgeAnchors();
+            BuildUrbanDetails();
             float geometryBuildMilliseconds = (float)(
                 totalBuildTimer.Elapsed.TotalMilliseconds - stageStarted);
 
             stageStarted = totalBuildTimer.Elapsed.TotalMilliseconds;
+            // 主体道路、建筑、伴生楼和装饰全部稳定后，才允许末段
+            // 战术修正进入场景。连廊先复核三维遮挡/净空，电线随后
+            // 只增加触碰减速；风场预览与正式风场都是最后一层。
             BuildSkybridges();
             BuildAerialCableLinks();
             float connectionBuildMilliseconds = (float)(
                 totalBuildTimer.Elapsed.TotalMilliseconds - stageStarted);
 
             stageStarted = totalBuildTimer.Elapsed.TotalMilliseconds;
-            BuildUrbanDetails();
             BuildEnvironmentalTrapPreview();
             if (buildVisualBackground)
                 BuildBackgroundSkyline();
@@ -489,8 +494,13 @@ namespace UnityPlanet.CityPcg
                 end.y = source.centerY;
                 bridgeGeometry[index] = new AirCombatRuntimeConnectionGeometry
                 {
+                    stableId = "skybridge." + index.ToString("D3"),
                     localStart = start,
-                    localEnd = end
+                    localEnd = end,
+                    localPoints = new[] { start, end },
+                    physicalRadius = 4.5f,
+                    bossTactical = source.bossTactical,
+                    destructionCritical = source.destructionCritical
                 };
             }
 
@@ -503,9 +513,82 @@ namespace UnityPlanet.CityPcg
                 BuiltCableSegment source = runtimeBuiltCableSegments[index];
                 cableGeometry[index] = new AirCombatRuntimeConnectionGeometry
                 {
+                    stableId = "cable." + index.ToString("D2"),
                     localStart = source.start,
-                    localEnd = source.end
+                    localEnd = source.end,
+                    localPoints = BuildCableCenterline(source),
+                    physicalRadius = settings.cableTriggerRadius,
+                    playerSlowdown = settings.playerCableSlowdown
                 };
+            }
+
+            AirCombatRuntimeWindGeometry[] windGeometry =
+                Array.Empty<AirCombatRuntimeWindGeometry>();
+            if (TryResolvePlannedWindTrapGeometry(
+                    out string[] windIds,
+                    out Vector3[] windCenters,
+                    out Vector3[] windDirections,
+                    out Vector3[] windSizes))
+            {
+                windGeometry = new AirCombatRuntimeWindGeometry[
+                    windCenters.Length];
+                for (int index = 0; index < windGeometry.Length; index++)
+                {
+                    windGeometry[index] = new AirCombatRuntimeWindGeometry
+                    {
+                        stableId = windIds[index],
+                        localCenter = windCenters[index],
+                        localDirection = windDirections[index],
+                        size = windSizes[index],
+                        strength = settings.naturalStreetGaleStrength
+                    };
+                }
+            }
+
+            if (windGeometry.Length > 0)
+            {
+                float target = AirCombatCityDifficultyPcg.ResolveTarget(
+                    settings.Difficulty).averageDifficulty;
+                float bestStrength = settings.naturalStreetGaleStrength;
+                float bestError = float.PositiveInfinity;
+                float[] candidates = { 0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f };
+                for (int candidateIndex = 0;
+                     candidateIndex < candidates.Length;
+                     candidateIndex++)
+                {
+                    float strength = candidates[candidateIndex];
+                    for (int windIndex = 0;
+                         windIndex < windGeometry.Length;
+                         windIndex++)
+                    {
+                        windGeometry[windIndex].strength = strength;
+                    }
+                    var trialSnapshot = new AirCombatCityRuntimeGeometrySnapshot
+                    {
+                        requestedSeed = plan?.requestedSeed ?? settings.seed,
+                        resolvedSeed = plan?.resolvedSeed ?? settings.seed,
+                        plannedBuildingCount = plan?.buildings?.Count ?? 0,
+                        instantiatedBuildingCount = buildingGeometry.Length,
+                        buildings = buildingGeometry,
+                        skybridges = bridgeGeometry,
+                        aerialCables = cableGeometry,
+                        winds = windGeometry
+                    };
+                    float value = AirCombatCityDifficultyPcg.Evaluate(
+                        settings, plan, trialSnapshot).averageDifficulty;
+                    float error = Mathf.Abs(value - target);
+                    if (error + 0.0001f >= bestError)
+                        continue;
+                    bestError = error;
+                    bestStrength = strength;
+                }
+                settings.naturalStreetGaleStrength = bestStrength;
+                for (int windIndex = 0;
+                     windIndex < windGeometry.Length;
+                     windIndex++)
+                {
+                    windGeometry[windIndex].strength = bestStrength;
+                }
             }
 
             int routeCount = plan?.routes?.Count ?? 0;
@@ -588,9 +671,139 @@ namespace UnityPlanet.CityPcg
                     buildings = buildingGeometry,
                     skybridges = bridgeGeometry,
                     aerialCables = cableGeometry,
+                    winds = windGeometry,
                     routes = routeGeometry,
                     ingresses = ingressGeometry
                 };
+            AirCombatCityDifficultyEvaluation finalDifficulty =
+                AirCombatCityDifficultyPcg.Evaluate(
+                    settings,
+                    plan,
+                    runtimeGeometrySnapshot);
+            AirCombatCityDifficultyPcg.ApplyToReport(
+                finalDifficulty,
+                report,
+                true);
+            if (report != null && !finalDifficulty.targetMet)
+            {
+                report.valid = false;
+                report.failureReason =
+                    "最终实体城市改变了地块难度分布，未达到当前关卡目标。";
+            }
+        }
+
+        static Vector3[] BuildCableCenterline(BuiltCableSegment source)
+        {
+            const int pointCount = 17;
+            var points = new Vector3[pointCount];
+            for (int index = 0; index < pointCount; index++)
+            {
+                float t = index / (float)(pointCount - 1);
+                Vector3 point = Vector3.Lerp(source.start, source.end, t);
+                point.y -= Mathf.Sin(t * Mathf.PI) * source.sag;
+                points[index] = point;
+            }
+            return points;
+        }
+
+        AirCombatCityRuntimeGeometrySnapshot
+            BuildAdvisoryDifficultySnapshot(
+                bool includeCables,
+                bool includeWinds,
+                System.Collections.Generic.IList<BuiltBridgeSegment>
+                    bridgeOverride = null)
+        {
+            var buildings = new AirCombatRuntimeBuildingGeometry[
+                generatedBuildings.Count];
+            for (int index = 0; index < generatedBuildings.Count; index++)
+            {
+                GeneratedBuildingRecord source = generatedBuildings[index];
+                AirCombatBuildingLot lot = source?.lot;
+                buildings[index] = new AirCombatRuntimeBuildingGeometry
+                {
+                    stableId = lot?.stableId ?? string.Empty,
+                    localBounds = ResolveActualBuildingBounds(source),
+                    band = lot != null ? lot.band : AirCombatBuildingBand.Low,
+                    archetype = lot != null
+                        ? lot.archetype
+                        : AirCombatBuildingArchetype.LowBlock,
+                    clusterId = lot?.clusterId ?? 0,
+                    destructible = source?.destructible != null
+                };
+            }
+            System.Collections.Generic.IList<BuiltBridgeSegment>
+                bridgeSource = bridgeOverride ?? runtimeBuiltBridgeSegments;
+            var bridges = new AirCombatRuntimeConnectionGeometry[
+                bridgeSource.Count];
+            for (int index = 0; index < bridges.Length; index++)
+            {
+                BuiltBridgeSegment source = bridgeSource[index];
+                Vector3 start = source.start;
+                Vector3 end = source.end;
+                start.y = end.y = source.centerY;
+                bridges[index] = new AirCombatRuntimeConnectionGeometry
+                {
+                    stableId = "skybridge." + index.ToString("D3"),
+                    localStart = start,
+                    localEnd = end,
+                    localPoints = new[] { start, end },
+                    physicalRadius = 4.5f,
+                    bossTactical = source.bossTactical,
+                    destructionCritical = source.destructionCritical
+                };
+            }
+            AirCombatRuntimeConnectionGeometry[] cables =
+                Array.Empty<AirCombatRuntimeConnectionGeometry>();
+            if (includeCables)
+            {
+                cables = new AirCombatRuntimeConnectionGeometry[
+                    runtimeBuiltCableSegments.Count];
+                for (int index = 0; index < cables.Length; index++)
+                {
+                    BuiltCableSegment source = runtimeBuiltCableSegments[index];
+                    cables[index] = new AirCombatRuntimeConnectionGeometry
+                    {
+                        stableId = "cable." + index.ToString("D2"),
+                        localStart = source.start,
+                        localEnd = source.end,
+                        localPoints = BuildCableCenterline(source),
+                        physicalRadius = settings.cableTriggerRadius,
+                        playerSlowdown = settings.playerCableSlowdown
+                    };
+                }
+            }
+            AirCombatRuntimeWindGeometry[] winds =
+                Array.Empty<AirCombatRuntimeWindGeometry>();
+            if (includeWinds && TryResolvePlannedWindTrapGeometry(
+                    out string[] ids,
+                    out Vector3[] centers,
+                    out Vector3[] directions,
+                    out Vector3[] sizes))
+            {
+                winds = new AirCombatRuntimeWindGeometry[centers.Length];
+                for (int index = 0; index < winds.Length; index++)
+                {
+                    winds[index] = new AirCombatRuntimeWindGeometry
+                    {
+                        stableId = ids[index],
+                        localCenter = centers[index],
+                        localDirection = directions[index],
+                        size = sizes[index],
+                        strength = settings.naturalStreetGaleStrength
+                    };
+                }
+            }
+            return new AirCombatCityRuntimeGeometrySnapshot
+            {
+                requestedSeed = plan?.requestedSeed ?? settings.seed,
+                resolvedSeed = plan?.resolvedSeed ?? settings.seed,
+                plannedBuildingCount = plan?.buildings?.Count ?? 0,
+                instantiatedBuildingCount = buildings.Length,
+                buildings = buildings,
+                skybridges = bridges,
+                aerialCables = cables,
+                winds = winds
+            };
         }
 
         static void ApplySafeRuntimeStaticBatching(GameObject generated)
@@ -1730,8 +1943,8 @@ namespace UnityPlanet.CityPcg
                     Mathf.RoundToInt(right.z));
                 int leftRoll = PositiveStableModulo(leftStable, 100);
                 int rightRoll = PositiveStableModulo(rightStable, 100);
-                int leftClass = leftRoll < 10 ? 0 : leftRoll < 35 ? 1 : 2;
-                int rightClass = rightRoll < 10 ? 0 : rightRoll < 35 ? 1 : 2;
+                int leftClass = leftRoll < 6 ? 0 : leftRoll < 20 ? 1 : 2;
+                int rightClass = rightRoll < 6 ? 0 : rightRoll < 20 ? 1 : 2;
                 int parcelPriority = rightClass.CompareTo(leftClass);
                 if (parcelPriority != 0)
                     return parcelPriority;
@@ -1764,13 +1977,37 @@ namespace UnityPlanet.CityPcg
                     settings.seed + "|parcel|" +
                     Mathf.RoundToInt(candidate.x) + "|" +
                     Mathf.RoundToInt(candidate.z));
+                CombatCityBlockPlan tacticalBlock =
+                    CombatDrivenCityPcgPlanner.FindTacticalBlock(
+                        plan,
+                        new Vector2(candidate.x, candidate.z));
+                if (tacticalBlock != null &&
+                    !tacticalBlock.excludedFromDifficulty)
+                {
+                    // 实体填充只能细化贪心器已经选定的街区，不能把
+                    // “大面积开放”候选重新填成普通城市。开放度越高，
+                    // 允许进入该格的后处理填充概率越低；完全开放格
+                    // 保持为明确的暴露盆地。
+                    float retainedInfill = Mathf.Pow(
+                        1f - Mathf.Clamp01(
+                            tacticalBlock.greedyCandidateOpenness),
+                        2f);
+                    int infillRoll = PositiveStableModulo(
+                        stable / 53,
+                        1000);
+                    if (infillRoll >= Mathf.RoundToInt(
+                            retainedInfill * 1000f))
+                    {
+                        continue;
+                    }
+                }
                 int parcelRoll = PositiveStableModulo(stable, 100);
                 // This is an authored distribution, not three equal random
                 // buckets: large plots form the city body, standard plots
                 // articulate streets, and small plots only close residual gaps.
-                int parcelClass = parcelRoll < 10
+                int parcelClass = parcelRoll < 6
                     ? 0
-                    : parcelRoll < 35
+                    : parcelRoll < 20
                         ? 1
                         : 2;
                 string parcelLabel = parcelClass == 0
@@ -3331,6 +3568,11 @@ namespace UnityPlanet.CityPcg
                 }
             }
 
+            // 正式配额与 Boss 战术/破坏连廊在这里锁定。连廊影响是
+            // 非单调的（可能挡枪，也可能挡机动），最终完整复核会在
+            // 实体快照上一次完成；不在加载阶段逐座重算整城，避免
+            // 连接候选数乘以枪线查询造成数十秒尖峰。
+
             int achievedCrossBlock = lastCrossRoadBlockSkybridgeCount;
             int achievedIntraBlock = selected.Count - achievedCrossBlock;
             bool requestedCategoriesHavePhysicalResult =
@@ -3785,15 +4027,24 @@ namespace UnityPlanet.CityPcg
                 candidate.second));
             degree[candidate.first] = firstDegree + 1;
             degree[candidate.second] = secondDegree + 1;
-            built.Add(new BuiltBridgeSegment
-            {
-                start = candidate.firstSocket,
-                end = candidate.secondSocket,
-                centerY = candidate.centerY
-            });
+            built.Add(ToBuiltBridgeSegment(candidate));
             selected.Add(candidate);
             if (candidate.crossesRoadBlock)
                 lastCrossRoadBlockSkybridgeCount++;
+        }
+
+        static BuiltBridgeSegment ToBuiltBridgeSegment(
+            BridgeCandidate candidate)
+        {
+            return new BuiltBridgeSegment
+            {
+                start = candidate.firstSocket,
+                end = candidate.secondSocket,
+                centerY = candidate.centerY,
+                bossTactical = candidate.tacticalRole !=
+                               AirCombatSkybridgeRole.Ordinary,
+                destructionCritical = candidate.destructionAmbush
+            };
         }
 
         bool IntersectsMissionObjective(Vector3 start, Vector3 end)
@@ -3983,9 +4234,29 @@ namespace UnityPlanet.CityPcg
                 settings.aerialCableMaximumCount);
             float requestedCableCount = baseTargetCount *
                                         settings.aerialCableDensityMultiplier;
-            int targetCount = requestedCableCount >= int.MaxValue
+            int configuredMaximum = requestedCableCount >= int.MaxValue
                 ? int.MaxValue
                 : Mathf.CeilToInt(requestedCableCount);
+            configuredMaximum = Mathf.Min(configuredMaximum,
+                settings.aerialCableMaximumCount);
+            int configuredMinimum = Mathf.Min(configuredMaximum,
+                settings.aerialCableMinimumCount);
+            AirCombatCityDifficultyEvaluation beforeCables =
+                AirCombatCityDifficultyPcg.Evaluate(settings, plan,
+                    BuildAdvisoryDifficultySnapshot(false, false));
+            float targetDifficulty = AirCombatCityDifficultyPcg
+                .ResolveTarget(settings.Difficulty).averageDifficulty;
+            float remainingGap = targetDifficulty -
+                                 beforeCables.averageDifficulty;
+            // 电线不会挡枪，也不会把通道判死；它只会在路径真正
+            // 穿过触发曲线时延长暴露。因此数量对难度是单向微调：
+            // 当前偏低时靠近配置上限，当前偏高时保留配置下限。
+            float cableNeed = Mathf.InverseLerp(-0.08f, 0.08f,
+                remainingGap);
+            int targetCount = Mathf.RoundToInt(Mathf.Lerp(
+                configuredMinimum,
+                configuredMaximum,
+                cableNeed));
             for (int index = 0;
                  index < candidates.Count && built.Count < targetCount;
                  index++)
@@ -4013,7 +4284,8 @@ namespace UnityPlanet.CityPcg
                 built.Add(new BuiltCableSegment
                 {
                     start = candidate.start,
-                    end = candidate.end
+                    end = candidate.end,
+                    sag = candidate.sag
                 });
             }
             lastAerialCableCount = built.Count;
@@ -6783,12 +7055,15 @@ namespace UnityPlanet.CityPcg
             public Vector3 start;
             public Vector3 end;
             public float centerY;
+            public bool bossTactical;
+            public bool destructionCritical;
         }
 
         struct BuiltCableSegment
         {
             public Vector3 start;
             public Vector3 end;
+            public float sag;
         }
 
         void OnGUI()

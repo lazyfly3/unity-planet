@@ -50,6 +50,8 @@ namespace UnityPlanet.CityPcg
     [Serializable]
     public sealed class CombatCityDifficultyProfile
     {
+        [HideInInspector] public bool useExplicitAverageDifficulty;
+        [Range(0.1f, 0.9f)] public float explicitAverageDifficulty = 0.5f;
         [Range(0f, 1f)] public float navigationChallenge = 0.42f;
         [Range(0f, 1f)] public float combatPressure = 0.45f;
         [Range(0f, 1f)] public float exposurePressure = 0.42f;
@@ -66,6 +68,11 @@ namespace UnityPlanet.CityPcg
         {
             return new CombatCityDifficultyProfile
             {
+                useExplicitAverageDifficulty = useExplicitAverageDifficulty,
+                explicitAverageDifficulty = Mathf.Clamp(
+                    explicitAverageDifficulty,
+                    AirCombatCityDifficultyPcg.MinimumTargetDifficulty,
+                    AirCombatCityDifficultyPcg.MaximumTargetDifficulty),
                 navigationChallenge = Mathf.Clamp01(navigationChallenge),
                 combatPressure = Mathf.Clamp01(combatPressure),
                 exposurePressure = Mathf.Clamp01(exposurePressure),
@@ -88,6 +95,14 @@ namespace UnityPlanet.CityPcg
             AirCombatCityMission mission)
         {
             float t = Mathf.Clamp(difficultyTier, 0, 5) / 5f;
+            return CreateForNormalizedDifficulty(t, mission);
+        }
+
+        public static CombatCityDifficultyProfile CreateForNormalizedDifficulty(
+            float normalizedDifficulty,
+            AirCombatCityMission mission)
+        {
+            float t = Mathf.Clamp01(normalizedDifficulty);
             var result = new CombatCityDifficultyProfile
             {
                 navigationChallenge = Mathf.Lerp(0.20f, 0.82f, t),
@@ -109,6 +124,31 @@ namespace UnityPlanet.CityPcg
                 result.destructionUtility = Mathf.Clamp01(
                     result.destructionUtility + 0.08f);
             }
+            return result;
+        }
+
+        public static CombatCityDifficultyProfile CreateForTargetDifficulty(
+            float targetDifficulty,
+            AirCombatCityMission mission)
+        {
+            float challenge = Mathf.InverseLerp(
+                AirCombatCityDifficultyPcg.MinimumTargetDifficulty,
+                AirCombatCityDifficultyPcg.MaximumTargetDifficulty,
+                Mathf.Clamp(targetDifficulty,
+                    AirCombatCityDifficultyPcg.MinimumTargetDifficulty,
+                    AirCombatCityDifficultyPcg.MaximumTargetDifficulty));
+            CombatCityDifficultyProfile result =
+                CreateForNormalizedDifficulty(challenge, mission);
+            // 目标危险度是本次 PCG 的权威输入。两项都取同一个 challenge，
+            // 使 ResolveTarget 能精确还原用户输入；其他空间参数仍沿连续
+            // 难度曲线变化，避免只有枪线变了而道路、恢复区没有响应。
+            result.combatPressure = challenge;
+            result.exposurePressure = challenge;
+            result.useExplicitAverageDifficulty = true;
+            result.explicitAverageDifficulty = Mathf.Clamp(
+                targetDifficulty,
+                AirCombatCityDifficultyPcg.MinimumTargetDifficulty,
+                AirCombatCityDifficultyPcg.MaximumTargetDifficulty);
             return result;
         }
     }
@@ -366,6 +406,27 @@ namespace UnityPlanet.CityPcg
             BindOcclusionBuildings(settings, plan);
             BuildCombatBoundaryWall(settings, plan);
             BuildDestructionAmbush(settings, plan);
+            RepairOcclusionContractsAfterFeaturePlacement(settings, plan);
+        }
+
+        public static void RepairOcclusionContractsAfterFeaturePlacement(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan)
+        {
+            AirCombatFlightRoute route = FindRoute(plan,
+                "route.masked-flank");
+            if (route == null)
+                return;
+            var used = new HashSet<AirCombatBuildingLot>();
+            for (int index = 0; index < plan.buildings.Count; index++)
+            {
+                AirCombatBuildingLot building = plan.buildings[index];
+                if (building != null && building.clusterId == 1202)
+                    used.Add(building);
+            }
+            EnsureMeasuredOcclusionBreaks(settings, plan, route, used, 5);
+            EnsureOcclusionTowerQuota(settings, plan, route, used,
+                RequiredOcclusionTowerCount(settings));
         }
 
         public static void BuildTacticalBlockLayout(
@@ -373,6 +434,9 @@ namespace UnityPlanet.CityPcg
             AirCombatCityPlan plan)
         {
             plan.tacticalBlocks.Clear();
+            AirCombatCityDifficultyTarget difficultyTarget =
+                AirCombatCityDifficultyPcg.ResolveTarget(
+                    settings.Difficulty);
             float pitch = settings.buildingSpacing * 3f;
             float cityHalf = Mathf.Min(
                 settings.mapSize * 0.5f - 5.2f,
@@ -416,6 +480,26 @@ namespace UnityPlanet.CityPcg
                     out float roadScale,
                     out float densityScale,
                     out float heightScale);
+                float targetDifficulty =
+                    AirCombatCityDifficultyPcg.ResolveBlockTarget(
+                    difficultyTarget.averageDifficulty,
+                    role);
+                // 目标场先于建筑存在。低目标值通过更强遮挡实现，高目标值
+                // 通过更开放的火力窗口实现；道路/飞行走廊仍由硬约束保护。
+                float targetOffset = targetDifficulty -
+                                     difficultyTarget.averageDifficulty;
+                float globalCoverBias = 0.50f -
+                                        difficultyTarget.averageDifficulty;
+                densityScale = Mathf.Clamp(
+                    densityScale - targetOffset * 0.44f +
+                    globalCoverBias * 0.90f,
+                    0.52f,
+                    1.34f);
+                heightScale = Mathf.Clamp(
+                    heightScale - targetOffset * 0.36f +
+                    globalCoverBias * 0.80f,
+                    0.58f,
+                    1.32f);
                 plan.tacticalBlocks.Add(new CombatCityBlockPlan
                 {
                     stableId = "tactical-block." + x.ToString("D2") + "." +
@@ -431,7 +515,9 @@ namespace UnityPlanet.CityPcg
                             : "opportunity.maneuver.center",
                     roadWidthScale = roadScale,
                     buildingDensityScale = densityScale,
-                    buildingHeightScale = heightScale
+                    buildingHeightScale = heightScale,
+                    targetDifficulty = targetDifficulty,
+                    excludedFromDifficulty = perimeter
                 });
             }
 
@@ -983,7 +1069,7 @@ namespace UnityPlanet.CityPcg
                 {
                     AirCombatBuildingLot building = plan.buildings[i];
                     if (building.band == AirCombatBuildingBand.Facility ||
-                        building.clusterId >= 1200 ||
+                        IsReservedFeatureCluster(building) ||
                         used.Contains(building) ||
                         BuildingIntersectsRouteFootprint(building, route))
                     {
@@ -1024,7 +1110,9 @@ namespace UnityPlanet.CityPcg
             // physically broken.  Promoting existing lots preserves the road
             // and parcel rules; excluding every authored player route prevents
             // the extra height from turning a safe route into a hidden blocker.
-            EnsureMeasuredOcclusionBreaks(settings, plan, route, used, 4);
+            // 后续中央掩体和天际线修正仍可能合并一处测量断点，
+            // 构造阶段多保留一个，确保最终验证至少仍有4处。
+            EnsureMeasuredOcclusionBreaks(settings, plan, route, used, 5);
             EnsureOcclusionTowerQuota(
                 settings,
                 plan,
@@ -1102,13 +1190,15 @@ namespace UnityPlanet.CityPcg
             float minimumZ = Mathf.Min(route.points[2].z, route.points[3].z);
             float maximumZ = Mathf.Max(route.points[2].z, route.points[3].z);
             float lateralOffset = route.width * 0.5f + 54f;
-            float maximumDistance = settings.buildingSpacing * 2.5f;
+            // 单城市局部修正不能依赖“下一座候选城”补足配额。
+            // 搜索同一座城市内全部合法基础楼，但仍按距遮挡链目标的
+            // 距离排序并避开全部玩家航路；只有近处不足时才向外扩展。
             var candidates = new List<AirCombatBuildingLot>();
             for (int i = 0; i < plan.buildings.Count; i++)
             {
                 AirCombatBuildingLot building = plan.buildings[i];
                 if (building.band == AirCombatBuildingBand.Facility ||
-                    building.clusterId >= 900 ||
+                    IsReservedFeatureCluster(building) ||
                     used.Contains(building) ||
                     BuildingIntersectsAnyPlayerRoute(building, plan))
                 {
@@ -1134,8 +1224,7 @@ namespace UnityPlanet.CityPcg
                                 building.center.z),
                             target));
                 }
-                if (nearestTargetDistance <= maximumDistance)
-                    candidates.Add(building);
+                candidates.Add(building);
             }
 
             candidates.Sort((first, second) =>
@@ -1180,6 +1269,121 @@ namespace UnityPlanet.CityPcg
                 building.clusterId = 1202;
                 currentCount++;
             }
+
+            // 现有楼不足时，不换整城 Seed。沿遮挡路线到任务威胁点的
+            // 测量线构造少量合法塔位；同样避开道路、已有建筑和全部
+            // 玩家航路，仍由最终物理验证兜底。
+            Vector2 threat = new Vector2(plan.objective.x,
+                plan.objective.z);
+            for (int attempt = 0;
+                 attempt < 24 && currentCount < requiredCount;
+                 attempt++)
+            {
+                float t = (attempt + 0.5f) / 24f;
+                Vector3 routePoint = Vector3.Lerp(route.points[2],
+                    route.points[3], t);
+                AirCombatBuildingLot created =
+                    TryCreateOcclusionSightTower(
+                        settings,
+                        plan,
+                        new Vector2(routePoint.x, routePoint.z),
+                        threat,
+                        100 + attempt);
+                if (created == null)
+                    continue;
+                float height = Mathf.Max(
+                    created.size.y,
+                    settings.maximumAltitude + 24f +
+                    currentCount * 3f);
+                created.size = new Vector3(created.size.x,
+                    height, created.size.z);
+                created.center = new Vector3(created.center.x,
+                    height * 0.5f, created.center.z);
+                created.band = AirCombatBuildingBand.High;
+                created.archetype =
+                    AirCombatBuildingArchetype.CombatTower;
+                created.clusterId = 1202;
+                used.Add(created);
+                currentCount++;
+            }
+
+            for (int slot = currentCount;
+                 slot < requiredCount;
+                 slot++)
+            {
+                AirCombatBuildingLot created =
+                    TryCreateOcclusionQuotaTower(
+                        settings,
+                        plan,
+                        routeX,
+                        minimumZ,
+                        maximumZ,
+                        lateralOffset,
+                        slot);
+                if (created == null)
+                    break;
+                plan.buildings.Add(created);
+                used.Add(created);
+                currentCount++;
+            }
+        }
+
+        static AirCombatBuildingLot TryCreateOcclusionQuotaTower(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan,
+            float routeX,
+            float minimumZ,
+            float maximumZ,
+            float lateralOffset,
+            int slot)
+        {
+            Vector2 footprint = new Vector2(24f, 24f);
+            int side = slot & 1;
+            int row = (slot / 2) % 6;
+            Vector2 target = new Vector2(
+                routeX + (side == 0 ? -1f : 1f) * lateralOffset,
+                Mathf.Lerp(minimumZ, maximumZ, (row + 0.5f) / 6f));
+            for (int ring = 0; ring < 12; ring++)
+            for (int direction = 0; direction < 12; direction++)
+            {
+                float radius = ring * 18f;
+                float angle = direction * 30f * Mathf.Deg2Rad;
+                Vector2 point = target + new Vector2(
+                    Mathf.Sin(angle), Mathf.Cos(angle)) * radius;
+                if (Mathf.Abs(point.x) > settings.mapSize * 0.46f ||
+                    Mathf.Abs(point.y) > settings.mapSize * 0.46f ||
+                    OcclusionTowerHitsRoad(plan, point, footprint) ||
+                    OcclusionTowerHitsBuilding(plan, point, footprint))
+                {
+                    continue;
+                }
+                var candidate = new AirCombatBuildingLot
+                {
+                    stableId = "building.combat-region.occlusion-quota." +
+                               slot.ToString("D2"),
+                    center = new Vector3(point.x, 1f, point.y),
+                    size = new Vector3(footprint.x, 2f, footprint.y),
+                    yaw = 0f,
+                    band = AirCombatBuildingBand.Low,
+                    archetype = AirCombatBuildingArchetype.LowBlock,
+                    clusterId = 0,
+                    visualVariant = PositiveModulo(
+                        settings.seed + 1801 + slot * 43, 97)
+                };
+                if (BuildingIntersectsAnyPlayerRoute(candidate, plan))
+                    continue;
+                float height = settings.maximumAltitude + 24f + slot * 3f;
+                candidate.size = new Vector3(footprint.x,
+                    height, footprint.y);
+                candidate.center = new Vector3(point.x,
+                    height * 0.5f, point.y);
+                candidate.band = AirCombatBuildingBand.High;
+                candidate.archetype =
+                    AirCombatBuildingArchetype.CombatTower;
+                candidate.clusterId = 1202;
+                return candidate;
+            }
+            return null;
         }
 
         static float DistanceToOcclusionTowerTargets(
@@ -1305,7 +1509,7 @@ namespace UnityPlanet.CityPcg
                 {
                     AirCombatBuildingLot building = plan.buildings[i];
                     if (building.band == AirCombatBuildingBand.Facility ||
-                        building.clusterId >= 900 ||
+                        IsReservedFeatureCluster(building) ||
                         used.Contains(building) ||
                         BuildingIntersectsAnyPlayerRoute(building, plan) ||
                         !AirCombatCityGenerator.FootprintIntersectsCorridor(
@@ -1414,7 +1618,7 @@ namespace UnityPlanet.CityPcg
             {
                 AirCombatBuildingLot building = plan.buildings[i];
                 if (building.band == AirCombatBuildingBand.Facility ||
-                    building.clusterId >= 1200)
+                    IsReservedFeatureCluster(building))
                 {
                     continue;
                 }
@@ -1616,6 +1820,14 @@ namespace UnityPlanet.CityPcg
                     count++;
             }
             return count;
+        }
+
+        static bool IsReservedFeatureCluster(
+            AirCombatBuildingLot building)
+        {
+            return building != null &&
+                   building.clusterId >= 900 &&
+                   building.clusterId < 2000;
         }
 
         static int CountOcclusionSightBreaks(
