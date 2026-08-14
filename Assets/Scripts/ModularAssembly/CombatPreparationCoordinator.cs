@@ -23,8 +23,7 @@ namespace UnityPlanet.ModularAssembly
         private Coroutine warmupRoutine;
         private CombatPreparationState state;
         private float progress;
-        private string message = string.Empty;
-        private float dirtyAt = -1f;
+        private string message = "点击试飞或战斗测试后开始准备";
         private readonly System.Collections.Generic.List<PendingRequest>
             pendingRequests =
                 new System.Collections.Generic.List<PendingRequest>();
@@ -48,34 +47,15 @@ namespace UnityPlanet.ModularAssembly
             get { return message; }
         }
 
-        private void Awake()
-        {
-            environmentManager = FindObjectOfType<FlightEnvironmentManager>(true);
-            ResolveTargets();
-        }
-
-        private void Start()
-        {
-            MarkDirty();
-        }
-
-        private void Update()
-        {
-            if (dirtyAt >= 0f && Time.unscaledTime >= dirtyAt && warmupRoutine == null)
-            {
-                dirtyAt = -1f;
-                warmupRoutine = StartCoroutine(WarmupRoutine());
-            }
-        }
-
         public void MarkDirty()
         {
             state = CombatPreparationState.Idle;
+            progress = 0f;
+            message = "点击试飞或战斗测试后开始准备";
             commonReady = false;
             duelReady = false;
             hordeReady = false;
             requestedMode = CombatTestMode.Duel;
-            dirtyAt = Time.unscaledTime + 0.25f;
         }
 
         public void EnsureReady(Action<bool, string> callback)
@@ -114,7 +94,6 @@ namespace UnityPlanet.ModularAssembly
             }
             if (warmupRoutine == null)
             {
-                dirtyAt = -1f;
                 warmupRoutine = StartCoroutine(WarmupRoutine());
             }
         }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 
 namespace UnityPlanet.CityPcg
@@ -106,6 +107,43 @@ namespace UnityPlanet.CityPcg
         Attack = 7,
         Destruction = 8,
         CombatBoundary = 9
+    }
+
+    /// <summary>
+    /// 单个战术方格内部使用的确定性街区骨架。道路和合并缝先完成，
+    /// 骨架只负责在最终街区内部提供固定楼位、统一朝向与永久净空。
+    /// </summary>
+    public enum CombatCityBlockLayoutPattern
+    {
+        StreetPerimeterCourt = 0,
+        UCourtyard = 1,
+        ParallelStreetWalls = 2,
+        TwinTowerGate = 3,
+        OpenManeuverBasin = 4,
+        TerracedBuildingGroup = 5
+    }
+
+    /// <summary>
+    /// 从正式楼房目录逐个审计得到的规划尺寸。PCG 不持有 Prefab，
+    /// 只消费这一份无 Unity 对象引用的几何契约。
+    /// </summary>
+    [Serializable]
+    public sealed class AirCombatBuildingModelMetric
+    {
+        public AirCombatBuildingBand band;
+        public int catalogIndex;
+        public Vector3 authoredSize = Vector3.one;
+        public Vector3 colliderSize = Vector3.one;
+        public Vector3 colliderCenter;
+        [Range(0f, 1f)] public float groundSupportRatio = 1f;
+        [Range(0f, 1f)] public float bodyCoverage = 1f;
+
+        public float FootprintAspect => authoredSize.x /
+                                        Mathf.Max(0.1f, authoredSize.z);
+        public float Slenderness => authoredSize.y /
+                                   Mathf.Max(0.1f,
+                                       Mathf.Sqrt(authoredSize.x *
+                                                  authoredSize.z));
     }
 
     [Serializable]
@@ -226,6 +264,13 @@ namespace UnityPlanet.CityPcg
         public CombatCityDifficultyProfile Difficulty =>
             combatDifficulty ?? (combatDifficulty =
                 new CombatCityDifficultyProfile());
+
+        // 由 AirCombatCityPcgLab 在每次规划前从正式目录重新审计。
+        // 非序列化可避免把 Prefab 派生数据写进关卡资产；直接调用纯
+        // 生成器的测试仍会走保守的通用模型回退。
+        [NonSerialized]
+        public AirCombatBuildingModelMetric[] buildingModelMetrics =
+            Array.Empty<AirCombatBuildingModelMetric>();
 
         public float MainCorridorWidth => Mathf.Max(
             152f,
@@ -415,6 +460,8 @@ namespace UnityPlanet.CityPcg
                     environmentalTrapMinimumSeparation),
                 useVisualDistrictThemes = useVisualDistrictThemes,
                 removeUpperParameterLimits = removeUpperParameterLimits,
+                buildingModelMetrics = CloneBuildingModelMetrics(
+                    buildingModelMetrics),
                 combatDifficulty = (combatDifficulty ??
                     new CombatCityDifficultyProfile()).ValidatedCopy()
             };
@@ -463,6 +510,32 @@ namespace UnityPlanet.CityPcg
                     2600f);
             return copy;
         }
+
+        static AirCombatBuildingModelMetric[] CloneBuildingModelMetrics(
+            AirCombatBuildingModelMetric[] source)
+        {
+            if (source == null || source.Length == 0)
+                return Array.Empty<AirCombatBuildingModelMetric>();
+
+            var copy = new AirCombatBuildingModelMetric[source.Length];
+            for (int index = 0; index < source.Length; index++)
+            {
+                AirCombatBuildingModelMetric metric = source[index];
+                if (metric == null)
+                    continue;
+                copy[index] = new AirCombatBuildingModelMetric
+                {
+                    band = metric.band,
+                    catalogIndex = metric.catalogIndex,
+                    authoredSize = metric.authoredSize,
+                    colliderSize = metric.colliderSize,
+                    colliderCenter = metric.colliderCenter,
+                    groundSupportRatio = metric.groundSupportRatio,
+                    bodyCoverage = metric.bodyCoverage
+                };
+            }
+            return copy;
+        }
     }
 
     [Serializable]
@@ -498,12 +571,20 @@ namespace UnityPlanet.CityPcg
         public float greedyRemainingBudgetBefore;
         public float greedyRemainingBudgetAfter;
         public float greedyCandidateScore;
+        public float greedyPredictedCityBefore;
+        public float greedyPredictedCityAfter;
+        public bool greedyDirectionSatisfied = true;
         public int localCorrectionCount;
         public int generationOrder = -1;
         public bool generatedForDifficulty;
         public bool excludedFromDifficulty;
         public bool mergeEast;
         public bool mergeNorth;
+        public bool layoutResolved;
+        public CombatCityBlockLayoutPattern layoutPattern;
+        public float layoutYaw;
+        public int layoutSlotCount;
+        public int layoutOccupiedSlotCount;
     }
 
     [Serializable]
@@ -536,6 +617,10 @@ namespace UnityPlanet.CityPcg
         public AirCombatBuildingArchetype archetype;
         public int clusterId;
         public int visualVariant;
+        public int layoutSlotIndex = -1;
+        public CombatCityBlockLayoutPattern layoutPattern;
+        public Vector3 authoredModelSize;
+        public float horizontalModelScale = 1f;
     }
 
     [Serializable]
@@ -642,6 +727,7 @@ namespace UnityPlanet.CityPcg
         public int occlusionBoundaryTowerCount;
         public int combatBoundaryTowerCount;
         public int combatBoundaryAirWallCount;
+        public bool boundaryAirWallsValid;
         public int recoveryPocketOutputBlockedCount;
         public int occlusionMergedRoadSegments;
         public bool verticalEscapePhysical;
@@ -658,22 +744,33 @@ namespace UnityPlanet.CityPcg
         public bool tacticalBlockCoverageValid;
         public bool cityDifficultyEvaluated;
         public bool cityDifficultyTargetMet;
+        public bool cityDifficultyCoverageValid;
+        public bool cityDifficultyFallbackUsed;
         public float targetAverageDifficulty;
+        public float controlAverageDifficulty;
         public float plannedAverageDifficulty;
+        public float plannedDifficultyAbsoluteError;
         public float plannedSafeCellRatio;
         public float plannedHighRiskCellRatio;
         public float plannedDifficultyFitError;
         public int plannedMaximumCellsToLowerThreat;
         public bool finalDifficultyEvaluated;
         public bool finalDifficultyTargetMet;
+        public bool finalDifficultyCoverageValid;
+        public bool finalDifficultyFallbackUsed;
         public float finalAverageDifficulty;
+        public float finalDifficultyAbsoluteError;
         public float finalSafeCellRatio;
         public float finalHighRiskCellRatio;
         public float finalDifficultyFitError;
+        public bool hardPlayabilityValid;
+        public bool designTargetsMet;
+        public bool degraded;
+        public string degradationWarning = string.Empty;
         public string failureReason = string.Empty;
 
         public string Summary =>
-            (valid ? "通过" : "失败")
+            (valid ? (degraded ? "通过（降级）" : "通过") : "失败")
             + " | Seed " + resolvedSeed
             + " | 建筑 " + buildingCount
             + " | 高遮挡 " + highBuildingCount
@@ -757,6 +854,18 @@ namespace UnityPlanet.CityPcg
             AirCombatCitySettings source,
             out AirCombatCityReport report)
         {
+            return Generate(
+                source,
+                out report,
+                CancellationToken.None);
+        }
+
+        public static AirCombatCityPlan Generate(
+            AirCombatCitySettings source,
+            out AirCombatCityReport report,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             AirCombatCitySettings settings =
                 (source ?? new AirCombatCitySettings()).ValidatedCopy();
             // 一个章节任务 Seed 只对应一座城市。maximumAttempts 现在表示
@@ -765,24 +874,43 @@ namespace UnityPlanet.CityPcg
             AirCombatCityPlan plan = BuildCandidate(
                 settings,
                 settings.seed,
-                ref random);
+                ref random,
+                cancellationToken);
             // 仍然只生成这一座城市。难度反馈已经在逐格候选提交前
             // 完成；这里不再对整城执行“偏难就增高、偏易就降低”的
             // 事后修改，避免覆盖贪心选择的空间题目。
             report = Validate(settings, plan, 1);
+            cancellationToken.ThrowIfCancellationRequested();
             AirCombatCityDifficultyEvaluation difficulty =
                 AirCombatCityDifficultyPcg.Evaluate(settings, plan);
+            cancellationToken.ThrowIfCancellationRequested();
             ApplyGeneratedDifficulty(plan, difficulty);
             AirCombatCityDifficultyPcg.ApplyToReport(
                 difficulty,
                 report,
                 false);
-            report.valid = report.valid && difficulty.targetMet;
-            if (!difficulty.targetMet &&
+            bool difficultyHardValid = difficulty != null &&
+                                       difficulty.IsUsable &&
+                                       difficulty.coverageValid;
+            report.valid = report.valid && difficultyHardValid;
+            if (!difficultyHardValid &&
                 string.IsNullOrWhiteSpace(report.failureReason))
             {
+                report.hardPlayabilityValid = false;
                 report.failureReason =
-                    "城市地块难度没有达到当前关卡目标；请查看逐块误差。";
+                    "城市可飞区块覆盖不足，无法进行可靠的难度与通行性复核。";
+            }
+            else if (difficulty.closestResultFallback)
+            {
+                report.degraded = true;
+                string warning =
+                    "危险度与目标相差 " +
+                    difficulty.absoluteTargetError.ToString("P1") +
+                    "，超过15个百分点；已采用当前任务Seed有界修正后的最接近结果。";
+                report.degradationWarning = string.IsNullOrWhiteSpace(
+                    report.degradationWarning)
+                    ? warning
+                    : report.degradationWarning + " " + warning;
             }
             return plan;
         }
@@ -820,7 +948,8 @@ namespace UnityPlanet.CityPcg
         static AirCombatCityPlan BuildCandidate(
             AirCombatCitySettings settings,
             int resolvedSeed,
-            ref StableRandom random)
+            ref StableRandom random,
+            CancellationToken cancellationToken)
         {
             var plan = new AirCombatCityPlan
             {
@@ -830,10 +959,12 @@ namespace UnityPlanet.CityPcg
                 mapSize = settings.mapSize
             };
 
+            cancellationToken.ThrowIfCancellationRequested();
             BuildTacticalSpace(settings, plan);
             CombatDrivenCityPcgPlanner.Populate(settings, plan);
             CombatDrivenCityPcgPlanner.BuildTacticalBlockLayout(settings, plan);
             BuildRoadNetwork(settings, plan);
+            cancellationToken.ThrowIfCancellationRequested();
             BuildEnemyIngresses(settings, plan, ref random);
             if (settings.mission == AirCombatCityMission.FacilityAssault)
                 BuildFacility(settings, plan);
@@ -860,7 +991,12 @@ namespace UnityPlanet.CityPcg
                 PromoteCentralMediumCover(settings, plan, ref random);
             }
             EnsureMinimumQuadrantHeightMix(settings, plan);
-            BuildBuildings(settings, plan, ref random);
+            BuildBuildings(
+                settings,
+                plan,
+                ref random,
+                cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             // 区域实体会优先绑定贪心器已经提交的楼体；后续只允许
             // 为法定战术角色补充少量构件，并由最终难度验收重新计入。
             CombatDrivenCityPcgPlanner.BuildPhysicalRegionFeatures(
@@ -879,6 +1015,7 @@ namespace UnityPlanet.CityPcg
             {
                 EnsureCentralCoverContinuity(settings, plan);
             }
+            RefreshGrammarModelAssignments(settings, plan);
             if (settings.mission == AirCombatCityMission.FacilityAssault &&
                 !FacilitySitesAreValid(settings, plan))
             {
@@ -889,6 +1026,42 @@ namespace UnityPlanet.CityPcg
                 BuildFacility(settings, plan);
             }
             return plan;
+        }
+
+        static void RefreshGrammarModelAssignments(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan)
+        {
+            for (int index = 0; index < plan.buildings.Count; index++)
+            {
+                AirCombatBuildingLot lot = plan.buildings[index];
+                if (lot == null || lot.layoutSlotIndex < 0)
+                    continue;
+                int stable = StableLayoutHash(
+                    lot.stableId,
+                    settings.seed,
+                    lot.layoutSlotIndex);
+                AirCombatBuildingModelMetric model = ResolveBestBuildingModel(
+                    settings,
+                    lot.band,
+                    lot.size.x,
+                    lot.size.z,
+                    lot.size.y,
+                    stable);
+                if (model == null)
+                    continue;
+                ResolveModelConstrainedFootprint(
+                    model,
+                    lot.size.x,
+                    lot.size.z,
+                    out float width,
+                    out float depth,
+                    out float horizontalScale);
+                lot.size = new Vector3(width, lot.size.y, depth);
+                lot.visualVariant = model.catalogIndex;
+                lot.authoredModelSize = model.authoredSize;
+                lot.horizontalModelScale = horizontalScale;
+            }
         }
 
         static void EnsureFinalCentralHeightMix(
@@ -1875,7 +2048,8 @@ namespace UnityPlanet.CityPcg
         static void BuildBuildings(
             AirCombatCitySettings settings,
             AirCombatCityPlan plan,
-            ref StableRandom random)
+            ref StableRandom random,
+            CancellationToken cancellationToken)
         {
             float half = settings.mapSize * 0.5f;
             float spacing = settings.buildingSpacing;
@@ -1884,6 +2058,7 @@ namespace UnityPlanet.CityPcg
             int buildingIndex = 0;
             for (int index = 0; index < plan.tacticalBlocks.Count; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 CombatCityBlockPlan block = plan.tacticalBlocks[index];
                 block.generatedForDifficulty = false;
                 block.generationOrder = -1;
@@ -1893,6 +2068,9 @@ namespace UnityPlanet.CityPcg
                 block.greedyRemainingBudgetBefore = 0f;
                 block.greedyRemainingBudgetAfter = 0f;
                 block.greedyCandidateScore = 0f;
+                block.greedyPredictedCityBefore = 0f;
+                block.greedyPredictedCityAfter = 0f;
+                block.greedyDirectionSatisfied = true;
                 block.localCorrectionCount = 0;
             }
 
@@ -1901,6 +2079,7 @@ namespace UnityPlanet.CityPcg
             var perimeterBlocks = new List<CombatCityBlockPlan>(28);
             for (int index = 0; index < plan.tacticalBlocks.Count; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 CombatCityBlockPlan block = plan.tacticalBlocks[index];
                 if (!block.excludedFromDifficulty)
                     continue;
@@ -1919,8 +2098,11 @@ namespace UnityPlanet.CityPcg
                  generatedCount < greedyBlockCount;
                  generatedCount++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 CombatCityBlockPlan tacticalBlock =
-                    SelectNextGreedyFrontierBlock(plan);
+                    SelectNextGreedyFrontierBlock(plan,
+                        ResolveFrontierPressureDirection(
+                            settings, committedEvaluation));
                 if (tacticalBlock == null)
                     break;
 
@@ -1928,7 +2110,8 @@ namespace UnityPlanet.CityPcg
                     settings, plan, committedEvaluation, tacticalBlock);
                 GreedyBlockCandidate chosen = SelectGreedyBlockCandidate(
                     settings, plan, tacticalBlock, budget,
-                    random, buildingIndex, half, spacing, count, start, 0);
+                    random, buildingIndex, half, spacing, count, start,
+                    false, cancellationToken);
                 if (chosen == null)
                     continue;
 
@@ -1937,6 +2120,10 @@ namespace UnityPlanet.CityPcg
                 buildingIndex = chosen.buildingIndexAfter;
                 tacticalBlock.buildingDensityScale = chosen.densityScale;
                 tacticalBlock.buildingHeightScale = chosen.heightScale;
+                tacticalBlock.layoutPattern = chosen.layoutPattern;
+                tacticalBlock.layoutYaw = chosen.layoutYaw;
+                tacticalBlock.layoutResolved = true;
+                tacticalBlock.layoutSlotCount = chosen.layoutSlotCount;
                 tacticalBlock.greedyRequestedDifficulty =
                     budget.requestedDifficulty;
                 tacticalBlock.greedyCandidateOpenness = chosen.openness;
@@ -1945,28 +2132,41 @@ namespace UnityPlanet.CityPcg
                 tacticalBlock.greedyRemainingBudgetAfter =
                     chosen.remainingRequiredAverage;
                 tacticalBlock.greedyCandidateScore = chosen.score;
+                tacticalBlock.greedyPredictedCityBefore =
+                    budget.predictedWholeCityBefore;
+                tacticalBlock.greedyPredictedCityAfter =
+                    chosen.predictedWholeCityDifficulty;
+                tacticalBlock.greedyDirectionSatisfied =
+                    chosen.directionSatisfied;
                 tacticalBlock.localCorrectionCount = chosen.candidatesTested;
+                tacticalBlock.layoutOccupiedSlotCount =
+                    chosen.layoutOccupiedSlotCount;
                 tacticalBlock.generationOrder = generationOrder++;
                 tacticalBlock.generatedForDifficulty = true;
                 committedEvaluation = chosen.evaluation;
                 ApplyGeneratedDifficulty(plan, committedEvaluation);
             }
 
-            TryBacktrackLatestGreedyBlocks(settings, plan,
+            TryBacktrackHighestImpactGreedyBlocks(settings, plan,
                 ref random, ref buildingIndex, half, spacing, count, start,
-                ref committedEvaluation);
+                ref committedEvaluation, cancellationToken);
+            TryRepairGreedyCity(settings, plan,
+                ref random, ref buildingIndex, half, spacing, count, start,
+                ref committedEvaluation, cancellationToken);
 
             // 外围只记录在内部贪心完成之后，方便编辑器按真实扩张顺序
             // 显示；它的几何从第一步起已经参与全部候选枪线判断。
             perimeterBlocks.Sort(CompareBlocksCenterOut);
             for (int index = 0; index < perimeterBlocks.Count; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 CombatCityBlockPlan block = perimeterBlocks[index];
                 block.generationOrder = generationOrder++;
                 block.generatedForDifficulty = true;
             }
             ApplyGeneratedDifficulty(plan,
                 AirCombatCityDifficultyPcg.Evaluate(settings, plan));
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         sealed class GreedyBlockCandidate
@@ -1978,10 +2178,35 @@ namespace UnityPlanet.CityPcg
             public float densityScale;
             public float heightScale;
             public float openness;
+            public float requestedOpenness;
             public float score;
+            public float predictedWholeCityDifficulty;
+            public bool directionSatisfied;
             public float remainingRequiredAverage;
             public int candidatesTested;
+            public CombatCityBlockLayoutPattern layoutPattern;
+            public float layoutYaw;
+            public int layoutSlotCount;
+            public int layoutOccupiedSlotCount;
+            public int requestedOccupiedSlotCount;
+            public int rejectedFlightSlotCount;
+            public int rejectedOverlapSlotCount;
             public AirCombatCityDifficultyEvaluation evaluation;
+        }
+
+        struct BlockBuildRealization
+        {
+            public int slotCount;
+            public int requestedOccupied;
+            public int attemptedSlots;
+            public int created;
+            public int rejectedBounds;
+            public int rejectedFlight;
+            public int rejectedOverlap;
+
+            public float Fulfillment => requestedOccupied > 0
+                ? created / (float)requestedOccupied
+                : 1f;
         }
 
         struct GreedyBudget
@@ -1990,6 +2215,9 @@ namespace UnityPlanet.CityPcg
             public float requiredRemainingAverage;
             public float totalTarget;
             public int totalCount;
+            public float targetAverage;
+            public float forecastBaseline;
+            public float predictedWholeCityBefore;
         }
 
         static int CountGreedyBlocks(AirCombatCityPlan plan)
@@ -2009,7 +2237,6 @@ namespace UnityPlanet.CityPcg
             AirCombatCityDifficultyEvaluation evaluation,
             CombatCityBlockPlan current)
         {
-            float totalTarget = 0f;
             float remainingBaseTarget = 0f;
             float generatedActual = 0f;
             int totalCount = 0;
@@ -2020,7 +2247,6 @@ namespace UnityPlanet.CityPcg
                 if (block == null || block.excludedFromDifficulty)
                     continue;
                 totalCount++;
-                totalTarget += block.targetDifficulty;
                 if (!block.generatedForDifficulty)
                 {
                     remainingCount++;
@@ -2034,6 +2260,22 @@ namespace UnityPlanet.CityPcg
                         evaluation.cells[index].survivalDifficulty;
                 }
             }
+            // 角色目标只负责把危险度分配到不同区块，不能偷偷改变玩家
+            // 输入的全城总预算。此前直接累加带偏移的角色目标，会让20%
+            // 城市实际只剩更低的总预算，生成到中途便出现负数欠账。
+            float globalTarget = settings != null
+                ? AirCombatCityDifficultyPcg
+                    .ResolveEffectiveGenerationTarget(settings.Difficulty)
+                : 0.5f;
+            float totalTarget = globalTarget * totalCount;
+            float forecastBaseline = settings != null
+                ? AirCombatCityDifficultyPcg
+                    .ResolveUngeneratedForecastBaseline(settings.Difficulty)
+                : globalTarget;
+            float predictedWholeCityBefore = totalCount > 0
+                ? (generatedActual + remainingCount * forecastBaseline) /
+                  totalCount
+                : globalTarget;
             float requiredRemainingAverage = remainingCount > 0
                 ? (totalTarget - generatedActual) / remainingCount
                 : settings != null
@@ -2048,15 +2290,42 @@ namespace UnityPlanet.CityPcg
             float maximum = AirCombatCityDifficultyPcg
                 .ResolveMaximumRepresentableDifficulty(
                     settings?.Difficulty);
+            // 全城已经偏高时，下一格不允许角色偏移再次把请求推高；
+            // 已经偏低时同理不允许继续请求更安全的格子。角色只负责在
+            // 当前欠账方向内塑造题目，不能与全城贪心控制器反向对抗。
+            float budgetError = requiredRemainingAverage - globalTarget;
+            if (Mathf.Abs(budgetError) > 0.01f)
+            {
+                // 一旦全城出现可测欠账，下一格完全服从欠账；这正是
+                // “本轮偏高，下一格补安全候选”的贪心语义。
+                roleOffset = 0f;
+            }
+            else if (budgetError < -0.0005f)
+                roleOffset = Mathf.Min(0f, roleOffset);
+            else if (budgetError > 0.0005f)
+                roleOffset = Mathf.Max(0f, roleOffset);
+            float boundedRequired = Mathf.Clamp(requiredRemainingAverage,
+                0.02f, Mathf.Max(0.02f, maximum));
+            float roleAllowance = Mathf.Min(
+                Mathf.Max(0f, boundedRequired - 0.02f),
+                Mathf.Max(0f, maximum - boundedRequired));
+            // 角色差异是空间题目的软调味，不应制造超过3.5个百分点
+            // 的单格逆向脉冲；否则20%目标会因一个暴露角色突然请求
+            // 34%，破坏逐格反馈的单调性。
+            roleAllowance = Mathf.Min(roleAllowance, 0.035f);
             return new GreedyBudget
             {
                 requestedDifficulty = Mathf.Clamp(
-                    requiredRemainingAverage + roleOffset,
+                    boundedRequired + Mathf.Clamp(roleOffset,
+                        -roleAllowance, roleAllowance),
                     0.02f,
                     Mathf.Max(0.02f, maximum)),
                 requiredRemainingAverage = requiredRemainingAverage,
                 totalTarget = totalTarget,
-                totalCount = totalCount
+                totalCount = totalCount,
+                targetAverage = globalTarget,
+                forecastBaseline = forecastBaseline,
+                predictedWholeCityBefore = predictedWholeCityBefore
             };
         }
 
@@ -2071,74 +2340,282 @@ namespace UnityPlanet.CityPcg
             float spacing,
             int parcelCount,
             float start,
-            int forcedCandidateCount)
+            bool scoreFinalCity,
+            CancellationToken cancellationToken)
         {
-            int candidateCount = forcedCandidateCount > 0
-                ? Mathf.Clamp(forcedCandidateCount, 3, 5)
-                : Mathf.Clamp(settings.maximumAttempts / 4, 3, 5);
-            float baseDensity = block.buildingDensityScale;
-            float baseHeight = block.buildingHeightScale;
-            GreedyBlockCandidate best = null;
-            for (int candidateIndex = 0;
-                 candidateIndex < candidateCount;
-                 candidateIndex++)
+            cancellationToken.ThrowIfCancellationRequested();
+            CombatCityBlockLayoutPattern previousPattern =
+                block.layoutPattern;
+            float previousYaw = block.layoutYaw;
+            bool previousLayoutResolved = block.layoutResolved;
+            int previousSlotCount = block.layoutSlotCount;
+            int previousOccupiedSlotCount = block.layoutOccupiedSlotCount;
+
+            // 单格不再生成五套整体密度方案。先确定唯一的规则化街区
+            // 骨架，再按固定楼位逐栋比较：留空、低楼、中楼、高楼。
+            ResolveBlockLayout(settings, plan, block);
+            CombatCityBlockLayoutPattern resolvedPattern =
+                block.layoutPattern;
+            float resolvedYaw = block.layoutYaw;
+            var slots = new List<BlockBuildingSlot>(9);
+            BuildBlockLayoutSlots(resolvedPattern, slots);
+            block.layoutSlotCount = slots.Count;
+            block.layoutOccupiedSlotCount = 0;
+            block.generatedForDifficulty = true;
+
+            int firstBuilding = plan.buildings.Count;
+            int candidateBuildingIndex = buildingIndexBefore;
+            int optionTests = 0;
+            var realization = new BlockBuildRealization
             {
-                float openness = candidateCount <= 1
-                    ? 0.5f
-                    : candidateIndex / (float)(candidateCount - 1);
-                // 候选覆盖从密集遮挡到近乎完全开放。真正采用哪一个
-                // 只由临时提交后的枪线和最低风险路径决定，不能假设
-                // “楼多必定简单”或“楼少必定困难”。
-                float densityScale = Mathf.Clamp(
-                    baseDensity * Mathf.Lerp(1.24f, 0.025f, openness),
-                    0.02f,
-                    1.48f);
-                float heightScale = Mathf.Clamp(
-                    baseHeight * Mathf.Lerp(1.18f, 0.46f, openness),
-                    0.32f,
-                    1.46f);
-                int firstBuilding = plan.buildings.Count;
-                int candidateBuildingIndex = buildingIndexBefore;
-                StableRandom candidateRandom = randomBefore;
-                BuildBuildingsForBlock(settings, plan, block,
-                    densityScale, heightScale, ref candidateRandom,
-                    ref candidateBuildingIndex, half, spacing,
-                    parcelCount, start);
-                block.generatedForDifficulty = true;
-                AirCombatCityDifficultyEvaluation evaluation =
-                    AirCombatCityDifficultyPcg.Evaluate(settings, plan);
-                float remainingAfter;
-                float score = ScoreGreedyCandidate(settings, plan, block,
-                    budget, evaluation, openness, out remainingAfter);
-                var candidate = new GreedyBlockCandidate
+                slotCount = slots.Count,
+                requestedOccupied = slots.Count
+            };
+            AirCombatCityDifficultyEvaluation currentEvaluation =
+                AirCombatCityDifficultyPcg.Evaluate(settings, plan);
+            cancellationToken.ThrowIfCancellationRequested();
+            float currentForecast = PredictGreedyWholeCityDifficulty(
+                plan, currentEvaluation, budget.forecastBaseline);
+
+            for (int slotIndex = 0; slotIndex < slots.Count; slotIndex++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                BlockBuildingSlot slot = slots[slotIndex];
+                var bestOption = new GreedyBuildingOption
                 {
-                    randomAfter = candidateRandom,
-                    buildingIndexAfter = candidateBuildingIndex,
-                    densityScale = densityScale,
-                    heightScale = heightScale,
-                    openness = openness,
-                    score = score,
-                    remainingRequiredAverage = remainingAfter,
-                    candidatesTested = candidateCount,
-                    evaluation = evaluation
+                    evaluation = currentEvaluation,
+                    predictedWholeCityDifficulty = currentForecast,
+                    currentCellDifficulty = FindGreedyCellDifficulty(
+                        currentEvaluation, block),
+                    score = ScoreCityFit(currentEvaluation,
+                        budget.targetAverage),
+                    bandOrder = -1
                 };
-                for (int index = firstBuilding;
-                     index < plan.buildings.Count;
-                     index++)
+                optionTests++;
+
+                for (int bandOrder = 0; bandOrder < 3; bandOrder++)
                 {
-                    candidate.buildings.Add(plan.buildings[index]);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    realization.attemptedSlots++;
+                    if (!TryCreateBuildingForBlockSlot(
+                            settings, plan, block, slot, slotIndex,
+                            (AirCombatBuildingBand)bandOrder,
+                            candidateBuildingIndex, half, spacing,
+                            out AirCombatBuildingLot lot,
+                            out int rejectionReason))
+                    {
+                        if (rejectionReason == 1)
+                            realization.rejectedBounds++;
+                        else if (rejectionReason == 2)
+                            realization.rejectedFlight++;
+                        else if (rejectionReason == 3)
+                            realization.rejectedOverlap++;
+                        continue;
+                    }
+
+                    optionTests++;
+                    plan.buildings.Add(lot);
+                    AirCombatCityDifficultyEvaluation optionEvaluation =
+                        AirCombatCityDifficultyPcg.Evaluate(settings, plan);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    float optionForecast = PredictGreedyWholeCityDifficulty(
+                        plan, optionEvaluation, budget.forecastBaseline);
+                    var option = new GreedyBuildingOption
+                    {
+                        lot = lot,
+                        evaluation = optionEvaluation,
+                        predictedWholeCityDifficulty = optionForecast,
+                        currentCellDifficulty = FindGreedyCellDifficulty(
+                            optionEvaluation, block),
+                        score = ScoreCityFit(optionEvaluation,
+                                    budget.targetAverage) +
+                                Mathf.Abs(optionForecast -
+                                          budget.targetAverage) * 0.45f,
+                        bandOrder = bandOrder
+                    };
+                    plan.buildings.RemoveAt(plan.buildings.Count - 1);
+                    if (IsBetterGreedyBuildingOption(option, bestOption,
+                            budget.predictedWholeCityBefore,
+                            budget.targetAverage,
+                            budget.requestedDifficulty))
+                    {
+                        bestOption = option;
+                    }
                 }
-                plan.buildings.RemoveRange(firstBuilding,
-                    plan.buildings.Count - firstBuilding);
-                block.generatedForDifficulty = false;
-                if (best == null || candidate.score < best.score - 0.0001f ||
-                    (Mathf.Abs(candidate.score - best.score) <= 0.0001f &&
-                     candidate.openness < best.openness))
+
+                if (bestOption.lot == null)
+                    continue;
+                plan.buildings.Add(bestOption.lot);
+                candidateBuildingIndex++;
+                realization.created++;
+                block.layoutOccupiedSlotCount = realization.created;
+                currentEvaluation = bestOption.evaluation;
+                currentForecast = bestOption.predictedWholeCityDifficulty;
+            }
+
+            bool needsSaferBlock = budget.predictedWholeCityBefore >
+                                   budget.targetAverage + 0.002f;
+
+            float remainingAfter;
+            float predictedWholeCityDifficulty;
+            float realizedOpenness = slots.Count > 0
+                ? 1f - realization.created / (float)slots.Count
+                : 1f;
+            float score = ScoreGreedyCandidate(settings, plan, block,
+                budget, currentEvaluation, realizedOpenness, realization,
+                out remainingAfter, out predictedWholeCityDifficulty);
+            if (scoreFinalCity)
+            {
+                score = ScoreFinalCityCandidate(currentEvaluation,
+                    realizedOpenness, realization);
+            }
+            var candidate = new GreedyBlockCandidate
+            {
+                randomAfter = randomBefore,
+                buildingIndexAfter = candidateBuildingIndex,
+                densityScale = slots.Count > 0
+                    ? Mathf.Clamp(realization.created /
+                                  (float)slots.Count, 0.02f, 1f)
+                    : 0.02f,
+                heightScale = 1f,
+                openness = realizedOpenness,
+                requestedOpenness = realizedOpenness,
+                score = score,
+                predictedWholeCityDifficulty =
+                    predictedWholeCityDifficulty,
+                remainingRequiredAverage = remainingAfter,
+                candidatesTested = optionTests,
+                layoutPattern = resolvedPattern,
+                layoutYaw = resolvedYaw,
+                layoutSlotCount = slots.Count,
+                layoutOccupiedSlotCount = realization.created,
+                requestedOccupiedSlotCount = slots.Count,
+                rejectedFlightSlotCount = realization.rejectedFlight,
+                rejectedOverlapSlotCount = realization.rejectedOverlap,
+                evaluation = currentEvaluation
+            };
+            for (int index = firstBuilding;
+                 index < plan.buildings.Count;
+                 index++)
+            {
+                candidate.buildings.Add(plan.buildings[index]);
+            }
+            plan.buildings.RemoveRange(firstBuilding,
+                plan.buildings.Count - firstBuilding);
+            block.generatedForDifficulty = false;
+            block.layoutPattern = previousPattern;
+            block.layoutYaw = previousYaw;
+            block.layoutResolved = previousLayoutResolved;
+            block.layoutSlotCount = previousSlotCount;
+            block.layoutOccupiedSlotCount = previousOccupiedSlotCount;
+
+            bool needsSafer = needsSaferBlock;
+            bool needsMoreDanger = budget.predictedWholeCityBefore <
+                                   budget.targetAverage - 0.002f;
+            candidate.directionSatisfied = !needsSafer && !needsMoreDanger ||
+                needsSafer && candidate.predictedWholeCityDifficulty <=
+                budget.predictedWholeCityBefore + 0.0001f ||
+                needsMoreDanger && candidate.predictedWholeCityDifficulty >=
+                budget.predictedWholeCityBefore - 0.0001f;
+            return candidate;
+        }
+
+        sealed class GreedyBuildingOption
+        {
+            public AirCombatBuildingLot lot;
+            public AirCombatCityDifficultyEvaluation evaluation;
+            public float predictedWholeCityDifficulty;
+            public float currentCellDifficulty;
+            public float score;
+            public int bandOrder;
+        }
+
+        static bool IsBetterGreedyBuildingOption(
+            GreedyBuildingOption candidate,
+            GreedyBuildingOption currentBest,
+            float directionBaseline,
+            float target,
+            float desiredCellDifficulty)
+        {
+            const float tolerance = 0.0001f;
+            bool needsSafer = directionBaseline > target + 0.002f;
+            bool needsMoreDanger = directionBaseline < target - 0.002f;
+            if (needsSafer || needsMoreDanger)
+            {
+                float candidateGlobalError = Mathf.Abs(
+                    candidate.predictedWholeCityDifficulty - target);
+                float bestGlobalError = Mathf.Abs(
+                    currentBest.predictedWholeCityDifficulty - target);
+                if (Mathf.Abs(candidateGlobalError - bestGlobalError) >
+                    tolerance)
                 {
-                    best = candidate;
+                    // 一旦全城出现欠账，每一栋楼先偿还全城误差；当前格
+                    // 的角色目标只能在全城同样接近时作平局裁决。
+                    return candidateGlobalError < bestGlobalError;
                 }
             }
-            return best;
+
+            float candidateError = Mathf.Abs(
+                    candidate.predictedWholeCityDifficulty - target) * 0.42f +
+                Mathf.Abs(candidate.currentCellDifficulty -
+                          desiredCellDifficulty) * 0.58f;
+            float bestError = Mathf.Abs(
+                    currentBest.predictedWholeCityDifficulty - target) * 0.42f +
+                Mathf.Abs(currentBest.currentCellDifficulty -
+                          desiredCellDifficulty) * 0.58f;
+            if (Mathf.Abs(candidateError - bestError) > tolerance)
+                return candidateError < bestError;
+            if (candidate.score < currentBest.score - tolerance)
+                return true;
+            if (Mathf.Abs(candidate.score - currentBest.score) > tolerance)
+                return false;
+            // 完全同效时优先低楼，再优先留空，保证确定性且避免无收益
+            // 的高楼对象。真正需要高楼时，枪线重算会使其先胜出。
+            return candidate.bandOrder >= 0 &&
+                   (currentBest.bandOrder < 0 ||
+                    candidate.bandOrder < currentBest.bandOrder);
+        }
+
+        static float PredictGreedyWholeCityDifficulty(
+            AirCombatCityPlan plan,
+            AirCombatCityDifficultyEvaluation evaluation,
+            float ungeneratedBaseline)
+        {
+            float total = 0f;
+            int count = 0;
+            for (int index = 0; index < plan.tacticalBlocks.Count; index++)
+            {
+                CombatCityBlockPlan block = plan.tacticalBlocks[index];
+                if (block == null || block.excludedFromDifficulty)
+                    continue;
+                count++;
+                if (block.generatedForDifficulty && evaluation != null &&
+                    index < evaluation.cells.Count &&
+                    evaluation.cells[index].flyable)
+                {
+                    total += evaluation.cells[index].survivalDifficulty;
+                }
+                else
+                {
+                    total += ungeneratedBaseline;
+                }
+            }
+            return count > 0 ? total / count : ungeneratedBaseline;
+        }
+
+        static float FindGreedyCellDifficulty(
+            AirCombatCityDifficultyEvaluation evaluation,
+            CombatCityBlockPlan block)
+        {
+            if (evaluation == null || block == null)
+                return 1f;
+            for (int index = 0; index < evaluation.cells.Count; index++)
+            {
+                AirCombatCityDifficultyCell cell = evaluation.cells[index];
+                if (cell != null && cell.stableId == block.stableId)
+                    return cell.survivalDifficulty;
+            }
+            return 1f;
         }
 
         sealed class GreedyBlockSnapshot
@@ -2152,11 +2629,19 @@ namespace UnityPlanet.CityPcg
             public float remainingBefore;
             public float remainingAfter;
             public float candidateScore;
+            public float predictedCityBefore;
+            public float predictedCityAfter;
+            public bool directionSatisfied;
             public int candidatesTested;
             public bool generated;
+            public CombatCityBlockLayoutPattern layoutPattern;
+            public float layoutYaw;
+            public bool layoutResolved;
+            public int layoutSlotCount;
+            public int layoutOccupiedSlotCount;
         }
 
-        static void TryBacktrackLatestGreedyBlocks(
+        static void TryBacktrackHighestImpactGreedyBlocks(
             AirCombatCitySettings settings,
             AirCombatCityPlan plan,
             ref StableRandom random,
@@ -2165,32 +2650,64 @@ namespace UnityPlanet.CityPcg
             float spacing,
             int parcelCount,
             float start,
-            ref AirCombatCityDifficultyEvaluation committedEvaluation)
+            ref AirCombatCityDifficultyEvaluation committedEvaluation,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (committedEvaluation == null ||
-                committedEvaluation.targetMet)
+                !NeedsGreedyRepair(settings, committedEvaluation))
                 return;
-            var latest = new List<CombatCityBlockPlan>(2);
-            for (int orderOffset = 0; orderOffset < 2; orderOffset++)
+            // 只回看最后几格无法修复早期区块已经造成的全城偏差。
+            // 回溯仍然发生在同一座城市上，但选择的是对当前偏差贡献
+            // 最大的区块：城市偏危险时重做最高危区块，偏安全时重做
+            // 最低危区块。之后仍按原始中心向外顺序重新生成，保证演示
+            // 和正式生成使用同一条确定性流程。
+            int rewindCount = Mathf.Clamp(
+                settings.maximumAttempts + 6,
+                8,
+                Mathf.Min(24, CountGreedyBlocks(plan)));
+            var latest = new List<CombatCityBlockPlan>(rewindCount);
+            var eligible = new List<CombatCityBlockPlan>(
+                CountGreedyBlocks(plan));
+            for (int index = 0; index < plan.tacticalBlocks.Count; index++)
             {
-                CombatCityBlockPlan selected = null;
-                for (int index = 0;
-                     index < plan.tacticalBlocks.Count;
-                     index++)
-                {
-                    CombatCityBlockPlan block = plan.tacticalBlocks[index];
-                    if (block == null || block.excludedFromDifficulty ||
-                        !block.generatedForDifficulty ||
-                        latest.Contains(block))
-                        continue;
-                    if (selected == null || block.generationOrder >
-                        selected.generationOrder)
-                    {
-                        selected = block;
-                    }
-                }
-                if (selected != null)
-                    latest.Add(selected);
+                cancellationToken.ThrowIfCancellationRequested();
+                CombatCityBlockPlan block = plan.tacticalBlocks[index];
+                if (block == null || block.excludedFromDifficulty ||
+                    !block.generatedForDifficulty)
+                    continue;
+                eligible.Add(block);
+            }
+            bool needsSaferCity = committedEvaluation.averageDifficulty >
+                                  AirCombatCityDifficultyPcg
+                                      .ResolveEffectiveGenerationTarget(
+                                          settings.Difficulty);
+            eligible.Sort((left, right) =>
+            {
+                int difficultyOrder = needsSaferCity
+                    ? right.generatedDifficulty.CompareTo(
+                        left.generatedDifficulty)
+                    : left.generatedDifficulty.CompareTo(
+                        right.generatedDifficulty);
+                if (difficultyOrder != 0)
+                    return difficultyOrder;
+                // 同等危险时先修实际为空的区块；空格在低目标下尤其
+                // 容易暴露全向枪线，却曾被“请求了安全候选”误判为安全。
+                int leftEmpty = left.layoutSlotCount > 0 &&
+                                left.layoutOccupiedSlotCount <= 0 ? 1 : 0;
+                int rightEmpty = right.layoutSlotCount > 0 &&
+                                 right.layoutOccupiedSlotCount <= 0 ? 1 : 0;
+                int emptyOrder = rightEmpty.CompareTo(leftEmpty);
+                if (emptyOrder != 0)
+                    return emptyOrder;
+                return right.generationOrder.CompareTo(left.generationOrder);
+            });
+            for (int index = 0;
+                 index < Mathf.Min(rewindCount, eligible.Count);
+                 index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                latest.Add(eligible[index]);
             }
             if (latest.Count == 0)
                 return;
@@ -2202,6 +2719,7 @@ namespace UnityPlanet.CityPcg
             var snapshots = new List<GreedyBlockSnapshot>(latest.Count);
             for (int index = 0; index < latest.Count; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 CombatCityBlockPlan block = latest[index];
                 snapshots.Add(new GreedyBlockSnapshot
                 {
@@ -2214,21 +2732,29 @@ namespace UnityPlanet.CityPcg
                     remainingBefore = block.greedyRemainingBudgetBefore,
                     remainingAfter = block.greedyRemainingBudgetAfter,
                     candidateScore = block.greedyCandidateScore,
+                    predictedCityBefore = block.greedyPredictedCityBefore,
+                    predictedCityAfter = block.greedyPredictedCityAfter,
+                    directionSatisfied = block.greedyDirectionSatisfied,
                     candidatesTested = block.localCorrectionCount,
-                    generated = block.generatedForDifficulty
+                    generated = block.generatedForDifficulty,
+                    layoutPattern = block.layoutPattern,
+                    layoutYaw = block.layoutYaw,
+                    layoutResolved = block.layoutResolved,
+                    layoutSlotCount = block.layoutSlotCount,
+                    layoutOccupiedSlotCount =
+                        block.layoutOccupiedSlotCount
                 });
             }
             StableRandom originalRandom = random;
             int originalBuildingIndex = buildingIndex;
-            float originalQuality = committedEvaluation.targetFitError +
-                Mathf.Abs(committedEvaluation.averageDifficulty -
-                          committedEvaluation.target.averageDifficulty) *
-                0.60f;
+            float effectiveTarget = AirCombatCityDifficultyPcg
+                .ResolveEffectiveGenerationTarget(settings.Difficulty);
 
             for (int building = plan.buildings.Count - 1;
                  building >= 0;
                  building--)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 AirCombatBuildingLot lot = plan.buildings[building];
                 if (!IsDifficultyAdjustableBuilding(lot))
                     continue;
@@ -2249,15 +2775,18 @@ namespace UnityPlanet.CityPcg
                 latest[index].generatedForDifficulty = false;
             AirCombatCityDifficultyEvaluation trialEvaluation =
                 AirCombatCityDifficultyPcg.Evaluate(settings, plan);
+            cancellationToken.ThrowIfCancellationRequested();
 
             for (int index = 0; index < latest.Count; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 CombatCityBlockPlan block = latest[index];
                 GreedyBudget budget = ResolveGreedyBudget(
                     settings, plan, trialEvaluation, block);
                 GreedyBlockCandidate chosen = SelectGreedyBlockCandidate(
                     settings, plan, block, budget, random, buildingIndex,
-                    half, spacing, parcelCount, start, 5);
+                    half, spacing, parcelCount, start, false,
+                    cancellationToken);
                 if (chosen == null)
                     continue;
                 plan.buildings.AddRange(chosen.buildings);
@@ -2265,6 +2794,10 @@ namespace UnityPlanet.CityPcg
                 buildingIndex = chosen.buildingIndexAfter;
                 block.buildingDensityScale = chosen.densityScale;
                 block.buildingHeightScale = chosen.heightScale;
+                block.layoutPattern = chosen.layoutPattern;
+                block.layoutYaw = chosen.layoutYaw;
+                block.layoutResolved = true;
+                block.layoutSlotCount = chosen.layoutSlotCount;
                 block.greedyRequestedDifficulty = budget.requestedDifficulty;
                 block.greedyCandidateOpenness = chosen.openness;
                 block.greedyRemainingBudgetBefore =
@@ -2272,16 +2805,23 @@ namespace UnityPlanet.CityPcg
                 block.greedyRemainingBudgetAfter =
                     chosen.remainingRequiredAverage;
                 block.greedyCandidateScore = chosen.score;
+                block.greedyPredictedCityBefore =
+                    budget.predictedWholeCityBefore;
+                block.greedyPredictedCityAfter =
+                    chosen.predictedWholeCityDifficulty;
+                block.greedyDirectionSatisfied = chosen.directionSatisfied;
                 block.localCorrectionCount = chosen.candidatesTested;
+                block.layoutOccupiedSlotCount =
+                    chosen.layoutOccupiedSlotCount;
                 block.generatedForDifficulty = true;
                 trialEvaluation = chosen.evaluation;
                 ApplyGeneratedDifficulty(plan, trialEvaluation);
             }
 
-            float trialQuality = trialEvaluation.targetFitError +
-                Mathf.Abs(trialEvaluation.averageDifficulty -
-                          trialEvaluation.target.averageDifficulty) * 0.60f;
-            if (trialQuality < originalQuality - 0.002f)
+            if (IsCloserCityFit(
+                    trialEvaluation,
+                    committedEvaluation,
+                    effectiveTarget))
             {
                 committedEvaluation = trialEvaluation;
                 return;
@@ -2303,9 +2843,274 @@ namespace UnityPlanet.CityPcg
                 block.greedyRemainingBudgetBefore = snapshot.remainingBefore;
                 block.greedyRemainingBudgetAfter = snapshot.remainingAfter;
                 block.greedyCandidateScore = snapshot.candidateScore;
+                block.greedyPredictedCityBefore = snapshot.predictedCityBefore;
+                block.greedyPredictedCityAfter = snapshot.predictedCityAfter;
+                block.greedyDirectionSatisfied = snapshot.directionSatisfied;
                 block.localCorrectionCount = snapshot.candidatesTested;
                 block.generatedForDifficulty = snapshot.generated;
+                block.layoutPattern = snapshot.layoutPattern;
+                block.layoutYaw = snapshot.layoutYaw;
+                block.layoutResolved = snapshot.layoutResolved;
+                block.layoutSlotCount = snapshot.layoutSlotCount;
+                block.layoutOccupiedSlotCount =
+                    snapshot.layoutOccupiedSlotCount;
             }
+        }
+
+        static void TryRepairGreedyCity(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan,
+            ref StableRandom random,
+            ref int buildingIndex,
+            float half,
+            float spacing,
+            int parcelCount,
+            float start,
+            ref AirCombatCityDifficultyEvaluation committedEvaluation,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (committedEvaluation == null ||
+                !NeedsGreedyRepair(settings, committedEvaluation))
+                return;
+
+            int repairLimit = Mathf.Clamp(settings.maximumAttempts + 10,
+                8, Mathf.Min(24, CountGreedyBlocks(plan)));
+            var repaired = new HashSet<CombatCityBlockPlan>();
+            for (int repair = 0; repair < repairLimit; repair++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!NeedsGreedyRepair(settings, committedEvaluation))
+                    break;
+                ApplyGeneratedDifficulty(plan, committedEvaluation);
+                bool needsSaferCity = committedEvaluation.averageDifficulty >
+                    AirCombatCityDifficultyPcg
+                        .ResolveEffectiveGenerationTarget(
+                            settings.Difficulty);
+                CombatCityBlockPlan block = null;
+                for (int index = 0;
+                     index < plan.tacticalBlocks.Count;
+                     index++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    CombatCityBlockPlan candidate =
+                        plan.tacticalBlocks[index];
+                    if (candidate == null ||
+                        candidate.excludedFromDifficulty ||
+                        !candidate.generatedForDifficulty ||
+                        repaired.Contains(candidate))
+                        continue;
+                    if (block == null || IsHigherRepairPriority(candidate,
+                            block, needsSaferCity))
+                        block = candidate;
+                }
+                if (block == null)
+                    break;
+                repaired.Add(block);
+
+                var originalBuildings = new List<AirCombatBuildingLot>(
+                    plan.buildings);
+                var snapshot = new GreedyBlockSnapshot
+                {
+                    block = block,
+                    densityScale = block.buildingDensityScale,
+                    heightScale = block.buildingHeightScale,
+                    generatedDifficulty = block.generatedDifficulty,
+                    requestedDifficulty = block.greedyRequestedDifficulty,
+                    openness = block.greedyCandidateOpenness,
+                    remainingBefore = block.greedyRemainingBudgetBefore,
+                    remainingAfter = block.greedyRemainingBudgetAfter,
+                    candidateScore = block.greedyCandidateScore,
+                    predictedCityBefore = block.greedyPredictedCityBefore,
+                    predictedCityAfter = block.greedyPredictedCityAfter,
+                    directionSatisfied = block.greedyDirectionSatisfied,
+                    candidatesTested = block.localCorrectionCount,
+                    generated = block.generatedForDifficulty,
+                    layoutPattern = block.layoutPattern,
+                    layoutYaw = block.layoutYaw,
+                    layoutResolved = block.layoutResolved,
+                    layoutSlotCount = block.layoutSlotCount,
+                    layoutOccupiedSlotCount =
+                        block.layoutOccupiedSlotCount
+                };
+                StableRandom originalRandom = random;
+                int originalBuildingIndex = buildingIndex;
+                float effectiveTarget = AirCombatCityDifficultyPcg
+                    .ResolveEffectiveGenerationTarget(settings.Difficulty);
+
+                for (int lotIndex = plan.buildings.Count - 1;
+                     lotIndex >= 0;
+                     lotIndex--)
+                {
+                    AirCombatBuildingLot lot = plan.buildings[lotIndex];
+                    if (!IsDifficultyAdjustableBuilding(lot) ||
+                        !block.bounds.Contains(new Vector3(lot.center.x,
+                            block.bounds.center.y, lot.center.z)))
+                        continue;
+                    plan.buildings.RemoveAt(lotIndex);
+                }
+                block.generatedForDifficulty = false;
+                AirCombatCityDifficultyEvaluation withoutBlock =
+                    AirCombatCityDifficultyPcg.Evaluate(settings, plan);
+                cancellationToken.ThrowIfCancellationRequested();
+                GreedyBudget budget = ResolveGreedyBudget(settings, plan,
+                    withoutBlock, block);
+                GreedyBlockCandidate chosen = SelectGreedyBlockCandidate(
+                    settings, plan, block, budget, random, buildingIndex,
+                    half, spacing, parcelCount, start, true,
+                    cancellationToken);
+
+                if (chosen != null && IsCloserCityFit(
+                        chosen.evaluation,
+                        committedEvaluation,
+                        effectiveTarget))
+                {
+                    plan.buildings.AddRange(chosen.buildings);
+                    random = chosen.randomAfter;
+                    buildingIndex = chosen.buildingIndexAfter;
+                    block.buildingDensityScale = chosen.densityScale;
+                    block.buildingHeightScale = chosen.heightScale;
+                    block.layoutPattern = chosen.layoutPattern;
+                    block.layoutYaw = chosen.layoutYaw;
+                    block.layoutResolved = true;
+                    block.layoutSlotCount = chosen.layoutSlotCount;
+                    block.layoutOccupiedSlotCount =
+                        chosen.layoutOccupiedSlotCount;
+                    block.greedyRequestedDifficulty =
+                        budget.requestedDifficulty;
+                    block.greedyCandidateOpenness = chosen.openness;
+                    block.greedyRemainingBudgetBefore =
+                        budget.requiredRemainingAverage;
+                    block.greedyRemainingBudgetAfter =
+                        chosen.remainingRequiredAverage;
+                    block.greedyCandidateScore = chosen.score;
+                    block.greedyPredictedCityBefore =
+                        budget.predictedWholeCityBefore;
+                    block.greedyPredictedCityAfter =
+                        chosen.predictedWholeCityDifficulty;
+                    block.greedyDirectionSatisfied =
+                        chosen.directionSatisfied;
+                    block.localCorrectionCount += chosen.candidatesTested;
+                    block.generatedForDifficulty = true;
+                    committedEvaluation = chosen.evaluation;
+                    ApplyGeneratedDifficulty(plan, committedEvaluation);
+                    continue;
+                }
+
+                plan.buildings.Clear();
+                plan.buildings.AddRange(originalBuildings);
+                random = originalRandom;
+                buildingIndex = originalBuildingIndex;
+                RestoreGreedyBlockSnapshot(snapshot);
+                ApplyGeneratedDifficulty(plan, committedEvaluation);
+            }
+        }
+
+        static bool IsHigherRepairPriority(CombatCityBlockPlan candidate,
+            CombatCityBlockPlan current, bool needsSaferCity)
+        {
+            float candidateValue = candidate.generatedDifficulty;
+            float currentValue = current.generatedDifficulty;
+            if (Mathf.Abs(candidateValue - currentValue) > 0.0001f)
+                return needsSaferCity
+                    ? candidateValue > currentValue
+                    : candidateValue < currentValue;
+            bool candidateEmpty = candidate.layoutSlotCount > 0 &&
+                                  candidate.layoutOccupiedSlotCount <= 0;
+            bool currentEmpty = current.layoutSlotCount > 0 &&
+                                current.layoutOccupiedSlotCount <= 0;
+            if (candidateEmpty != currentEmpty)
+                return candidateEmpty;
+            return candidate.generationOrder > current.generationOrder;
+        }
+
+        static void RestoreGreedyBlockSnapshot(GreedyBlockSnapshot snapshot)
+        {
+            CombatCityBlockPlan block = snapshot.block;
+            block.buildingDensityScale = snapshot.densityScale;
+            block.buildingHeightScale = snapshot.heightScale;
+            block.generatedDifficulty = snapshot.generatedDifficulty;
+            block.greedyRequestedDifficulty = snapshot.requestedDifficulty;
+            block.greedyCandidateOpenness = snapshot.openness;
+            block.greedyRemainingBudgetBefore = snapshot.remainingBefore;
+            block.greedyRemainingBudgetAfter = snapshot.remainingAfter;
+            block.greedyCandidateScore = snapshot.candidateScore;
+            block.greedyPredictedCityBefore = snapshot.predictedCityBefore;
+            block.greedyPredictedCityAfter = snapshot.predictedCityAfter;
+            block.greedyDirectionSatisfied = snapshot.directionSatisfied;
+            block.localCorrectionCount = snapshot.candidatesTested;
+            block.generatedForDifficulty = snapshot.generated;
+            block.layoutPattern = snapshot.layoutPattern;
+            block.layoutYaw = snapshot.layoutYaw;
+            block.layoutResolved = snapshot.layoutResolved;
+            block.layoutSlotCount = snapshot.layoutSlotCount;
+            block.layoutOccupiedSlotCount =
+                snapshot.layoutOccupiedSlotCount;
+        }
+
+        static float ScoreCityFit(
+            AirCombatCityDifficultyEvaluation evaluation,
+            float effectiveTarget)
+        {
+            if (evaluation == null || evaluation.target == null)
+                return float.PositiveInfinity;
+            return evaluation.targetFitError +
+                   Mathf.Abs(evaluation.averageDifficulty -
+                             effectiveTarget) * 0.60f;
+        }
+
+        static bool IsCloserCityFit(
+            AirCombatCityDifficultyEvaluation candidate,
+            AirCombatCityDifficultyEvaluation current,
+            float effectiveTarget)
+        {
+            if (candidate == null || !candidate.IsUsable)
+                return false;
+            if (current == null || !current.IsUsable)
+                return true;
+            if (candidate.coverageValid != current.coverageValid)
+                return candidate.coverageValid;
+            float candidateError = Mathf.Abs(
+                candidate.averageDifficulty - effectiveTarget);
+            float currentError = Mathf.Abs(
+                current.averageDifficulty - effectiveTarget);
+            if (candidateError < currentError - 0.0001f)
+                return true;
+            if (Mathf.Abs(candidateError - currentError) > 0.0001f)
+                return false;
+            // 只有在平均危险度同样接近时，才用安全/高危分布等复合拟合
+            // 作为平局裁决。这样“最终最接近”不会被分布项反向覆盖。
+            return ScoreCityFit(candidate, effectiveTarget) <
+                   ScoreCityFit(current, effectiveTarget) - 0.0005f;
+        }
+
+        static bool NeedsGreedyRepair(
+            AirCombatCitySettings settings,
+            AirCombatCityDifficultyEvaluation evaluation)
+        {
+            if (evaluation == null)
+                return false;
+            float target = AirCombatCityDifficultyPcg
+                .ResolveEffectiveGenerationTarget(settings?.Difficulty);
+            return Mathf.Abs(evaluation.averageDifficulty - target) > 0.025f;
+        }
+
+        static float ScoreFinalCityCandidate(
+            AirCombatCityDifficultyEvaluation evaluation,
+            float requestedOpenness,
+            BlockBuildRealization realization)
+        {
+            float effectiveTarget = evaluation != null
+                ? evaluation.controlAverageDifficulty
+                : 0.5f;
+            float score = ScoreCityFit(evaluation, effectiveTarget);
+            bool needsSaferCity = evaluation != null &&
+                                  evaluation.averageDifficulty >
+                                  effectiveTarget;
+            if (needsSaferCity && realization.slotCount > 0 &&
+                realization.created <= 0)
+                score += 0.008f;
+            return score + Mathf.Abs(requestedOpenness - 0.5f) * 0.00001f;
         }
 
         static float ScoreGreedyCandidate(
@@ -2314,11 +3119,12 @@ namespace UnityPlanet.CityPcg
             CombatCityBlockPlan current,
             GreedyBudget budget,
             AirCombatCityDifficultyEvaluation evaluation,
-            float openness,
-            out float remainingRequiredAverage)
+            float requestedOpenness,
+            BlockBuildRealization realization,
+            out float remainingRequiredAverage,
+            out float predictedFinalAverage)
         {
             float actualSum = 0f;
-            float remainingBaseSum = 0f;
             float currentDifficulty = 1f;
             int generatedCount = 0;
             int remainingCount = 0;
@@ -2330,7 +3136,6 @@ namespace UnityPlanet.CityPcg
                 if (!block.generatedForDifficulty)
                 {
                     remainingCount++;
-                    remainingBaseSum += block.targetDifficulty;
                     continue;
                 }
                 generatedCount++;
@@ -2358,10 +3163,32 @@ namespace UnityPlanet.CityPcg
                   Mathf.Max(0f, remainingRequiredAverage - maximum)
                 : Mathf.Abs(actualSum - budget.totalTarget) /
                   Mathf.Max(1, budget.totalCount);
-            float predictedFinalAverage = (actualSum + remainingBaseSum) /
-                                          Mathf.Max(1, budget.totalCount);
-            float targetAverage = budget.totalTarget /
-                                  Mathf.Max(1, budget.totalCount);
+            float targetAverage = budget.targetAverage;
+            // 未生成格使用三层模型的保守基线，而不是假定未来每一格都
+            // 能完美命中目标。这样低目标不会在中途虚假“达标”，当前
+            // 候选造成的超支也无法再被未来理想格抵消。
+            predictedFinalAverage = (actualSum +
+                remainingCount * budget.forecastBaseline) /
+                Mathf.Max(1, budget.totalCount);
+            float predictedBeforeAverage = (actualSum - currentDifficulty +
+                (remainingCount + 1) * budget.forecastBaseline) /
+                Mathf.Max(1, budget.totalCount);
+            float directionPenalty = 0f;
+            if (predictedBeforeAverage > targetAverage + 0.002f &&
+                predictedFinalAverage > predictedBeforeAverage + 0.0001f)
+            {
+                // 全城已经偏高时，继续升高的候选违反反馈方向。只在
+                // 所有候选都无法降压时才会退化为“选择增幅最小者”。
+                directionPenalty = 0.08f +
+                    (predictedFinalAverage - predictedBeforeAverage) * 8f;
+            }
+            else if (predictedBeforeAverage < targetAverage - 0.002f &&
+                     predictedFinalAverage <
+                     predictedBeforeAverage - 0.0001f)
+            {
+                directionPenalty = 0.08f +
+                    (predictedBeforeAverage - predictedFinalAverage) * 8f;
+            }
             float progress = generatedCount /
                              (float)Mathf.Max(1, budget.totalCount);
             float distributionError =
@@ -2369,19 +3196,55 @@ namespace UnityPlanet.CityPcg
                           evaluation.target.safeCellRatio) * 0.55f +
                 Mathf.Abs(evaluation.highRiskCellRatio -
                           evaluation.target.highRiskCellRatio) * 0.45f;
+            bool needsSaferGeometry = budget.requestedDifficulty <
+                                      targetAverage - 0.005f;
+            float realizationPenalty = 0f;
+            if (realization.requestedOccupied > 0)
+            {
+                realizationPenalty = (1f - realization.Fulfillment) *
+                                     (needsSaferGeometry ? 0.08f : 0.03f);
+                if (realization.created <= 0)
+                    realizationPenalty += needsSaferGeometry ? 0.12f : 0.04f;
+            }
+            else if (needsSaferGeometry)
+            {
+                // 开放候选可以服务高危目标，但不能在需要降压时仅凭
+                // “没有发生异常”被误标成安全候选。
+                realizationPenalty += 0.06f;
+            }
             return Mathf.Abs(currentDifficulty -
                              budget.requestedDifficulty) * 0.46f +
                    Mathf.Abs(predictedFinalAverage - targetAverage) * 0.24f +
                    feasibilityError * 1.30f +
                    evaluation.averageTargetError * 0.14f +
                    distributionError * progress * 0.12f +
+                   directionPenalty +
+                   realizationPenalty +
                    // 完全同分时轻微偏向中性候选；这不是难度假设，
                    // 只用于避免浮点相等时总选择极端几何。
-                   Mathf.Abs(openness - 0.5f) * 0.0002f;
+                   Mathf.Abs(requestedOpenness - 0.5f) * 0.0002f;
+        }
+
+        static int ResolveFrontierPressureDirection(
+            AirCombatCitySettings settings,
+            AirCombatCityDifficultyEvaluation evaluation)
+        {
+            if (evaluation == null || evaluation.target == null)
+                return 0;
+            float delta = evaluation.averageDifficulty -
+                          AirCombatCityDifficultyPcg
+                              .ResolveEffectiveGenerationTarget(
+                                  settings?.Difficulty);
+            if (delta > 0.005f)
+                return -1;
+            if (delta < -0.005f)
+                return 1;
+            return 0;
         }
 
         static CombatCityBlockPlan SelectNextGreedyFrontierBlock(
-            AirCombatCityPlan plan)
+            AirCombatCityPlan plan,
+            int pressureDirection)
         {
             CombatCityBlockPlan best = null;
             bool anyGenerated = false;
@@ -2405,10 +3268,43 @@ namespace UnityPlanet.CityPcg
                 {
                     continue;
                 }
-                if (best == null || CompareBlocksCenterOut(candidate, best) < 0)
+                if (best == null || CompareFrontierBlocks(candidate, best,
+                        pressureDirection) < 0)
                     best = candidate;
             }
             return best;
+        }
+
+        static int CompareFrontierBlocks(CombatCityBlockPlan left,
+            CombatCityBlockPlan right, int pressureDirection)
+        {
+            float leftRing = Mathf.Max(Mathf.Abs(left.gridX - 3.5f),
+                Mathf.Abs(left.gridZ - 3.5f));
+            float rightRing = Mathf.Max(Mathf.Abs(right.gridX - 3.5f),
+                Mathf.Abs(right.gridZ - 3.5f));
+            int ringCompare = leftRing.CompareTo(rightRing);
+            if (ringCompare != 0)
+                return ringCompare;
+            float leftRadius = Mathf.Abs(left.gridX - 3.5f) +
+                               Mathf.Abs(left.gridZ - 3.5f);
+            float rightRadius = Mathf.Abs(right.gridX - 3.5f) +
+                                Mathf.Abs(right.gridZ - 3.5f);
+            int radiusCompare = leftRadius.CompareTo(rightRadius);
+            if (radiusCompare != 0)
+                return radiusCompare;
+            if (pressureDirection != 0)
+            {
+                int difficultyCompare = left.targetDifficulty.CompareTo(
+                    right.targetDifficulty);
+                if (difficultyCompare != 0)
+                    return pressureDirection < 0
+                        ? difficultyCompare
+                        : -difficultyCompare;
+            }
+            int xCompare = left.gridX.CompareTo(right.gridX);
+            return xCompare != 0
+                ? xCompare
+                : left.gridZ.CompareTo(right.gridZ);
         }
 
         static bool HasGeneratedGreedyNeighbor(
@@ -2458,7 +3354,7 @@ namespace UnityPlanet.CityPcg
                 : left.gridZ.CompareTo(right.gridZ);
         }
 
-        static void BuildBuildingsForBlock(
+        static BlockBuildRealization BuildBuildingsForBlock(
             AirCombatCitySettings settings,
             AirCombatCityPlan plan,
             CombatCityBlockPlan tacticalBlock,
@@ -2471,139 +3367,116 @@ namespace UnityPlanet.CityPcg
             int count,
             float start)
         {
-            for (int x = 0; x < count; x++)
-            for (int z = 0; z < count; z++)
+            if (tacticalBlock == null)
+                return default;
+            ResolveBlockLayout(settings, plan, tacticalBlock);
+            var slots = new List<BlockBuildingSlot>(9);
+            BuildBlockLayoutSlots(tacticalBlock.layoutPattern, slots);
+            tacticalBlock.layoutSlotCount = slots.Count;
+
+            Vector2 blockCenter = new Vector2(
+                tacticalBlock.bounds.center.x,
+                tacticalBlock.bounds.center.z);
+            float normalizedRadius = blockCenter.magnitude /
+                                     Mathf.Max(1f, half);
+            float localDensity = normalizedRadius < 0.46f
+                ? Mathf.Min(0.99f, settings.buildingDensity + 0.15f)
+                : normalizedRadius < 0.75f
+                    ? Mathf.Min(0.98f, settings.buildingDensity + 0.14f)
+                    : Mathf.Max(0.68f, settings.buildingDensity - 0.16f);
+            if (tacticalBlock.excludedFromDifficulty)
+                localDensity = Mathf.Max(localDensity, 0.96f);
+            localDensity = Mathf.Clamp01(localDensity * densityScale);
+            int requestedOccupied = tacticalBlock.excludedFromDifficulty
+                ? slots.Count
+                : Mathf.Clamp(
+                    Mathf.RoundToInt(slots.Count * localDensity),
+                    localDensity >= 0.08f ? 1 : 0,
+                    slots.Count);
+            var realization = new BlockBuildRealization
             {
-                Vector2 point = new Vector2(start + x * spacing, start + z * spacing);
-                CombatCityBlockPlan owner =
-                    CombatDrivenCityPcgPlanner.FindTacticalBlock(plan, point);
-                if (!ReferenceEquals(owner, tacticalBlock))
-                    continue;
-                float footprint;
-                float depth;
-                string parcelLabel;
-                int parcelStyle = PositiveModulo(
-                    x * 92821 + z * 68917 + settings.seed * 31,
-                    100);
-                if (parcelStyle < 91)
-                {
-                    footprint = spacing * random.Range(0.70f, 0.88f);
-                    depth = spacing * random.Range(0.68f, 0.88f);
-                    parcelLabel = "large";
-                }
-                else if (parcelStyle < 97)
-                {
-                    footprint = spacing * random.Range(0.55f, 0.70f);
-                    depth = spacing * random.Range(0.54f, 0.72f);
-                    parcelLabel = "standard";
-                }
-                else
-                {
-                    footprint = spacing * random.Range(0.36f, 0.52f);
-                    depth = spacing * random.Range(0.34f, 0.54f);
-                    parcelLabel = "small-gapfill";
-                }
-                float normalizedRadius = point.magnitude / Mathf.Max(1f, half);
-                float localDensity = normalizedRadius < 0.46f
-                    ? Mathf.Min(0.99f, settings.buildingDensity + 0.15f)
-                    : normalizedRadius < 0.75f
-                        ? Mathf.Min(0.98f, settings.buildingDensity + 0.14f)
-                        : Mathf.Max(0.68f, settings.buildingDensity - 0.16f);
-                if (tacticalBlock != null)
-                {
-                    if (tacticalBlock.excludedFromDifficulty)
-                        localDensity = Mathf.Max(localDensity, 0.96f);
-                    localDensity = Mathf.Clamp01(
-                        localDensity * densityScale);
-                    if (tacticalBlock.mergedGroupId != tacticalBlock.stableId)
-                    {
-                        footprint = Mathf.Min(
-                            spacing * 0.93f,
-                            footprint * 1.08f);
-                        depth = Mathf.Min(
-                            spacing * 0.93f,
-                            depth * 1.08f);
-                    }
-                }
-                float maximumFlyableParcelSpan = Mathf.Max(
-                    18f,
-                    spacing - settings.MinimumDefaultPresetBuildingGap);
-                footprint = Mathf.Min(footprint, maximumFlyableParcelSpan);
-                depth = Mathf.Min(depth, maximumFlyableParcelSpan);
+                slotCount = slots.Count,
+                requestedOccupied = requestedOccupied
+            };
+            float maximumFlyableParcelSpan = Mathf.Max(
+                18f,
+                spacing - settings.MinimumDefaultPresetBuildingGap);
+            Quaternion blockRotation = Quaternion.Euler(
+                0f, tacticalBlock.layoutYaw, 0f);
+            int created = 0;
+            for (int slotIndex = 0;
+                 slotIndex < slots.Count && created < requestedOccupied;
+                 slotIndex++)
+            {
+                realization.attemptedSlots++;
+                BlockBuildingSlot slot = slots[slotIndex];
+                Vector3 localOffset = new Vector3(
+                    slot.position.x * tacticalBlock.bounds.size.x,
+                    0f,
+                    slot.position.y * tacticalBlock.bounds.size.z);
+                Vector3 rotatedOffset = blockRotation * localOffset;
+                Vector2 point = blockCenter + new Vector2(
+                    rotatedOffset.x, rotatedOffset.z);
                 if (Mathf.Abs(point.x) > half - 44f ||
-                    Mathf.Abs(point.y) > half - 44f ||
-                    random.Value() > localDensity)
+                    Mathf.Abs(point.y) > half - 44f)
                 {
+                    realization.rejectedBounds++;
                     continue;
                 }
+
+                float desiredWidth = Mathf.Min(
+                    maximumFlyableParcelSpan,
+                    tacticalBlock.bounds.size.x * slot.size.x);
+                float desiredDepth = Mathf.Min(
+                    maximumFlyableParcelSpan,
+                    tacticalBlock.bounds.size.z * slot.size.y);
+                desiredWidth = Mathf.Max(16f, desiredWidth);
+                desiredDepth = Mathf.Max(16f, desiredDepth);
                 float protectedRoofLimit = ResolveProtectedRoofLimit(
-                    settings,
-                    plan,
-                    point);
+                    settings, plan, point);
                 bool protectedVolume =
                     !float.IsPositiveInfinity(protectedRoofLimit);
-                int clusterX = x / 4;
-                int clusterZ = z / 4;
-                // 0..1999 保留给低楼岛、恢复区和战术实体。基础街区
-                // 使用独立命名空间，避免普通楼被误计为1202遮挡塔。
-                int clusterId = 10000 + clusterX * 100 + clusterZ;
                 int localPattern = PositiveModulo(
-                    x * 7 + z * 3 + clusterId + settings.seed,
+                    StableLayoutHash(
+                        tacticalBlock.stableId, settings.seed,
+                        slotIndex * 37 + slot.heightBias * 13),
                     16);
                 AirCombatBuildingBand band = ResolveBuildingBand(
+                    settings, point, protectedRoofLimit, localPattern);
+                band = AdjustSlotBand(
+                    band, slot.heightBias, heightScale,
+                    tacticalBlock.excludedFromDifficulty);
+                float desiredHeight = ResolveSlotHeight(
                     settings,
-                    point,
+                    band,
+                    protectedVolume,
                     protectedRoofLimit,
+                    heightScale,
+                    localPattern,
+                    tacticalBlock.excludedFromDifficulty);
+                AirCombatBuildingModelMetric model = ResolveBestBuildingModel(
+                    settings,
+                    band,
+                    desiredWidth,
+                    desiredDepth,
+                    desiredHeight,
                     localPattern);
-                if (tacticalBlock != null &&
-                    tacticalBlock.excludedFromDifficulty)
-                {
-                    // 外围只承担城市天际线、遮挡和战斗边界职责，不参与
-                    // 关卡难度平均。除法定飞行门户外，外围楼始终采用
-                    // 最高楼带，避免“简单档=空旷平地”的反直觉结果。
-                    band = AirCombatBuildingBand.High;
-                }
-                float height;
-                switch (band)
-                {
-                    case AirCombatBuildingBand.High:
-                        height = random.Range(
-                            Mathf.Max(180f, settings.highAltitude * 0.82f),
-                            Mathf.Min(
-                                settings.maximumAltitude - 22f,
-                                settings.highAltitude * 1.45f));
-                        break;
-                    case AirCombatBuildingBand.Medium:
-                        height = protectedVolume
-                            ? random.Range(
-                                Mathf.Max(86f, settings.lowAltitude + 16f),
-                                Mathf.Max(90f, protectedRoofLimit - 3f))
-                            : random.Range(
-                                Mathf.Max(96f, settings.lowAltitude + 20f),
-                                Mathf.Min(182f, settings.highAltitude - 28f));
-                        break;
-                    default:
-                        height = protectedVolume
-                            ? random.Range(
-                                30f,
-                                Mathf.Min(72f, protectedRoofLimit - 3f))
-                            : random.Range(36f, 84f);
-                        break;
-                }
-                if (tacticalBlock != null)
-                    height *= heightScale;
-                if (tacticalBlock != null &&
-                    tacticalBlock.excludedFromDifficulty)
-                {
-                    height = Mathf.Max(
-                        height,
-                        Mathf.Min(settings.maximumAltitude - 20f,
-                            settings.highAltitude * 1.28f));
-                }
-                if (!float.IsPositiveInfinity(protectedRoofLimit))
-                    height = Mathf.Min(height, protectedRoofLimit - 3f);
-                height = Mathf.Min(height, settings.maximumAltitude - 18f);
-                float yaw = ResolveFacadeYaw(plan, point);
+                ResolveModelConstrainedFootprint(
+                    model,
+                    desiredWidth,
+                    desiredDepth,
+                    out float footprint,
+                    out float depth,
+                    out float horizontalScale);
+                float height = ResolveModelConstrainedHeight(
+                    settings,
+                    model,
+                    band,
+                    desiredHeight,
+                    horizontalScale,
+                    protectedRoofLimit,
+                    tacticalBlock.excludedFromDifficulty);
+                float yaw = tacticalBlock.layoutYaw + slot.yawOffset;
                 if (IsReservedForFlight(
                         settings,
                         plan,
@@ -2611,24 +3484,570 @@ namespace UnityPlanet.CityPcg
                         height,
                         new Vector2(footprint, depth),
                         yaw))
+                {
+                    realization.rejectedFlight++;
                     continue;
-                if (OverlapsBuilding(plan.buildings, point,
-                        footprint, depth))
+                }
+                if (OverlapsBuilding(
+                        plan.buildings, point, footprint, depth))
+                {
+                    realization.rejectedOverlap++;
                     continue;
+                }
+
+                string parcelLabel = slot.size.x * slot.size.y >= 0.020f
+                    ? "large"
+                    : slot.size.x * slot.size.y >= 0.014f
+                        ? "standard"
+                        : "small-gapfill";
+                int clusterId = 10000 + tacticalBlock.gridX * 100 +
+                                tacticalBlock.gridZ;
+                int visualVariant = model != null
+                    ? model.catalogIndex
+                    : PositiveModulo(localPattern * 61 + slotIndex * 17, 97);
                 plan.buildings.Add(new AirCombatBuildingLot
                 {
                     stableId = "building." + parcelLabel + "." +
-                               buildingIndex++.ToString("D3"),
+                               buildingIndex++.ToString("D3") + "." +
+                               LayoutPatternLabel(tacticalBlock.layoutPattern) +
+                               ".slot" + slotIndex.ToString("D2"),
                     center = new Vector3(point.x, height * 0.5f, point.y),
                     size = new Vector3(footprint, height, depth),
                     yaw = yaw,
                     band = band,
                     archetype = ArchetypeForBand(band),
                     clusterId = clusterId,
-                    visualVariant = PositiveModulo(
-                        x * 92821 + z * 68917 + settings.seed,
-                        97)
+                    visualVariant = visualVariant,
+                    layoutSlotIndex = slotIndex,
+                    layoutPattern = tacticalBlock.layoutPattern,
+                    authoredModelSize = model != null
+                        ? model.authoredSize
+                        : Vector3.zero,
+                    horizontalModelScale = horizontalScale
                 });
+                created++;
+            }
+            tacticalBlock.layoutOccupiedSlotCount = created;
+            realization.created = created;
+            return realization;
+        }
+
+        static bool TryCreateBuildingForBlockSlot(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan,
+            CombatCityBlockPlan tacticalBlock,
+            BlockBuildingSlot slot,
+            int slotIndex,
+            AirCombatBuildingBand forcedBand,
+            int buildingIndex,
+            float half,
+            float spacing,
+            out AirCombatBuildingLot lot,
+            out int rejectionReason)
+        {
+            lot = null;
+            rejectionReason = 0;
+            Vector2 blockCenter = new Vector2(
+                tacticalBlock.bounds.center.x,
+                tacticalBlock.bounds.center.z);
+            Quaternion blockRotation = Quaternion.Euler(
+                0f, tacticalBlock.layoutYaw, 0f);
+            Vector3 localOffset = new Vector3(
+                slot.position.x * tacticalBlock.bounds.size.x,
+                0f,
+                slot.position.y * tacticalBlock.bounds.size.z);
+            Vector3 rotatedOffset = blockRotation * localOffset;
+            Vector2 point = blockCenter + new Vector2(
+                rotatedOffset.x, rotatedOffset.z);
+            if (Mathf.Abs(point.x) > half - 44f ||
+                Mathf.Abs(point.y) > half - 44f)
+            {
+                rejectionReason = 1;
+                return false;
+            }
+
+            float maximumFlyableParcelSpan = Mathf.Max(
+                18f,
+                spacing - settings.MinimumDefaultPresetBuildingGap);
+            float desiredWidth = Mathf.Max(16f, Mathf.Min(
+                maximumFlyableParcelSpan,
+                tacticalBlock.bounds.size.x * slot.size.x));
+            float desiredDepth = Mathf.Max(16f, Mathf.Min(
+                maximumFlyableParcelSpan,
+                tacticalBlock.bounds.size.z * slot.size.y));
+            float protectedRoofLimit = ResolveProtectedRoofLimit(
+                settings, plan, point);
+            bool protectedVolume =
+                !float.IsPositiveInfinity(protectedRoofLimit);
+            int localPattern = PositiveModulo(
+                StableLayoutHash(
+                    tacticalBlock.stableId, settings.seed,
+                    slotIndex * 37 + slot.heightBias * 13),
+                16);
+            AirCombatBuildingBand band = forcedBand;
+            float desiredHeight = ResolveSlotHeight(
+                settings,
+                band,
+                protectedVolume,
+                protectedRoofLimit,
+                1f,
+                localPattern,
+                tacticalBlock.excludedFromDifficulty);
+            AirCombatBuildingModelMetric model = ResolveBestBuildingModel(
+                settings,
+                band,
+                desiredWidth,
+                desiredDepth,
+                desiredHeight,
+                localPattern);
+            ResolveModelConstrainedFootprint(
+                model,
+                desiredWidth,
+                desiredDepth,
+                out float footprint,
+                out float depth,
+                out float horizontalScale);
+            float height = ResolveModelConstrainedHeight(
+                settings,
+                model,
+                band,
+                desiredHeight,
+                horizontalScale,
+                protectedRoofLimit,
+                tacticalBlock.excludedFromDifficulty);
+            float yaw = tacticalBlock.layoutYaw + slot.yawOffset;
+            if (IsReservedForFlight(
+                    settings,
+                    plan,
+                    point,
+                    height,
+                    new Vector2(footprint, depth),
+                    yaw))
+            {
+                rejectionReason = 2;
+                return false;
+            }
+            if (OverlapsBuilding(plan.buildings, point, footprint, depth))
+            {
+                rejectionReason = 3;
+                return false;
+            }
+
+            string parcelLabel = slot.size.x * slot.size.y >= 0.020f
+                ? "large"
+                : slot.size.x * slot.size.y >= 0.014f
+                    ? "standard"
+                    : "small-gapfill";
+            int clusterId = 10000 + tacticalBlock.gridX * 100 +
+                            tacticalBlock.gridZ;
+            int visualVariant = model != null
+                ? model.catalogIndex
+                : PositiveModulo(localPattern * 61 + slotIndex * 17, 97);
+            lot = new AirCombatBuildingLot
+            {
+                stableId = "building." + parcelLabel + "." +
+                           buildingIndex.ToString("D3") + "." +
+                           LayoutPatternLabel(tacticalBlock.layoutPattern) +
+                           ".slot" + slotIndex.ToString("D2"),
+                center = new Vector3(point.x, height * 0.5f, point.y),
+                size = new Vector3(footprint, height, depth),
+                yaw = yaw,
+                band = band,
+                archetype = ArchetypeForBand(band),
+                clusterId = clusterId,
+                visualVariant = visualVariant,
+                layoutSlotIndex = slotIndex,
+                layoutPattern = tacticalBlock.layoutPattern,
+                authoredModelSize = model != null
+                    ? model.authoredSize
+                    : Vector3.zero,
+                horizontalModelScale = horizontalScale
+            };
+            return true;
+        }
+
+        struct BlockBuildingSlot
+        {
+            public Vector2 position;
+            public Vector2 size;
+            public float yawOffset;
+            public int heightBias;
+
+            public BlockBuildingSlot(
+                float x,
+                float z,
+                float width,
+                float depth,
+                float yawOffset,
+                int heightBias)
+            {
+                position = new Vector2(x, z);
+                size = new Vector2(width, depth);
+                this.yawOffset = yawOffset;
+                this.heightBias = heightBias;
+            }
+        }
+
+        static void ResolveBlockLayout(
+            AirCombatCitySettings settings,
+            AirCombatCityPlan plan,
+            CombatCityBlockPlan block)
+        {
+            string group = string.IsNullOrEmpty(block.mergedGroupId)
+                ? block.stableId
+                : block.mergedGroupId;
+            int stable = StableLayoutHash(group, settings.seed, 0);
+            CombatCityBlockLayoutPattern pattern;
+            switch (block.role)
+            {
+                case CombatCityBlockRole.Occlusion:
+                    switch (PositiveModulo(stable, 3))
+                    {
+                        case 0:
+                            pattern = CombatCityBlockLayoutPattern
+                                .ParallelStreetWalls;
+                            break;
+                        case 1:
+                            pattern = CombatCityBlockLayoutPattern
+                                .TwinTowerGate;
+                            break;
+                        default:
+                            pattern = CombatCityBlockLayoutPattern
+                                .StreetPerimeterCourt;
+                            break;
+                    }
+                    break;
+                case CombatCityBlockRole.Exposure:
+                    switch (PositiveModulo(stable / 7, 4))
+                    {
+                        case 0:
+                            pattern = CombatCityBlockLayoutPattern
+                                .TwinTowerGate;
+                            break;
+                        case 1:
+                            pattern = CombatCityBlockLayoutPattern
+                                .ParallelStreetWalls;
+                            break;
+                        default:
+                            pattern = CombatCityBlockLayoutPattern
+                                .OpenManeuverBasin;
+                            break;
+                    }
+                    break;
+                case CombatCityBlockRole.Vertical:
+                    pattern = PositiveModulo(stable / 11, 3) == 0
+                        ? CombatCityBlockLayoutPattern.TerracedBuildingGroup
+                        : CombatCityBlockLayoutPattern.OpenManeuverBasin;
+                    break;
+                case CombatCityBlockRole.Recovery:
+                    switch (PositiveModulo(stable / 13, 3))
+                    {
+                        case 0:
+                            pattern = CombatCityBlockLayoutPattern
+                                .StreetPerimeterCourt;
+                            break;
+                        case 1:
+                            pattern = CombatCityBlockLayoutPattern.UCourtyard;
+                            break;
+                        default:
+                            pattern = CombatCityBlockLayoutPattern
+                                .TerracedBuildingGroup;
+                            break;
+                    }
+                    break;
+                case CombatCityBlockRole.Kite:
+                    pattern = PositiveModulo(stable / 23, 2) == 0
+                        ? CombatCityBlockLayoutPattern.OpenManeuverBasin
+                        : CombatCityBlockLayoutPattern.TerracedBuildingGroup;
+                    break;
+                case CombatCityBlockRole.Attack:
+                case CombatCityBlockRole.TacticalChoke:
+                    pattern = PositiveModulo(stable / 19, 2) == 0
+                        ? CombatCityBlockLayoutPattern.TwinTowerGate
+                        : CombatCityBlockLayoutPattern.ParallelStreetWalls;
+                    break;
+                case CombatCityBlockRole.Destruction:
+                    pattern = CombatCityBlockLayoutPattern.TerracedBuildingGroup;
+                    break;
+                case CombatCityBlockRole.CombatBoundary:
+                    pattern = CombatCityBlockLayoutPattern.StreetPerimeterCourt;
+                    break;
+                default:
+                    pattern = (CombatCityBlockLayoutPattern)
+                        PositiveModulo(stable, 6);
+                    break;
+            }
+            block.layoutPattern = pattern;
+            // 同一合并街区共享0/90度结构轴；正面再整体翻转180度，
+            // 不允许每栋楼分别追逐最近道路。
+            block.layoutYaw = PositiveModulo(stable / 17, 2) * 90f +
+                              PositiveModulo(stable / 101, 2) * 180f;
+            block.layoutResolved = true;
+        }
+
+        static void BuildBlockLayoutSlots(
+            CombatCityBlockLayoutPattern pattern,
+            List<BlockBuildingSlot> slots)
+        {
+            slots.Clear();
+            switch (pattern)
+            {
+                case CombatCityBlockLayoutPattern.UCourtyard:
+                    AddSlot(slots, -0.24f, -0.24f, 0.135f, 0.145f, 0f, 0);
+                    AddSlot(slots, 0f, -0.24f, 0.13f, 0.145f, 0f, -1);
+                    AddSlot(slots, 0.24f, -0.24f, 0.135f, 0.145f, 0f, 0);
+                    AddSlot(slots, -0.24f, 0f, 0.135f, 0.14f, 90f, 1);
+                    AddSlot(slots, 0.24f, 0f, 0.135f, 0.14f, -90f, 1);
+                    AddSlot(slots, -0.24f, 0.24f, 0.13f, 0.13f, 90f, 0);
+                    AddSlot(slots, 0.24f, 0.24f, 0.13f, 0.13f, -90f, 0);
+                    break;
+                case CombatCityBlockLayoutPattern.ParallelStreetWalls:
+                    AddSlot(slots, -0.24f, -0.24f, 0.13f, 0.145f, 90f, 1);
+                    AddSlot(slots, -0.24f, 0f, 0.13f, 0.145f, 90f, 0);
+                    AddSlot(slots, -0.24f, 0.24f, 0.13f, 0.145f, 90f, 1);
+                    AddSlot(slots, 0.24f, -0.24f, 0.13f, 0.145f, -90f, 1);
+                    AddSlot(slots, 0.24f, 0f, 0.13f, 0.145f, -90f, 0);
+                    AddSlot(slots, 0.24f, 0.24f, 0.13f, 0.145f, -90f, 1);
+                    break;
+                case CombatCityBlockLayoutPattern.TwinTowerGate:
+                    AddSlot(slots, -0.22f, -0.17f, 0.145f, 0.135f, 0f, 1);
+                    AddSlot(slots, 0.22f, -0.17f, 0.145f, 0.135f, 0f, 1);
+                    AddSlot(slots, -0.24f, 0.23f, 0.13f, 0.135f, 90f, 0);
+                    AddSlot(slots, 0.24f, 0.23f, 0.13f, 0.135f, -90f, 0);
+                    AddSlot(slots, -0.24f, 0.04f, 0.12f, 0.12f, 90f, -1);
+                    AddSlot(slots, 0.24f, 0.04f, 0.12f, 0.12f, -90f, -1);
+                    break;
+                case CombatCityBlockLayoutPattern.OpenManeuverBasin:
+                    AddSlot(slots, -0.24f, -0.24f, 0.13f, 0.13f, 45f, 0);
+                    AddSlot(slots, 0.24f, -0.24f, 0.13f, 0.13f, -45f, 1);
+                    AddSlot(slots, -0.24f, 0.24f, 0.13f, 0.13f, 135f, 1);
+                    AddSlot(slots, 0.24f, 0.24f, 0.13f, 0.13f, -135f, 0);
+                    AddSlot(slots, 0f, 0.30f, 0.12f, 0.12f, 180f, -1);
+                    break;
+                case CombatCityBlockLayoutPattern.TerracedBuildingGroup:
+                    AddSlot(slots, -0.24f, -0.23f, 0.14f, 0.135f, 0f, -1);
+                    AddSlot(slots, 0f, -0.23f, 0.125f, 0.135f, 0f, 0);
+                    AddSlot(slots, 0.24f, -0.23f, 0.14f, 0.135f, 0f, 1);
+                    AddSlot(slots, -0.24f, 0.05f, 0.135f, 0.13f, 90f, 0);
+                    AddSlot(slots, 0f, 0.06f, 0.12f, 0.12f, 0f, 1);
+                    AddSlot(slots, 0.24f, 0.05f, 0.135f, 0.13f, -90f, 0);
+                    AddSlot(slots, 0f, 0.30f, 0.135f, 0.12f, 180f, -1);
+                    break;
+                default:
+                    AddSlot(slots, -0.24f, -0.24f, 0.135f, 0.135f, 0f, 0);
+                    AddSlot(slots, 0f, -0.24f, 0.125f, 0.135f, 0f, -1);
+                    AddSlot(slots, 0.24f, -0.24f, 0.135f, 0.135f, 0f, 0);
+                    AddSlot(slots, -0.24f, 0f, 0.135f, 0.125f, 90f, 1);
+                    AddSlot(slots, 0.24f, 0f, 0.135f, 0.125f, -90f, 1);
+                    AddSlot(slots, -0.24f, 0.24f, 0.135f, 0.135f, 180f, 0);
+                    AddSlot(slots, 0f, 0.24f, 0.125f, 0.135f, 180f, -1);
+                    AddSlot(slots, 0.24f, 0.24f, 0.135f, 0.135f, 180f, 0);
+                    break;
+            }
+        }
+
+        static void AddSlot(
+            List<BlockBuildingSlot> slots,
+            float x,
+            float z,
+            float width,
+            float depth,
+            float yaw,
+            int heightBias)
+        {
+            slots.Add(new BlockBuildingSlot(
+                x, z, width, depth, yaw, heightBias));
+        }
+
+        static AirCombatBuildingBand AdjustSlotBand(
+            AirCombatBuildingBand band,
+            int heightBias,
+            float heightScale,
+            bool perimeter)
+        {
+            if (perimeter)
+                return AirCombatBuildingBand.High;
+            int value = (int)band + heightBias;
+            if (heightScale < 0.68f)
+                value--;
+            else if (heightScale > 1.16f)
+                value++;
+            return (AirCombatBuildingBand)Mathf.Clamp(value, 0, 2);
+        }
+
+        static float ResolveSlotHeight(
+            AirCombatCitySettings settings,
+            AirCombatBuildingBand band,
+            bool protectedVolume,
+            float protectedRoofLimit,
+            float heightScale,
+            int localPattern,
+            bool perimeter)
+        {
+            float variation = ((localPattern % 5) - 2) * 4f;
+            float height;
+            switch (band)
+            {
+                case AirCombatBuildingBand.High:
+                    height = settings.highAltitude * 0.96f + variation * 2f;
+                    break;
+                case AirCombatBuildingBand.Medium:
+                    height = settings.mediumAltitude * 0.88f + variation;
+                    break;
+                default:
+                    height = settings.lowAltitude * 0.74f + variation * 0.5f;
+                    break;
+            }
+            height *= Mathf.Clamp(heightScale, 0.38f, 1.42f);
+            if (perimeter)
+            {
+                height = Mathf.Max(
+                    height,
+                    Mathf.Min(settings.maximumAltitude - 20f,
+                        settings.highAltitude * 1.28f));
+            }
+            if (protectedVolume)
+                height = Mathf.Min(height, protectedRoofLimit - 3f);
+            return Mathf.Clamp(height, 28f, settings.maximumAltitude - 18f);
+        }
+
+        static AirCombatBuildingModelMetric ResolveBestBuildingModel(
+            AirCombatCitySettings settings,
+            AirCombatBuildingBand band,
+            float desiredWidth,
+            float desiredDepth,
+            float desiredHeight,
+            int stable)
+        {
+            AirCombatBuildingModelMetric[] metrics =
+                settings.buildingModelMetrics;
+            if (metrics == null || metrics.Length == 0)
+                return null;
+            float targetAspect = desiredWidth / Mathf.Max(0.1f, desiredDepth);
+            float targetSlenderness = desiredHeight / Mathf.Max(
+                0.1f, Mathf.Sqrt(desiredWidth * desiredDepth));
+            AirCombatBuildingModelMetric best = null;
+            float bestScore = float.PositiveInfinity;
+            for (int index = 0; index < metrics.Length; index++)
+            {
+                AirCombatBuildingModelMetric metric = metrics[index];
+                if (metric == null || metric.band != band ||
+                    metric.groundSupportRatio < 0.28f)
+                {
+                    continue;
+                }
+                float aspectError = Mathf.Abs(Mathf.Log(
+                    Mathf.Max(0.05f, metric.FootprintAspect) /
+                    Mathf.Max(0.05f, targetAspect)));
+                float slenderError = Mathf.Abs(Mathf.Log(
+                    Mathf.Max(0.05f, metric.Slenderness) /
+                    Mathf.Max(0.05f, targetSlenderness)));
+                float supportPenalty = (1f - metric.groundSupportRatio) * 0.35f +
+                                       (1f - metric.bodyCoverage) * 0.10f;
+                float tieBreak = PositiveModulo(
+                    stable + metric.catalogIndex * 17, 997) * 0.000001f;
+                float score = aspectError * 0.68f + slenderError * 0.32f +
+                              supportPenalty + tieBreak;
+                if (score >= bestScore)
+                    continue;
+                bestScore = score;
+                best = metric;
+            }
+            return best;
+        }
+
+        static void ResolveModelConstrainedFootprint(
+            AirCombatBuildingModelMetric model,
+            float desiredWidth,
+            float desiredDepth,
+            out float width,
+            out float depth,
+            out float horizontalScale)
+        {
+            if (model == null)
+            {
+                width = desiredWidth;
+                depth = desiredDepth;
+                horizontalScale = 1f;
+                return;
+            }
+            float authoredWidth = Mathf.Max(0.1f, model.authoredSize.x);
+            float authoredDepth = Mathf.Max(0.1f, model.authoredSize.z);
+            horizontalScale = Mathf.Min(
+                desiredWidth / authoredWidth,
+                desiredDepth / authoredDepth);
+            horizontalScale = Mathf.Max(0.1f, horizontalScale);
+            width = authoredWidth * horizontalScale;
+            depth = authoredDepth * horizontalScale;
+        }
+
+        static float ResolveModelConstrainedHeight(
+            AirCombatCitySettings settings,
+            AirCombatBuildingModelMetric model,
+            AirCombatBuildingBand band,
+            float desiredHeight,
+            float horizontalScale,
+            float protectedRoofLimit,
+            bool perimeter)
+        {
+            float naturalHeight = model != null
+                ? model.authoredSize.y * horizontalScale
+                : desiredHeight;
+            float height = Mathf.Lerp(desiredHeight, naturalHeight, 0.24f);
+            float minimum = band == AirCombatBuildingBand.High
+                ? Mathf.Max(150f, settings.mediumAltitude + 18f)
+                : band == AirCombatBuildingBand.Medium
+                    ? Mathf.Max(82f, settings.lowAltitude + 12f)
+                    : 28f;
+            float maximum = band == AirCombatBuildingBand.Low
+                ? Mathf.Min(88f, settings.mediumAltitude - 22f)
+                : band == AirCombatBuildingBand.Medium
+                    ? Mathf.Min(184f, settings.highAltitude - 18f)
+                    : settings.maximumAltitude - 18f;
+            if (perimeter)
+                minimum = Mathf.Max(minimum, settings.highAltitude * 1.18f);
+            height = Mathf.Clamp(height, minimum, maximum);
+            if (!float.IsPositiveInfinity(protectedRoofLimit))
+                height = Mathf.Min(height, protectedRoofLimit - 3f);
+            return Mathf.Clamp(height, 24f, settings.maximumAltitude - 18f);
+        }
+
+        static string LayoutPatternLabel(
+            CombatCityBlockLayoutPattern pattern)
+        {
+            switch (pattern)
+            {
+                case CombatCityBlockLayoutPattern.UCourtyard:
+                    return "u-courtyard";
+                case CombatCityBlockLayoutPattern.ParallelStreetWalls:
+                    return "parallel-street-walls";
+                case CombatCityBlockLayoutPattern.TwinTowerGate:
+                    return "twin-tower-gate";
+                case CombatCityBlockLayoutPattern.OpenManeuverBasin:
+                    return "open-maneuver-basin";
+                case CombatCityBlockLayoutPattern.TerracedBuildingGroup:
+                    return "terraced-group";
+                default:
+                    return "street-perimeter-court";
+            }
+        }
+
+        static int StableLayoutHash(string value, int seed, int salt)
+        {
+            unchecked
+            {
+                uint hash = 2166136261u;
+                string text = value ?? string.Empty;
+                for (int index = 0; index < text.Length; index++)
+                {
+                    hash ^= text[index];
+                    hash *= 16777619u;
+                }
+                hash ^= (uint)seed;
+                hash *= 16777619u;
+                hash ^= (uint)salt;
+                hash *= 16777619u;
+                return (int)(hash & 0x7FFFFFFF);
             }
         }
 
@@ -4386,97 +5805,97 @@ namespace UnityPlanet.CityPcg
                     0.35f,
                     building.size.x * building.size.z / referenceFootprint);
             }
-            bool buildingBudgetValid = equivalentBuildingCount >= 80f &&
-                                       equivalentBuildingCount <= 650f &&
-                                       report.buildingCount <= 520;
+            float spatialTarget = AirCombatCityDifficultyPcg
+                .ResolveTarget(settings.Difficulty).averageDifficulty;
+            float minimumEquivalentBuildingCount = Mathf.Lerp(
+                80f,
+                72f,
+                Mathf.InverseLerp(0.66f, 0.90f, spatialTarget));
+            bool buildingDensityTargetMet = equivalentBuildingCount >=
+                                            minimumEquivalentBuildingCount;
+            bool buildingPerformanceBudgetValid =
+                equivalentBuildingCount <= 650f &&
+                report.buildingCount <= 520;
             bool contactValid = settings.mission !=
                                 AirCombatCityMission.FacilityAssault
                 ? report.firstContactSeconds >= 4.5f
                 : report.firstContactSeconds >= 1.5f;
-            float spatialTarget = AirCombatCityDifficultyPcg
-                .ResolveTarget(settings.Difficulty).averageDifficulty;
             bool exposureDominantLayout = spatialTarget >= 0.66f;
-            report.valid = mapScaleValid
-                && turnValid
-                && buildingBudgetValid
-                && report.routesClear
-                && report.alternateRouteAvailable
-                && report.threeAltitudeLayersUseful
-                && (report.heightMixDistributed ||
-                    exposureDominantLayout)
-                && (report.centralHeightMixValid ||
-                    exposureDominantLayout)
-                && report.highAltitudeBypassControlled
-                && report.facilityReachable
-                && report.roadGridAligned
-                && report.roadIntersectionCount >= 32
-                && report.roadWidthsVaried
-                && report.tacticalBlockCoverageValid
-                && report.buildingRoadOverlapCount == 0
-                && report.coverContinuityValid
-                && report.recoveryDistrictCount == 2
-                && report.tacticalRolesComplete
-                && report.tacticalOpportunityNetworkValid
-                && report.combatRegionsPhysical
-                && !report.dominantRouteDetected
-                && report.ingressCount >= 6
-                && contactValid;
+            bool facilityHardValid = settings.mission !=
+                                     AirCombatCityMission.FacilityAssault ||
+                                     report.facilityReachable;
+            // report.valid 只代表能否安全实例化并进入战斗。空间题目、美术
+            // 配额和难度拟合全部记录为软目标，不能再把玩家挡在加载界面。
+            report.hardPlayabilityValid = turnValid &&
+                                          buildingPerformanceBudgetValid &&
+                                          report.routesClear &&
+                                          report.boundaryAirWallsValid &&
+                                          facilityHardValid &&
+                                          report.buildingRoadOverlapCount == 0 &&
+                                          report.ingressCount >= 1;
+            report.valid = report.hardPlayabilityValid;
 
-            if (!report.valid)
+            var designWarnings = new List<string>(16);
+            if (!mapScaleValid)
+                designWarnings.Add("地图交战尺度不足三倍武器射程");
+            if (!buildingDensityTargetMet)
+                designWarnings.Add("建筑密度低于设计目标");
+            if (!report.alternateRouteAvailable)
+                designWarnings.Add("替代战术航路不足");
+            if (!report.threeAltitudeLayersUseful)
+                designWarnings.Add("三层空域利用不足");
+            if (!report.heightMixDistributed && !exposureDominantLayout)
+                designWarnings.Add("局部低中高建筑混合不足");
+            if (!report.centralHeightMixValid && !exposureDominantLayout)
+                designWarnings.Add("中央低中层遮挡不足");
+            if (!report.highAltitudeBypassControlled)
+                designWarnings.Add("高空绕顶控制不足");
+            if (!report.roadGridAligned || report.roadIntersectionCount < 32)
+                designWarnings.Add("道路模数或路口数量未达设计值");
+            if (!report.roadWidthsVaried)
+                designWarnings.Add("道路宽度变化不足");
+            if (!report.tacticalBlockCoverageValid)
+                designWarnings.Add("战术区块语义覆盖不足");
+            if (!report.coverContinuityValid)
+                designWarnings.Add("中央掩体连续性不足");
+            if (report.recoveryDistrictCount != 2)
+                designWarnings.Add("恢复区数量未达设计值");
+            if (!report.tacticalRolesComplete)
+                designWarnings.Add("战术角色分布不完整");
+            if (!report.tacticalOpportunityNetworkValid)
+                designWarnings.Add("战术机会网络不足");
+            if (!report.combatRegionsPhysical)
+                designWarnings.Add("战术区域实体特征不足");
+            if (report.dominantRouteDetected)
+                designWarnings.Add("单一路线优势过强");
+            if (report.ingressCount < 6)
+                designWarnings.Add("敌机入口数量低于设计值");
+            if (!contactValid)
+                designWarnings.Add("敌机首次接触预警偏短");
+            report.designTargetsMet = designWarnings.Count == 0;
+            if (!report.designTargetsMet)
             {
-                if (!mapScaleValid)
-                    report.failureReason = "地图小于三倍武器射程。";
-                else if (!turnValid)
+                report.degraded = true;
+                report.degradationWarning = "城市设计目标降级：" +
+                    string.Join("、", designWarnings) + "。";
+            }
+
+            if (!report.hardPlayabilityValid)
+            {
+                if (!turnValid)
                     report.failureReason = "航路转弯半径小于飞机设计值。";
-                else if (!buildingBudgetValid)
-                    report.failureReason = "建筑数量超出实验场预算。";
+                else if (!buildingPerformanceBudgetValid)
+                    report.failureReason = "建筑数量超出运行性能预算。";
                 else if (!report.routesClear)
                     report.failureReason = "建筑侵入了安全飞行走廊。";
-                else if (!report.alternateRouteAvailable)
-                    report.failureReason = "缺少遮挡侧路或远射路线。";
-                else if (!report.threeAltitudeLayersUseful)
-                    report.failureReason = "建筑高度不足以影响三层空域。";
-                else if (!report.heightMixDistributed &&
-                         !exposureDominantLayout)
-                    report.failureReason = "局部街区缺少低中高建筑混合。";
-                else if (!report.centralHeightMixValid &&
-                         !exposureDominantLayout)
-                    report.failureReason = "中央缺少能影响低空层的中等高度建筑。";
-                else if (!report.highAltitudeBypassControlled)
-                    report.failureReason =
-                        "High-altitude layer can bypass all skyline cover.";
-                else if (!report.facilityReachable)
+                else if (!report.boundaryAirWallsValid)
+                    report.failureReason = "城市四面实体空战边界不完整。";
+                else if (!facilityHardValid)
                     report.failureReason = "设施突袭目标不完整。";
-                else if (!report.roadGridAligned ||
-                         report.roadIntersectionCount < 32)
-                    report.failureReason = "城市道路没有严格对齐到道路模数。";
-                else if (!report.roadWidthsVaried)
-                    report.failureReason =
-                        "City roads do not express tactical width variation.";
-                else if (!report.tacticalBlockCoverageValid)
-                    report.failureReason =
-                        "Some city blocks have no tactical purpose or physical tuning.";
                 else if (report.buildingRoadOverlapCount != 0)
                     report.failureReason = "建筑侵入了道路或人行道。";
-                else if (!report.coverContinuityValid)
-                    report.failureReason = "中央交战区到最近有效掩体的距离过长。";
-                else if (report.recoveryDistrictCount != 2)
-                    report.failureReason = "维修庭院没有形成完整的三面掩护。";
-                else if (!report.tacticalRolesComplete)
-                    report.failureReason = "城市缺少拉扯、强攻、掩体或危险区。";
-                else if (!report.tacticalOpportunityNetworkValid)
-                    report.failureReason =
-                        "Tactical opportunities do not form a valid multi-exit network.";
-                else if (!report.combatRegionsPhysical)
-                    report.failureReason =
-                        "Combat regions are missing measurable city geometry or route advantages.";
-                else if (report.dominantRouteDetected)
-                    report.failureReason =
-                        "One tactical route dominates all alternatives.";
-                else if (!contactValid)
-                    report.failureReason = "敌机首次接触过早。";
                 else
-                    report.failureReason = "内部刷新兼容采样点数量不足。";
+                    report.failureReason = "没有可用的敌机入口。";
             }
             return report;
         }

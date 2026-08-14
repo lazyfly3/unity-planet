@@ -3,7 +3,6 @@ using System.Collections;
 using System.IO;
 using ModularAssembly;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -47,14 +46,14 @@ namespace UnityPlanet.ModularAssembly
     [Serializable]
     internal sealed class ModularLabSettingsData
     {
-        public int version = 2;
-        public FlightEnvironmentKind environment = FlightEnvironmentKind.Natural;
+        public int version = 3;
+        public FlightEnvironmentKind environment = FlightEnvironmentKind.City;
     }
 
     /// <summary>
-    /// Single scene-scoped entry point used by the flight bridge.  Designers
-    /// select either the infinite natural PlanetLab or the combat-city PCG;
-    /// the manager delegates lifecycle calls without changing ship physics.
+    /// Single scene-scoped city test-flight entry point used by the flight
+    /// bridge. Natural remains a serialized enum value only so version-2 lab
+    /// settings can migrate without corrupting older save slots.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class FlightEnvironmentManager :
@@ -62,9 +61,8 @@ namespace UnityPlanet.ModularAssembly
         IGridFlightEnvironment,
         IGridFlightEnvironmentWarmup
     {
-        IGridFlightEnvironment naturalEnvironment;
         IGridFlightEnvironment cityEnvironment;
-        FlightEnvironmentKind selectedKind;
+        FlightEnvironmentKind selectedKind = FlightEnvironmentKind.City;
         CombatPreparationState preparationState;
         float preparationProgress;
         string preparationMessage = string.Empty;
@@ -85,10 +83,21 @@ namespace UnityPlanet.ModularAssembly
             ActiveProvider as ICombatArenaProvider;
         public CombatTestMode CombatMode => combatMode;
 
-        IGridFlightEnvironment ActiveProvider =>
-            selectedKind == FlightEnvironmentKind.City
-                ? cityEnvironment
-                : naturalEnvironment;
+        IGridFlightEnvironment ActiveProvider => cityEnvironment;
+
+        public static FlightEnvironmentKind CanonicalizeSelectedKind(
+            FlightEnvironmentKind _)
+        {
+            return FlightEnvironmentKind.City;
+        }
+
+        public static bool RequiresCityTestFlightEnvironment(Scene scene)
+        {
+            return scene.IsValid() &&
+                   scene.name.IndexOf(
+                       "ModularAssemblyLab",
+                       StringComparison.OrdinalIgnoreCase) >= 0;
+        }
 
         void Awake()
         {
@@ -100,14 +109,11 @@ namespace UnityPlanet.ModularAssembly
         void Start()
         {
             EnsureSelectorUi();
-            StartCoroutine(Warmup(null));
         }
 
         public void SetSelectedKind(FlightEnvironmentKind kind)
         {
-            kind = kind == FlightEnvironmentKind.City
-                ? FlightEnvironmentKind.City
-                : FlightEnvironmentKind.Natural;
+            kind = CanonicalizeSelectedKind(kind);
             if (selectedKind == kind || inFlight)
                 return;
 
@@ -117,13 +123,13 @@ namespace UnityPlanet.ModularAssembly
             preparationProgress = 0f;
             preparationMessage = string.Empty;
             SaveSettings();
-            StartCoroutine(Warmup(null));
             GetComponent<FlightEnvironmentSelectorOverlay>()?.Refresh();
         }
 
         public void SelectNatural()
         {
-            SetSelectedKind(FlightEnvironmentKind.Natural);
+            // Compatibility entry point for older UI events and saved scenes.
+            SetSelectedKind(FlightEnvironmentKind.City);
         }
 
         public void SelectCity()
@@ -133,10 +139,7 @@ namespace UnityPlanet.ModularAssembly
 
         public void ToggleSelectedKind()
         {
-            SetSelectedKind(
-                selectedKind == FlightEnvironmentKind.Natural
-                    ? FlightEnvironmentKind.City
-                    : FlightEnvironmentKind.Natural);
+            SetSelectedKind(FlightEnvironmentKind.City);
         }
 
         public void SetCombatMode(CombatTestMode mode)
@@ -161,12 +164,9 @@ namespace UnityPlanet.ModularAssembly
             preparing = true;
             preparationState = CombatPreparationState.Warming;
             preparationProgress = 0.05f;
-            preparationMessage = selectedKind == FlightEnvironmentKind.City
-                ? "正在生成城市试飞场……"
-                : "正在准备自然试飞场……";
+            preparationMessage = "正在生成城市试飞场……";
 
-            // Other AfterSceneLoad bootstraps create the natural provider in
-            // the same frame.  One yield makes bootstrap ordering irrelevant.
+            // Let the modular-lab scene bootstrap finish before city PCG starts.
             yield return null;
             EnsureCityProvider();
             RefreshProviders();
@@ -174,9 +174,7 @@ namespace UnityPlanet.ModularAssembly
             if (provider == null)
             {
                 preparationState = CombatPreparationState.Failed;
-                preparationMessage = selectedKind == FlightEnvironmentKind.City
-                    ? "城市试飞场组件未初始化。"
-                    : "自然试飞场组件未初始化。";
+                preparationMessage = "城市试飞场组件未初始化。";
                 preparing = false;
                 completed?.Invoke(false, preparationMessage);
                 yield break;
@@ -204,9 +202,7 @@ namespace UnityPlanet.ModularAssembly
                 : CombatPreparationState.Failed;
             preparationMessage = string.IsNullOrWhiteSpace(providerMessage)
                 ? providerReady
-                    ? selectedKind == FlightEnvironmentKind.City
-                        ? "城市试飞场已就绪。"
-                        : "自然试飞场已就绪。"
+                    ? "城市试飞场已就绪。"
                     : "试飞场准备失败。"
                 : providerMessage;
             preparing = false;
@@ -267,22 +263,8 @@ namespace UnityPlanet.ModularAssembly
 
         void RefreshProviders()
         {
-            naturalEnvironment = null;
-            cityEnvironment = null;
-            MonoBehaviour[] behaviours = FindObjectsOfType<MonoBehaviour>(true);
-            for (int i = 0; i < behaviours.Length; i++)
-            {
-                MonoBehaviour behaviour = behaviours[i];
-                if (behaviour == null || behaviour == this ||
-                    !(behaviour is IGridFlightEnvironment candidate))
-                {
-                    continue;
-                }
-                if (behaviour is CityTestFlightEnvironmentController)
-                    cityEnvironment = candidate;
-                else if (behaviour is PlanetLabFlightEnvironmentController)
-                    naturalEnvironment = candidate;
-            }
+            cityEnvironment =
+                GetComponent<CityTestFlightEnvironmentController>();
             ActiveArena?.SetMode(combatMode);
         }
 
@@ -314,19 +296,20 @@ namespace UnityPlanet.ModularAssembly
 
         void LoadSettings()
         {
-            selectedKind = FlightEnvironmentKind.Natural;
+            selectedKind = FlightEnvironmentKind.City;
             string path = GetSettingsPath();
             if (!File.Exists(path))
                 return;
+            bool migrateToCity = false;
             try
             {
                 ModularLabSettingsData data = JsonUtility.FromJson<
                     ModularLabSettingsData>(File.ReadAllText(path));
                 if (data != null)
                 {
-                    selectedKind = data.environment == FlightEnvironmentKind.City
-                        ? FlightEnvironmentKind.City
-                        : FlightEnvironmentKind.Natural;
+                    migrateToCity = data.version < 3 ||
+                                    data.environment !=
+                                    FlightEnvironmentKind.City;
                 }
             }
             catch (Exception exception)
@@ -335,6 +318,8 @@ namespace UnityPlanet.ModularAssembly
                     "[FlightEnvironment] 无法读取试飞场设置：" +
                     exception.Message);
             }
+            if (migrateToCity)
+                SaveSettings();
         }
 
         void SaveSettings()
@@ -345,8 +330,8 @@ namespace UnityPlanet.ModularAssembly
             {
                 var data = new ModularLabSettingsData
                 {
-                    version = 2,
-                    environment = selectedKind
+                    version = 3,
+                    environment = FlightEnvironmentKind.City
                 };
                 File.WriteAllText(temporary, JsonUtility.ToJson(data, true));
                 if (File.Exists(path))
@@ -370,10 +355,7 @@ namespace UnityPlanet.ModularAssembly
     {
         FlightEnvironmentManager manager;
         Canvas canvas;
-        Button naturalButton;
-        Button cityButton;
-        Text naturalLabel;
-        Text cityLabel;
+        Text fixedEnvironmentLabel;
         Text stateLabel;
         global::GridFlightBridge flight;
 
@@ -400,17 +382,15 @@ namespace UnityPlanet.ModularAssembly
                 : manager.PreparationState == CombatPreparationState.Failed
                     ? manager.PreparationMessage
                     : manager.PreparationState == CombatPreparationState.Ready
-                        ? "已就绪"
-                        : string.Empty;
+                        ? "城市试飞场已就绪"
+                        : "点击“试飞”后生成城市";
         }
 
         public void Refresh()
         {
-            if (manager == null || naturalButton == null || cityButton == null)
+            if (manager == null || fixedEnvironmentLabel == null)
                 return;
-            bool natural = manager.SelectedKind == FlightEnvironmentKind.Natural;
-            SetButtonState(naturalButton, naturalLabel, natural);
-            SetButtonState(cityButton, cityLabel, !natural);
+            fixedEnvironmentLabel.text = "城市 PCG 试飞场（固定）";
         }
 
         void BuildUi()
@@ -419,8 +399,7 @@ namespace UnityPlanet.ModularAssembly
                 "FlightEnvironmentSelectorCanvas",
                 typeof(RectTransform),
                 typeof(Canvas),
-                typeof(CanvasScaler),
-                typeof(GraphicRaycaster));
+                typeof(CanvasScaler));
             canvasObject.transform.SetParent(transform, false);
             canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -431,7 +410,7 @@ namespace UnityPlanet.ModularAssembly
             scaler.matchWidthOrHeight = 0.5f;
 
             GameObject panel = new GameObject(
-                "MapSelectionPanel",
+                "CityFlightEnvironmentPanel",
                 typeof(RectTransform),
                 typeof(Image));
             panel.transform.SetParent(canvasObject.transform, false);
@@ -439,62 +418,43 @@ namespace UnityPlanet.ModularAssembly
             panelRect.anchorMin = panelRect.anchorMax = new Vector2(1f, 1f);
             panelRect.pivot = new Vector2(1f, 1f);
             panelRect.anchoredPosition = new Vector2(-24f, -154f);
-            panelRect.sizeDelta = new Vector2(370f, 112f);
-            panel.GetComponent<Image>().color = new Color(0.015f, 0.09f, 0.13f, 0.94f);
+            panelRect.sizeDelta = new Vector2(370f, 108f);
+            Image panelImage = panel.GetComponent<Image>();
+            panelImage.color = new Color(0.015f, 0.09f, 0.13f, 0.94f);
+            panelImage.raycastTarget = false;
 
-            Text title = CreateText(panel.transform, "试飞地图", 18,
+            Text title = CreateText(panel.transform, "试飞环境", 18,
                 TextAnchor.MiddleLeft);
             SetRect(title.rectTransform, new Vector2(14f, -8f),
                 new Vector2(180f, 28f));
-            naturalButton = CreateButton(panel.transform, "自然场景",
-                new Vector2(14f, -42f), manager.SelectNatural, out naturalLabel);
-            cityButton = CreateButton(panel.transform, "城市场景",
-                new Vector2(190f, -42f), manager.SelectCity, out cityLabel);
+
+            GameObject environmentCard = new GameObject(
+                "城市PCG试飞场_固定",
+                typeof(RectTransform),
+                typeof(Image));
+            environmentCard.transform.SetParent(panel.transform, false);
+            SetRect(
+                environmentCard.GetComponent<RectTransform>(),
+                new Vector2(14f, -40f),
+                new Vector2(342f, 32f));
+            Image cardImage = environmentCard.GetComponent<Image>();
+            cardImage.color = new Color(0.02f, 0.58f, 0.72f, 1f);
+            cardImage.raycastTarget = false;
+            fixedEnvironmentLabel = CreateText(
+                environmentCard.transform,
+                "城市 PCG 试飞场（固定）",
+                16,
+                TextAnchor.MiddleCenter);
+            fixedEnvironmentLabel.rectTransform.anchorMin = Vector2.zero;
+            fixedEnvironmentLabel.rectTransform.anchorMax = Vector2.one;
+            fixedEnvironmentLabel.rectTransform.offsetMin = Vector2.zero;
+            fixedEnvironmentLabel.rectTransform.offsetMax = Vector2.zero;
+
             stateLabel = CreateText(panel.transform, string.Empty, 13,
                 TextAnchor.MiddleLeft);
             stateLabel.color = new Color(0.55f, 0.9f, 1f, 1f);
-            SetRect(stateLabel.rectTransform, new Vector2(14f, -82f),
+            SetRect(stateLabel.rectTransform, new Vector2(14f, -78f),
                 new Vector2(342f, 22f));
-
-            if (EventSystem.current == null)
-                new GameObject("EventSystem", typeof(EventSystem),
-                    typeof(StandaloneInputModule));
-        }
-
-        static Button CreateButton(
-            Transform parent,
-            string value,
-            Vector2 position,
-            UnityEngine.Events.UnityAction clicked,
-            out Text label)
-        {
-            GameObject root = new GameObject(
-                value,
-                typeof(RectTransform),
-                typeof(Image),
-                typeof(Button));
-            root.transform.SetParent(parent, false);
-            RectTransform rect = root.GetComponent<RectTransform>();
-            SetRect(rect, position, new Vector2(166f, 34f));
-            Button button = root.GetComponent<Button>();
-            button.onClick.AddListener(clicked);
-            label = CreateText(root.transform, value, 16,
-                TextAnchor.MiddleCenter);
-            label.rectTransform.anchorMin = Vector2.zero;
-            label.rectTransform.anchorMax = Vector2.one;
-            label.rectTransform.offsetMin = Vector2.zero;
-            label.rectTransform.offsetMax = Vector2.zero;
-            return button;
-        }
-
-        static void SetButtonState(Button button, Text label, bool selected)
-        {
-            button.GetComponent<Image>().color = selected
-                ? new Color(0.02f, 0.58f, 0.72f, 1f)
-                : new Color(0.05f, 0.24f, 0.31f, 0.96f);
-            label.text = (selected ? "✓ " : string.Empty) +
-                         (label == null ? string.Empty :
-                             label.gameObject.transform.parent.name);
         }
 
         static Text CreateText(
@@ -514,6 +474,7 @@ namespace UnityPlanet.ModularAssembly
             text.fontSize = size;
             text.alignment = alignment;
             text.color = Color.white;
+            text.raycastTarget = false;
             return text;
         }
 
@@ -538,18 +499,29 @@ namespace UnityPlanet.ModularAssembly
 
         static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            if (!scene.IsValid() ||
-                scene.name.IndexOf(
-                    "ModularAssemblyLab",
-                    StringComparison.OrdinalIgnoreCase) < 0 ||
-                UnityEngine.Object.FindObjectOfType<
-                    FlightEnvironmentManager>(true) != null)
+            if (!FlightEnvironmentManager
+                    .RequiresCityTestFlightEnvironment(scene) ||
+                ContainsManager(scene))
             {
                 return;
             }
             var host = new GameObject("FlightEnvironmentManager");
             SceneManager.MoveGameObjectToScene(host, scene);
             host.AddComponent<FlightEnvironmentManager>();
+        }
+
+        static bool ContainsManager(Scene scene)
+        {
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int index = 0; index < roots.Length; index++)
+            {
+                if (roots[index].GetComponentInChildren<
+                        FlightEnvironmentManager>(true) != null)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

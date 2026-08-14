@@ -1233,7 +1233,9 @@ public void EnterFlight()
     {
         if (State == GridFlightState.LoadingTerrain)
         {
-            ExitFlight();
+            SetState(
+                GridFlightState.LoadingTerrain,
+                "试飞环境正在生成，请稍候。");
             return;
         }
         if (State == GridFlightState.Flight)
@@ -1243,6 +1245,9 @@ public void EnterFlight()
         bool expectsCombatMap =
             UnityPlanet.ModularAssembly.ModularLabSceneProfile
                 .AllowsCombatMapFlightEnvironment(gameObject.scene);
+        bool expectsCityTest =
+            UnityPlanet.ModularAssembly.FlightEnvironmentManager
+                .RequiresCityTestFlightEnvironment(gameObject.scene);
         string loadingMessage =
             environment is UnityPlanet.CombatMap
                 .CombatMapFlightEnvironmentController
@@ -1254,6 +1259,12 @@ public void EnterFlight()
         Cursor.visible = false;
         if (environment == null)
         {
+            if (expectsCityTest)
+            {
+                ReturnToBuild(
+                    "城市 PCG 试飞环境缺失，已阻止从建造台错误起飞。");
+                return;
+            }
             if (expectsCombatMap)
             {
                 ReturnToBuild(
@@ -1436,9 +1447,7 @@ void ReturnToBuild(string message)
                 continue;
             }
             if (candidate is UnityPlanet.ModularAssembly
-                    .PlanetLabFlightEnvironmentController &&
-                !UnityPlanet.ModularAssembly.ModularLabSceneProfile
-                    .AllowsPlanetLabFlightEnvironment(scene))
+                    .PlanetLabFlightEnvironmentController)
             {
                 continue;
             }
@@ -2112,7 +2121,7 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
 
     public bool LoadCanonicalForBuild(out string message)
     {
-        bool loadedDefault = false;
+        bool createdStarter = false;
         if (!store.TryLoad(out ModularBlueprintData blueprint, out string error))
         {
             if (!string.IsNullOrEmpty(error))
@@ -2122,21 +2131,21 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
                 return false;
             }
 
-            blueprint = PlayerDefaultModularBlueprint.Create();
-            loadedDefault = true;
+            blueprint = PlayerStarterModularBlueprint.Create();
+            createdStarter = true;
         }
         if (!model.RestoreBlueprint(blueprint, out error))
         {
-            message = loadedDefault
-                ? "默认飞船载入失败：" + error
+            message = createdStarter
+                ? "初始核心创建失败：" + error
                 : "载入失败：" + error;
             Status(message);
             return false;
         }
         history.Clear();
         selectedRuntimeId = string.Empty;
-        message = loadedDefault
-            ? "当前存档没有飞船蓝图，已载入默认飞船。"
+        message = createdStarter
+            ? "这是新的飞船蓝图，请从核心开始拼装。"
             : "已自动载入模块蓝图。";
         Status(message);
         return true;
@@ -2311,6 +2320,24 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
 
     public void ToggleFlight()
     {
+        if (flight.State == GridFlightState.LoadingTerrain)
+        {
+            Status("城市试飞场正在生成，请稍候。");
+            RefreshUI();
+            return;
+        }
+        UnityPlanet.ModularAssembly.CombatPreparationCoordinator preparation =
+            FindObjectOfType<UnityPlanet.ModularAssembly.
+                CombatPreparationCoordinator>(true);
+        if (flight.State == GridFlightState.Build &&
+            preparation != null &&
+            preparation.State == UnityPlanet.ModularAssembly.
+                CombatPreparationState.Warming)
+        {
+            Status("战斗测试资源正在准备，请稍候。");
+            RefreshUI();
+            return;
+        }
         if (flight.State != GridFlightState.Build)
         {
             flight.ExitFlight();
@@ -2331,7 +2358,7 @@ public sealed class ModularAssemblyLabController : MonoBehaviour
         activeDefinition = null;
         movingRuntimeId = string.Empty;
         HidePreview();
-        Status("正在生成PlanetLab无限试飞地形……");
+        Status("正在生成城市 PCG 试飞场……");
         flight.EnterFlight();
         RefreshUI();
     }
@@ -2569,6 +2596,7 @@ public sealed class ModularAssemblyLabUI : MonoBehaviour
     Text statusText;
     Text mirrorText;
     Text modeText;
+    Button modeButton;
     Button moveButton;
     Button deleteButton;
     Button unlinkButton;
@@ -2597,6 +2625,7 @@ public sealed class ModularAssemblyLabUI : MonoBehaviour
             selectionText == null ||
             mirrorText == null ||
             modeText == null ||
+            modeButton == null ||
             moveButton == null ||
             deleteButton == null ||
             unlinkButton == null)
@@ -2620,7 +2649,14 @@ public sealed class ModularAssemblyLabUI : MonoBehaviour
               + $"耐久 {selected.Definition.MaxIntegrity:0}\n"
               + $"占格 {selected.Definition.Footprint.x}×{selected.Definition.Footprint.y}×{selected.Definition.Footprint.z}";
         mirrorText.text = controller.MirrorEnabled ? "镜像：开" : "镜像：关";
-        modeText.text = controller.IsFlying ? "返回建造  F5" : "开始试驾  F5";
+        bool loadingCity =
+            controller.FlightState == GridFlightState.LoadingTerrain;
+        modeText.text = loadingCity
+            ? "正在生成城市……"
+            : controller.FlightState == GridFlightState.Flight
+                ? "返回建造  F5"
+                : "开始试飞  F5";
+        modeButton.interactable = !loadingCity;
         bool editable = selected != null && selected.Definition.Category != GridModuleCategory.Core;
         moveButton.interactable = editable;
         deleteButton.interactable = editable;
@@ -2652,8 +2688,12 @@ public sealed class ModularAssemblyLabUI : MonoBehaviour
         AddButton(top, "重做", 92f, controller.Redo);
         Button mirror = AddButton(top, string.Empty, 120f, controller.ToggleMirror);
         mirrorText = mirror.GetComponentInChildren<Text>();
-        Button mode = AddButton(top, string.Empty, 150f, controller.ToggleFlight);
-        modeText = mode.GetComponentInChildren<Text>();
+        modeButton = AddButton(
+            top,
+            string.Empty,
+            150f,
+            controller.ToggleFlight);
+        modeText = modeButton.GetComponentInChildren<Text>();
         AddButton(top, "重置靶船 T", 140f, controller.ResetTarget);
 
         RectTransform left = Panel("ModuleLibrary", transform, new Color(0.025f, 0.05f, 0.075f, 0.94f));

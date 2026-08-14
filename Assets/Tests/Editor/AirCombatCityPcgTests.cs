@@ -9,6 +9,177 @@ using UnityPlanet.CityPcg;
 public sealed class AirCombatCityPcgTests
 {
     [Test]
+    public void ValidatedSettingsDeepCopyWorkerOwnedReferences()
+    {
+        var metric = new AirCombatBuildingModelMetric
+        {
+            band = AirCombatBuildingBand.Medium,
+            catalogIndex = 4,
+            authoredSize = new Vector3(18f, 120f, 24f),
+            colliderSize = new Vector3(16f, 116f, 22f),
+            colliderCenter = new Vector3(0f, 58f, 0f),
+            groundSupportRatio = 0.84f,
+            bodyCoverage = 0.91f
+        };
+        var difficulty = new CombatCityDifficultyProfile
+        {
+            navigationChallenge = 0.37f,
+            combatPressure = 0.63f
+        };
+        var source = new AirCombatCitySettings
+        {
+            buildingModelMetrics = new[] { metric },
+            combatDifficulty = difficulty
+        };
+
+        AirCombatCitySettings copy = source.ValidatedCopy();
+
+        Assert.That(copy, Is.Not.SameAs(source));
+        Assert.That(
+            copy.buildingModelMetrics,
+            Is.Not.SameAs(source.buildingModelMetrics));
+        Assert.That(copy.buildingModelMetrics[0], Is.Not.SameAs(metric));
+        Assert.That(copy.combatDifficulty, Is.Not.SameAs(difficulty));
+
+        metric.authoredSize = new Vector3(99f, 99f, 99f);
+        metric.groundSupportRatio = 0.01f;
+        difficulty.navigationChallenge = 0.99f;
+        source.buildingModelMetrics[0] = null;
+
+        Assert.That(
+            copy.buildingModelMetrics[0].authoredSize,
+            Is.EqualTo(new Vector3(18f, 120f, 24f)));
+        Assert.That(
+            copy.buildingModelMetrics[0].groundSupportRatio,
+            Is.EqualTo(0.84f).Within(0.0001f));
+        Assert.That(
+            copy.combatDifficulty.navigationChallenge,
+            Is.EqualTo(0.37f).Within(0.0001f));
+    }
+
+    [Test]
+    public void FormalCatalogMetricsPreserveEveryAuditedBuildingModel()
+    {
+        GameObject template = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Resources/PlanetSurface/UrbanCombatCityTemplate.prefab");
+        Assert.That(template, Is.Not.Null);
+        GameObject city = UnityEngine.Object.Instantiate(template);
+        try
+        {
+            AirCombatCityPcgLab lab = city.GetComponent<AirCombatCityPcgLab>();
+            Assert.That(lab, Is.Not.Null);
+            lab.ConfigureRuntimeMission(
+                7319,
+                AirCombatCityMission.Clearance,
+                5);
+            AirCombatBuildingModelMetric[] metrics =
+                lab.Settings.buildingModelMetrics;
+            Assert.That(metrics, Has.Length.EqualTo(26));
+            Assert.That(metrics.Count(item =>
+                    item.band == AirCombatBuildingBand.Low),
+                Is.EqualTo(5));
+            Assert.That(metrics.Count(item =>
+                    item.band == AirCombatBuildingBand.Medium),
+                Is.EqualTo(13));
+            Assert.That(metrics.Count(item =>
+                    item.band == AirCombatBuildingBand.High),
+                Is.EqualTo(5));
+            Assert.That(metrics.Count(item =>
+                    item.band == AirCombatBuildingBand.Facility),
+                Is.EqualTo(3));
+            Assert.That(metrics.All(item =>
+                    item.authoredSize.x > 0f &&
+                    item.authoredSize.y > 0f &&
+                    item.authoredSize.z > 0f &&
+                    item.colliderSize.x > 0f &&
+                    item.colliderSize.y > 0f &&
+                    item.colliderSize.z > 0f),
+                Is.True);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(city);
+        }
+    }
+
+    [Test]
+    public void BlockGrammarIsDeterministicAlignedAndModelProportional()
+    {
+        GameObject template = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Resources/PlanetSurface/UrbanCombatCityTemplate.prefab");
+        Assert.That(template, Is.Not.Null);
+        GameObject auditCity = UnityEngine.Object.Instantiate(template);
+        var settings = new AirCombatCitySettings
+        {
+            seed = 7319,
+            mission = AirCombatCityMission.Clearance,
+            combatDifficulty = CombatCityDifficultyProfile.CreateForTier(
+                5,
+                AirCombatCityMission.Clearance)
+        };
+        try
+        {
+            AirCombatCityPcgLab auditLab =
+                auditCity.GetComponent<AirCombatCityPcgLab>();
+            auditLab.ConfigureRuntimeMission(
+                7319,
+                AirCombatCityMission.Clearance,
+                5);
+            settings.buildingModelMetrics =
+                (AirCombatBuildingModelMetric[])
+                    auditLab.Settings.buildingModelMetrics.Clone();
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(auditCity);
+        }
+        AirCombatCityPlan first = AirCombatCityGenerator.Generate(
+            settings,
+            out AirCombatCityReport firstReport);
+        AirCombatCityPlan second = AirCombatCityGenerator.Generate(
+            settings,
+            out AirCombatCityReport secondReport);
+
+        Assert.That(firstReport.valid, Is.True, firstReport.failureReason);
+        Assert.That(secondReport.valid, Is.True, secondReport.failureReason);
+        Assert.That(first.buildings.Select(item => item.stableId),
+            Is.EqualTo(second.buildings.Select(item => item.stableId)));
+        Assert.That(first.tacticalBlocks.Select(item => item.layoutPattern),
+            Is.EqualTo(second.tacticalBlocks.Select(item => item.layoutPattern)));
+        Assert.That(first.tacticalBlocks.Select(item => item.layoutYaw),
+            Is.EqualTo(second.tacticalBlocks.Select(item => item.layoutYaw)));
+
+        AirCombatBuildingLot[] grammarLots = first.buildings.Where(item =>
+            item.layoutSlotIndex >= 0).ToArray();
+        Assert.That(grammarLots, Is.Not.Empty);
+        foreach (AirCombatBuildingLot lot in grammarLots)
+        {
+            Assert.That(lot.yaw % 45f, Is.EqualTo(0f).Within(0.01f));
+            if (lot.authoredModelSize.sqrMagnitude <= 0.01f)
+                continue;
+            float authoredAspect = lot.authoredModelSize.x /
+                                   lot.authoredModelSize.z;
+            float plannedAspect = lot.size.x / lot.size.z;
+            Assert.That(plannedAspect,
+                Is.EqualTo(authoredAspect).Within(0.015f),
+                lot.stableId + " must preserve the audited model footprint ratio.");
+        }
+
+        foreach (CombatCityBlockPlan block in first.tacticalBlocks.Where(item =>
+                     !item.excludedFromDifficulty))
+        {
+            AirCombatBuildingLot[] members = grammarLots.Where(item =>
+                block.bounds.Contains(item.center)).ToArray();
+            Assert.That(block.layoutSlotCount, Is.GreaterThanOrEqualTo(5));
+            Assert.That(block.layoutOccupiedSlotCount,
+                Is.LessThanOrEqualTo(block.layoutSlotCount));
+            Assert.That(members.Select(item => item.layoutSlotIndex).Distinct()
+                    .Count(),
+                Is.EqualTo(members.Length));
+        }
+    }
+
+    [Test]
     public void RuntimeFacilitySeedPassesOneBoundedPlanAttempt()
     {
         var settings = new AirCombatCitySettings
@@ -102,25 +273,35 @@ public sealed class AirCombatCityPcgTests
             int largeParcels = destructibleBuildings.Count(building =>
                 building.StableId.StartsWith(
                     "building.large.",
-                    StringComparison.Ordinal) ||
-                building.StableId.StartsWith(
-                    "infill-LargeCompositeParcel",
                     StringComparison.Ordinal));
             int smallParcels = destructibleBuildings.Count(building =>
                 building.StableId.StartsWith(
                     "building.small-gapfill.",
-                    StringComparison.Ordinal) ||
-                building.StableId.StartsWith(
-                    "infill-SmallClusterParcel",
                     StringComparison.Ordinal));
-            // 逐格难度生成会把一部分原来的通用大地块换成带独立
-            // stableId 的战术高度锚点。验收真实实体城的总体量，再
-            // 要求大复合地块仍占主体，避免用旧命名数量误判缩水。
+            int grammarParcels = destructibleBuildings.Count(building =>
+                building.StableId.StartsWith(
+                    "building.large.", StringComparison.Ordinal) ||
+                building.StableId.StartsWith(
+                    "building.standard.", StringComparison.Ordinal) ||
+                building.StableId.StartsWith(
+                    "building.small-gapfill.", StringComparison.Ordinal));
+            // 基础城市只允许来自逐格骨架楼位。旧的实体随机填充已
+            // 删除，因此用规则化楼位总体量验收，而不是要求某一尺寸
+            // 类必须占80栋；压力候选可合法选择更紧凑的模型。
             Assert.That(destructibleBuildings.Length,
                 Is.GreaterThanOrEqualTo(160));
-            Assert.That(largeParcels, Is.GreaterThanOrEqualTo(80));
-            Assert.That(largeParcels, Is.GreaterThanOrEqualTo(smallParcels * 2),
-                "Large parcels must form the city body; small parcels only fill gaps.");
+            Assert.That(grammarParcels, Is.GreaterThanOrEqualTo(150));
+            Assert.That(largeParcels + smallParcels,
+                Is.LessThanOrEqualTo(grammarParcels));
+            Assert.That(destructibleBuildings.Any(building =>
+                    building.StableId.IndexOf(
+                        ".slot", StringComparison.Ordinal) >= 0),
+                Is.True);
+            Assert.That(destructibleBuildings.Any(building =>
+                    building.StableId.StartsWith(
+                        "infill-", StringComparison.Ordinal)),
+                Is.False,
+                "The post-plan random infill pass must not scramble a grammar block.");
             Assert.That(
                 city.GetComponentsInChildren<UrbanCityGlowRuntime>(true),
                 Has.Length.EqualTo(1));
@@ -204,7 +385,10 @@ public sealed class AirCombatCityPcgTests
             Transform[] aerialCableLinks = objects.Where(item =>
                 item.name.StartsWith("AerialCableLink_", StringComparison.Ordinal))
                 .ToArray();
-            Assert.That(aerialCableLinks, Has.Length.GreaterThanOrEqualTo(18));
+            Assert.That(aerialCableLinks.Length,
+                Is.GreaterThanOrEqualTo(lab.Settings.aerialCableMinimumCount));
+            Assert.That(aerialCableLinks.Length,
+                Is.LessThanOrEqualTo(lab.Settings.aerialCableMaximumCount));
             Assert.That(aerialCableLinks.All(item =>
                 item.GetComponentsInChildren<AerialCableCurve>(true).Length == 3),
                 Is.True,
@@ -419,8 +603,10 @@ public sealed class AirCombatCityPcgTests
             lab.Settings.skybridgeMaximumSegmentCount = 1;
             lab.Rebuild();
 
-            Assert.That(lab.Report.skybridgeNetworkValid, Is.True,
-                lab.LastSummary);
+            Assert.That(lab.Report.skybridgeNetworkValid ||
+                        lab.Report.degraded,
+                Is.True,
+                "连廊配额不足可以降级，但必须在报告中明确标记。" );
             Assert.That(lab.LastCrossRoadBlockSkybridgeCount,
                 Is.LessThan(lab.Settings.crossBlockSkybridgeTarget));
             Assert.That(lab.LastCrossRoadBlockSkybridgeCount,
@@ -1510,6 +1696,7 @@ public sealed class AirCombatCityPcgTests
             .ToArray();
         float previousRing = -1f;
         var generatedCoordinates = new HashSet<Vector2Int>();
+        bool sawBuildingByBuildingTrials = false;
         for (int index = 0; index < ordered.Length; index++)
         {
             CombatCityBlockPlan block = ordered[index];
@@ -1539,8 +1726,9 @@ public sealed class AirCombatCityPcgTests
                     "每个新格必须从已提交城市的四邻接前沿扩张：" +
                     block.stableId);
                 Assert.That(block.localCorrectionCount,
-                    Is.InRange(3, 5),
-                    "字段现在记录该格实际比较的贪心候选数。" );
+                    Is.GreaterThanOrEqualTo(1),
+                    "字段必须累计逐楼位留空/低楼/中楼/高楼以及终局回修的实际试算次数，不能再代表整格候选套数。" );
+                sawBuildingByBuildingTrials |= block.localCorrectionCount > 5;
                 Assert.That(float.IsNaN(block.greedyCandidateScore) ||
                             float.IsInfinity(block.greedyCandidateScore),
                     Is.False);
@@ -1548,6 +1736,8 @@ public sealed class AirCombatCityPcgTests
                     block.gridX, block.gridZ));
             }
         }
+        Assert.That(sawBuildingByBuildingTrials, Is.True,
+            "至少一个街区必须执行超过五次楼位方案试算，证明正式流程没有退回五套整格候选。" );
     }
 
     [Test]
@@ -1582,6 +1772,67 @@ public sealed class AirCombatCityPcgTests
             "最高档必须允许贪心器选择显著开放候选。" );
         Assert.That(report.plannedAverageDifficulty,
             Is.GreaterThan(0.50f));
+    }
+
+    [Test]
+    public void GreedyLowTargetKeepsClosestCompleteCityWhenOneBlockCannotRepay()
+    {
+        var settings = new AirCombatCitySettings
+        {
+            seed = 2090577248,
+            mission = AirCombatCityMission.Clearance,
+            maximumAttempts = 10,
+            combatDifficulty = CombatCityDifficultyProfile
+                .CreateForTargetDifficulty(0.204f,
+                    AirCombatCityMission.Clearance)
+        };
+
+        AirCombatCityPlan plan = AirCombatCityGenerator.Generate(settings,
+            out AirCombatCityReport report);
+        CombatCityBlockPlan formerlyEmpty = plan.tacticalBlocks.Single(block =>
+            block.gridX == 1 && block.gridZ == 2);
+
+        Assert.That(report.cityDifficultyTargetMet, Is.True,
+            report.failureReason);
+        Assert.That(report.plannedAverageDifficulty, Is.InRange(0.204f, 0.27f),
+            "20.4%输入不得再次反向跳到30%以上。" );
+        Assert.That(formerlyEmpty.layoutSlotCount, Is.GreaterThan(0));
+        Assert.That(formerlyEmpty.greedyRequestedDifficulty,
+            Is.LessThan(0.204f),
+            "全城偏高后，该格必须请求更安全候选，而不是被角色偏移推回34%。" );
+        Assert.That(formerlyEmpty.greedyDirectionSatisfied, Is.False,
+            "无法偿还的局部反向变化必须保留为诊断，不能伪装成已降压。" );
+        Assert.That(float.IsNaN(formerlyEmpty.greedyCandidateScore) ||
+                    float.IsInfinity(formerlyEmpty.greedyCandidateScore),
+            Is.False);
+    }
+
+    [Test]
+    public void ExplicitDifficultyCalibratesSpatialControlAboveAirspaceFloor()
+    {
+        CombatCityDifficultyProfile low = CombatCityDifficultyProfile
+            .CreateForTargetDifficulty(0.10f,
+                AirCombatCityMission.Clearance);
+        CombatCityDifficultyProfile reproduced = CombatCityDifficultyProfile
+            .CreateForTargetDifficulty(0.204f,
+                AirCombatCityMission.Clearance);
+        CombatCityDifficultyProfile high = CombatCityDifficultyProfile
+            .CreateForTargetDifficulty(0.90f,
+                AirCombatCityMission.Clearance);
+
+        Assert.That(low.explicitAverageDifficulty,
+            Is.EqualTo(0.10f).Within(0.0001f));
+        Assert.That(reproduced.explicitAverageDifficulty,
+            Is.EqualTo(0.204f).Within(0.0001f));
+        Assert.That(high.explicitAverageDifficulty,
+            Is.EqualTo(0.90f).Within(0.0001f));
+        Assert.That(reproduced.exposurePressure,
+            Is.EqualTo(low.exposurePressure).Within(0.0001f),
+            "低于三层空战可实现底噪的输入不应额外叠加暴露压力。" );
+        Assert.That(high.exposurePressure,
+            Is.GreaterThan(reproduced.exposurePressure));
+        Assert.That(high.navigationChallenge,
+            Is.GreaterThan(reproduced.navigationChallenge));
     }
 
     [Test]
@@ -1692,6 +1943,7 @@ public sealed class AirCombatCityPcgTests
             "逐格回放必须从离城市中心最近的内部区块开始。" );
         var committed = new HashSet<Vector2Int>();
         bool sawOldCellRecalculated = false;
+        bool sawBuildingByBuildingTrials = false;
         for (int index = 0; index < trace.steps.Count; index++)
         {
             CityGreedyGenerationShowcase.Step step = trace.steps[index];
@@ -1706,7 +1958,10 @@ public sealed class AirCombatCityPcgTests
                     "演示步骤必须保持正式算法的四邻接扩张顺序。" );
             }
             committed.Add(coordinate);
-            Assert.That(step.candidatesTested, Is.InRange(3, 5));
+            Assert.That(step.candidatesTested,
+                Is.GreaterThanOrEqualTo(1),
+                "单格数值必须是逐楼位与终局回修的累计试算次数，不再是五套整格方案。" );
+            sawBuildingByBuildingTrials |= step.candidatesTested > 5;
             Assert.That(float.IsNaN(step.cityDifficultyAfter) ||
                         float.IsInfinity(step.cityDifficultyAfter),
                 Is.False);
@@ -1718,6 +1973,8 @@ public sealed class AirCombatCityPcgTests
         }
         Assert.That(sawOldCellRecalculated, Is.True,
             "加入新格后必须展示至少一次旧格危险度的重新计算。" );
+        Assert.That(sawBuildingByBuildingTrials, Is.True,
+            "至少一个街区必须真实执行超过五次楼位方案试算，证明流程不是五套整格候选换名。" );
         Assert.That(plan.buildings, Has.Count.EqualTo(buildingCount),
             "分析回放不得改写正式城市规划。" );
         for (int index = 0; index < plan.tacticalBlocks.Count; index++)
@@ -1749,6 +2006,192 @@ public sealed class AirCombatCityPcgTests
         Assert.That(profile.navigationChallenge, Is.InRange(0f, 1f));
         Assert.That(profile.exposurePressure, Is.InRange(0f, 1f));
         Assert.That(profile.recoveryGenerosity, Is.InRange(0f, 1f));
+    }
+
+    [Test]
+    public void DifficultyAcceptanceUsesFifteenPercentagePointWindow()
+    {
+        Assert.That(
+            AirCombatCityDifficultyPcg.PreferredDifficultyTolerance,
+            Is.EqualTo(0.15f).Within(0.0001f),
+            "正式城市难度容差必须是十五个百分点，不是目标值的15%。");
+
+        AirCombatCityDifficultyEvaluation inside =
+            EvaluateSingleOpenBlockDifficulty(0.1499f);
+        Assert.That(inside.averageDifficulty,
+            Is.EqualTo(0f).Within(0.0001f));
+        Assert.That(inside.absoluteTargetError,
+            Is.EqualTo(0.1499f).Within(0.0001f));
+        Assert.That(inside.coverageValid, Is.True);
+        Assert.That(inside.targetMet, Is.True,
+            "十五个百分点以内应当标记为达到正式难度容差。");
+        Assert.That(inside.closestResultFallback, Is.False);
+
+        AirCombatCityDifficultyEvaluation outside =
+            EvaluateSingleOpenBlockDifficulty(0.1501f);
+        Assert.That(outside.absoluteTargetError,
+            Is.EqualTo(0.1501f).Within(0.0001f));
+        Assert.That(outside.coverageValid, Is.True);
+        Assert.That(outside.targetMet, Is.False);
+        Assert.That(outside.closestResultFallback, Is.True,
+            "超过十五个百分点但覆盖有效时，必须保留最接近结果供正式流程使用。");
+    }
+
+    [Test]
+    public void ClosestDifficultyFallbackDoesNotAuthorizeInvalidCoverage()
+    {
+        var settings = new AirCombatCitySettings
+        {
+            seed = 42015,
+            mission = AirCombatCityMission.Clearance,
+            combatDifficulty = CombatCityDifficultyProfile
+                .CreateForTargetDifficulty(
+                    0.90f,
+                    AirCombatCityMission.Clearance)
+        };
+        var plan = new AirCombatCityPlan
+        {
+            requestedSeed = settings.seed,
+            resolvedSeed = settings.seed
+        };
+        plan.tacticalBlocks.Add(new CombatCityBlockPlan
+        {
+            stableId = "coverage.blocked",
+            gridX = 0,
+            gridZ = 0,
+            bounds = new Bounds(Vector3.zero,
+                new Vector3(180f, 350f, 180f)),
+            role = CombatCityBlockRole.Maneuver,
+            generatedForDifficulty = true
+        });
+        plan.buildings.Add(new AirCombatBuildingLot
+        {
+            stableId = "coverage.blocker",
+            center = new Vector3(0f, 175f, 0f),
+            size = new Vector3(260f, 500f, 260f),
+            band = AirCombatBuildingBand.High
+        });
+
+        AirCombatCityDifficultyEvaluation evaluation =
+            AirCombatCityDifficultyPcg.Evaluate(settings, plan);
+
+        Assert.That(evaluation.coverageValid, Is.False);
+        Assert.That(evaluation.targetMet, Is.False);
+        Assert.That(evaluation.closestResultFallback, Is.False,
+            "最接近难度回退只能绕过数值偏差，不能绕过不可飞或不可评估覆盖失败。");
+    }
+
+    [Test]
+    public void ReportedStartMenuSeedKeepsClosestPlayableRuntimeCity()
+    {
+        const int ReportedSeed = 2075098;
+        GameObject template = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Resources/PlanetSurface/UrbanCombatCityTemplate.prefab");
+        Assert.That(template, Is.Not.Null);
+        GameObject city = UnityEngine.Object.Instantiate(template);
+        city.hideFlags = HideFlags.HideAndDontSave;
+        try
+        {
+            AirCombatCityPcgLab lab = city.GetComponent<AirCombatCityPcgLab>();
+            Assert.That(lab, Is.Not.Null);
+
+            lab.ConfigureRuntimeMission(
+                ReportedSeed,
+                AirCombatCityMission.Clearance,
+                0);
+
+            Assert.That(lab.Settings.seed, Is.EqualTo(ReportedSeed));
+            Assert.That(lab.Report.requestedSeed, Is.EqualTo(ReportedSeed));
+            Assert.That(lab.Report.resolvedSeed, Is.EqualTo(ReportedSeed),
+                "正式加载不得通过更换Seed抽选另一座城市。");
+            Assert.That(lab.Report.cityDifficultyCoverageValid, Is.True,
+                lab.LastSummary);
+            Assert.That(lab.Report.finalDifficultyEvaluated, Is.True,
+                lab.LastSummary);
+            Assert.That(lab.Report.finalDifficultyCoverageValid, Is.True,
+                lab.LastSummary);
+            Assert.That(
+                lab.Report.finalDifficultyTargetMet ||
+                lab.Report.finalDifficultyFallbackUsed,
+                Is.True,
+                "最终实体城市应当在15%内达标，或明确采用同一Seed的最接近结果。");
+            Assert.That(lab.Report.finalDifficultyAbsoluteError,
+                Is.EqualTo(Mathf.Abs(
+                    lab.Report.finalAverageDifficulty -
+                    lab.Report.controlAverageDifficulty)).Within(0.0001f));
+            Assert.That(lab.HasValidPlan, Is.True, lab.LastSummary);
+            Assert.That(lab.Report.skybridgeNetworkValid, Is.True,
+                lab.LastSummary);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(city);
+        }
+    }
+
+    [Test]
+    public void ReportedHeightMixSeedEntersAsExplicitDegradedCity()
+    {
+        const int ReportedSeed = -2146155110;
+        GameObject template = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Resources/PlanetSurface/UrbanCombatCityTemplate.prefab");
+        Assert.That(template, Is.Not.Null);
+        GameObject city = UnityEngine.Object.Instantiate(template);
+        city.hideFlags = HideFlags.HideAndDontSave;
+        try
+        {
+            AirCombatCityPcgLab lab = city.GetComponent<AirCombatCityPcgLab>();
+            lab.ConfigureRuntimeMission(
+                ReportedSeed,
+                AirCombatCityMission.Clearance,
+                0);
+
+            Assert.That(lab.Report.requestedSeed, Is.EqualTo(ReportedSeed));
+            Assert.That(lab.Report.resolvedSeed, Is.EqualTo(ReportedSeed));
+            Assert.That(lab.Report.hardPlayabilityValid, Is.True,
+                lab.LastSummary);
+            Assert.That(lab.Report.heightMixDistributed, Is.False,
+                "该回归Seed必须继续覆盖曾经阻断加载的楼高混合案例。" );
+            Assert.That(lab.Report.designTargetsMet, Is.False);
+            Assert.That(lab.Report.degraded, Is.True);
+            Assert.That(lab.Report.degradationWarning,
+                Does.Contain("局部低中高建筑混合不足"));
+            Assert.That(lab.HasValidPlan, Is.True, lab.LastSummary);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(city);
+        }
+    }
+
+    static AirCombatCityDifficultyEvaluation
+        EvaluateSingleOpenBlockDifficulty(float requestedDifficulty)
+    {
+        var settings = new AirCombatCitySettings
+        {
+            seed = 42014,
+            mission = AirCombatCityMission.Clearance,
+            combatDifficulty = CombatCityDifficultyProfile
+                .CreateForTargetDifficulty(
+                    requestedDifficulty,
+                    AirCombatCityMission.Clearance)
+        };
+        var plan = new AirCombatCityPlan
+        {
+            requestedSeed = settings.seed,
+            resolvedSeed = settings.seed
+        };
+        plan.tacticalBlocks.Add(new CombatCityBlockPlan
+        {
+            stableId = "difficulty.open",
+            gridX = 0,
+            gridZ = 0,
+            bounds = new Bounds(Vector3.zero,
+                new Vector3(180f, 350f, 180f)),
+            role = CombatCityBlockRole.Maneuver,
+            generatedForDifficulty = true
+        });
+        return AirCombatCityDifficultyPcg.Evaluate(settings, plan);
     }
 
     [Test]

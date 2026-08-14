@@ -81,6 +81,10 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     GalaxyShipFacing shipFacing = GalaxyShipFacing.Up;
     bool transitionInProgress;
     Coroutine missionEntryFailureRoutine;
+    Coroutine surfaceSceneConfigurationRoutine;
+    int surfaceSceneConfigurationHandle = -1;
+    FiniteUrbanConfigurationOperation activeFiniteUrbanConfiguration;
+    int nextFiniteUrbanConfigurationId;
     string galaxyMapReturnSceneName;
     List<InventorySlot> inventorySnapshot;
     int selectedInventorySlot;
@@ -93,6 +97,23 @@ public sealed class GalaxyTravelManager : MonoBehaviour
     readonly HashSet<string> frozenPlanetIds = new HashSet<string>();
     ProceduralGalaxyGenerator proceduralGenerator;
     ProceduralInterstellarGenerator interstellarGenerator;
+
+    sealed class FiniteUrbanConfigurationOperation
+    {
+        public int id;
+        public int sceneHandle;
+        public string planetId;
+        public string missionId;
+        public int missionSeed;
+        public GameObject root;
+        public InfinitePlanarSurfaceWorld planar;
+        public FinitePlanetUrbanCombatRuntime runtime;
+        public PlanetLoadingUI loadingUI;
+        public PendingPlanetLandingContext landing;
+        public Coroutine configureRoutine;
+        public Coroutine finalizeRoutine;
+        public bool completionReceived;
+    }
 
     public static GalaxyTravelManager Instance
     {
@@ -325,6 +346,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
     void OnDestroy()
     {
+        CancelSurfaceSceneConfiguration();
         if (instance == this)
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -334,7 +356,7 @@ public sealed class GalaxyTravelManager : MonoBehaviour
 
     void Start()
     {
-        ConfigureSurfaceScene(SceneManager.GetActiveScene());
+        BeginSurfaceSceneConfiguration(SceneManager.GetActiveScene());
     }
 
     void Update()
@@ -1060,8 +1082,321 @@ if (transitionInProgress || planet == null)
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        if (scene.name != surfaceSceneName)
+        {
+            transitionInProgress = false;
+            CancelSurfaceSceneConfiguration();
+            return;
+        }
+
+        BeginSurfaceSceneConfiguration(scene);
+    }
+
+    void BeginSurfaceSceneConfiguration(Scene scene)
+    {
+        if (!scene.IsValid() || !scene.isLoaded ||
+            scene.name != surfaceSceneName)
+        {
+            return;
+        }
+
+        // A persistent manager receives sceneLoaded before the destination
+        // scene has rendered its first frame. ConfigureSurfaceScene performs
+        // the complete city plan and entity build synchronously, so invoking
+        // it directly here leaves the old frame/blackout on screen until all
+        // work has already finished. Start the destination loading UI first,
+        // let the blackout hand over to it, then begin the heavy work.
+        if (surfaceSceneConfigurationRoutine != null)
+        {
+            if (surfaceSceneConfigurationHandle == scene.handle)
+                return;
+            CancelSurfaceSceneConfiguration();
+        }
+        else if (activeFiniteUrbanConfiguration != null)
+        {
+            if (activeFiniteUrbanConfiguration.sceneHandle == scene.handle)
+                return;
+            CancelActiveFiniteUrbanConfiguration();
+        }
+
+        surfaceSceneConfigurationHandle = scene.handle;
+        transitionInProgress = true;
+        PlanetLoadingUI loadingUI = FindSceneLoadingUI(scene);
+        bool chapterMission =
+            PlanetOrbitChapterSelectionContext.HasSelection;
+        bool planarEntry = chapterMission || UsesInfinitePlanarSurface;
+        if (!planarEntry)
+        {
+            // Preserve the legacy spherical-surface startup ordering. Its
+            // VoxelQuadSphereWorld.Start coroutine is the generator itself,
+            // so yielding before ConfigurePlanet would let serialized defaults
+            // run first. Formal chapters and current planar saves take the
+            // deferred loading-page path below.
+            transitionInProgress = false;
+            try
+            {
+                ConfigureSurfaceScene(scene);
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogException(exception, this);
+                loadingUI?.ShowFailure(
+                    "星球地表准备发生异常：" + exception.Message);
+            }
+            finally
+            {
+                surfaceSceneConfigurationRoutine = null;
+                surfaceSceneConfigurationHandle = -1;
+            }
+            return;
+        }
+
+        SuppressLegacySphereStartupForPlanarEntry(scene);
+        LockPlanarEntryPlayerBeforeYield(scene);
+        loadingUI?.ShowOrContinue(
+            0.01f,
+            chapterMission
+                ? "正在准备城市战场，马上开始计算城市布局"
+                : "正在准备星球地表");
+        surfaceSceneConfigurationRoutine = StartCoroutine(
+            ConfigureSurfaceSceneAfterLoadingUiVisible(
+                scene,
+                loadingUI,
+                chapterMission));
+    }
+
+    void SuppressLegacySphereStartupForPlanarEntry(Scene scene)
+    {
+        // VoxelQuadSphereWorld.Start creates and initializes the legacy
+        // PlanetSurfaceEntryCoordinator. The loading-page hand-off below now
+        // intentionally yields before formal city generation; without this
+        // early suppression the legacy Start coroutine can claim the same UI
+        // and disable the scene player during that one-frame window. This is
+        // only called for the same planar/finite routes that disable the
+        // sphere later in ConfigureInfinitePlanarSurfaceScene, so legacy
+        // spherical surface saves retain their original startup path.
+        if (!scene.IsValid() || !scene.isLoaded)
+            return;
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
+        {
+            VoxelQuadSphereWorld[] spheres =
+                roots[rootIndex].GetComponentsInChildren<
+                    VoxelQuadSphereWorld>(true);
+            for (int sphereIndex = 0;
+                 sphereIndex < spheres.Length;
+                 sphereIndex++)
+            {
+                VoxelQuadSphereWorld sphere = spheres[sphereIndex];
+                if (sphere == null)
+                    continue;
+
+                sphere.StopAllCoroutines();
+                PlanetSurfaceEntryCoordinator legacyCoordinator =
+                    sphere.GetComponent<PlanetSurfaceEntryCoordinator>();
+                if (legacyCoordinator != null)
+                {
+                    legacyCoordinator.StopAllCoroutines();
+                    legacyCoordinator.enabled = false;
+                }
+
+                LegacySphereSurfaceRuntime legacyRuntime =
+                    sphere.GetComponent<LegacySphereSurfaceRuntime>();
+                if (legacyRuntime != null)
+                    legacyRuntime.enabled = false;
+
+                PlanetRiverSystem river =
+                    sphere.GetComponent<PlanetRiverSystem>();
+                if (river != null)
+                {
+                    river.StopAllCoroutines();
+                    river.enabled = false;
+                }
+
+                PlanetSurfaceDayNightController dayNight =
+                    sphere.GetComponent<PlanetSurfaceDayNightController>();
+                if (dayNight != null)
+                    dayNight.enabled = false;
+                PlanetSurfaceFarLodController farLod =
+                    sphere.GetComponent<PlanetSurfaceFarLodController>();
+                if (farLod != null)
+                    farLod.enabled = false;
+
+                sphere.enabled = false;
+            }
+        }
+    }
+
+    static void LockPlanarEntryPlayerBeforeYield(Scene scene)
+    {
+        if (!scene.IsValid() || !scene.isLoaded)
+            return;
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
+        {
+            VoxelPlanetPlayerController[] players =
+                roots[rootIndex].GetComponentsInChildren<
+                    VoxelPlanetPlayerController>(true);
+            for (int playerIndex = 0;
+                 playerIndex < players.Length;
+                 playerIndex++)
+            {
+                VoxelPlanetPlayerController player = players[playerIndex];
+                if (player == null)
+                    continue;
+                player.SetGameplayInputBlocked(true);
+                player.SetSurfacePhysicsReady(false);
+                player.GetComponent<SurfaceMultifunctionController>()
+                    ?.SetInputBlocked(true);
+            }
+
+            foreach (VoxelQuadSphereDigTool dig in
+                     roots[rootIndex].GetComponentsInChildren<
+                         VoxelQuadSphereDigTool>(true))
+            {
+                if (dig != null)
+                    dig.enabled = false;
+            }
+            foreach (VoxelDigTool dig in
+                     roots[rootIndex].GetComponentsInChildren<
+                         VoxelDigTool>(true))
+            {
+                if (dig != null)
+                    dig.enabled = false;
+            }
+        }
+    }
+
+    IEnumerator ConfigureSurfaceSceneAfterLoadingUiVisible(
+        Scene scene,
+        PlanetLoadingUI loadingUI,
+        bool chapterMission)
+    {
+        // Give the new scene one complete render opportunity. When the
+        // interstellar blackout owns the top sorting layer, wait for its
+        // short hand-off as well; otherwise the loading page would technically
+        // be active but remain hidden behind an opaque frame.
+        yield return null;
+        PersistentSpaceflightFade fade =
+            FindObjectOfType<PersistentSpaceflightFade>();
+        float handoffDeadline = Time.realtimeSinceStartup + 1f;
+        while (fade != null && fade.Alpha > 0.01f &&
+               Time.realtimeSinceStartup < handoffDeadline)
+        {
+            yield return null;
+        }
+        if (fade != null && fade.Alpha > 0.01f)
+        {
+            // The loading page must be the visible owner before the long
+            // synchronous PCG frame begins. Do not let a stalled persistent
+            // blackout hide it indefinitely.
+            fade.CancelPendingTransition();
+            yield return null;
+        }
+
+        if (!scene.IsValid() || !scene.isLoaded ||
+            SceneManager.GetActiveScene().handle != scene.handle)
+        {
+            surfaceSceneConfigurationRoutine = null;
+            surfaceSceneConfigurationHandle = -1;
+            yield break;
+        }
+
+        loadingUI?.SetProgress(
+            chapterMission ? 0.03f : 0.02f,
+            chapterMission
+                ? "正在按任务难度计算城市道路、区块与建筑"
+                : "正在建立星球地表数据");
+        if (chapterMission)
+        {
+            loadingUI?.BeginSimulatedProgress(
+                0.03f,
+                0.68f,
+                "正在逐格计算城市道路、区块与建筑");
+        }
+        // Render the real work description before the synchronous planner
+        // starts. The planner can still consume a long frame, but the player
+        // now sees the intended loading page throughout that frame.
+        yield return null;
+
+        // AbortChapterMissionEntry deliberately rejects calls while a scene
+        // transition is active. Keep the transition guarded during the UI
+        // hand-off, then release it immediately before configuration so any
+        // city preparation failure can still return safely to orbit.
         transitionInProgress = false;
-        ConfigureSurfaceScene(scene);
+        try
+        {
+            ConfigureSurfaceScene(scene);
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogException(exception, this);
+            string error = chapterMission
+                ? "城市战场准备发生异常：" + exception.Message
+                : "星球地表准备发生异常：" + exception.Message;
+            if (chapterMission)
+                FailChapterMissionEntry(null, error);
+            else
+                loadingUI?.ShowFailure(error);
+        }
+
+        // A formal city now continues in a worker-backed child coroutine.
+        // Keep this scene operation alive until that child has either built
+        // the coordinator or failed. The existing scene-handle guard can then
+        // still deduplicate Start/sceneLoaded and cancellation can reach the
+        // real work instead of an already-finished parent coroutine.
+        while (activeFiniteUrbanConfiguration != null &&
+               activeFiniteUrbanConfiguration.sceneHandle == scene.handle)
+        {
+            yield return null;
+        }
+        surfaceSceneConfigurationRoutine = null;
+        surfaceSceneConfigurationHandle = -1;
+    }
+
+    void CancelSurfaceSceneConfiguration()
+    {
+        if (surfaceSceneConfigurationRoutine != null)
+            StopCoroutine(surfaceSceneConfigurationRoutine);
+        surfaceSceneConfigurationRoutine = null;
+        surfaceSceneConfigurationHandle = -1;
+        CancelActiveFiniteUrbanConfiguration();
+    }
+
+    void CancelActiveFiniteUrbanConfiguration()
+    {
+        FiniteUrbanConfigurationOperation operation =
+            activeFiniteUrbanConfiguration;
+        activeFiniteUrbanConfiguration = null;
+        if (operation == null)
+            return;
+
+        operation.loadingUI?.StopSimulatedProgress();
+        if (operation.runtime != null)
+        {
+            operation.runtime.CancelConfiguration();
+            if (operation.configureRoutine != null)
+                operation.runtime.StopCoroutine(operation.configureRoutine);
+        }
+        if (operation.finalizeRoutine != null)
+            StopCoroutine(operation.finalizeRoutine);
+        if (operation.root != null)
+            Destroy(operation.root);
+    }
+
+    static PlanetLoadingUI FindSceneLoadingUI(Scene scene)
+    {
+        if (!scene.IsValid() || !scene.isLoaded)
+            return null;
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int index = 0; index < roots.Length; index++)
+        {
+            PlanetLoadingUI loadingUI =
+                roots[index].GetComponentInChildren<PlanetLoadingUI>(true);
+            if (loadingUI != null)
+                return loadingUI;
+        }
+        return null;
     }
 
     public void UpdateInterstellarFlightState(
@@ -1179,6 +1514,11 @@ if (transitionInProgress)
                     null,
                     "城市关卡找不到当前星球数据，已取消进入战场。");
             }
+            else
+            {
+                FindSceneLoadingUI(scene)?.ShowFailure(
+                    "找不到当前星球数据，无法建立地表。");
+            }
             return;
         }
 
@@ -1220,7 +1560,11 @@ if (transitionInProgress)
 
         VoxelQuadSphereWorld world = FindObjectOfType<VoxelQuadSphereWorld>();
         if (world == null)
+        {
+            FindSceneLoadingUI(scene)?.ShowFailure(
+                "场景缺少星球地表对象，无法继续加载。");
             return;
+        }
         LegacySphereSurfaceRuntime sphereRuntime =
             world.GetComponent<LegacySphereSurfaceRuntime>()
             ?? world.gameObject.AddComponent<LegacySphereSurfaceRuntime>();
@@ -1283,12 +1627,33 @@ if (transitionInProgress)
         GalaxyPlanetDefinition planet,
         bool finiteChapterCombat)
     {
+        PlanetLoadingUI loadingUI =
+            FindObjectOfType<PlanetLoadingUI>(true);
         InfinitePlanarSurfaceWorld existingWorld =
             FindObjectOfType<InfinitePlanarSurfaceWorld>();
         if (existingWorld != null)
         {
             if (!finiteChapterCombat)
+            {
+                InfinitePlanarSurfaceEntryCoordinator existingCoordinator =
+                    existingWorld.GetComponent<
+                        InfinitePlanarSurfaceEntryCoordinator>();
+                if (existingCoordinator != null)
+                {
+                    if (existingCoordinator.IsReadyForReveal)
+                        loadingUI?.Complete();
+                    else
+                        loadingUI?.ShowOrContinue(
+                            0.02f,
+                            "正在继续准备无限平面地表");
+                }
+                else
+                {
+                    loadingUI?.ShowFailure(
+                        "检测到未完成的旧地表，缺少加载协调器。");
+                }
                 return;
+            }
 
             FinitePlanetUrbanCombatRuntime existingCity =
                 existingWorld.GetComponent<FinitePlanetUrbanCombatRuntime>();
@@ -1297,6 +1662,23 @@ if (transitionInProgress)
                 existingCity != null &&
                 existingCity.IsReady)
             {
+                InfinitePlanarSurfaceEntryCoordinator existingCoordinator =
+                    existingWorld.GetComponent<
+                        InfinitePlanarSurfaceEntryCoordinator>();
+                if (existingCoordinator != null)
+                {
+                    if (existingCoordinator.IsReadyForReveal)
+                        loadingUI?.Complete();
+                    else
+                        loadingUI?.ShowOrContinue(
+                            0.70f,
+                            "正在继续准备城市战斗区");
+                    return;
+                }
+
+                FailChapterMissionEntry(
+                    existingWorld.gameObject,
+                    "检测到缺少加载协调器的旧城市战场，已取消本次关卡进入。");
                 return;
             }
 
@@ -1361,6 +1743,8 @@ if (transitionInProgress)
             Debug.LogError(error, this);
             if (finiteChapterCombat)
                 FailChapterMissionEntry(null, error);
+            else
+                loadingUI?.ShowFailure(error);
             return;
         }
 
@@ -1397,33 +1781,54 @@ if (transitionInProgress)
             Debug.LogException(exception, this);
             if (finiteChapterCombat)
                 FailChapterMissionEntry(root, error);
+            else
+                loadingUI?.ShowFailure(error);
             return;
         }
         if (finiteChapterCombat)
         {
             FinitePlanetUrbanCombatRuntime urbanCombat =
                 root.AddComponent<FinitePlanetUrbanCombatRuntime>();
+            var operation = new FiniteUrbanConfigurationOperation
+            {
+                id = ++nextFiniteUrbanConfigurationId,
+                sceneHandle = root.scene.handle,
+                planetId = PlanetOrbitChapterSelectionContext.PlanetId ??
+                           string.Empty,
+                missionId = PlanetOrbitChapterSelectionContext.MissionId ??
+                            string.Empty,
+                missionSeed = PlanetOrbitChapterSelectionContext.MissionSeed,
+                root = root,
+                planar = planar,
+                runtime = urbanCombat,
+                loadingUI = loadingUI,
+                landing = landing
+            };
+            activeFiniteUrbanConfiguration = operation;
             try
             {
-                if (!urbanCombat.Configure(planar))
-                {
-                    string preparationError = urbanCombat.PreparationError;
-                    // Every formal chapter is urban. Continuing on the
-                    // underlying terrain plan would silently start a different
-                    // battlefield with mismatched objectives and EDPCG
-                    // semantics.
-                    FailChapterMissionEntry(root, preparationError);
-                    return;
-                }
+                operation.configureRoutine = urbanCombat.StartCoroutine(
+                    urbanCombat.ConfigureRoutine(
+                        planar,
+                        (success, preparationError) =>
+                            HandleFiniteUrbanCombatConfigured(
+                                operation.id,
+                                success,
+                                preparationError)));
             }
             catch (System.Exception exception)
             {
                 string error =
                     "城市战场实例化失败：" + exception.Message;
                 Debug.LogException(exception, this);
+                activeFiniteUrbanConfiguration = null;
+                urbanCombat.CancelConfiguration();
                 FailChapterMissionEntry(root, error);
-                return;
             }
+            // The worker-backed city planner now owns the continuation. Do
+            // not create the boundary, coordinator or spacecraft restorer
+            // until the authoritative city result has returned.
+            return;
         }
         if (finiteChapterCombat)
         {
@@ -1442,12 +1847,152 @@ if (transitionInProgress)
         }
         coordinator.Initialize(
             planar,
-            FindObjectOfType<PlanetLoadingUI>(true));
+            loadingUI);
         if (restorer != null)
             coordinator.BindRestorer(restorer);
         if (!finiteChapterCombat)
             RestorePlanarBuildings(planar, save);
         RestoreInventory();
+    }
+
+    void HandleFiniteUrbanCombatConfigured(
+        int operationId,
+        bool success,
+        string preparationError)
+    {
+        FiniteUrbanConfigurationOperation operation =
+            activeFiniteUrbanConfiguration;
+        if (operation == null || operation.id != operationId ||
+            operation.completionReceived)
+        {
+            return;
+        }
+
+        operation.completionReceived = true;
+        operation.loadingUI?.StopSimulatedProgress();
+        if (!IsFiniteUrbanConfigurationCurrent(operation))
+        {
+            // The scene or chapter identity changed while the pure-data task
+            // was running. Discard the stale result; never attach an old Seed
+            // to a newer mission session.
+            activeFiniteUrbanConfiguration = null;
+            operation.runtime?.CancelConfiguration();
+            if (operation.root != null)
+                Destroy(operation.root);
+            return;
+        }
+        if (!success)
+        {
+            activeFiniteUrbanConfiguration = null;
+            // Every formal chapter is urban. Continuing on the underlying
+            // terrain plan would silently start a different battlefield with
+            // mismatched objectives and EDPCG semantics.
+            FailChapterMissionEntry(
+                operation.root,
+                string.IsNullOrWhiteSpace(preparationError)
+                    ? "城市 PCG 没有返回可进入的战场。"
+                    : preparationError);
+            return;
+        }
+
+        try
+        {
+            operation.finalizeRoutine = StartCoroutine(
+                FinalizeFiniteUrbanCombatConfiguration(operation));
+        }
+        catch (System.Exception exception)
+        {
+            string error = "城市战斗系统接入无法启动：" +
+                           exception.Message;
+            Debug.LogException(exception, this);
+            activeFiniteUrbanConfiguration = null;
+            FailChapterMissionEntry(operation.root, error);
+        }
+    }
+
+    bool IsFiniteUrbanConfigurationCurrent(
+        FiniteUrbanConfigurationOperation operation)
+    {
+        if (operation == null ||
+            activeFiniteUrbanConfiguration != operation ||
+            operation.root == null || operation.planar == null ||
+            !PlanetOrbitChapterSelectionContext.HasSelection)
+        {
+            return false;
+        }
+
+        Scene scene = operation.root.scene;
+        return scene.IsValid() && scene.isLoaded &&
+               SceneManager.GetActiveScene().handle == operation.sceneHandle &&
+               operation.root.scene.handle == operation.sceneHandle &&
+               operation.missionSeed ==
+                   PlanetOrbitChapterSelectionContext.MissionSeed &&
+               string.Equals(
+                   operation.planetId,
+                   PlanetOrbitChapterSelectionContext.PlanetId,
+                   System.StringComparison.Ordinal) &&
+               string.Equals(
+                   operation.missionId,
+                   PlanetOrbitChapterSelectionContext.MissionId,
+                   System.StringComparison.Ordinal);
+    }
+
+    IEnumerator FinalizeFiniteUrbanCombatConfiguration(
+        FiniteUrbanConfigurationOperation operation)
+    {
+        try
+        {
+            operation.loadingUI?.SetProgress(
+                0.68f,
+                "城市主体已经生成，正在接入战斗系统");
+        }
+        catch (System.Exception exception)
+        {
+            string error = "城市加载界面接管失败：" + exception.Message;
+            Debug.LogException(exception, this);
+            activeFiniteUrbanConfiguration = null;
+            FailChapterMissionEntry(operation.root, error);
+            yield break;
+        }
+        yield return null;
+        if (!IsFiniteUrbanConfigurationCurrent(operation))
+        {
+            if (activeFiniteUrbanConfiguration == operation)
+                CancelActiveFiniteUrbanConfiguration();
+            yield break;
+        }
+
+        try
+        {
+            FinitePlanetCombatBoundary boundary =
+                operation.root.AddComponent<FinitePlanetCombatBoundary>();
+            boundary.Configure(operation.planar);
+            InfinitePlanarSurfaceEntryCoordinator coordinator =
+                operation.root.AddComponent<
+                    InfinitePlanarSurfaceEntryCoordinator>();
+            PlanarSurfaceLandedSpacecraftRestorer restorer = null;
+            if (IsInterstellarGalaxy)
+            {
+                restorer = operation.root.AddComponent<
+                    PlanarSurfaceLandedSpacecraftRestorer>();
+                restorer.Initialize(operation.planar, operation.landing);
+            }
+            coordinator.Initialize(operation.planar, operation.loadingUI);
+            if (restorer != null)
+                coordinator.BindRestorer(restorer);
+            RestoreInventory();
+        }
+        catch (System.Exception exception)
+        {
+            string error = "城市战斗系统接入失败：" + exception.Message;
+            Debug.LogException(exception, this);
+            activeFiniteUrbanConfiguration = null;
+            FailChapterMissionEntry(operation.root, error);
+            yield break;
+        }
+
+        if (activeFiniteUrbanConfiguration == operation)
+            activeFiniteUrbanConfiguration = null;
     }
 
     void SavePlanet(VoxelQuadSphereWorld world)

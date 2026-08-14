@@ -413,6 +413,13 @@ namespace UnityPlanet.ModularAssembly
                     warningText.text = message;
                 return false;
             }
+            if (lab.FlightState != GridFlightState.Build)
+            {
+                message = "请先返回改装状态，再开始战斗测试。";
+                if (warningText != null)
+                    warningText.text = message;
+                return false;
+            }
             CombatPreparationCoordinator preparation =
                 FindObjectOfType<CombatPreparationCoordinator>(true);
             if (preparation != null && !preparation.IsReady(mode))
@@ -425,8 +432,13 @@ namespace UnityPlanet.ModularAssembly
                         waitingForPreparation = false;
                         if (success)
                         {
-                            string ignored;
-                            TryBeginCombat(mode, out ignored);
+                            if (!TryBeginCombat(
+                                    mode,
+                                    out string retryMessage) &&
+                                warningText != null)
+                            {
+                                warningText.text = retryMessage;
+                            }
                         }
                         else if (warningText != null)
                         {

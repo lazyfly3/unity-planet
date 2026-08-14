@@ -6,7 +6,8 @@ namespace UnityPlanet.ModularAssembly
 {
     /// <summary>
     /// Declares which Modular Lab runtime extensions are valid for a scene.
-    /// Scene-name fallback keeps the original ModularAssemblyLab compatible.
+    /// Natural PlanetLab flight was retired; the serialized field remains so
+    /// older scenes can still deserialize without losing component data.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class ModularLabSceneProfile : MonoBehaviour
@@ -15,17 +16,25 @@ namespace UnityPlanet.ModularAssembly
         [SerializeField] bool enableCombatTest = true;
         
         [SerializeField] bool enableCombatMapFlightEnvironment;
-[SerializeField] bool enablePlanetLabFlightEnvironment = true;
+        [SerializeField] bool enablePlanetLabFlightEnvironment;
 
         public bool EnableBuildExperience => enableBuildExperience;
         public bool EnableCombatTest => enableCombatTest;
         
         public bool EnableCombatMapFlightEnvironment =>
             enableCombatMapFlightEnvironment;
-public bool EnablePlanetLabFlightEnvironment =>
-            enablePlanetLabFlightEnvironment;
+        public bool EnablePlanetLabFlightEnvironment
+        {
+            get
+            {
+                // Read the legacy serialized value only to keep old scenes
+                // migration-safe; natural test flight is no longer selectable.
+                _ = enablePlanetLabFlightEnvironment;
+                return false;
+            }
+        }
 
-public void Configure(
+        public void Configure(
             bool buildExperience,
             bool combatTest,
             bool planetLabFlightEnvironment,
@@ -33,8 +42,8 @@ public void Configure(
         {
             enableBuildExperience = buildExperience;
             enableCombatTest = combatTest;
-            enablePlanetLabFlightEnvironment =
-                planetLabFlightEnvironment;
+            _ = planetLabFlightEnvironment;
+            enablePlanetLabFlightEnvironment = false;
             enableCombatMapFlightEnvironment =
                 combatMapFlightEnvironment;
         }
@@ -74,13 +83,11 @@ public void Configure(
         public static bool AllowsPlanetLabFlightEnvironment(
             Scene scene)
         {
-            ModularLabSceneProfile profile = Find(scene);
-            return profile != null
-                ? profile.EnablePlanetLabFlightEnvironment
-                : IsLegacyLab(scene);
+            _ = scene;
+            return false;
         }
 
-public static bool AllowsCombatMapFlightEnvironment(
+        public static bool AllowsCombatMapFlightEnvironment(
             Scene scene)
         {
             ModularLabSceneProfile profile = Find(scene);

@@ -238,22 +238,62 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
         {
             float requested = AirCombatCityDifficultyPcg.ResolveTarget(
                 cityGenerator.Settings.Difficulty).averageDifficulty;
+            float forecastBaseline = AirCombatCityDifficultyPcg
+                .ResolveUngeneratedForecastBaseline(
+                    cityGenerator.Settings.Difficulty);
             float achieved = cityGenerator.Report.plannedAverageDifficulty;
             float delta = achieved - requested;
+            bool targetMet = cityGenerator.Report.cityDifficultyTargetMet;
+            bool fallbackUsed =
+                cityGenerator.Report.cityDifficultyFallbackUsed;
+            bool coverageValid =
+                cityGenerator.Report.cityDifficultyCoverageValid;
+            bool exactTargetMet = Mathf.Abs(delta) <= 0.025f;
+            string resultText;
+            if (Mathf.Abs(delta) < 0.015f)
+                resultText = "已接近目标";
+            else if (targetMet)
+            {
+                resultText = (delta < 0f ? "偏低 " : "偏高 ") +
+                             (Mathf.Abs(delta) * 100f).ToString("0.0") +
+                             "个百分点：在15个百分点首选容差内";
+            }
+            else if (fallbackUsed)
+            {
+                resultText = (delta < 0f ? "偏低 " : "偏高 ") +
+                             (Mathf.Abs(delta) * 100f).ToString("0.0") +
+                             "个百分点：超过首选容差，正式关卡采用本次有界修正的最接近结果";
+            }
+            else if (!coverageValid)
+                resultText = "可飞格覆盖不足，属于硬可玩性失败";
+            else
+            {
+                resultText = "尚未完成难度复核";
+            }
             EditorGUILayout.HelpBox(
                 "当前城市：要求 " +
-                (requested * 100f).ToString("0.0") + "%｜实际 " +
-                (achieved * 100f).ToString("0.0") + "%｜" +
-                (Mathf.Abs(delta) < 0.015f
-                    ? "已接近目标"
-                    : delta < 0f
-                        ? "偏低 " + (-delta * 100f).ToString("0.0") +
-                          "%：后续格应补更危险候选"
-                        : "偏高 " + (delta * 100f).ToString("0.0") +
-                          "%：后续格应补更安全候选"),
-                Mathf.Abs(delta) < 0.015f
+                (requested * 100f).ToString("0.0") + "%" +
+                (forecastBaseline > requested + 0.0001f
+                    ? "｜未生成格保守基线 " +
+                      (forecastBaseline * 100f).ToString("0.0") + "%"
+                    : string.Empty) + "｜实际 " +
+                (achieved * 100f).ToString("0.0") + "%｜" + resultText,
+                exactTargetMet || targetMet
                     ? MessageType.Info
-                    : MessageType.Warning);
+                    : coverageValid
+                        ? MessageType.Warning
+                        : MessageType.Error);
+            if (forecastBaseline > requested + 0.0001f)
+            {
+                EditorGUILayout.HelpBox(
+                    "输入目标低于当前三层空战模型的经验可实现下限。" +
+                    "生成器仍以输入值作为权威目标，并逐楼位选择更安全方案；" +
+                    "这里只用 " +
+                    (forecastBaseline * 100f).ToString("0.0") +
+                    "% 估计尚未生成的格子，避免演示提前假报达标。" +
+                    "若所有合法楼位方案仍无法偿还，正式关卡会报告偏差并采用最接近的硬合法结果。",
+                    MessageType.Warning);
+            }
         }
 
         bool prepared = CityGreedyGenerationShowcase.IsPreparedFor(
@@ -350,7 +390,11 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
         if (CityGreedyGenerationShowcase.FrameIndex == 0)
         {
             EditorGUILayout.HelpBox(
-                "当前：道路网格与街区合并已经完成。下一步从中心区块开始。",
+                "当前：道路网格与街区合并已经完成。输入目标 " +
+                (trace.requestedDifficulty * 100f).ToString("0.0") +
+                "%｜未生成格保守基线 " +
+                (trace.forecastBaselineDifficulty * 100f).ToString("0.0") +
+                "%；下一步从中心区块开始。",
                 MessageType.None);
         }
         else if (step != null)
@@ -365,7 +409,8 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
             }
             EditorGUILayout.HelpBox(
                 "中心向外第 " +
-                CityGreedyGenerationShowcase.FrameIndex + " 格：全城危险度 " +
+                CityGreedyGenerationShowcase.FrameIndex +
+                " 格：全城控制预测 " +
                 (step.cityDifficultyBefore * 100f).ToString("0.0") +
                 "% → " +
                 (step.cityDifficultyAfter * 100f).ToString("0.0") +
@@ -373,14 +418,23 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
                 (step.generatedDifficultyBefore * 100f).ToString("0.0") +
                 "% → " +
                 (step.generatedDifficultyAfter * 100f).ToString("0.0") +
+                "%；权威目标 " +
+                (step.targetDifficulty * 100f).ToString("0.0") +
                 "%；剩余区块所需均值 " +
                 (step.remainingRequiredBefore * 100f).ToString("0.0") +
                 "% → " +
                 (step.remainingRequiredAfter * 100f).ToString("0.0") +
                 "%；本格选择" +
                 (step.requestedMoreDanger ? "更危险" : "更安全") +
-                "候选；旧区块有 " + changedCount + " 格发生可见变化。",
-                CityGreedyGenerationShowcase.FrameIndex == trace.steps.Count
+                "楼位方案；" +
+                (step.directionSatisfied
+                    ? "结果向目标收敛；"
+                    : "本格全部合法楼位方案都会反向变化，已选反向量最小者；") +
+                "旧区块有 " + changedCount + " 格发生可见变化。",
+                !step.directionSatisfied
+                    ? MessageType.Warning
+                    : CityGreedyGenerationShowcase.FrameIndex ==
+                      trace.steps.Count
                     ? MessageType.Info
                     : MessageType.None);
             if (CityGreedyGenerationShowcase.FrameIndex == trace.steps.Count)
@@ -403,7 +457,7 @@ public sealed class CityPcgSceneTuningWindow : EditorWindow
                 (stage.difficultyBefore * 100f).ToString("0.0") +
                 "% → " +
                 (stage.difficultyAfter * 100f).ToString("0.0") +
-                "%｜目标 " +
+                "%｜权威目标 " +
                 (trace.targetDifficulty * 100f).ToString("0.0") +
                 "%\n" + stage.decision,
                 MessageType.Info);

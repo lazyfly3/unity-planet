@@ -66,7 +66,9 @@ namespace UnityPlanet.ModularAssembly
 
     public static class ModuleCpuBudget
     {
-        public const int AbsoluteMaximum = 9999;
+        public const int AbsoluteMaximum =
+            UnityPlanet.SpacecraftArchitecture.
+                ShipArchitectureProgressService.AbsoluteCpuCapacity;
         public static int Maximum =>
             UnityPlanet.SpacecraftArchitecture.
                 ShipArchitectureProgressService.CpuCapacity;

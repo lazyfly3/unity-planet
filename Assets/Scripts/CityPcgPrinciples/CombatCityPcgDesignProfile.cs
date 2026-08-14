@@ -131,12 +131,20 @@ namespace UnityPlanet.CityPcg
             float targetDifficulty,
             AirCombatCityMission mission)
         {
-            float challenge = Mathf.InverseLerp(
+            float requested = Mathf.Clamp(targetDifficulty,
                 AirCombatCityDifficultyPcg.MinimumTargetDifficulty,
+                AirCombatCityDifficultyPcg.MaximumTargetDifficulty);
+            // 七点三层空战评估会始终保留高空开放样本，城市即使采用
+            // 最安全空间配置也有约24%的可测危险底噪。若仍把10%直接
+            // 映射为0、20%映射为0.13的空间压力，20%城市反而会从
+            // 约24%跳到30%以上。先扣除这份可实现下限，再把剩余输入
+            // 映射到空间生成参数；explicitAverageDifficulty仍原样保存，
+            // 因而这只是PCG控制量校准，不会篡改用户要求或报告数值。
+            float challenge = Mathf.InverseLerp(
+                AirCombatCityDifficultyPcg
+                    .MinimumRepresentableAverageDifficulty,
                 AirCombatCityDifficultyPcg.MaximumTargetDifficulty,
-                Mathf.Clamp(targetDifficulty,
-                    AirCombatCityDifficultyPcg.MinimumTargetDifficulty,
-                    AirCombatCityDifficultyPcg.MaximumTargetDifficulty));
+                requested);
             CombatCityDifficultyProfile result =
                 CreateForNormalizedDifficulty(challenge, mission);
             // 目标危险度是本次 PCG 的权威输入。两项都取同一个 challenge，
@@ -145,10 +153,7 @@ namespace UnityPlanet.CityPcg
             result.combatPressure = challenge;
             result.exposurePressure = challenge;
             result.useExplicitAverageDifficulty = true;
-            result.explicitAverageDifficulty = Mathf.Clamp(
-                targetDifficulty,
-                AirCombatCityDifficultyPcg.MinimumTargetDifficulty,
-                AirCombatCityDifficultyPcg.MaximumTargetDifficulty);
+            result.explicitAverageDifficulty = requested;
             return result;
         }
     }
@@ -2057,6 +2062,8 @@ namespace UnityPlanet.CityPcg
                 plan);
             report.combatBoundaryTowerCount = CountCluster(plan, 1205);
             report.combatBoundaryAirWallCount = plan.boundaryWalls.Count;
+            report.boundaryAirWallsValid =
+                BoundaryAirWallsAreValid(settings, plan);
             report.recoveryPocketOutputBlockedCount =
                 CountRecoveryPocketsWithBlockedOutput(settings, plan);
             report.kiteLoopObstructionCount = CountCluster(plan, 1201);
@@ -2082,7 +2089,7 @@ namespace UnityPlanet.CityPcg
                 report.occlusionBreakCount >= minimumOcclusionBreaks &&
                 report.occlusionBoundaryTowerCount >= minimumOcclusionTowers &&
                 report.combatBoundaryTowerCount >= 16 &&
-                BoundaryAirWallsAreValid(settings, plan) &&
+                report.boundaryAirWallsValid &&
                 report.recoveryPocketOutputBlockedCount >= 2 &&
                 report.kiteLoopObstructionCount >= 1 &&
                 report.verticalEscapePhysical &&

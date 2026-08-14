@@ -110,6 +110,9 @@ namespace UnityPlanet.SpaceStation.Skills
 
         void Update()
         {
+            if (SpaceStationPauseMenu.IsOpen)
+                return;
+
             if (canvasRoot == null)
                 return;
             if (!interfaceOpen)

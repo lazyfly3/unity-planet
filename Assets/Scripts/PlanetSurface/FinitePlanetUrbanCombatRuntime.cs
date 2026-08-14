@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityPlanet.CityPcg;
@@ -36,9 +38,154 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
 
     public bool Configure(InfinitePlanarSurfaceWorld targetWorld)
     {
+        if (!TryPrepareCityRuntime(
+                targetWorld,
+                out FinitePlanetCombatTerrainPlan terrainPlan,
+                out AirCombatCityMission mission,
+                out CombatCityPcgDesignProfile runtimeDesignProfile))
+        {
+            return false;
+        }
+
+        cityLab.ConfigureRuntimeMission(
+            PlanetOrbitChapterSelectionContext.MissionSeed,
+            mission,
+            PlanetOrbitChapterSelectionContext.PlanetDifficultyIndex,
+            runtimeDesignProfile);
+        return CompleteCityRuntime(terrainPlan);
+    }
+
+    /// <summary>
+    /// Formal loading path. The city planner yields while its detached data
+    /// task runs so the loading canvas can animate; all scene-object creation
+    /// and physics setup remain on the Unity thread.
+    /// </summary>
+    public IEnumerator ConfigureRoutine(
+        InfinitePlanarSurfaceWorld targetWorld,
+        Action<bool, string> completed)
+    {
+        FinitePlanetCombatTerrainPlan terrainPlan = null;
+        AirCombatCityMission mission = AirCombatCityMission.Clearance;
+        CombatCityPcgDesignProfile runtimeDesignProfile = null;
+        bool prepared = false;
+        try
+        {
+            prepared = TryPrepareCityRuntime(
+                targetWorld,
+                out terrainPlan,
+                out mission,
+                out runtimeDesignProfile);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception, this);
+            Fail("城市战场准备发生异常：" + exception.Message);
+        }
+        if (!prepared)
+        {
+            completed?.Invoke(false, PreparationError);
+            yield break;
+        }
+
+        bool planningSucceeded = false;
+        string planningError = string.Empty;
+        IEnumerator planningRoutine = null;
+        try
+        {
+            planningRoutine = cityLab.ConfigureRuntimeMissionRoutine(
+                PlanetOrbitChapterSelectionContext.MissionSeed,
+                mission,
+                PlanetOrbitChapterSelectionContext.PlanetDifficultyIndex,
+                runtimeDesignProfile,
+                (success, error) =>
+                {
+                    planningSucceeded = success;
+                    planningError = error ?? string.Empty;
+                });
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception, this);
+            planningError = "城市规划无法启动：" + exception.Message;
+        }
+
+        if (planningRoutine != null)
+        {
+            try
+            {
+                while (true)
+                {
+                    bool hasNext = false;
+                    object yielded = null;
+                    try
+                    {
+                        hasNext = planningRoutine.MoveNext();
+                        if (hasNext)
+                            yielded = planningRoutine.Current;
+                    }
+                    catch (Exception exception)
+                    {
+                        Debug.LogException(exception, this);
+                        planningError = "城市规划发生异常：" +
+                                        exception.Message;
+                    }
+                    if (!hasNext || !string.IsNullOrEmpty(planningError))
+                        break;
+                    yield return yielded;
+                }
+            }
+            finally
+            {
+                (planningRoutine as IDisposable)?.Dispose();
+            }
+        }
+
+        if (!planningSucceeded)
+        {
+            string summary = !string.IsNullOrWhiteSpace(planningError)
+                ? planningError
+                : cityLab != null
+                    ? cityLab.LastSummary
+                    : "城市规划未返回有效结果。";
+            if (cityRoot != null)
+                Destroy(cityRoot);
+            cityRoot = null;
+            cityLab = null;
+            Fail("城市 PCG 未通过约束：" + summary);
+            completed?.Invoke(false, PreparationError);
+            yield break;
+        }
+
+        bool configured = false;
+        try
+        {
+            configured = CompleteCityRuntime(terrainPlan);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception, this);
+            Fail("城市战场实例化失败：" + exception.Message);
+        }
+        completed?.Invoke(configured, PreparationError);
+    }
+
+    public void CancelConfiguration()
+    {
+        cityLab?.CancelRuntimeMissionPlanning();
+    }
+
+    bool TryPrepareCityRuntime(
+        InfinitePlanarSurfaceWorld targetWorld,
+        out FinitePlanetCombatTerrainPlan terrainPlan,
+        out AirCombatCityMission mission,
+        out CombatCityPcgDesignProfile runtimeDesignProfile)
+    {
         IsReady = false;
         PreparationError = string.Empty;
         world = targetWorld;
+        terrainPlan = null;
+        mission = AirCombatCityMission.Clearance;
+        runtimeDesignProfile = null;
         if (world == null || !world.IsFiniteCombatArea)
             return Fail("城市战场需要有限星球战斗区域。");
         if (PlanetOrbitChapterSelectionContext.EnvironmentKind !=
@@ -47,8 +194,7 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
             return Fail("当前任务没有选择城市作战环境。");
         }
 
-        FinitePlanetCombatTerrainPlan terrainPlan =
-            world.FiniteCombatTerrainPlan;
+        terrainPlan = world.FiniteCombatTerrainPlan;
         if (terrainPlan == null || terrainPlan.DefenseLayout == null)
             return Fail("城市战场缺少正式任务的防御布局。");
 
@@ -74,7 +220,7 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
             PlanetOrbitChapterSelectionContext.MissionId,
             "modular_boss",
             System.StringComparison.Ordinal);
-        AirCombatCityMission mission = bossMission
+        mission = bossMission
             ? AirCombatCityMission.BossEncounter
             : terrainPlan.MissionKind ==
               FinitePlanetCombatMissionTerrainKind.Assault
@@ -83,13 +229,14 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
         EdpcgCityTacticalChallengeProfile tacticalChallenge = bossMission
             ? null
             : EdpcgCityTacticalChallengeProfile.LoadOrCreateMemoryDefault();
-        cityLab.ConfigureRuntimeMission(
-            PlanetOrbitChapterSelectionContext.MissionSeed,
-            mission,
-            PlanetOrbitChapterSelectionContext.PlanetDifficultyIndex,
-            tacticalChallenge != null
-                ? tacticalChallenge.cityGeometryProfile
-                : null);
+        runtimeDesignProfile = tacticalChallenge != null
+            ? tacticalChallenge.cityGeometryProfile
+            : null;
+        return true;
+    }
+
+    bool CompleteCityRuntime(FinitePlanetCombatTerrainPlan terrainPlan)
+    {
         if (!cityLab.HasValidPlan || cityLab.Plan == null)
         {
             string summary = cityLab.LastSummary;
@@ -132,13 +279,19 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
         if (!environmentalFields.HasRequiredCombatTraps)
         {
             string validation = environmentalFields.ValidationError;
-            Destroy(cityRoot);
-            cityRoot = null;
-            cityLab = null;
-            environmentalFields = null;
-            return Fail(string.IsNullOrWhiteSpace(validation)
+            string warning = string.IsNullOrWhiteSpace(validation)
                 ? "城市 PCG 没有生成完整的风场和三面磁墙战术路线。"
-                : validation);
+                : validation;
+            if (cityLab.Report != null)
+            {
+                cityLab.Report.degraded = true;
+                cityLab.Report.degradationWarning = string.IsNullOrWhiteSpace(
+                    cityLab.Report.degradationWarning)
+                    ? warning
+                    : cityLab.Report.degradationWarning + " " + warning;
+            }
+            Debug.LogWarning("[UrbanCombat] " + warning +
+                             " 城市仍可进入，环境陷阱按可用子集运行。", this);
         }
 
         // The inactive prefab prevents its edit-lab OnEnable path from
@@ -778,6 +931,7 @@ public sealed class FinitePlanetUrbanCombatRuntime : MonoBehaviour
 
     void OnDestroy()
     {
+        CancelConfiguration();
         if (streamer != null)
             streamer.ChunkActivated -= HandleChunkActivated;
     }

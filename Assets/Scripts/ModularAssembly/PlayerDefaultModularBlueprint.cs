@@ -3,9 +3,40 @@ using UnityEngine;
 namespace ModularAssembly
 {
     /// <summary>
-    /// Project-owned starter ship for player saves that do not have a
-    /// modular_ship.json yet. This is a data-only copy of save "1231";
-    /// existing save files always take precedence over this template.
+    /// The only blueprint automatically created for a save that has never
+    /// saved a ship. Complete designs must be loaded explicitly as presets.
+    /// </summary>
+    public static class PlayerStarterModularBlueprint
+    {
+        public static ModularBlueprintData Create()
+        {
+            return new ModularBlueprintData
+            {
+                formatVersion =
+                    ModularBlueprintData.CurrentFormatVersion,
+                savedUtcTicks = 0,
+                coreAssistMode =
+                    UnityPlanet.ModularAssembly.
+                        VehicleCoreAssistMode.Standard,
+                modules = new[]
+                {
+                    new ModularBlueprintModule
+                    {
+                        runtimeId = GridAssemblyModel.CoreRuntimeId,
+                        moduleId = GridAssemblyModel.CoreModuleId,
+                        pose = new GridModulePose(
+                            new Vector3Int(-1, -1, -1),
+                            0),
+                        behaviorSettings = string.Empty
+                    }
+                }
+            };
+        }
+    }
+
+    /// <summary>
+    /// Data-only reference copy of save "1231" retained for balance and
+    /// migration validation. It is never injected into a new save.
     /// </summary>
     public static class PlayerDefaultModularBlueprint
     {

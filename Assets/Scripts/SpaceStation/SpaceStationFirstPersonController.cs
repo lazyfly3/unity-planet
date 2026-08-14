@@ -26,6 +26,11 @@ namespace UnityPlanet.SpaceStation
         bool cursorLocked;
 
         public CharacterController CharacterController => characterController;
+        public float MouseSensitivity
+        {
+            get => mouseSensitivity;
+            set => mouseSensitivity = Mathf.Clamp(value, 0.2f, 5f);
+        }
 
         void Awake()
         {
@@ -38,6 +43,9 @@ namespace UnityPlanet.SpaceStation
             spawnPosition = transform.position;
             spawnRotation = transform.rotation;
             pitch = viewCamera != null ? NormalizedAngle(viewCamera.transform.localEulerAngles.x) : 0f;
+            MouseSensitivity = PlayerPrefs.GetFloat(
+                "MouseSensitivity",
+                mouseSensitivity);
         }
 
         void OnEnable()
@@ -67,7 +75,12 @@ namespace UnityPlanet.SpaceStation
 
         void UpdateCursorState()
         {
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (SpaceStationPauseMenu.IsOpen)
+            {
+                return;
+            }
+            if (Input.GetKeyDown(KeyCode.Escape) &&
+                !SpaceStationPauseMenu.IsInstalled)
             {
                 SetCursorLocked(!cursorLocked);
             }

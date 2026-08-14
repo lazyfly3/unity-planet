@@ -73,7 +73,8 @@ namespace UnityPlanet.ModularAssembly
                 combat = FindObjectOfType<CombatTestController>();
             if (!ShouldOpenForEscape(
                     Input.GetKeyDown(KeyCode.Escape),
-                    controller != null && controller.IsFlying,
+                    controller != null &&
+                    controller.FlightState == GridFlightState.Flight,
                     combat != null && combat.IsResolving,
                     ArcadeFlightRuntimeTuningOverlay.IsInputCaptured))
             {
@@ -107,7 +108,8 @@ namespace UnityPlanet.ModularAssembly
 
         public void OpenMenu()
         {
-            if (menuOpen || controller == null || !controller.IsFlying)
+            if (menuOpen || controller == null ||
+                controller.FlightState != GridFlightState.Flight)
                 return;
 
             menuOpen = true;
@@ -157,7 +159,8 @@ namespace UnityPlanet.ModularAssembly
             RestoreGameState();
             if (inCombat)
                 combat.RequestExitCombat();
-            else if (controller != null && controller.IsFlying)
+            else if (controller != null &&
+                     controller.FlightState == GridFlightState.Flight)
                 controller.ToggleFlight();
         }
 

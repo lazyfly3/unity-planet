@@ -617,18 +617,18 @@ MonoBehaviour:
     removeUpperParameterLimits: 1
     combatDifficulty:
       useExplicitAverageDifficulty: 1
-      explicitAverageDifficulty: 0.5
-      navigationChallenge: 0.51
-      combatPressure: 0.5
-      exposurePressure: 0.5
-      recoveryGenerosity: 0.63
-      tacticalOpportunityDensity: 0.71000004
-      routeLegibility: 0.76
-      bossPursuitPressure: 0.56
-      destructionUtility: 0.72
-      decisionComplexity: 0.56
-      roadWidthScale: 1.02
-      blockMergeStrength: 0.57
+      explicitAverageDifficulty: 0.362
+      navigationChallenge: 0.32214925
+      combatPressure: 0.19701491
+      exposurePressure: 0.19701491
+      recoveryGenerosity: 0.79361194
+      tacticalOpportunityDensity: 0.8008955
+      routeLegibility: 0.86907464
+      bossPursuitPressure: 0.36608955
+      destructionUtility: 0.80483586
+      decisionComplexity: 0.40244776
+      roadWidthScale: 1.0927165
+      blockMergeStrength: 0.5033433
   designProfile: {fileID: 0}
   palette:
     road: {fileID: 2100000, guid: 514fcb48999763744ab368bc720b155a, type: 2}
@@ -660,7 +660,7 @@ MonoBehaviour:
   rooftopMechanicalPrefab: {fileID: 0}
   rooftopBillboardPrefabs: []
   streetLightPrefab: {fileID: 0}
-  showSemanticGizmos: 1
+  showSemanticGizmos: 0
   showRuntimePanel: 0
   keepBuildingColliders: 1
   buildVisualBackground: 0

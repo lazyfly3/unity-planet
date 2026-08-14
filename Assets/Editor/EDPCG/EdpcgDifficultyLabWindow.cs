@@ -1432,8 +1432,13 @@ namespace UnityPlanet.EditorTools
                 "   高危格 " + report.plannedHighRiskCellRatio.ToString("P0"));
             EditorGUILayout.LabelField(
                 "局部拟合",
-                (report.cityDifficultyTargetMet ? "已达到目标" : "未达到目标") +
-                "   平均误差 " +
+                DifficultyResultLabel(
+                    report.cityDifficultyTargetMet,
+                    report.cityDifficultyFallbackUsed,
+                    report.cityDifficultyCoverageValid) +
+                "   目标偏差 " +
+                report.plannedDifficultyAbsoluteError.ToString("P1") +
+                "   综合拟合误差 " +
                 report.plannedDifficultyFitError.ToString("P0") +
                 "   最长最低风险转移 " +
                 report.plannedMaximumCellsToLowerThreat + "格");
@@ -1464,7 +1469,7 @@ namespace UnityPlanet.EditorTools
                     (greedyCount > 0
                         ? (opennessTotal / greedyCount).ToString("P0")
                         : "0%") +
-                    "   单格候选 3～5种");
+                    "   楼位选项逐项重算");
                 CombatCityBlockPlan selected =
                     CombatDrivenCityPcgPlanner.GetTacticalBlock(
                         plan,
@@ -1487,9 +1492,9 @@ namespace UnityPlanet.EditorTools
                         selected.greedyRemainingBudgetBefore.ToString("P0") +
                         " → " +
                         selected.greedyRemainingBudgetAfter.ToString("P0") +
-                        "   比较候选 " +
+                        "   楼位方案试算 " +
                         selected.localCorrectionCount +
-                        "种   候选代价 " +
+                        "次   方案代价 " +
                         selected.greedyCandidateScore.ToString("0.000"));
                 }
             }
@@ -1497,12 +1502,32 @@ namespace UnityPlanet.EditorTools
             {
                 EditorGUILayout.LabelField(
                     "最终实体复核",
-                    (report.finalDifficultyTargetMet ? "通过" : "未通过") +
+                    DifficultyResultLabel(
+                        report.finalDifficultyTargetMet,
+                        report.finalDifficultyFallbackUsed,
+                        report.finalDifficultyCoverageValid) +
                     "   平均 " +
                     report.finalAverageDifficulty.ToString("P0") +
                     "   安全格 " + report.finalSafeCellRatio.ToString("P0") +
                     "   高危格 " + report.finalHighRiskCellRatio.ToString("P0"));
             }
+            if (!string.IsNullOrWhiteSpace(report.degradationWarning))
+                EditorGUILayout.HelpBox(report.degradationWarning,
+                    MessageType.Warning);
+        }
+
+        static string DifficultyResultLabel(
+            bool targetMet,
+            bool fallbackUsed,
+            bool coverageValid)
+        {
+            if (!coverageValid)
+                return "可飞格覆盖不足";
+            if (targetMet)
+                return "15个百分点容差内";
+            if (fallbackUsed)
+                return "超过15个百分点，采用最接近结果";
+            return "尚未完成复核";
         }
 
         void UpdateSceneOverlay()

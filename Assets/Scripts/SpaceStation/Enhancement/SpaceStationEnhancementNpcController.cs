@@ -142,6 +142,9 @@ namespace UnityPlanet.SpaceStation.Enhancement
 
         void Update()
         {
+            if (SpaceStationPauseMenu.IsOpen)
+                return;
+
             if (canvasRoot == null)
             {
                 return;

@@ -284,6 +284,9 @@ namespace UnityPlanet.SpaceStation
 
         void Update()
         {
+            if (SpaceStationPauseMenu.IsOpen)
+                return;
+
             if (!Input.GetKeyDown(KeyCode.F))
             {
                 return;

@@ -10,15 +10,33 @@ using Object = UnityEngine.Object;
 public sealed class ShipArchitectureProgressTests
 {
     [Test]
+    public void FreshSaveStarterBlueprintContainsOnlyTheCore()
+    {
+        ModularBlueprintData blueprint =
+            PlayerStarterModularBlueprint.Create();
+
+        Assert.AreEqual(VehicleCoreAssistMode.Standard,
+            blueprint.coreAssistMode);
+        Assert.AreEqual(1, blueprint.modules.Length);
+        Assert.AreEqual(GridAssemblyModel.CoreRuntimeId,
+            blueprint.modules[0].runtimeId);
+        Assert.AreEqual(GridAssemblyModel.CoreModuleId,
+            blueprint.modules[0].moduleId);
+    }
+
+    [Test]
     public void FreshSaveUsesTighterPlayerCapacityCurve()
     {
         int[] expectedModules = { 40, 56, 80, 128, 224, 448, 1024 };
-        int[] expectedCpu = { 1100, 1800, 2600, 3800, 5400, 7400, 9999 };
+        int[] expectedCpu = { 1100, 1800, 2600, 3800, 5400, 7400, 99999 };
 
         Assert.AreEqual(40,
             ShipArchitectureProgressService.InitialModuleCapacity);
         Assert.AreEqual(1100,
             ShipArchitectureProgressService.InitialCpuCapacity);
+        Assert.AreEqual(99999,
+            ShipArchitectureProgressService.AbsoluteCpuCapacity);
+        Assert.AreEqual(99999, ModuleCpuBudget.AbsoluteMaximum);
         Assert.AreEqual(expectedModules.Length,
             ShipArchitectureProgressService.TierCount);
 

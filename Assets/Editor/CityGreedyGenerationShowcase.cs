@@ -37,6 +37,9 @@ public static class CityGreedyGenerationShowcase
         public float remainingRequiredBefore;
         public float remainingRequiredAfter;
         public bool requestedMoreDanger;
+        public bool directionSatisfied;
+        public float solverPredictionBefore;
+        public float solverPredictionAfter;
         public int candidatesTested;
         public readonly List<CellChange> recalculatedCells =
             new List<CellChange>(36);
@@ -57,7 +60,9 @@ public static class CityGreedyGenerationShowcase
         public readonly List<Step> steps = new List<Step>(36);
         public readonly List<FinalTuningStage> finalStages =
             new List<FinalTuningStage>(3);
+        public float requestedDifficulty;
         public float targetDifficulty;
+        public float forecastBaselineDifficulty;
         public int seed;
         public double analysisMilliseconds;
     }
@@ -229,8 +234,12 @@ public static class CityGreedyGenerationShowcase
         var result = new Trace
         {
             seed = plan.resolvedSeed,
-            targetDifficulty = AirCombatCityDifficultyPcg.ResolveTarget(
-                settings.Difficulty).averageDifficulty
+            requestedDifficulty = AirCombatCityDifficultyPcg.ResolveTarget(
+                settings.Difficulty).averageDifficulty,
+            targetDifficulty = AirCombatCityDifficultyPcg
+                .ResolveEffectiveGenerationTarget(settings.Difficulty),
+            forecastBaselineDifficulty = AirCombatCityDifficultyPcg
+                .ResolveUngeneratedForecastBaseline(settings.Difficulty)
         };
         var ordered = new List<CombatCityBlockPlan>(36);
         for (int index = 0; index < plan.tacticalBlocks.Count; index++)
@@ -303,9 +312,11 @@ public static class CityGreedyGenerationShowcase
                 {
                     block = block,
                     cityDifficultyBefore = PredictWholeCityDifficulty(
-                        plan, previous, block),
+                        plan, previous, block,
+                        result.forecastBaselineDifficulty),
                     cityDifficultyAfter = PredictWholeCityDifficulty(
-                        plan, current, null),
+                        plan, current, null,
+                        result.forecastBaselineDifficulty),
                     generatedDifficultyBefore = previous.IsUsable
                         ? previous.averageDifficulty
                         : 0f,
@@ -322,6 +333,11 @@ public static class CityGreedyGenerationShowcase
                     requestedMoreDanger =
                         block.greedyRemainingBudgetBefore >=
                         result.targetDifficulty,
+                    directionSatisfied = block.greedyDirectionSatisfied,
+                    solverPredictionBefore =
+                        block.greedyPredictedCityBefore,
+                    solverPredictionAfter =
+                        block.greedyPredictedCityAfter,
                     candidatesTested = Mathf.Max(1,
                         block.localCorrectionCount)
                 };
@@ -923,7 +939,10 @@ public static class CityGreedyGenerationShowcase
             (step.selectedCellDifficulty * 100f).ToString("0") + "%" +
             "\n本格加入后全城 " +
             FormatSignedPercent(step.cityDifficultyAfter -
-                                step.cityDifficultyBefore),
+                                step.cityDifficultyBefore) +
+            (step.directionSatisfied
+                ? "｜向目标收敛"
+                : "｜本楼位方案均受硬约束，已取最小反向量"),
             BuildWorldLabelStyle(outline));
     }
 
@@ -1032,16 +1051,16 @@ public static class CityGreedyGenerationShowcase
         if (showChineseLabels)
         {
             Handles.Label(Vector3.Lerp(start, end, 0.5f) + Vector3.up * 6f,
-                "当前全城 " +
+                "全城控制预测 " +
                 (current.cityDifficultyAfter * 100f).ToString("0.0") +
-                "%｜目标 " +
+                "%｜权威目标 " +
                 (current.targetDifficulty * 100f).ToString("0.0") + "%\n" +
                 "剩余缺口 " + FormatSignedPercent(
                     current.targetDifficulty -
                     current.cityDifficultyAfter) + "｜下一格应补" +
                 (current.cityDifficultyAfter < current.targetDifficulty
-                    ? "更危险候选"
-                    : "更安全候选"),
+                    ? "更危险楼位方案"
+                    : "更安全楼位方案"),
                 BuildWorldLabelStyle(Handles.color));
         }
     }
@@ -1054,13 +1073,13 @@ public static class CityGreedyGenerationShowcase
             sceneView.position.width - panelX - 16f));
         FinalTuningStage finalStage = CurrentFinalStage;
         float panelHeight = frameIndex == 0
-            ? 132f
+            ? 154f
             : finalStage != null
                 ? 210f
             : playing && step != null && showRecalculation &&
               step.recalculatedCells.Count > 0
-                ? 246f
-                : 202f;
+                ? 268f
+                : 224f;
         Rect panelRect = new Rect(panelX, 16f, width, panelHeight);
         EditorGUI.DrawRect(panelRect,
             new Color(0.035f, 0.050f, 0.075f, 0.94f));
@@ -1070,6 +1089,11 @@ public static class CityGreedyGenerationShowcase
         if (frameIndex == 0)
         {
             GUILayout.Label("阶段：道路网格与街区合并已经先完成");
+            GUILayout.Label("权威目标　" +
+                            (trace.requestedDifficulty * 100f)
+                            .ToString("0.0") + "%　未生成格保守基线　" +
+                            (trace.forecastBaselineDifficulty * 100f)
+                            .ToString("0.0") + "%");
             GUILayout.Label("下一步：从中心区块开始，按四邻接向外扩张");
             GUILayout.Label("外围最高楼已参与枪线计算，但不计入难度平均");
         }
@@ -1078,11 +1102,11 @@ public static class CityGreedyGenerationShowcase
             GUILayout.Label("步骤 " + frameIndex + " / " +
                             trace.steps.Count + "　区块 " +
                             step.block.gridX + "，" + step.block.gridZ);
-            GUILayout.Label("当前全城危险度　" +
+            GUILayout.Label("全城控制预测　" +
                             (step.cityDifficultyBefore * 100f).ToString("0.0") +
                             "% → " +
                             (step.cityDifficultyAfter * 100f).ToString("0.0") +
-                            "%　目标 " +
+                            "%　权威目标 " +
                             (step.targetDifficulty * 100f).ToString("0.0") +
                             "%");
             GUILayout.Label("本步误差　" +
@@ -1104,12 +1128,15 @@ public static class CityGreedyGenerationShowcase
                             "%");
             int changedCount = CountVisibleChanges(step);
             GUILayout.Label("下一格策略：" +
-                            (step.requestedMoreDanger ? "选择更危险候选" :
-                                "选择更安全候选") +
-                            "　候选 " + step.candidatesTested +
-                            " 个　参与重算 " +
+                            (step.requestedMoreDanger ? "逐楼位向更危险方向逼近" :
+                                "逐楼位向更安全方向偿还") +
+                            "　楼位方案试算 " + step.candidatesTested +
+                            " 次　参与重算 " +
                             step.recalculatedCells.Count +
                             " 格　显著变化 " + changedCount + " 格");
+            GUILayout.Label(step.directionSatisfied
+                ? "逐楼位结果：已按目标方向收敛"
+                : "逐楼位结果：全部合法方案都会反向变化；已选变化最小者，等待后续格与终局回修偿还");
             if (playing && showRecalculation &&
                 step.recalculatedCells.Count > 0)
             {
@@ -1133,7 +1160,7 @@ public static class CityGreedyGenerationShowcase
                             (finalStage.difficultyBefore * 100f)
                             .ToString("0.0") + "% → " +
                             (finalStage.difficultyAfter * 100f)
-                            .ToString("0.0") + "%　目标 " +
+                            .ToString("0.0") + "%　权威目标 " +
                             (trace.targetDifficulty * 100f)
                             .ToString("0.0") + "%");
             GUILayout.Label(finalStage.decision,
@@ -1300,7 +1327,8 @@ public static class CityGreedyGenerationShowcase
     static float PredictWholeCityDifficulty(
         AirCombatCityPlan plan,
         AirCombatCityDifficultyEvaluation evaluation,
-        CombatCityBlockPlan temporarilyUngenerated)
+        CombatCityBlockPlan temporarilyUngenerated,
+        float effectiveTarget)
     {
         float total = 0f;
         int count = 0;
@@ -1321,7 +1349,11 @@ public static class CityGreedyGenerationShowcase
             }
             else
             {
-                total += block.targetDifficulty;
+                // 未生成格不能再用角色软目标充当“已经实现的结果”。
+                // 这会让20%输入在第19步虚假显示命中，随后每加一格又
+                // 连续回升。这里改用本次可实现的全城控制目标作为中性
+                // 预测；实际候选提交后仍会重算所有已生成格。
+                total += effectiveTarget;
             }
         }
         return count > 0 ? total / count : 0f;

@@ -55,7 +55,9 @@ public sealed class PlanetSurfaceEntryCoordinator : MonoBehaviour
 
         if (loadingUI == null)
             loadingUI = FindObjectOfType<PlanetLoadingUI>(true);
-        loadingUI?.Show("正在读取星球、存档和着陆数据");
+        loadingUI?.ShowOrContinue(
+            0.02f,
+            "正在读取星球、存档和着陆数据");
         SetPlayerInputLocked(true);
 
         if (monitorRoutine != null)

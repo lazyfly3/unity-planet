@@ -35,12 +35,12 @@ namespace UnityPlanet.SpacecraftArchitecture
     public static class ShipArchitectureProgressService
     {
         public const int InitialModuleCapacity = 40;
-        // The current default "1231" blueprint consumes 1096 CPU with the
-        // runtime catalog. Keep only a four-point safety margin so a fresh
-        // player must earn the first architecture upgrade before expanding it.
+        // The retained "1231" reference blueprint consumes 1096 CPU with the
+        // runtime catalog. New saves start from a single core; this capacity
+        // remains the first construction ceiling rather than a starter loadout.
         public const int InitialCpuCapacity = 1100;
         public const int AbsoluteModuleCapacity = 1024;
-        public const int AbsoluteCpuCapacity = 9999;
+        public const int AbsoluteCpuCapacity = 99999;
 
         const string ProgressFileName = "ship_architecture.json";
 

@@ -931,9 +931,12 @@ public sealed class InfinitePlanarSurfaceEntryCoordinator : MonoBehaviour
         world = targetWorld;
         loadingUI = targetLoadingUI
             ?? FindObjectOfType<PlanetLoadingUI>(true);
-        loadingUI?.Show(
-            world != null && world.IsFiniteCombatArea
-                ? "正在准备城市战场"
+        bool finiteCombat =
+            world != null && world.IsFiniteCombatArea;
+        loadingUI?.ShowOrContinue(
+            finiteCombat ? 0.70f : 0.01f,
+            finiteCombat
+                ? "城市主体已生成，正在准备战斗区"
                 : "正在准备无限平面地表");
         if (routine != null)
             StopCoroutine(routine);
@@ -955,7 +958,7 @@ public sealed class InfinitePlanarSurfaceEntryCoordinator : MonoBehaviour
             if (AbortTimedOutPreparation(deadline, "城市地面碰撞准备超时。"))
                 yield break;
             loadingUI?.SetProgress(
-                0.25f,
+                world.IsFiniteCombatArea ? 0.74f : 0.25f,
                 world.IsFiniteCombatArea
                     ? "正在准备城市地面碰撞"
                     : "正在生成着陆区碰撞");
@@ -966,7 +969,9 @@ public sealed class InfinitePlanarSurfaceEntryCoordinator : MonoBehaviour
         {
             if (AbortTimedOutPreparation(deadline, "城市出生点准备超时。"))
                 yield break;
-            loadingUI?.SetProgress(0.55f, "正在校准安全出生点");
+            loadingUI?.SetProgress(
+                world.IsFiniteCombatArea ? 0.80f : 0.55f,
+                "正在校准安全出生点");
             yield return null;
         }
         deadline = Time.realtimeSinceStartup + PreparationTimeoutSeconds;
@@ -976,10 +981,10 @@ public sealed class InfinitePlanarSurfaceEntryCoordinator : MonoBehaviour
                 yield break;
             float progress = world.Streamer != null
                 ? Mathf.Lerp(
-                    0.55f,
-                    0.95f,
+                    world.IsFiniteCombatArea ? 0.80f : 0.55f,
+                    world.IsFiniteCombatArea ? 0.92f : 0.95f,
                     world.Streamer.ActiveChunkCount / 25f)
-                : 0.55f;
+                : world.IsFiniteCombatArea ? 0.80f : 0.55f;
             loadingUI?.SetProgress(
                 progress,
                 world.IsFiniteCombatArea
@@ -1012,8 +1017,10 @@ public sealed class InfinitePlanarSurfaceEntryCoordinator : MonoBehaviour
                 yield break;
             }
             loadingUI?.SetProgress(
-                0.97f,
-                "正在恢复飞船和着陆平台");
+                world.IsFiniteCombatArea ? 0.96f : 0.97f,
+                world.IsFiniteCombatArea
+                    ? "正在恢复飞船并预热城市战斗系统"
+                    : "正在恢复飞船和着陆平台");
             yield return null;
         }
         if (world == null)

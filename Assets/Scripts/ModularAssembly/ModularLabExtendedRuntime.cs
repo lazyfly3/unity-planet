@@ -541,12 +541,6 @@ private Vector3 ResolveSocketPosition(
             GameObject root = new GameObject("NeoXModularLabExtension");
             ModularContentService service = root.AddComponent<ModularContentService>();
             ModularLabCatalogOverlay overlay = root.AddComponent<ModularLabCatalogOverlay>();
-            if (ModularLabSceneProfile.AllowsPlanetLabFlightEnvironment(scene))
-            {
-                PlanetLabFlightEnvironmentController environment =
-                    root.AddComponent<PlanetLabFlightEnvironmentController>();
-                environment.Initialize();
-            }
             service.StartCoroutine(service.Initialize());
             overlay.Initialize(service);
         }

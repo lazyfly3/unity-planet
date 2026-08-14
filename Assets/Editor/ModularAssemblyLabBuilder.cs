@@ -66,7 +66,7 @@ public static class ModularAssemblyLabBuilder
         sceneProfile.Configure(
             buildExperience: true,
             combatTest: true,
-            planetLabFlightEnvironment: true);
+            planetLabFlightEnvironment: false);
 
         GameObject cameraObject = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener));
         cameraObject.tag = "MainCamera";

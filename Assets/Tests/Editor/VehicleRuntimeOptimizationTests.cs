@@ -1,7 +1,9 @@
 using ModularAssembly;
 using NUnit.Framework;
 using SpacecraftEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityPlanet.IcePlanet;
 using UnityPlanet.ModularAssembly;
 
@@ -631,7 +633,7 @@ public sealed class VehicleRuntimeOptimizationTests
     }
 
     [Test]
-    public void TestFlightMapSelectionExposesNaturalAndCityProviders()
+    public void LegacyNaturalTestFlightSelectionCanonicalizesToCity()
     {
         Assert.That(
             (int)FlightEnvironmentKind.Natural,
@@ -639,6 +641,109 @@ public sealed class VehicleRuntimeOptimizationTests
         Assert.That(
             (int)FlightEnvironmentKind.City,
             Is.EqualTo((int)FlightEnvironmentKind.CombatMapLab));
+
+        Assert.That(
+            FlightEnvironmentManager.CanonicalizeSelectedKind(
+                FlightEnvironmentKind.Natural),
+            Is.EqualTo(FlightEnvironmentKind.City));
+        Assert.That(
+            FlightEnvironmentManager.CanonicalizeSelectedKind(
+                FlightEnvironmentKind.PlanetLab),
+            Is.EqualTo(FlightEnvironmentKind.City));
+        Assert.That(
+            FlightEnvironmentManager.CanonicalizeSelectedKind(
+                (FlightEnvironmentKind)999),
+            Is.EqualTo(FlightEnvironmentKind.City));
+    }
+
+    [Test]
+    public void TestFlightSelectorOffersCityOnly()
+    {
+        var host = new GameObject("CityOnlyFlightSelectorTest");
+        try
+        {
+            FlightEnvironmentSelectorOverlay overlay =
+                host.AddComponent<FlightEnvironmentSelectorOverlay>();
+            System.Reflection.MethodInfo buildUi =
+                typeof(FlightEnvironmentSelectorOverlay).GetMethod(
+                    "BuildUi",
+                    System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic);
+            Assert.That(buildUi, Is.Not.Null);
+            buildUi.Invoke(overlay, null);
+
+            UnityEngine.UI.Button[] buttons =
+                host.GetComponentsInChildren<UnityEngine.UI.Button>(true);
+            Assert.That(buttons, Is.Empty);
+
+            bool foundFixedCityCard = false;
+            UnityEngine.UI.Text[] labels =
+                host.GetComponentsInChildren<UnityEngine.UI.Text>(true);
+            for (int index = 0; index < labels.Length; index++)
+            {
+                string value = labels[index].text ?? string.Empty;
+                Assert.That(value, Does.Not.Contain("自然"));
+                if (value == "城市 PCG 试飞场（固定）")
+                    foundFixedCityCard = true;
+            }
+            Assert.That(foundFixedCityCard, Is.True);
+            Assert.That(
+                host.transform.Find(
+                    "FlightEnvironmentSelectorCanvas/" +
+                    "CityFlightEnvironmentPanel/城市PCG试飞场_固定"),
+                Is.Not.Null);
+        }
+        finally
+        {
+            Object.DestroyImmediate(host);
+        }
+    }
+
+    [Test]
+    public void ModularAssemblyLabProfileIsCityOnly()
+    {
+        const string path = "Assets/Scenes/ModularAssemblyLab.unity";
+        Scene scene = SceneManager.GetSceneByPath(path);
+        bool openedForTest = !scene.IsValid() || !scene.isLoaded;
+        if (openedForTest)
+        {
+            scene = EditorSceneManager.OpenScene(
+                path,
+                OpenSceneMode.Additive);
+        }
+
+        try
+        {
+            Assert.That(
+                ModularLabSceneProfile.AllowsPlanetLabFlightEnvironment(
+                    scene),
+                Is.False);
+            Assert.That(
+                FlightEnvironmentManager
+                    .RequiresCityTestFlightEnvironment(scene),
+                Is.True);
+
+            int naturalProviderCount = 0;
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int index = 0; index < roots.Length; index++)
+            {
+                naturalProviderCount += roots[index]
+                    .GetComponentsInChildren<
+                        PlanetLabFlightEnvironmentController>(true)
+                    .Length;
+            }
+            Assert.That(naturalProviderCount, Is.Zero);
+        }
+        finally
+        {
+            if (openedForTest && scene.IsValid() && scene.isLoaded)
+                EditorSceneManager.CloseScene(scene, true);
+        }
+    }
+
+    [Test]
+    public void CityTestFlightProviderRemainsAvailable()
+    {
         Assert.That(
             Resources.Load<GameObject>(
                 "PlanetSurface/UrbanCombatCityTemplate"),
@@ -652,6 +757,12 @@ public sealed class VehicleRuntimeOptimizationTests
             Assert.That(provider, Is.InstanceOf<IGridFlightEnvironment>());
             Assert.That(provider, Is.InstanceOf<IGridFlightEnvironmentWarmup>());
             Assert.That(provider, Is.InstanceOf<ICombatArenaProvider>());
+            Assert.That(provider.IsReady, Is.False);
+            Assert.That(
+                host.GetComponentsInChildren<
+                    UnityPlanet.CityPcg.AirCombatCityPcgLab>(true),
+                Is.Empty,
+                "创建城市试飞 Provider 本身不得提前生成城市。");
         }
         finally
         {

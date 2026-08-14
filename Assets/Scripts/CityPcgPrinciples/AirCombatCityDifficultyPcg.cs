@@ -48,12 +48,17 @@ namespace UnityPlanet.CityPcg
             new List<AirCombatCityDifficultyCell>(64);
         public int flyableCellCount;
         public float averageDifficulty;
+        public float controlAverageDifficulty;
         public float safeCellRatio;
         public float highRiskCellRatio;
         public float averageTargetError;
         public float targetFitError;
+        public float absoluteTargetError;
+        public float acceptanceTolerance;
         public int maximumCellsToLowerThreat;
+        public bool coverageValid;
         public bool targetMet;
+        public bool closestResultFallback;
 
         public bool IsUsable => cells.Count > 0 && flyableCellCount > 0;
     }
@@ -237,6 +242,27 @@ namespace UnityPlanet.CityPcg
     {
         public const float MinimumTargetDifficulty = 0.10f;
         public const float MaximumTargetDifficulty = 0.90f;
+        // 正式关卡把危险度看作生成目标，而不是阻断玩家进入的物理门槛。
+        // 这里是绝对百分点：目标30%时，15%～45%都属于首选容差内。
+        public const float PreferredDifficultyTolerance = 0.15f;
+        public const float RequiredFlyableCoverageRatio = 0.86f;
+        // 三层空战必须保留高空开放样本和法定飞行走廊。现有正式模型
+        // 在最安全空间配置下的全城均值约为24%。它只能作为“尚未生成
+        // 区域”的保守预测基线，不能覆盖玩家输入的权威控制目标。
+        public const float MinimumRepresentableAverageDifficulty = 0.23f;
+
+        public static float ResolveEffectiveGenerationTarget(
+            CombatCityDifficultyProfile difficulty)
+        {
+            return ResolveTarget(difficulty).averageDifficulty;
+        }
+
+        public static float ResolveUngeneratedForecastBaseline(
+            CombatCityDifficultyProfile difficulty)
+        {
+            return Mathf.Max(ResolveEffectiveGenerationTarget(difficulty),
+                MinimumRepresentableAverageDifficulty);
+        }
 
         const float EnemyWeaponRange = 420f;
         const float ProjectileSpeed = 240f;
@@ -476,7 +502,9 @@ namespace UnityPlanet.CityPcg
             {
                 requestedSeed = plan?.requestedSeed ?? settings?.seed ?? 0,
                 resolvedSeed = plan?.resolvedSeed ?? settings?.seed ?? 0,
-                target = ResolveTarget(settings?.Difficulty)
+                target = ResolveTarget(settings?.Difficulty),
+                controlAverageDifficulty =
+                    ResolveEffectiveGenerationTarget(settings?.Difficulty)
             };
             if (settings == null || plan == null ||
                 plan.tacticalBlocks == null ||
@@ -523,7 +551,7 @@ namespace UnityPlanet.CityPcg
                     excludedFromDifficulty = block != null &&
                                                block.excludedFromDifficulty,
                     targetDifficulty = ResolveBlockTarget(
-                        evaluation.target.averageDifficulty,
+                        evaluation.controlAverageDifficulty,
                         block?.role ?? CombatCityBlockRole.Maneuver)
                 };
                 if (cell.generated && !cell.excludedFromDifficulty &&
@@ -640,7 +668,7 @@ namespace UnityPlanet.CityPcg
                                    (float)Mathf.Max(1, evaluableCount);
             float globalAverageError = Mathf.Abs(
                 evaluation.averageDifficulty -
-                evaluation.target.averageDifficulty);
+                evaluation.controlAverageDifficulty);
             evaluation.targetFitError = Mathf.Clamp01(
                 globalAverageError * 0.45f +
                 evaluation.averageTargetError * 0.20f +
@@ -652,10 +680,32 @@ namespace UnityPlanet.CityPcg
             // 区块角色目标是候选选择的软先验，不再作为整城硬门。
             // 权威关卡要求是全城危险总量和安全/高危分布；否则即使
             // 贪心器精确命中全局目标，也会被开局固定的角色偏移否决。
-            evaluation.targetMet = globalAverageError <= 0.10f &&
-                                   considered >= Mathf.CeilToInt(
-                                       evaluableCount * 0.86f);
+            // 正式城市验收必须允许低于当前三层经验下限的输入以“已尽力
+            // 收敛”通过，否则10%/20%演示会让章节加载失败。贪心回修
+            // 使用独立的2.5个百分点精度门，不再借这个验收容差早退。
+            evaluation.absoluteTargetError = globalAverageError;
+            evaluation.acceptanceTolerance =
+                PreferredDifficultyTolerance;
+            evaluation.coverageValid = considered >= Mathf.CeilToInt(
+                evaluableCount * RequiredFlyableCoverageRatio);
+            evaluation.targetMet = evaluation.coverageValid &&
+                                   IsWithinPreferredTolerance(
+                                       evaluation.averageDifficulty,
+                                       evaluation.controlAverageDifficulty);
+            // 单一任务Seed已经完成两层贪心与有界局部回修。超过首选容差
+            // 时继续使用这次运行保留下来的最接近结果；它是明确的软降级，
+            // 不能覆盖可飞格覆盖不足等硬可玩性失败。
+            evaluation.closestResultFallback =
+                evaluation.coverageValid && !evaluation.targetMet;
             return evaluation;
+        }
+
+        public static bool IsWithinPreferredTolerance(
+            float actualDifficulty,
+            float targetDifficulty)
+        {
+            return Mathf.Abs(actualDifficulty - targetDifficulty) <=
+                   PreferredDifficultyTolerance;
         }
 
         public static void ApplyToReport(
@@ -669,6 +719,12 @@ namespace UnityPlanet.CityPcg
             {
                 report.finalDifficultyEvaluated = true;
                 report.finalDifficultyTargetMet = evaluation.targetMet;
+                report.finalDifficultyCoverageValid =
+                    evaluation.coverageValid;
+                report.finalDifficultyFallbackUsed =
+                    evaluation.closestResultFallback;
+                report.finalDifficultyAbsoluteError =
+                    evaluation.absoluteTargetError;
                 report.finalAverageDifficulty = evaluation.averageDifficulty;
                 report.finalSafeCellRatio = evaluation.safeCellRatio;
                 report.finalHighRiskCellRatio = evaluation.highRiskCellRatio;
@@ -677,8 +733,15 @@ namespace UnityPlanet.CityPcg
             }
             report.cityDifficultyEvaluated = true;
             report.cityDifficultyTargetMet = evaluation.targetMet;
+            report.cityDifficultyCoverageValid = evaluation.coverageValid;
+            report.cityDifficultyFallbackUsed =
+                evaluation.closestResultFallback;
+            report.plannedDifficultyAbsoluteError =
+                evaluation.absoluteTargetError;
             report.targetAverageDifficulty =
                 evaluation.target.averageDifficulty;
+            report.controlAverageDifficulty =
+                evaluation.controlAverageDifficulty;
             report.plannedAverageDifficulty = evaluation.averageDifficulty;
             report.plannedSafeCellRatio = evaluation.safeCellRatio;
             report.plannedHighRiskCellRatio = evaluation.highRiskCellRatio;

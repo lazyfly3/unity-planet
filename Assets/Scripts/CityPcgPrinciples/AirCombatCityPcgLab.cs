@@ -1,5 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace UnityPlanet.CityPcg
@@ -43,6 +46,9 @@ namespace UnityPlanet.CityPcg
     [DisallowMultipleComponent]
     public sealed class AirCombatCityPcgLab : MonoBehaviour
     {
+        static readonly SemaphoreSlim RuntimePlanningGate =
+            new SemaphoreSlim(1, 1);
+
         const string GeneratedRootName =
             "Generated_AirCombatCity_空战语义先行";
         // The Dark City bridge meshes have visually recessed/open end caps.
@@ -150,6 +156,7 @@ namespace UnityPlanet.CityPcg
         int lastAerialCableCount;
         int lastDestructionBridgeCandidateBuildingCount;
         int runtimeDifficultyTier;
+        CancellationTokenSource runtimePlanningCancellation;
 
         public AirCombatCitySettings Settings => settings;
         public CombatCityPcgDesignProfile DesignProfile => designProfile;
@@ -161,9 +168,14 @@ namespace UnityPlanet.CityPcg
         public bool HasValidPlan => report != null && report.valid;
         public string LastSummary => report == null
             ? "尚未生成"
-            : report.valid || string.IsNullOrWhiteSpace(report.failureReason)
-                ? report.Summary
-                : report.Summary + " | 原因 " + report.failureReason;
+            : !report.valid &&
+              !string.IsNullOrWhiteSpace(report.failureReason)
+                ? report.Summary + " | 原因 " + report.failureReason
+                : report.degraded &&
+                  !string.IsNullOrWhiteSpace(report.degradationWarning)
+                    ? report.Summary + " | 降级 " +
+                      report.degradationWarning
+                    : report.Summary;
         public int LastSkybridgeCandidateCount => lastSkybridgeCandidateCount;
         public int LastIntraBlockSkybridgeCandidateCount =>
             lastIntraBlockSkybridgeCandidateCount;
@@ -206,12 +218,11 @@ namespace UnityPlanet.CityPcg
             int difficultyTier,
             CombatCityPcgDesignProfile runtimeDesignProfile)
         {
-            if (runtimeDesignProfile != null)
-                designProfile = runtimeDesignProfile;
-            settings.mission = mission;
-            runtimeDifficultyTier = Mathf.Clamp(difficultyTier, 0, 5);
-            ApplyDifficultyProfile(mission, runtimeDifficultyTier);
-            showRuntimePanel = false;
+            PrepareRuntimeMissionSettings(
+                seed,
+                mission,
+                difficultyTier,
+                runtimeDesignProfile);
             // A mission seed is an identity, not a disposable candidate. Let
             // the generator perform its bounded deterministic validation for
             // this one requested seed, then instantiate exactly once. This
@@ -222,7 +233,6 @@ namespace UnityPlanet.CityPcg
             bool accepted = false;
             try
             {
-                settings.seed = seed;
                 settings.maximumAttempts = Mathf.Clamp(
                     authoredAttempts,
                     1,
@@ -231,9 +241,9 @@ namespace UnityPlanet.CityPcg
                 if (HasValidPlan)
                 {
                     RebuildCurrentPlan();
-                    accepted = HasValidPlan && report.skybridgeNetworkValid &&
+                    accepted = HasValidPlan &&
                                report.finalDifficultyEvaluated &&
-                               report.finalDifficultyTargetMet;
+                               report.finalDifficultyCoverageValid;
                 }
             }
             finally
@@ -254,6 +264,244 @@ namespace UnityPlanet.CityPcg
                 ClearGenerated();
             }
             HideGeneratedDebugPresentation();
+        }
+
+        /// <summary>
+        /// Formal chapter loading variant. Prefab/model inspection remains on
+        /// the Unity thread, while the dependency-free city plan is evaluated
+        /// on a worker so the loading screen can keep rendering. Entity
+        /// instantiation still returns to the Unity thread.
+        /// </summary>
+        public IEnumerator ConfigureRuntimeMissionRoutine(
+            int seed,
+            AirCombatCityMission mission,
+            int difficultyTier,
+            CombatCityPcgDesignProfile runtimeDesignProfile,
+            Action<bool, string> completed)
+        {
+            int authoredAttempts = settings != null
+                ? settings.maximumAttempts
+                : 1;
+            bool attemptsChanged = false;
+            bool accepted = false;
+            string failure = string.Empty;
+            Task<RuntimePlanBuildResult> planningTask = null;
+            CancellationTokenSource planningCancellation = null;
+            AirCombatCitySettings planningSettings = null;
+
+            try
+            {
+                PrepareRuntimeMissionSettings(
+                    seed,
+                    mission,
+                    difficultyTier,
+                    runtimeDesignProfile);
+                authoredAttempts = settings.maximumAttempts;
+                settings.maximumAttempts = Mathf.Clamp(
+                    authoredAttempts,
+                    1,
+                    24);
+                attemptsChanged = true;
+
+                // Prefab and collider inspection is deliberately completed on
+                // the Unity thread. ValidatedCopy deep-copies the audited
+                // metrics so the worker never reads live authoring objects.
+                RefreshBuildingModelMetrics();
+                planningSettings = settings.ValidatedCopy();
+            }
+            catch (Exception exception)
+            {
+                failure = "城市规划准备发生异常：" + exception.Message;
+                Debug.LogException(exception, this);
+            }
+
+            if (string.IsNullOrEmpty(failure))
+            {
+                planningCancellation = new CancellationTokenSource();
+                CancellationTokenSource previousCancellation =
+                    runtimePlanningCancellation;
+                runtimePlanningCancellation = planningCancellation;
+                previousCancellation?.Cancel();
+                CancellationToken cancellationToken =
+                    planningCancellation.Token;
+                try
+                {
+                    planningTask = Task.Run(() =>
+                    {
+                        bool gateEntered = false;
+                        try
+                        {
+                            // A canceled scene may leave its pure-data solver
+                            // finishing in the background. Serializing formal
+                            // plans prevents a quick re-entry from stacking two
+                            // CPU-heavy whole-city evaluations.
+                            RuntimePlanningGate.Wait(cancellationToken);
+                            gateEntered = true;
+                            cancellationToken.ThrowIfCancellationRequested();
+                            AirCombatCityPlan generatedPlan =
+                                AirCombatCityGenerator.Generate(
+                                    planningSettings,
+                                    out AirCombatCityReport generatedReport,
+                                    cancellationToken);
+                            cancellationToken.ThrowIfCancellationRequested();
+                            return new RuntimePlanBuildResult
+                            {
+                                plan = generatedPlan,
+                                report = generatedReport
+                            };
+                        }
+                        finally
+                        {
+                            if (gateEntered)
+                                RuntimePlanningGate.Release();
+                        }
+                    }, cancellationToken);
+                }
+                catch (Exception exception)
+                {
+                    failure = "城市规划任务无法启动：" + exception.Message;
+                }
+            }
+
+            try
+            {
+                while (planningTask != null && !planningTask.IsCompleted)
+                    yield return null;
+
+                if (planningTask != null)
+                {
+                    if (planningTask.IsCanceled)
+                    {
+                        failure = "城市规划任务已取消。";
+                    }
+                    else if (planningTask.IsFaulted)
+                    {
+                        Exception exception = planningTask.Exception != null
+                            ? planningTask.Exception.GetBaseException()
+                            : null;
+                        failure = "城市规划发生异常：" +
+                                  (exception != null
+                                      ? exception.Message
+                                      : "未知错误");
+                        if (exception != null)
+                            Debug.LogException(exception, this);
+                    }
+                    else
+                    {
+                        RuntimePlanBuildResult result = planningTask.Result;
+                        plan = result.plan;
+                        report = result.report;
+
+                        // Let the loading UI publish the transition from data
+                        // planning to scene instantiation before the next
+                        // synchronous Unity-object stage begins.
+                        yield return null;
+                        if (HasValidPlan)
+                        {
+                            try
+                            {
+                                RebuildCurrentPlan();
+                            }
+                            catch (Exception exception)
+                            {
+                                failure = "城市实体生成发生异常：" +
+                                          exception.Message;
+                                Debug.LogException(exception, this);
+                            }
+                            accepted = string.IsNullOrEmpty(failure) &&
+                                       HasValidPlan &&
+                                       report.finalDifficultyEvaluated &&
+                                       report.finalDifficultyCoverageValid;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                if (attemptsChanged && settings != null)
+                    settings.maximumAttempts = authoredAttempts;
+                if (runtimePlanningCancellation == planningCancellation)
+                    runtimePlanningCancellation = null;
+                if (planningCancellation != null)
+                {
+                    if (planningTask != null && !planningTask.IsCompleted)
+                    {
+                        planningCancellation.Cancel();
+                        planningTask.ContinueWith(
+                            task =>
+                            {
+                                // Observe abandoned worker failures so a
+                                // canceled scene cannot surface an unrelated
+                                // UnobservedTaskException later.
+                                if (task.IsFaulted)
+                                    _ = task.Exception;
+                                planningCancellation.Dispose();
+                            },
+                            CancellationToken.None,
+                            TaskContinuationOptions.ExecuteSynchronously,
+                            TaskScheduler.Default);
+                    }
+                    else
+                    {
+                        planningCancellation.Dispose();
+                    }
+                }
+            }
+
+            try
+            {
+                if (!accepted)
+                {
+                    if (report != null)
+                    {
+                        report.valid = false;
+                        if (string.IsNullOrWhiteSpace(report.failureReason))
+                        {
+                            report.failureReason = string.IsNullOrWhiteSpace(
+                                failure)
+                                ? "运行时城市候选未通过基础几何或连廊校验。"
+                                : failure;
+                        }
+                    }
+                    ClearGenerated();
+                }
+                HideGeneratedDebugPresentation();
+            }
+            catch (Exception exception)
+            {
+                accepted = false;
+                failure = "城市规划收尾发生异常：" + exception.Message;
+                Debug.LogException(exception, this);
+            }
+            if (!accepted && string.IsNullOrWhiteSpace(failure))
+                failure = LastSummary;
+            completed?.Invoke(accepted, failure);
+        }
+
+        public void CancelRuntimeMissionPlanning()
+        {
+            runtimePlanningCancellation?.Cancel();
+        }
+
+        void PrepareRuntimeMissionSettings(
+            int seed,
+            AirCombatCityMission mission,
+            int difficultyTier,
+            CombatCityPcgDesignProfile runtimeDesignProfile)
+        {
+            if (runtimeDesignProfile != null)
+                designProfile = runtimeDesignProfile;
+            settings.seed = seed;
+            settings.mission = mission;
+            runtimeDifficultyTier = Mathf.Clamp(difficultyTier, 0, 5);
+            ApplyDifficultyProfile(mission, runtimeDifficultyTier);
+            showRuntimePanel = false;
+        }
+
+        sealed class RuntimePlanBuildResult
+        {
+            public AirCombatCityPlan plan;
+            public AirCombatCityReport report;
         }
 
         void OnEnable()
@@ -390,7 +638,9 @@ namespace UnityPlanet.CityPcg
             BuildRoads();
             BuildBuildings();
             BuildBoundaryAirWalls();
-            BuildBlockInfill();
+            // 基础建筑已经由逐格骨架生成器完整负责。旧38米随机填充
+            // 会在计划验收后重新塞入随机位置，既破坏同格秩序，也让
+            // 难度分析看不到最终实体，因此正式链不再调用它。
             BuildTacticalCloseBuildingPairs();
             EnsureDestructionBridgeAnchors();
             BuildUrbanDetails();
@@ -684,11 +934,27 @@ namespace UnityPlanet.CityPcg
                 finalDifficulty,
                 report,
                 true);
-            if (report != null && !finalDifficulty.targetMet)
+            if (report != null &&
+                (finalDifficulty == null || !finalDifficulty.IsUsable ||
+                 !finalDifficulty.coverageValid))
             {
                 report.valid = false;
+                report.hardPlayabilityValid = false;
                 report.failureReason =
-                    "最终实体城市改变了地块难度分布，未达到当前关卡目标。";
+                    "最终实体城市的可飞区块覆盖不足，无法安全进入。";
+            }
+            else if (report != null &&
+                     finalDifficulty.closestResultFallback)
+            {
+                report.degraded = true;
+                string warning =
+                    "最终实体危险度与目标相差 " +
+                    finalDifficulty.absoluteTargetError.ToString("P1") +
+                    "，超过15个百分点；已采用本次有界生成的最接近结果。";
+                report.degradationWarning = string.IsNullOrWhiteSpace(
+                    report.degradationWarning)
+                    ? warning
+                    : report.degradationWarning + " " + warning;
             }
         }
 
@@ -919,7 +1185,93 @@ namespace UnityPlanet.CityPcg
 
         void RebuildPlanOnly()
         {
+            RefreshBuildingModelMetrics();
             plan = AirCombatCityGenerator.Generate(settings, out report);
+        }
+
+        void RefreshBuildingModelMetrics()
+        {
+            if (buildingCatalog == null)
+            {
+                settings.buildingModelMetrics =
+                    Array.Empty<AirCombatBuildingModelMetric>();
+                return;
+            }
+
+            var metrics = new List<AirCombatBuildingModelMetric>(32);
+            AppendBuildingModelMetrics(
+                metrics, buildingCatalog.low, AirCombatBuildingBand.Low);
+            AppendBuildingModelMetrics(
+                metrics, buildingCatalog.medium, AirCombatBuildingBand.Medium);
+            AppendBuildingModelMetrics(
+                metrics, buildingCatalog.high, AirCombatBuildingBand.High);
+            AppendBuildingModelMetrics(
+                metrics, buildingCatalog.facility, AirCombatBuildingBand.Facility);
+            settings.buildingModelMetrics = metrics.ToArray();
+        }
+
+        void AppendBuildingModelMetrics(
+            List<AirCombatBuildingModelMetric> destination,
+            GameObject[] prefabs,
+            AirCombatBuildingBand band)
+        {
+            if (prefabs == null)
+                return;
+            for (int index = 0; index < prefabs.Length; index++)
+            {
+                GameObject prefab = prefabs[index];
+                if (prefab == null)
+                    continue;
+                NormalizedBuildingModelInfo info =
+                    prefab.GetComponent<NormalizedBuildingModelInfo>();
+                Vector3 authoredSize = info != null
+                    ? info.AuthoredSize
+                    : Vector3.one;
+                Bounds colliderBounds = new Bounds(
+                    new Vector3(0f, authoredSize.y * 0.5f, 0f),
+                    authoredSize);
+                bool colliderBoundsReady = false;
+                Collider[] colliders =
+                    prefab.GetComponentsInChildren<Collider>(true);
+                for (int colliderIndex = 0;
+                     colliderIndex < colliders.Length;
+                     colliderIndex++)
+                {
+                    Collider collider = colliders[colliderIndex];
+                    if (collider == null || !collider.enabled ||
+                        !TryResolveColliderLocalBounds(
+                            collider, out Bounds sourceBounds))
+                    {
+                        continue;
+                    }
+                    EncapsulateBoundsInRootSpace(
+                        prefab.transform,
+                        collider.transform,
+                        sourceBounds,
+                        ref colliderBounds,
+                        ref colliderBoundsReady);
+                }
+                BuildingGeometryProfile geometry =
+                    ResolveBuildingGeometryProfile(prefab);
+                destination.Add(new AirCombatBuildingModelMetric
+                {
+                    band = band,
+                    catalogIndex = index,
+                    authoredSize = authoredSize,
+                    colliderSize = colliderBoundsReady
+                        ? colliderBounds.size
+                        : authoredSize,
+                    colliderCenter = colliderBoundsReady
+                        ? colliderBounds.center
+                        : new Vector3(0f, authoredSize.y * 0.5f, 0f),
+                    groundSupportRatio = geometry != null
+                        ? geometry.groundSupportRatio
+                        : 1f,
+                    bodyCoverage = geometry != null
+                        ? geometry.maximumBodyCoverage
+                        : 1f
+                });
+            }
         }
 
         void BuildSemanticVolumes()
@@ -1460,10 +1812,25 @@ namespace UnityPlanet.CityPcg
                     Vector3 authoredSize = modelInfo != null
                         ? modelInfo.AuthoredSize
                         : Vector3.one;
-                    building.transform.localScale = new Vector3(
-                        lot.size.x / Mathf.Max(0.1f, authoredSize.x),
-                        lot.size.y / Mathf.Max(0.1f, authoredSize.y),
-                        lot.size.z / Mathf.Max(0.1f, authoredSize.z));
+                    float horizontalScale = lot.horizontalModelScale > 0.01f
+                        ? lot.horizontalModelScale
+                        : Mathf.Min(
+                            lot.size.x / Mathf.Max(0.1f, authoredSize.x),
+                            lot.size.z / Mathf.Max(0.1f, authoredSize.z));
+                    building.transform.localScale =
+                        lot.layoutSlotIndex >= 0
+                            ? new Vector3(
+                                horizontalScale,
+                                lot.size.y /
+                                Mathf.Max(0.1f, authoredSize.y),
+                                horizontalScale)
+                            : new Vector3(
+                                lot.size.x /
+                                Mathf.Max(0.1f, authoredSize.x),
+                                lot.size.y /
+                                Mathf.Max(0.1f, authoredSize.y),
+                                lot.size.z /
+                                Mathf.Max(0.1f, authoredSize.z));
                     if (!keepBuildingColliders)
                         RemoveColliders(building);
                 }
@@ -2503,6 +2870,21 @@ namespace UnityPlanet.CityPcg
                 {
                     Vector3 direction = cardinalDirections[
                         (directionStart + attempt) % cardinalDirections.Length];
+                    CombatCityBlockPlan anchorBlock =
+                        CombatDrivenCityPcgPlanner.FindTacticalBlock(
+                            plan,
+                            new Vector2(
+                                anchorBounds.center.x,
+                                anchorBounds.center.z));
+                    if (anchorBlock != null && anchorBlock.layoutResolved)
+                    {
+                        direction = Quaternion.Euler(
+                            0f,
+                            anchorBlock.layoutYaw,
+                            0f) * cardinalDirections[
+                                (directionStart + attempt) %
+                                cardinalDirections.Length];
+                    }
                     bool separatedOnX = Mathf.Abs(direction.x) > 0.5f;
                     float parallelSize = Mathf.Clamp(
                         separatedOnX
@@ -2572,6 +2954,11 @@ namespace UnityPlanet.CityPcg
 
                     Vector3 toRoad = nearestPoint - candidate;
                     float yaw = Mathf.Atan2(toRoad.x, toRoad.z) * Mathf.Rad2Deg;
+                    if (anchorBlock != null && anchorBlock.layoutResolved)
+                    {
+                        yaw = anchorBlock.layoutYaw +
+                              (separatedOnX ? 90f : 0f);
+                    }
                     var lot = new AirCombatBuildingLot
                     {
                         stableId = "skill-gap-" + settings.seed + "-" +
@@ -3589,7 +3976,7 @@ namespace UnityPlanet.CityPcg
                                 destructionBridgeTarget &&
                                 (!bossMission ||
                                  acceptedTacticalGroups >= tacticalTarget);
-            int boundTacticalChokes = bossMission && networkValid
+            int boundTacticalChokes = bossMission
                 ? BindTacticalChokeOpportunities(selected)
                 : 0;
             if (bossMission)
@@ -3622,8 +4009,8 @@ namespace UnityPlanet.CityPcg
                     ? 0f
                     : minimumClearWidth,
                 networkValid);
-            if (!networkValid)
-                return;
+            // 配额未完全达到只影响战术题目完整度。所有已经通过碰撞、
+            // 净空和连接检查的合法连廊仍应作为降级网络实例化。
             runtimeBuiltBridgeSegments.AddRange(built);
             for (int index = 0; index < selected.Count; index++)
                 CreateSkybridgeAssembly(selected[index], index);
@@ -3757,11 +4144,15 @@ namespace UnityPlanet.CityPcg
             }
             if (valid)
                 return;
-            report.valid = false;
-            report.failureReason = settings.mission ==
-                                   AirCombatCityMission.BossEncounter
-                ? "Boss city could not satisfy its bridge/choke quotas."
-                : "City could not satisfy its physical skybridge quota.";
+            report.degraded = true;
+            string warning = settings.mission ==
+                             AirCombatCityMission.BossEncounter
+                ? "Boss城市连廊与咽喉配额未完全达到，已使用可玩的降级连廊网络。"
+                : "城市连廊配额未完全达到，已使用可玩的降级连廊网络。";
+            report.degradationWarning = string.IsNullOrWhiteSpace(
+                report.degradationWarning)
+                ? warning
+                : report.degradationWarning + " " + warning;
         }
 
         System.Collections.Generic.List<TacticalBridgeGroup>
@@ -4480,10 +4871,24 @@ namespace UnityPlanet.CityPcg
                 BuiltCableSegment other = existing[index];
                 Vector2 c = new Vector2(other.start.x, other.start.z);
                 Vector2 d = new Vector2(other.end.x, other.end.z);
-                if (SegmentsIntersect(a, b, c, d))
+                if (SegmentsIntersect(a, b, c, d) &&
+                    !SharesCableEndpoint(a, b, c, d))
                     return true;
             }
             return false;
+        }
+
+        static bool SharesCableEndpoint(
+            Vector2 a,
+            Vector2 b,
+            Vector2 c,
+            Vector2 d)
+        {
+            const float EndpointToleranceSquared = 9f;
+            return (a - c).sqrMagnitude <= EndpointToleranceSquared ||
+                   (a - d).sqrMagnitude <= EndpointToleranceSquared ||
+                   (b - c).sqrMagnitude <= EndpointToleranceSquared ||
+                   (b - d).sqrMagnitude <= EndpointToleranceSquared;
         }
 
         static bool CanReceiveCable(AirCombatBuildingLot lot)
